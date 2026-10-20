@@ -46,6 +46,7 @@ export function QuickActionChips() {
   const mailingEnabled = isMailingEnabled(
     d.subscriptionLimits?.plan,
     limits?.emailCampaignsEnabled,
+    d.subscriptionLimits,
   );
   const allActions: Record<string, ActionDef> = useMemo(() => ({
     "create-course": {

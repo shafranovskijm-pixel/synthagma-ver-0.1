@@ -1,13 +1,14 @@
 const MAILING_PLANS = new Set(["start", "standard", "professional", "maximum"]);
 
 /**
- * One tariff predicate for every mailing entry point. The feature flag alone
- * must never unlock a Free organization, and a paid plan without the flag
- * must stay locked until the backend configuration is ready.
+ * A confirmed postpaid agreement includes base mailing without rewriting the
+ * legacy plan. Unknown access and a missing feature flag remain closed.
  */
 export function isMailingEnabled(
   plan: string | null | undefined,
   emailCampaignsEnabled: boolean | null | undefined,
+  access?: { loading?: boolean; error?: unknown; isPostpaid?: boolean },
 ): boolean {
-  return MAILING_PLANS.has(plan ?? "") && emailCampaignsEnabled === true;
+  if (access && (access.loading !== false || access.error)) return false;
+  return (access?.isPostpaid === true || MAILING_PLANS.has(plan ?? "")) && emailCampaignsEnabled === true;
 }

@@ -7,6 +7,7 @@ const setShowAddStudentDialog = vi.fn();
 let granted = new Set<string>();
 let visibleTabs = new Set<string>();
 let limits = { canCreateCourse: true, canAddStudent: true };
+let plan = "start", isPostpaid = false, subscriptionLoading = false;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -14,7 +15,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     organizationName: "Тестовая организация",
     organizationId: "org-1",
     subscriptionLimits: {
-      plan: "start",
+      plan, isPostpaid, loading: subscriptionLoading,
       limits: { emailCampaignsEnabled: true },
       ...limits,
     },
@@ -63,9 +64,24 @@ beforeEach(() => {
   granted = new Set();
   visibleTabs = new Set();
   limits = { canCreateCourse: true, canAddStudent: true };
+  plan = "start"; isPostpaid = false; subscriptionLoading = false;
 });
 
 describe("OrganizationHomeTab permission-aware actions", () => {
+  it("keeps the mailing workspace available under confirmed free-legacy postpayment", () => {
+    plan = "free"; isPostpaid = true;
+    granted.add("sales.read"); visibleTabs.add("mailing");
+    renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть коммуникации" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/organization?tab=mailing&mailingTab=overview");
+  });
+  it("does not advertise a tariff requirement while mailing access is still pending", () => {
+    isPostpaid = true; subscriptionLoading = true;
+    granted = new Set(["sales.read", "chats.read"]); visibleTabs = new Set(["mailing", "chats"]);
+    renderHome();
+    expect(screen.getByText(/Доступ к email-рассылкам проверяется/)).toBeInTheDocument();
+    expect(screen.queryByText("Рассылки — от Старт")).not.toBeInTheDocument();
+  });
   it("shows only readable workspaces and hides write CTAs without write permissions", () => {
     granted.add("courses.read");
     visibleTabs.add("courses");

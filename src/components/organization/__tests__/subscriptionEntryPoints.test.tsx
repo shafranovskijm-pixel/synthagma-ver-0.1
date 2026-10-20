@@ -8,6 +8,8 @@ let organizationId = "org-1";
 let plan = "free";
 let emailCampaignsEnabled = false;
 let salesCrmEnabled = false;
+let isPostpaid = false, subscriptionLoading = false;
+let subscriptionError: string | null = null;
 let deniedPermissions = new Set<string>();
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -17,6 +19,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     branding: { brandingSettings: { logoUrl: null } },
     subscriptionLimits: {
       plan,
+      loading: subscriptionLoading, error: subscriptionError, isPostpaid,
       limits: { emailCampaignsEnabled, salesCrmEnabled, reportsEnabled: true },
     },
     tabNavigation: { activeTab, setActiveTab },
@@ -67,12 +70,25 @@ beforeEach(() => {
   activeTab = "courses";
   organizationId = "org-1";
   plan = "free";
+  isPostpaid = false; subscriptionLoading = false; subscriptionError = null;
   emailCampaignsEnabled = false;
   salesCrmEnabled = false;
   deniedPermissions = new Set();
 });
 
 describe("QuickActionChips — контекстные действия", () => {
+  it("keeps the mailing quick action for confirmed postpaid with a free legacy plan", () => {
+    activeTab = "chats"; plan = "free"; isPostpaid = true; emailCampaignsEnabled = true;
+    renderAt(<QuickActionChips />);
+    expect(screen.getByTestId("quick-chip-mailing")).toHaveAttribute("href", "/organization?tab=mailing&mailingTab=overview");
+  });
+  it.each(["pending", "error"])("does not expose the mailing quick action while its access is %s", mode => {
+    activeTab = "chats"; plan = "free"; isPostpaid = true; emailCampaignsEnabled = true;
+    if (mode === "pending") subscriptionLoading = true;
+    else subscriptionError = "unconfirmed";
+    renderAt(<QuickActionChips />);
+    expect(screen.queryByTestId("quick-chip-mailing")).not.toBeInTheDocument();
+  });
   it("не дублирует действия стартового экрана и остаётся доступным на мобильной ширине", () => {
     activeTab = "home";
     const { rerender } = renderAt(<QuickActionChips />);

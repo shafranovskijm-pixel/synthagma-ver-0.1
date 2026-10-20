@@ -184,7 +184,9 @@ export function OrgSidebar() {
   const mailingEnabled = isMailingEnabled(
     planName,
     d.subscriptionLimits?.limits.emailCampaignsEnabled,
+    d.subscriptionLimits,
   );
+  const mailingAccessUnconfirmed = !d.subscriptionLimits || d.subscriptionLimits.loading !== false || !!d.subscriptionLimits.error;
   const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : '';
   const { handleLogoUpload, isUploadingLogo } = d.branding;
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -430,11 +432,13 @@ export function OrgSidebar() {
     id: "mailing",
     icon: Send,
     label: "Рассылки",
-    description: mailingEnabled
+    description: d.subscriptionLimits?.error ? "Доступность рассылок пока не подтверждена"
+      : mailingAccessUnconfirmed ? "Проверка доступа к рассылкам…"
+      : mailingEnabled
       ? "Кампании, база, шаблоны и отправители"
       : "Доступно с тарифа «Старт»",
     href: organizationMailingPath("overview"),
-    forceLocked: !mailingEnabled,
+    forceLocked: !mailingEnabled && !mailingAccessUnconfirmed,
     statusBadge: "Beta",
   }));
 

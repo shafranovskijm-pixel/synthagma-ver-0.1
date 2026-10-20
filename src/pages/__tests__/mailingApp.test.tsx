@@ -11,6 +11,9 @@ const subscriptionState = {
   plan: "start",
   limits: { emailCampaignsEnabled: true },
   loading: false,
+  isPostpaid: false,
+  error: null as string | null,
+  refetch: vi.fn(),
 };
 const permissionState = {
   loading: false,
@@ -75,6 +78,8 @@ describe("MailingApp shell", () => {
     subscriptionState.plan = "start";
     subscriptionState.limits.emailCampaignsEnabled = true;
     subscriptionState.loading = false;
+    subscriptionState.isPostpaid = false;
+    subscriptionState.error = null;
     permissionState.loading = false;
     permissionState.canRead = true;
     permissionState.canWrite = true;
@@ -179,6 +184,42 @@ describe("MailingApp shell", () => {
 
     expect(await screen.findByTestId("mailing-plan-locked")).toBeInTheDocument();
     expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+  });
+  it("opens base mailing for confirmed postpaid without rewriting its free legacy plan", async () => {
+    subscriptionState.plan = "free"; subscriptionState.isPostpaid = true;
+    renderAt("");
+    expect(await screen.findByText("overview-tab")).toBeInTheDocument();
+    expect(subscriptionState.plan).toBe("free");
+    expect(screen.queryByTestId("mailing-plan-locked")).not.toBeInTheDocument();
+  });
+  it("does not mount mailing or recommend a tariff while postpaid access is pending", () => {
+    subscriptionState.plan = "free"; subscriptionState.isPostpaid = true; subscriptionState.loading = true;
+    renderAt("");
+    expect(screen.getByText("Проверяем доступ к рассылкам…")).toHaveAttribute("role", "status");
+    expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Перейти к тарифам" })).not.toBeInTheDocument();
+  });
+  it("offers only a fresh access read on verification error, without mounting the workspace", () => {
+    subscriptionState.isPostpaid = true; subscriptionState.error = "conditions unavailable";
+    renderAt("");
+    expect(screen.getByTestId("mailing-access-unconfirmed")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить проверку" }));
+    expect(subscriptionState.refetch).toHaveBeenCalledExactlyOnceWith();
+    expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Перейти к тарифам" })).not.toBeInTheDocument();
+  });
+  it.each([false, true])("retains postpaid mailing permissions with sales.read=%s", async canRead => {
+    subscriptionState.plan = "free"; subscriptionState.isPostpaid = true;
+    permissionState.canRead = canRead; permissionState.canWrite = false;
+    renderAt("");
+    if (!canRead) {
+      expect(screen.getByTestId("mailing-permission-denied")).toBeInTheDocument();
+      expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+    } else {
+      expect(await screen.findByText("overview-tab")).toBeInTheDocument();
+      expect(screen.getByTestId("mailing-readonly-notice")).toBeInTheDocument();
+      expect(screen.getByTestId("mailing-workspace")).toBeDisabled();
+    }
   });
 
   it("requires sales.read before mounting mailing data components", async () => {

@@ -74,8 +74,10 @@ export function OrganizationHomeTab() {
   const mailingEnabled = isMailingEnabled(
     plan,
     d.subscriptionLimits?.limits.emailCampaignsEnabled,
+    d.subscriptionLimits,
   );
   const canReadCourses = !permissionsLoading && canSeeOrgTab("courses") && can("courses.read");
+  const mailingAccessUnconfirmed = !d.subscriptionLimits || d.subscriptionLimits.loading !== false || !!d.subscriptionLimits.error;
   const canReadStudents = !permissionsLoading && canSeeOrgTab("students") && can("students.read");
   const canReadCompanies = !permissionsLoading && canSeeOrgTab("organizations") && can("companies.read");
   const canReadDocuments = !permissionsLoading && canSeeOrgTab("documents") && can("documents.read");
@@ -201,11 +203,12 @@ export function OrganizationHomeTab() {
               title="Коммуникации"
               description={
                 isMailingLocked
-                  ? "Чаты доступны сейчас. Email-рассылки подключаются с тарифа Старт."
+                  ? mailingAccessUnconfirmed ? "Чаты доступны сейчас. Доступ к email-рассылкам проверяется."
+                    : "Чаты доступны сейчас. Email-рассылки подключаются с тарифа Старт."
                   : "Чаты, email-рассылки, база контактов, шаблоны и отчёты."
               }
               actionLabel={isMailingLocked ? "Открыть чаты" : "Открыть коммуникации"}
-              badge={isMailingLocked ? "Рассылки — от Старт" : undefined}
+              badge={isMailingLocked && !mailingAccessUnconfirmed ? "Рассылки — от Старт" : undefined}
               locked={isMailingLocked}
               icon={MessageCircle}
               onOpen={() => {

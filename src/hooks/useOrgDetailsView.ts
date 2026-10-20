@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -9,6 +9,10 @@ import { ru } from "date-fns/locale";
 import { KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
+import { fetchPostpaidAccessProfile, type PostpaidAccessProfile } from "@/lib/postpaidAccess";
+import { showLimitToast } from "@/utils/limitToast";
+import { captureOfflineContext, isOfflineActorCurrent } from "@/utils/courseCache";
 
 export interface Organization {
   id: string;
@@ -73,6 +77,16 @@ export interface UsageHistoryItem {
 }
 
 export function useOrgDetailsView(organization: Organization) {
+  const renderActor = captureOfflineContext();
+  const postpaid = usePostpaidAccessProfile(organization.id);
+  const viewIdentity = useRef({ organizationId: organization.id, generation: 0 });
+  if (viewIdentity.current.organizationId !== organization.id) {
+    viewIdentity.current = { organizationId: organization.id, generation: viewIdentity.current.generation + 1 };
+  }
+  const viewGeneration = viewIdentity.current.generation;
+  const viewMounted = useRef(true);
+  const usageRequest = useRef(0);
+  useEffect(() => { viewMounted.current = true; return () => { viewMounted.current = false; }; }, []);
   const [activeTab, setActiveTab] = useUrlQueryState<string>("organizationSection", "courses", ["students", "courses", "tariffs", "documents", "history", "comments", "reminders", "settings"]);
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
   const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
@@ -89,6 +103,10 @@ export function useOrgDetailsView(organization: Organization) {
     ai_generations_count: 0,
   });
   const [usageHistory, setUsageHistory] = useState<UsageHistoryItem[]>([]);
+  const [usageGeneration, setUsageGeneration] = useState(-1);
+  const [usageActor, setUsageActor] = useState<ReturnType<typeof captureOfflineContext>>(null);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [settingsAccessError, setSettingsAccessError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
@@ -108,6 +126,7 @@ export function useOrgDetailsView(organization: Organization) {
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
   });
   const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => { setIsSaving(false); setSettingsAccessError(null); }, [organization.id, renderActor?.actorId, renderActor?.revision]);
   const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [generatingCredentials, setGeneratingCredentials] = useState(false);
@@ -142,13 +161,22 @@ export function useOrgDetailsView(organization: Organization) {
   });
 
   // Limits
-  const storageLimitPercent = (usage.storage_bytes / settings.storage_limit_bytes) * 100;
-  const aiGenerationsLimit = planKey === 'free' ? 3 : Infinity;
+  const profileReady = !!renderActor && isOfflineActorCurrent(renderActor.actorId, renderActor.revision) && !postpaid.isLoading && !postpaid.isFetching && !postpaid.error && postpaid.data?.organization_id === organization.id;
+  const usageReady = usageGeneration === viewGeneration && !usageError && !!usageActor && isOfflineActorCurrent(usageActor.actorId, usageActor.revision);
+  const usageLimitsReady = profileReady && usageReady && !settingsAccessError;
+  const settingsAccessGate = useRef({ generation: viewGeneration, ready: usageLimitsReady });
+  settingsAccessGate.current = { generation: viewGeneration, ready: usageLimitsReady };
+  const isPostpaid = profileReady && postpaid.data!.active;
+  const usageAccessError = (postpaid.error ? "Не удалось проверить условия постоплаты. Повторите проверку." : usageError) || settingsAccessError;
+  const usageAccessLoading = !usageLimitsReady && !usageAccessError;
+  const effectiveStorageLimit = isPostpaid ? -1 : settings.storage_limit_bytes;
+  const storageLimitPercent = !usageLimitsReady || effectiveStorageLimit === -1 ? 0 : (usage.storage_bytes / effectiveStorageLimit) * 100;
+  const aiGenerationsLimit = isPostpaid || planKey !== 'free' ? Infinity : 3;
   const aiGenerationsPercent = aiGenerationsLimit === Infinity ? 0 : (usage.ai_generations_count / aiGenerationsLimit) * 100;
-  const isStorageWarning = storageLimitPercent >= 80;
-  const isStorageExceeded = storageLimitPercent >= 100;
-  const isAiGenWarning = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 80;
-  const isAiGenExceeded = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 100;
+  const isStorageWarning = usageLimitsReady && storageLimitPercent >= 80;
+  const isStorageExceeded = usageLimitsReady && storageLimitPercent >= 100;
+  const isAiGenWarning = usageLimitsReady && aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 80;
+  const isAiGenExceeded = usageLimitsReady && aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 100;
   const shouldBlockAI = isAiGenExceeded;
 
   const dndSensors = useSensors(
@@ -251,18 +279,42 @@ export function useOrgDetailsView(organization: Organization) {
   const fetchUsage = useCallback(async () => {
     // Read pre-aggregated values from organization_usage instead of scanning all storage buckets.
     // Storage scanning is slow (50-150 list requests) and is now done by a background recalculation.
-    const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
-    const { data: usageRow } = await supabase
-      .from("organization_usage")
-      .select("ai_generations_count, storage_bytes")
-      .eq("organization_id", organization.id)
-      .eq("month_start", currentMonth)
-      .maybeSingle();
-    setUsage({
-      storage_bytes: (usageRow as any)?.storage_bytes || 0,
-      ai_generations_count: (usageRow as any)?.ai_generations_count || 0,
-    });
-  }, [organization.id]);
+    if (!viewMounted.current || viewIdentity.current.generation !== viewGeneration) return;
+    const actor = captureOfflineContext();
+    if (!actor || !renderActor || actor.actorId !== renderActor.actorId || actor.revision !== renderActor.revision) return;
+    const request = ++usageRequest.current;
+    const isCurrent = () => viewMounted.current && viewIdentity.current.generation === viewGeneration && usageRequest.current === request && isOfflineActorCurrent(actor.actorId, actor.revision);
+    setUsageError(null);
+    setUsageGeneration(-1);
+    try {
+      const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
+      const { data: usageRow, error } = await supabase
+        .from("organization_usage")
+        .select("ai_generations_count, storage_bytes")
+        .eq("organization_id", organization.id)
+        .eq("month_start", currentMonth)
+        .maybeSingle();
+      if (error) throw error;
+      if (!isCurrent()) return;
+      const row = usageRow as unknown as { storage_bytes?: unknown; ai_generations_count?: unknown } | null;
+      const storageBytes = row === null ? 0 : row?.storage_bytes;
+      const aiCount = row === null ? 0 : row?.ai_generations_count;
+      if (typeof storageBytes !== "number" || !Number.isSafeInteger(storageBytes) || storageBytes < 0
+        || typeof aiCount !== "number" || !Number.isSafeInteger(aiCount) || aiCount < 0) throw new Error("organization_usage_unconfirmed");
+      setUsage({ storage_bytes: storageBytes, ai_generations_count: aiCount });
+      setUsageGeneration(viewGeneration);
+      setUsageActor(actor);
+    } catch {
+      if (isCurrent()) setUsageError("Не удалось проверить использование ресурсов. Повторите проверку.");
+    }
+  }, [organization.id, viewGeneration, renderActor?.actorId, renderActor?.revision]);
+
+  const retryUsageAccess = async () => {
+    if (!viewMounted.current || viewIdentity.current.generation !== viewGeneration) return;
+    if (!renderActor || !isOfflineActorCurrent(renderActor.actorId, renderActor.revision)) return;
+    setSettingsAccessError(null);
+    await Promise.all([postpaid.refetch(), fetchUsage()]);
+  };
 
   const [recalculatingStorage, setRecalculatingStorage] = useState(false);
   const recalculateStorage = useCallback(async () => {
@@ -417,9 +469,29 @@ export function useOrgDetailsView(organization: Organization) {
   };
 
   const saveSettings = async () => {
+    const actor = captureOfflineContext();
+    if (!actor || !renderActor || actor.actorId !== renderActor.actorId || actor.revision !== renderActor.revision) return;
+    const isCurrent = () => viewMounted.current && viewIdentity.current.generation === viewGeneration && isOfflineActorCurrent(actor.actorId, actor.revision);
+    if (!isCurrent()) return;
+    if (!usageLimitsReady || !settingsAccessGate.current.ready) {
+      showLimitToast({ allowed: false, reason: usageAccessError ? "verification_error" : "checking", message: usageAccessError || "Проверяем условия доступа и использование ресурсов…" }, retryUsageAccess);
+      return;
+    }
     setIsSaving(true);
     try {
-      const aiEnabled = shouldBlockAI ? false : settings.ai_enabled;
+      let currentProfile: PostpaidAccessProfile;
+      try { currentProfile = await fetchPostpaidAccessProfile(organization.id); }
+      catch {
+        if (isCurrent()) {
+          const message = "Не удалось проверить условия постоплаты. Повторите проверку.";
+          setSettingsAccessError(message);
+          showLimitToast({ allowed: false, reason: "verification_error", message }, retryUsageAccess);
+        }
+        return;
+      }
+      if (!isCurrent() || !settingsAccessGate.current.ready) return;
+      const shouldBlockCurrentAI = !currentProfile.active && planKey === 'free' && usage.ai_generations_count >= 3;
+      const aiEnabled = shouldBlockCurrentAI ? false : settings.ai_enabled;
       const { error } = await supabase.from("organizations").update({
         name: settings.name, email: settings.email, phone: settings.phone || null,
         inn: settings.inn || null, contact_name: settings.contact_name || null,
@@ -428,10 +500,11 @@ export function useOrgDetailsView(organization: Organization) {
         notify_on_limit_80: settings.notify_on_limit_80, notify_on_limit_exceeded: settings.notify_on_limit_exceeded,
       } as any).eq("id", organization.id);
       if (error) throw error;
-      if (shouldBlockAI && settings.ai_enabled) toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита генераций.");
+      if (!isCurrent()) return;
+      if (shouldBlockCurrentAI && settings.ai_enabled) toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита генераций.");
       else toast.success("Настройки сохранены");
-    } catch (error) { console.error("Error saving settings:", error); toast.error("Ошибка сохранения настроек"); }
-    finally { setIsSaving(false); }
+    } catch (error) { if (isCurrent()) { console.error("Error saving settings:", error); toast.error("Ошибка сохранения настроек"); } }
+    finally { if (isCurrent()) setIsSaving(false); }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -460,6 +533,7 @@ export function useOrgDetailsView(organization: Organization) {
     customCategories, setCustomCategories, customPrice, setCustomPrice, customDiscount, setCustomDiscount,
     stats, planKey, planInfo, storageLimitPercent, aiGenerationsLimit, aiGenerationsPercent,
     isStorageWarning, isStorageExceeded, isAiGenWarning, isAiGenExceeded, shouldBlockAI,
+    usageLimitsReady, usageAccessLoading, usageAccessError, retryUsageAccess, effectiveStorageLimit, isPostpaid,
     dndSensors, handleCourseDragEnd, filteredStudents, formatBytes,
     saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchPendingEnrollmentsCount, recalculateStorage, recalculatingStorage,
     showSkillspaceImport, setShowSkillspaceImport, showSkillspaceBatchImport, setShowSkillspaceBatchImport,

@@ -17,6 +17,8 @@ let activeTab = "home";
 let isMobile = false;
 let isMobileSidebarOpen = false;
 let permissionsLoading = false;
+let subscriptionLoading = false;
+let subscriptionError: string | null = null;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -36,6 +38,8 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     subscriptionLimits: {
       plan,
       isPostpaid,
+      loading: subscriptionLoading,
+      error: subscriptionError,
       limits: { emailCampaignsEnabled, salesCrmEnabled },
     },
     crmAccess: { enabled: salesCrmEnabled, loading: false, error: null },
@@ -105,6 +109,8 @@ beforeEach(() => {
   isMobile = false;
   isMobileSidebarOpen = false;
   permissionsLoading = false;
+  subscriptionLoading = false;
+  subscriptionError = null;
   allowedTabs = new Set([
     "home",
     "students",
@@ -146,6 +152,22 @@ beforeEach(() => {
 });
 
 describe("OrgSidebar navigation", () => {
+  it("opens mailing for active postpaid with a free legacy plan", () => {
+    plan = "free"; isPostpaid = true;
+    renderSidebar();
+    fireEvent.click(screen.getByRole("button", { name: "Коммуникации" }));
+    expect(screen.getByRole("link", { name: "Рассылки" })).toHaveAttribute("href", "/organization?tab=mailing&mailingTab=overview");
+  });
+  it.each(["pending", "error"])("does not present an upgrade for mailing access that is %s", mode => {
+    plan = "free"; isPostpaid = true;
+    if (mode === "pending") subscriptionLoading = true;
+    else subscriptionError = "profile unconfirmed";
+    renderSidebar();
+    fireEvent.click(screen.getByRole("button", { name: "Коммуникации" }));
+    fireEvent.click(screen.getByRole("link", { name: "Рассылки" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Недоступно на вашем тарифе")).not.toBeInTheDocument();
+  });
   it("shows the current billing mode without changing the stored prepaid plan", () => {
     plan = "maximum";
     const { rerender } = renderSidebar();
