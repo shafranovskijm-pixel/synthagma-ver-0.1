@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlanInfo, type SubscriptionPlan, type PlanLimits } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
-import { getOrganizationStorageUsage } from "@/lib/storage/organizationStorageUsage";
 import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 import { postpaidPlanLimits } from "@/lib/postpaidAccess";
 
@@ -43,7 +42,6 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   const [coursesCount, setCoursesCount] = useState(0);
   const [studentsCount, setStudentsCount] = useState(0);
   const [trainedThisMonth, setTrainedThisMonth] = useState(0);
-  const [storageUsedBytes, setStorageUsedBytes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [customOverrides, setCustomOverrides] = useState<{
     maxCourses: number | null;
@@ -108,17 +106,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       const capRow: any = Array.isArray(capacityResult.data) ? capacityResult.data[0] : capacityResult.data;
       setStudentsCount(Number(capRow?.current_students) || 0);
       setTrainedThisMonth(Number(trainedResult.data) || 0);
-      setStorageUsedBytes(0);
       setLoadedOrganization(organizationId);
-
-      // Share this request across lesson-level hook mounts. Without the cache,
-      // the course editor multiplied 2 x courseCount Storage list requests.
-      try {
-        const bytes = await getOrganizationStorageUsage(supabase, organizationId);
-        if (isCurrent()) setStorageUsedBytes(bytes);
-      } catch (e) {
-        console.error("Error calculating storage:", e);
-      }
     } catch (error) {
       console.error("Error fetching subscription limits:", error);
       if (isCurrent()) setError("Не удалось проверить ограничения организации. Повторите проверку.");
@@ -230,7 +218,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   return {
     plan: currentPlan,
     limits,
-    usage: { coursesCount: currentData ? coursesCount : 0, studentsCount: currentData ? studentsCount : 0, trainedThisMonth: currentData ? trainedThisMonth : 0, storageUsedBytes: currentData ? storageUsedBytes : 0 },
+    usage: { coursesCount: currentData ? coursesCount : 0, studentsCount: currentData ? studentsCount : 0, trainedThisMonth: currentData ? trainedThisMonth : 0, storageUsedBytes: 0 },
     canCreateCourse,
     canAddStudent,
     canCompleteCourse,

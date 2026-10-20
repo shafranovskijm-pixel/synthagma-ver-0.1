@@ -8,6 +8,7 @@ import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
+import { useOrganizationStorageUsage } from "@/hooks/useOrganizationStorageUsage";
 
 export const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -78,7 +79,11 @@ export const featureRows: FeatureRow[] = [
 export function useSubscriptionTab() {
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
-  const subscriptionLimits = d.subscriptionLimits;
+  const storageUsage = useOrganizationStorageUsage(organizationId);
+  const subscriptionLimits = {
+    ...d.subscriptionLimits,
+    usage: { ...d.subscriptionLimits.usage, storageUsedBytes: storageUsage.bytes ?? 0 },
+  };
   const postpaid = usePostpaidAccessProfile(organizationId);
   const allowPrepaidActions = !!organizationId && !postpaid.isLoading && !postpaid.error && postpaid.data?.active === false;
   const checkPrepaidAccess = () => {
@@ -254,6 +259,8 @@ export function useSubscriptionTab() {
     refreshPostpaidAccess: postpaid.refetch,
     allowPrepaidActions,
     subscriptionLimits,
+    storageUsageLoading: storageUsage.loading,
+    storageUsageError: storageUsage.error,
     currentPlan,
     currentPlanInfo,
     currentPlanIndex,
