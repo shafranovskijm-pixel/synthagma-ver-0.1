@@ -1,0 +1,22 @@
+{
+  "status": "SOURCE_AUTHORED_NOT_EXECUTED_NOT_DEPLOYED",
+  "base": "3be046252a07e8b5b68400508a1e3138e3bf4e09",
+  "version": "20261020090000",
+  "migration": "supabase/migrations/20261020090000_lesson_write_permission_guard.sql",
+  "migration_sha256": "fece714e0640b41236492f544a3a8b816ac02269577d2020bd6b2e8a6eef21fb",
+  "capture": "supabase/tests/fixtures/lesson-write-guard-live-metadata.json",
+  "capture_sha256": "d72c69adf9668a424302c0e5cbdad1a83675eb61cf195cb552a9290debe62810",
+  "original_function_count": 24,
+  "new_function": "public.lesson_write_guard_allowed(uuid)",
+  "new_policy_count": 3,
+  "product_tables_changed": 0,
+  "original_select_policies_changed": 0,
+  "original_acl_changed": 0,
+  "dependencies": "Released auth/account/organization/admin/paid helpers only; no UC013/014 helper dependency",
+  "not_claimed": [
+    "Actual SQL reproduction or test PASS",
+    "Native acceptance",
+    "Production apply",
+    "Module overrides/schedules repaired"
+  ]
+}
