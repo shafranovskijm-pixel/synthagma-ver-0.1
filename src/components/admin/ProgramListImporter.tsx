@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Check, X, AlertTriangle } from "lucide-react";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { useAdminMarketplaceImportGuard } from "@/hooks/useAdminMarketplaceImportGuard";
+import { findProgramsInImportedText, importAdminMarketplaceFile, type AdminMarketplaceImportOperation } from "@/lib/adminMarketplaceImport";
+import { captureOfflineContext, isOfflineActorCurrent } from "@/utils/courseCache";
 
 import { ProgramEntry, normalizeTitle, getParentType, knownPrograms } from "@/data/knownPrograms";
 
@@ -25,64 +27,71 @@ interface ProgramListImporterProps {
 }
 
 export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
-  const [programs, setPrograms] = useState<ProgramEntry[]>([]);
+  const guard = useAdminMarketplaceImportGuard();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<{ programs: ProgramEntry[]; owner: NonNullable<ReturnType<typeof captureOfflineContext>> } | null>(null);
+  const programs = preview && guard.isIdentityCurrent() && isOfflineActorCurrent(preview.owner.actorId, preview.owner.revision) ? preview.programs : [];
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [defaultPriceStudent, setDefaultPriceStudent] = useState("5000");
   const [defaultPriceOrg, setDefaultPriceOrg] = useState("3000");
   const [lastResult, setLastResult] = useState<ImportResult | null>(null);
+  useEffect(() => {
+    setPreview(null);
+    setLastResult(null);
+    setIsLoading(false);
+    setIsCreating(false);
+    if (fileInput.current) fileInput.current.value = "";
+  }, [guard.identityKey]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    const input = e.target;
+    let operation: AdminMarketplaceImportOperation;
+    try { operation = guard.start(); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось начать импорт"); return; }
+    const owner = captureOfflineContext();
+    if (!owner) { operation.finish(); return; }
+    setPreview(null);
+    setLastResult(null);
     setIsLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const { data, error } = await safeInvoke<any>("import-course", {
-        body: formData });
-
-      if (error) throw error;
-
-      const text = data?.text || data?.content || "";
-      const parsed = parsePrograms(text);
-      setPrograms(parsed);
+      if (!/\.docx?$/i.test(file.name) || file.size === 0 || file.size > 30 * 1024 * 1024) {
+        throw new Error("Выберите непустой DOC или DOCX размером до 30 МиБ");
+      }
+      const document = await importAdminMarketplaceFile(file, operation);
+      const parsed = findProgramsInImportedText(document.text);
+      await operation.verify();
+      operation.assertCurrent();
+      setPreview({ programs: parsed, owner });
 
       if (parsed.length === 0) {
         toast.error("Не удалось найти программы в файле");
       } else {
         toast.success(`Найдено ${parsed.length} программ`);
       }
-    } catch (err: any) {
-      console.error("Parse error:", err);
-      toast.error(`Ошибка парсинга: ${err.message}`);
+    } catch (error) {
+      if (operation.isCurrent()) toast.error(`Ошибка парсинга: ${error instanceof Error ? error.message : "Не удалось прочитать файл"}`);
     } finally {
-      setIsLoading(false);
+      if (operation.isCurrent()) { setIsLoading(false); input.value = ""; }
+      operation.finish();
     }
-  };
-
-  const parsePrograms = (text: string): ProgramEntry[] => {
-    if (text.length < 50) return [...knownPrograms];
-
-    const entries: ProgramEntry[] = [];
-    for (const prog of knownPrograms) {
-      const words = prog.title.split(" ").slice(0, 3).join(" ").toLowerCase();
-      if (text.toLowerCase().includes(words)) {
-        entries.push(prog);
-      }
-    }
-
-    return entries.length > 0 ? entries : [...knownPrograms];
   };
 
   const handleRemoveProgram = (idx: number) => {
-    setPrograms(prev => prev.filter((_, i) => i !== idx));
+    if (guard.isBusy || !guard.isIdentityCurrent()) return;
+    setPreview(prev => prev && isOfflineActorCurrent(prev.owner.actorId, prev.owner.revision)
+      ? { ...prev, programs: prev.programs.filter((_, i) => i !== idx) } : null);
   };
 
   const handleCreateAll = async () => {
-    if (programs.length === 0) return;
+    if (programs.length === 0 || !preview || !guard.isIdentityCurrent()
+      || !isOfflineActorCurrent(preview.owner.actorId, preview.owner.revision)) return;
+    const selectedPrograms = [...programs];
+    let operation: AdminMarketplaceImportOperation;
+    try { operation = guard.start(); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось начать создание"); return; }
     setIsCreating(true);
     setLastResult(null);
     const toastId = toast.loading(`Создаю ${programs.length} курсов...`, { duration: Infinity });
@@ -90,14 +99,16 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
     const result: ImportResult = { created: 0, skipped: 0, errors: [] };
 
     try {
+      await operation.verify();
       // 1. Fetch existing categories — use name+parent_type composite key to avoid overwrites
       const { data: dbCats, error: catFetchErr } = await supabase
         .from("course_categories")
         .select("id, name, parent_type")
         .eq("organization_id", MARKETPLACE_ORG_ID);
 
-      if (catFetchErr) {
-        throw new Error(`Не удалось загрузить категории: ${catFetchErr.message}`);
+      operation.assertCurrent();
+      if (catFetchErr || !Array.isArray(dbCats)) {
+        throw new Error(`Не удалось загрузить категории: ${catFetchErr?.message || "Неизвестный ответ сервера"}`);
       }
 
       // Map by lowercase name → first matching ID (skip duplicates)
@@ -110,12 +121,13 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
       }
 
       // 2. Auto-create missing categories with correct parent_type
-      const neededCats = [...new Set(programs.map(p => p.category))];
+      const neededCats = [...new Set(selectedPrograms.map(p => p.category))];
       for (const catName of neededCats) {
         if (!catMap.has(catName.toLowerCase())) {
-          const hours = Math.max(...programs.filter(p => p.category === catName).map(p => parseInt(p.hours) || 0));
+          const hours = Math.max(...selectedPrograms.filter(p => p.category === catName).map(p => parseInt(p.hours) || 0));
           const parentType = getParentType(catName, hours);
-
+          await operation.verify();
+          operation.assertCurrent();
           const { data: newCat, error: catErr } = await supabase
             .from("course_categories")
             .insert({
@@ -125,7 +137,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
               order_index: catMap.size + 1 } as any)
             .select("id, name")
             .single();
-
+          operation.assertCurrent();
           if (catErr) {
             console.error(`Failed to create category "${catName}":`, catErr);
             result.errors.push({ title: `[Категория] ${catName}`, reason: catErr.message });
@@ -137,51 +149,55 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         }
       }
 
-      // 2b. Orphan fix: assign category_id to existing courses that match knownPrograms but have null category
-      const { data: orphanCourses } = await supabase
+      // Repair only courses selected for this import, never unrelated known programs.
+      const { data: orphanCourses, error: orphanError } = await supabase
         .from("courses")
         .select("id, title")
         .eq("organization_id", MARKETPLACE_ORG_ID)
         .is("category_id", null);
-
+      operation.assertCurrent();
+      if (orphanError || !Array.isArray(orphanCourses)) throw new Error("Не удалось проверить категории существующих курсов");
       if (orphanCourses && orphanCourses.length > 0) {
-        let orphansFixed = 0;
         for (const orphan of orphanCourses) {
           const normOrphan = normalizeTitle(orphan.title);
-          const matchedProg = knownPrograms.find(p => normalizeTitle(p.title) === normOrphan);
+          const matchedProg = selectedPrograms.find(p => normalizeTitle(p.title) === normOrphan);
           if (matchedProg) {
             const catId = catMap.get(matchedProg.category.toLowerCase());
             if (catId) {
-              await supabase.from("courses").update({ category_id: catId }).eq("id", orphan.id);
-              orphansFixed++;
+              await operation.verify();
+              operation.assertCurrent();
+              const { error } = await supabase.from("courses").update({ category_id: catId }).eq("id", orphan.id).eq("organization_id", MARKETPLACE_ORG_ID);
+              operation.assertCurrent();
+              if (error) { result.errors.push({ title: orphan.title, reason: error.message }); continue; }
             }
           }
-        }
-        if (orphansFixed > 0) {
         }
       }
 
       // 3. Fetch ALL existing courses for this org for dedup
-      const { data: existingCourses } = await supabase
+      const { data: existingCourses, error: existingError } = await supabase
         .from("courses")
         .select("id, title")
         .eq("organization_id", MARKETPLACE_ORG_ID);
-
+      operation.assertCurrent();
+      if (existingError || !Array.isArray(existingCourses)) throw new Error("Не удалось проверить существующие курсы");
       const existingNormalized = new Map<string, string>();
       for (const c of existingCourses || []) {
         existingNormalized.set(normalizeTitle(c.title), c.id);
       }
 
       // 4. Fetch existing marketplace entries to avoid duplicates
-      const { data: existingMkt } = await supabase
+      const { data: existingMkt, error: marketplaceError } = await supabase
         .from("marketplace_courses")
         .select("course_id")
         .eq("organization_id", MARKETPLACE_ORG_ID);
-
+      operation.assertCurrent();
+      if (marketplaceError || !Array.isArray(existingMkt)) throw new Error("Не удалось проверить записи каталога");
       const mktCourseIds = new Set((existingMkt || []).map(m => m.course_id));
 
       // 5. Create courses
-      for (const prog of programs) {
+      for (const prog of selectedPrograms) {
+        operation.assertCurrent();
         const norm = normalizeTitle(prog.title);
         const existingId = existingNormalized.get(norm);
 
@@ -191,6 +207,8 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         if (existingId) {
           // Course exists — ensure it has marketplace entry & correct category
           if (!mktCourseIds.has(existingId)) {
+            await operation.verify();
+            operation.assertCurrent();
             const { error: mktErr } = await supabase.from("marketplace_courses").insert({
               course_id: existingId,
               organization_id: MARKETPLACE_ORG_ID,
@@ -199,19 +217,26 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
               description_short: prog.title,
               is_active: true,
               is_validated: false } as any);
+            operation.assertCurrent();
             if (mktErr) {
               result.errors.push({ title: prog.title, reason: `Marketplace: ${mktErr.message}` });
             }
           }
           // Update category_id if missing
           if (categoryId) {
-            await supabase.from("courses").update({ category_id: categoryId }).eq("id", existingId);
+            await operation.verify();
+            operation.assertCurrent();
+            const { error } = await supabase.from("courses").update({ category_id: categoryId }).eq("id", existingId).eq("organization_id", MARKETPLACE_ORG_ID);
+            operation.assertCurrent();
+            if (error) result.errors.push({ title: prog.title, reason: error.message });
           }
           result.skipped++;
           continue;
         }
 
         // Create new course
+        await operation.verify();
+        operation.assertCurrent();
         const { data: course, error: courseErr } = await supabase
           .from("courses")
           .insert({
@@ -222,7 +247,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
             is_published: false })
           .select("id")
           .single();
-
+        operation.assertCurrent();
         if (courseErr || !course) {
           console.error("Failed to create course:", prog.title, courseErr);
           result.errors.push({ title: prog.title, reason: courseErr?.message || "Неизвестная ошибка" });
@@ -230,6 +255,8 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         }
 
         // Create marketplace entry
+        await operation.verify();
+        operation.assertCurrent();
         const { error: mktErr } = await supabase.from("marketplace_courses").insert({
           course_id: course.id,
           organization_id: MARKETPLACE_ORG_ID,
@@ -238,7 +265,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           description_short: prog.title,
           is_active: true,
           is_validated: false } as any);
-
+        operation.assertCurrent();
         if (mktErr) {
           console.error("Failed to create marketplace entry:", prog.title, mktErr);
           result.errors.push({ title: prog.title, reason: `Marketplace: ${mktErr.message}` });
@@ -250,7 +277,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         result.created++;
         toast.loading(`Создано ${result.created}/${programs.length}...`, { id: toastId });
       }
-
+      operation.assertCurrent();
       toast.dismiss(toastId);
       setLastResult(result);
 
@@ -265,19 +292,35 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         toast.success(`Импорт завершён: ${parts.join(", ")}`);
       }
       onComplete();
-    } catch (err: any) {
+    } catch (error) {
       toast.dismiss(toastId);
-      toast.error(`Ошибка: ${err.message}`);
+      if (operation.isCurrent()) toast.error(`Ошибка: ${error instanceof Error ? error.message : "Не удалось создать курсы"}`);
     } finally {
-      setIsCreating(false);
+      if (operation.isCurrent()) setIsCreating(false);
+      operation.finish();
     }
   };
 
-  const loadFromParsedList = () => {
-    const parsed = parsePrograms("");
-    setPrograms(parsed);
-    setLastResult(null);
-    toast.success(`Загружено ${parsed.length} программ из перечня`);
+  const loadFromParsedList = async () => {
+    let operation: AdminMarketplaceImportOperation;
+    try { operation = guard.start(); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось загрузить перечень"); return; }
+    const owner = captureOfflineContext();
+    if (!owner) { operation.finish(); return; }
+    setIsLoading(true);
+    try {
+      await operation.verify();
+      operation.assertCurrent();
+      const parsed = [...knownPrograms];
+      setPreview({ programs: parsed, owner });
+      setLastResult(null);
+      toast.success(`Загружено ${parsed.length} программ из перечня`);
+    } catch (error) {
+      if (operation.isCurrent()) toast.error(error instanceof Error ? error.message : "Не удалось загрузить перечень");
+    } finally {
+      if (operation.isCurrent()) setIsLoading(false);
+      operation.finish();
+    }
   };
 
   return (
@@ -301,15 +344,16 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
               </div>
             </Label>
             <Input
+              ref={fileInput}
               id="program-file"
               type="file"
               accept=".docx,.doc"
               className="hidden"
               onChange={handleFileUpload}
-              disabled={isLoading}
+              disabled={isLoading || isCreating || guard.isBusy || !guard.canStart}
             />
           </div>
-          <Button variant="outline" onClick={loadFromParsedList} disabled={isLoading} className="rounded-xl">
+          <Button variant="outline" onClick={loadFromParsedList} disabled={isLoading || isCreating || guard.isBusy || !guard.canStart} className="rounded-xl">
             <FileText className="w-4 h-4 mr-1.5" />
             Загрузить из перечня
           </Button>
@@ -353,6 +397,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
                 <Input
                   type="number"
                   value={defaultPriceStudent}
+                  disabled={isCreating}
                   onChange={(e) => setDefaultPriceStudent(e.target.value)}
                   className="rounded-xl"
                 />
@@ -362,6 +407,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
                 <Input
                   type="number"
                   value={defaultPriceOrg}
+                  disabled={isCreating}
                   onChange={(e) => setDefaultPriceOrg(e.target.value)}
                   className="rounded-xl"
                 />
@@ -393,6 +439,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
+                          disabled={guard.isBusy}
                           onClick={() => handleRemoveProgram(i)}
                         >
                           <X className="w-3 h-3" />
@@ -409,7 +456,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
               <Button
                 className="btn-gradient rounded-xl"
                 onClick={handleCreateAll}
-                disabled={isCreating}
+                disabled={isCreating || isLoading || guard.isBusy || !guard.canStart}
               >
                 {isCreating ? (
                   <><SigmaSpinner size="sm" className="mr-2" />Создание...</>

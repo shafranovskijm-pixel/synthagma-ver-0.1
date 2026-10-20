@@ -4,6 +4,8 @@ import { applySharedTheme, restorePersonalTheme, DEFAULT_THEME_PREFERENCES } fro
 import { MemoryRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+const infoToast = vi.hoisted(() => vi.fn());
+vi.mock("sonner", () => ({ toast: { info: infoToast, error: vi.fn(), success: vi.fn() } }));
 const setActiveTab = vi.fn();
 const setTheme = vi.fn();
 let pinnedIds: string[] = [];
@@ -19,10 +21,14 @@ let isMobileSidebarOpen = false;
 let permissionsLoading = false;
 let subscriptionLoading = false;
 let subscriptionError: string | null = null;
+let organizationId: string | null = "org-1";
+let organizationLoading = false;
+let subscriptionReady = true;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
-    organizationId: "org-1",
+    organizationId,
+    isLoadingCourses: organizationLoading,
     organizationName: "Учебный центр",
     unreadChatsCount: 2,
     tabNavigation: { activeTab, setActiveTab },
@@ -39,6 +45,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
       plan,
       isPostpaid,
       loading: subscriptionLoading,
+      accessReady: subscriptionReady && !subscriptionLoading && !subscriptionError,
       error: subscriptionError,
       limits: { emailCampaignsEnabled, salesCrmEnabled },
     },
@@ -99,6 +106,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem("org-sidebar-mode", "expanded");
   setActiveTab.mockClear();
+  infoToast.mockClear();
   setTheme.mockClear();
   pinnedIds = [];
   plan = "standard";
@@ -111,6 +119,9 @@ beforeEach(() => {
   permissionsLoading = false;
   subscriptionLoading = false;
   subscriptionError = null;
+  organizationId = "org-1";
+  organizationLoading = false;
+  subscriptionReady = true;
   allowedTabs = new Set([
     "home",
     "students",
@@ -152,6 +163,62 @@ beforeEach(() => {
 });
 
 describe("OrgSidebar navigation", () => {
+  it("keeps other locked navigation neutral instead of quoting an unverified tariff", () => {
+    subscriptionReady = false; salesCrmEnabled = false;
+    renderSidebar();
+    fireEvent.click(screen.getByLabelText("CRM"));
+    expect(infoToast).toHaveBeenCalledWith("Условия не подтверждены");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+  it("does not treat a null-organization free fallback as a verified tariff or upgrade", () => {
+    organizationId = null; organizationLoading = true; subscriptionReady = false;
+    plan = "free"; emailCampaignsEnabled = false;
+    renderSidebar();
+    expect(screen.getByText("Кабинет загружается…")).toBeInTheDocument();
+    expect(screen.getByText("Проверяем условия…")).toBeInTheDocument();
+    expect(screen.queryByText("Бесплатный тариф")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Коммуникации" }));
+    fireEvent.click(screen.getByLabelText("Рассылки"));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+  it.each(["unverified", "error"])("uses canonical accessReady instead of a free fallback while %s", mode => {
+    subscriptionReady = false; plan = "free"; emailCampaignsEnabled = false;
+    if (mode === "error") subscriptionError = "unconfirmed";
+    renderSidebar();
+    expect(screen.getByText("Условия не подтверждены")).toBeInTheDocument();
+    expect(screen.queryByText("Бесплатный тариф")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Коммуникации" }));
+    fireEvent.click(screen.getByLabelText("Рассылки"));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+  it("keeps a missing organization neutral after resolution stops loading", () => {
+    organizationId = null; subscriptionReady = false; plan = "free";
+    renderSidebar();
+    expect(screen.getByText("Кабинет организации")).toBeInTheDocument();
+    expect(screen.getByText("Условия не подтверждены")).toBeInTheDocument();
+    expect(screen.queryByText("Учебный центр")).not.toBeInTheDocument();
+  });
+  it("transitions from initial context through billing verification to confirmed postpayment", () => {
+    organizationId = null; organizationLoading = true; subscriptionReady = false; plan = "free";
+    const view = renderSidebar();
+    expect(screen.queryByText("Бесплатный тариф")).not.toBeInTheDocument();
+    organizationId = "org-1"; subscriptionLoading = true;
+    view.rerender(<MemoryRouter><TooltipProvider><OrgSidebar /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByText("Проверяем условия…")).toBeInTheDocument();
+    organizationLoading = false; subscriptionLoading = false; subscriptionReady = true; isPostpaid = true;
+    view.rerender(<MemoryRouter><TooltipProvider><OrgSidebar /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByText("Постоплата по договору")).toBeInTheDocument();
+    expect(screen.queryByText("Проверяем условия…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Бесплатный тариф")).not.toBeInTheDocument();
+  });
+  it("retains the real free tariff and its upgrade only after confirmation", () => {
+    plan = "free"; emailCampaignsEnabled = false;
+    renderSidebar();
+    expect(screen.getByText("Бесплатный тариф")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Коммуникации" }));
+    fireEvent.click(screen.getByLabelText("Рассылки"));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+  });
   it("opens mailing for active postpaid with a free legacy plan", () => {
     plan = "free"; isPostpaid = true;
     renderSidebar();
