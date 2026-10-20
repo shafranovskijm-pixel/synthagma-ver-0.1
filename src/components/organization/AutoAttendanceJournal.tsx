@@ -269,13 +269,13 @@ export function AutoAttendanceJournal({
       "Email": record.student_email,
       "Курс": record.course_title,
       "Урок": record.lesson_title,
-      "Дата посещения": format(parseISO(record.completed_at), "dd.MM.yyyy HH:mm", {
+      "Дата завершения": format(parseISO(record.completed_at), "dd.MM.yyyy HH:mm", {
         locale: ru }),
-      "Время (мин)": Math.round(record.time_spent / 60) }));
+      "Учтённое время (мин)": Math.round(record.time_spent / 60) }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Посещаемость");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Завершённые уроки");
 
     // Auto-width columns
     const columnWidths = [
@@ -288,7 +288,7 @@ export function AutoAttendanceJournal({
     ];
     worksheet["!cols"] = columnWidths;
 
-    const fileName = `Журнал_посещаемости_${format(new Date(), "dd-MM-yyyy")}.xlsx`;
+    const fileName = `Журнал_завершённых_уроков_${format(new Date(), "dd-MM-yyyy")}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     toast.success("Журнал экспортирован в Excel");
   };
@@ -318,9 +318,9 @@ export function AutoAttendanceJournal({
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h2 className="text-xl font-semibold">Журнал учёта посещаемости занятий</h2>
+            <h2 className="text-xl font-semibold">Журнал завершённых уроков</h2>
             <p className="text-sm text-muted-foreground">
-              Автоматический учёт всех посещений уроков учениками
+              Завершения онлайн-уроков; посещаемость занятий подтверждается отдельно
             </p>
           </div>
         </div>
@@ -361,7 +361,7 @@ export function AutoAttendanceJournal({
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalLessons}</p>
-              <p className="text-xs text-muted-foreground">Уроков пройдено</p>
+              <p className="text-xs text-muted-foreground">Завершений уроков</p>
             </div>
           </div>
         </div>
@@ -372,7 +372,7 @@ export function AutoAttendanceJournal({
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalTimeMinutes}</p>
-              <p className="text-xs text-muted-foreground">Минут обучения</p>
+              <p className="text-xs text-muted-foreground">Минут активности</p>
             </div>
           </div>
         </div>
@@ -476,7 +476,7 @@ export function AutoAttendanceJournal({
                   <TableHead>Ученик</TableHead>
                   <TableHead>Курс</TableHead>
                   <TableHead>Урок</TableHead>
-                  <TableHead className="text-center">Дата посещения</TableHead>
+                  <TableHead className="text-center">Дата завершения</TableHead>
                   <TableHead className="text-center">Время</TableHead>
                 </TableRow>
               </TableHeader>
@@ -530,10 +530,10 @@ export function AutoAttendanceJournal({
       ) : (
         <div className="bg-card rounded-2xl border border-border p-8 text-center">
           <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="font-semibold mb-2">Нет данных о посещаемости</h3>
+          <h3 className="font-semibold mb-2">Нет данных о завершённых уроках</h3>
           <p className="text-muted-foreground">
             {records.length === 0
-              ? "Ученики ещё не проходили уроки"
+              ? "Завершённые уроки не найдены"
               : "Нет записей, соответствующих фильтрам"}
           </p>
         </div>

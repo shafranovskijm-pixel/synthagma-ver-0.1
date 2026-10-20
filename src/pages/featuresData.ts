@@ -94,7 +94,7 @@ export const getDefaultFeatures = (): FeatureCategory[] => [
   {
     id: "journals", title: "Журналы учёта", icon: ClipboardList, color: "#8b5cf6", basePrice: 2000, isEnabled: true,
     features: [
-      { id: "journal_attendance_auto", name: "Журнал посещаемости (автоматический)", price: 0, included: true, isEnabled: true },
+      { id: "journal_attendance_auto", name: "Журнал завершённых уроков (автоматический)", price: 0, included: true, isEnabled: true },
       { id: "journal_attendance_manual", name: "Журнал посещаемости (ручной)", price: 0, included: true, isEnabled: true },
       { id: "journal_grades", name: "Журнал текущего контроля успеваемости", price: 0, included: true, isEnabled: true },
       { id: "journal_attestation", name: "Журнал итоговой аттестации", price: 0, included: true, isEnabled: true },
