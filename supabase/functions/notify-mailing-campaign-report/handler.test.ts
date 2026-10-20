@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMailingReportHandler } from "./handler";
+import { createMailingReportHandler } from "./handler.ts";
 
 const campaignId = "11111111-1111-4111-8111-111111111111";
 const eventId = "22222222-2222-4222-8222-222222222222";
@@ -94,7 +94,7 @@ function fixture(options: Record<string, any> = {}) {
 }
 
 describe("mailing report handler factory, no real HTTP or Telegram calls", () => {
-  it.each([
+  it.each<Record<string, string>>([
     {}, { Authorization: "Bearer wrong" }, { "X-Cron-Secret": "wrong" },
     { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.fixture-signature" },
     { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.fixture-signature" },
