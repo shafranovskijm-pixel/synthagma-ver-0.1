@@ -36,7 +36,7 @@ async function capture(c:Ctx,journal:any,context:any=group,request?:string,conne
 async function verified(c:Ctx,exported:any,context:any=group){const read=await c.read(context,{kind:'export',journal_id:exported.journal.id,export_id:exported.export.id});expect(read.export).toEqual(exported.export);const value=await verifyScopedJournalExport(read.export,{organizationId:lo.org,journalId:exported.journal.id,context:exported.journal.context,exportId:exported.export.id},()=>true);expect(sha(Buffer.from(value.manifestText,'utf8'))).toBe(exported.export.manifest_hash);expect(sha(Buffer.from(value.htmlText,'utf8'))).toBe(exported.export.html_hash);return value;}
 
 register(0,async c=>{
- expect(await journalRows(c.db,c.old.journal.id)).toEqual(c.oldWitness);await caller(c.db,lo.owner);
+ expect(await journalRows(c.db,c.old.journal.id,false)).toEqual(c.oldWitness);await c.db.exec('RESET ROLE');for(const table of sideTables)expect(Number((await one(c.db,'SELECT count(*)n FROM public.'+table)).n)).toBe(0);await caller(c.db,lo.owner);
  expect((await oldRead(c.db,{kind:'journal',journal_id:c.old.journal.id})).journal.id).toBe(c.old.journal.id);
  const made=await c.create();const row=await c.save(made.journal,{notes:'Scoped retained subject row'});
  expect((await oldRead(c.db,{kind:'list',after_id:null,limit:50,include_archived:true})).journals.map((x:any)=>x.id)).not.toContain(made.journal.id);
