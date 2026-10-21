@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Search, Trash2, Upload, Video, FileText, Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File, ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen, UserCheck, ExternalLink, Download, Eye, Shield } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { useStorageManager, BUCKET_LABELS, TYPE_LABELS, formatSize, formatDate, getPreviewType, type StorageFile } from "@/hooks/useStorageManager";
+import { useStorageManager, BUCKET_LABELS, TYPE_LABELS, formatSize, formatDate, getPreviewType, canDeleteStorageFile, PRIVATE_DOCUMENT_DELETE_NOTICE, type StorageFile } from "@/hooks/useStorageManager";
 
 interface StorageManagerProps { organizationId: string; }
 
@@ -105,11 +105,11 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
                         <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
                           {file.type === "image" && !file.isPrivate ? <img src={file.url} alt={file.name} className="w-full h-full object-cover" loading="lazy" /> : getTypeIcon(file.type)}
                         </div>
-                        <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{file.name}</p><div className="flex items-center gap-2 text-xs text-muted-foreground"><span>{formatSize(file.size)}</span>{file.created_at && <span>{formatDate(file.created_at)}</span>}</div></div>
+                        <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{file.name}</p><div className="flex items-center gap-2 text-xs text-muted-foreground"><span>{formatSize(file.size)}</span>{file.created_at && <span>{formatDate(file.created_at)}</span>}</div>{!canDeleteStorageFile(file) && <p className="text-xs text-muted-foreground mt-1">{PRIVATE_DOCUMENT_DELETE_NOTICE}</p>}</div>
                         <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Предпросмотр" onClick={() => h.openPreview(file)}><Eye className="w-4 h-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Открыть в новой вкладке" onClick={() => h.openInNewTab(file)}><ExternalLink className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.setDeleteFile(file)}><Trash2 className="w-4 h-4" /></Button>
+                          {canDeleteStorageFile(file) && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Удалить файл" onClick={() => h.setDeleteFile(file)}><Trash2 className="w-4 h-4" /></Button>}
                         </div>
                       </div>
                     ))}

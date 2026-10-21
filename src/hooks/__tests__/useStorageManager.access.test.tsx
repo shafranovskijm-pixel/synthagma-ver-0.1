@@ -2,9 +2,10 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChangeEvent } from "react";
 import { useStorageManager } from "../useStorageManager";
-const mocks = vi.hoisted(() => ({ load: vi.fn(), signed: vi.fn(), download: vi.fn(), remove: vi.fn(), upload: vi.fn(), success: vi.fn(), error: vi.fn() }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { storage: { from: vi.fn(() => ({ remove: mocks.remove, upload: mocks.upload })) } } }));
-vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: vi.fn(async () => ({ data: { configured: false }, error: null })) }));
+const mocks = vi.hoisted(() => ({ load: vi.fn(), signed: vi.fn(), download: vi.fn(), remove: vi.fn(), upload: vi.fn(), storageFrom: vi.fn(), externalFrom: vi.fn(), invoke: vi.fn(), success: vi.fn(), error: vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { storage: { from: (bucket: string) => { mocks.storageFrom(bucket); return { remove: mocks.remove, upload: mocks.upload }; } } } }));
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ storage: { from: (bucket: string) => { mocks.externalFrom(bucket); return { remove: mocks.remove }; } } }) }));
+vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: mocks.invoke }));
 vi.mock("@/utils/proxyFetch", () => ({ proxiedAssetUrl: (url: string) => url }));
 vi.mock("@/utils/storageHelpers", () => ({ getSignedStorageUrl: mocks.signed, downloadPrivateFile: mocks.download }));
 vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }));
@@ -16,8 +17,16 @@ async function ready() {
   await waitFor(() => expect(rendered.result.current.files).toHaveLength(1));
   return rendered;
 }
+async function readyPublic(bucket: string) {
+  const path = "course-a/lesson.pdf";
+  mocks.load.mockResolvedValue(loaded([entry(path, bucket)]));
+  mocks.remove.mockResolvedValue({ data: [{ name: path }], error: null });
+  if (bucket === "course-videos") mocks.invoke.mockResolvedValue({ data: { configured: true, url: "https://external.supabase.co", key: "public-test-key" }, error: null });
+  return ready();
+}
 beforeEach(() => {
   vi.clearAllMocks(); mocks.load.mockReset().mockResolvedValue(loaded()); mocks.signed.mockReset().mockResolvedValue("https://project.supabase.co/signed");
+  mocks.invoke.mockReset().mockResolvedValue({ data: { configured: false }, error: null });
   mocks.remove.mockReset().mockResolvedValue({ data: [{ name: "company-a/contract.pdf" }], error: null });
   mocks.upload.mockReset().mockResolvedValue({ data: { path: "org-a/standalone.pdf" }, error: null });
   mocks.download.mockReset().mockResolvedValue(true);
@@ -41,18 +50,48 @@ describe("storage manager authorized access", () => {
     expect(target.close).toHaveBeenCalledOnce(); expect(target.location.replace).not.toHaveBeenCalled(); expect(target.opener).toBeNull();
     open.mockRestore();
   });
-  it.each([{ data: null, error: { message: "denied" } }, { data: [], error: null }])("does not claim removal or hide a file when deletion is not confirmed: %j", async response => {
-    mocks.remove.mockResolvedValue(response);
+  it.each(["company-documents", "billing-documents", "library-files", "org-documents", "student-documents"])("never raw-deletes a %s document even when its selected private flag is forged false, preserving reads", async bucket => {
+    mocks.load.mockResolvedValue(loaded([entry("document-owner/record.pdf", bucket)]));
     const { result } = await ready();
+    const file = result.current.files[0];
+    expect(file.isPrivate).toBe(true);
+    act(() => result.current.setDeleteFile({ ...file, isPrivate: false }));
+    await act(async () => { await result.current.handleDelete(); });
+    expect(mocks.storageFrom).not.toHaveBeenCalled(); expect(mocks.externalFrom).not.toHaveBeenCalled();
+    expect(mocks.invoke).not.toHaveBeenCalled(); expect(mocks.remove).not.toHaveBeenCalled();
+    expect(result.current.files).toEqual([file]); expect(result.current.deleteFile).toBeNull();
+    expect(mocks.success).not.toHaveBeenCalled(); expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("исходном разделе документов"));
+    await act(async () => { await result.current.openPreview(file); await result.current.downloadFile(file); });
+    expect(mocks.signed).toHaveBeenCalledWith(bucket, "document-owner/record.pdf");
+    expect(result.current.previewUrl).toBe("https://project.supabase.co/signed");
+    expect(mocks.download).toHaveBeenCalledWith(bucket, "document-owner/record.pdf", "record.pdf");
+  });
+  it("also denies generic deletion for an explicitly private selection in a public bucket", async () => {
+    const { result } = await readyPublic("course-files");
+    const file = result.current.files[0];
+    act(() => result.current.setDeleteFile({ ...file, isPrivate: true }));
+    await act(async () => { await result.current.handleDelete(); });
+    expect(mocks.storageFrom).not.toHaveBeenCalled(); expect(mocks.remove).not.toHaveBeenCalled();
+    expect(result.current.files).toEqual([file]); expect(result.current.deleteFile).toBeNull();
+    expect(mocks.success).not.toHaveBeenCalled(); expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("исходном разделе документов"));
+  });
+  it.each(["course-files", "presentations", "course-videos"].flatMap(bucket => [
+    { bucket, response: { data: null, error: { message: "denied" } } },
+    { bucket, response: { data: [], error: null } },
+  ]))("does not claim removal or hide a public file when deletion is not confirmed: %j", async ({ bucket, response }) => {
+    const { result } = await readyPublic(bucket);
+    mocks.remove.mockResolvedValue(response);
     act(() => result.current.setDeleteFile(result.current.files[0]));
     await act(async () => { await result.current.handleDelete(); });
+    expect(mocks.remove).toHaveBeenCalledWith(["course-a/lesson.pdf"]);
     expect(result.current.files).toHaveLength(1); expect(mocks.success).not.toHaveBeenCalled(); expect(mocks.error).toHaveBeenCalled();
   });
-  it("removes a row only after Storage confirms the exact scoped object", async () => {
-    const { result } = await ready();
+  it.each(["course-files", "presentations", "course-videos"])("removes a public %s row only after Storage confirms the exact scoped object", async bucket => {
+    const { result } = await readyPublic(bucket);
     act(() => result.current.setDeleteFile(result.current.files[0]));
     await act(async () => { await result.current.handleDelete(); });
-    expect(mocks.remove).toHaveBeenCalledWith(["company-a/contract.pdf"]);
+    expect(bucket === "course-videos" ? mocks.externalFrom : mocks.storageFrom).toHaveBeenCalledWith(bucket);
+    expect(mocks.remove).toHaveBeenCalledWith(["course-a/lesson.pdf"]);
     expect(result.current.files).toHaveLength(0); expect(mocks.success).toHaveBeenCalledWith("Файл удалён");
   });
   it("never overwrites existing course content and standalone upload remains after refresh", async () => {

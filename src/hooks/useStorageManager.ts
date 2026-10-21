@@ -17,6 +17,13 @@ export interface StorageFile {
   isPrivate?: boolean;
 }
 
+export const PRIVATE_DOCUMENT_DELETE_NOTICE = "Удаляйте документ в исходном разделе документов, чтобы сохранить его связи и историю.";
+
+/** Document workflows own their metadata and retained file history. */
+export function canDeleteStorageFile(file: Pick<StorageFile, "bucket" | "isPrivate">): boolean {
+  return !MANAGED_PRIVATE_BUCKETS.has(file.bucket) && !file.isPrivate;
+}
+
 const VIDEO_EXT = ["mp4", "webm", "ogg", "mov", "avi", "mkv"];
 const IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"];
 const AUDIO_EXT = ["mp3", "wav", "ogg", "m4a", "aac", "flac"];
@@ -153,6 +160,11 @@ export function useStorageManager(organizationId: string) {
   const handleDelete = async () => {
     const target = deleteFile;
     if (!target) return;
+    // Enforce this independently of the rendered button or a forged selection.
+    // Removing only the blob leaves active document metadata and history broken.
+    if (!canDeleteStorageFile(target)) {
+      toast.error(PRIVATE_DOCUMENT_DELETE_NOTICE); setDeleteFile(null); return;
+    }
     const path = managedObjectPath(target);
     const scope = organizationId;
     if (!path || loadedOrganization.current !== scope || !files.some(file => file.bucket === target.bucket && managedObjectPath(file) === path)) {
