@@ -57,7 +57,9 @@ import {
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
 import { localDateIso } from "@/lib/date/localDate";
 import { resolveGroupProgramGeneration, withProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE } from "../../../../supabase/functions/_shared/program-facts";
-import { parseEducationArtifactSnapshot, withEducationArtifact, EDUCATION_ARTIFACT_NOTICE } from '../../../../supabase/functions/_shared/group-education-artifact';
+import { parseEducationArtifactSnapshot, withEducationArtifact, EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE } from '../../../../supabase/functions/_shared/group-education-artifact';
+import { GENERIC_EDUCATION_DRAFT_TYPES, isGenericEducationDraftType, genericDraftMissingRequisites } from '@/lib/group-docs/retainedGenericDrafts';
+import { createRetainedDraftBatchGuard, RetainedDraftBatchError } from '@/lib/group-docs/retainedDraftBatch';
 import { useGroupEducationFacts } from '@/hooks/useGroupEducationFacts';
 import { useAuth } from '@/hooks/useAuth';
 import { captureOfflineActor } from '@/utils/courseCache';
@@ -152,6 +154,8 @@ function GroupDocumentsFolderView({
   const [documentSignatories, setDocumentSignatories] =
     useState<GroupDocumentSignatories>(defaultSignatories);
   const [educationEnabled,setEducationEnabled]=useState(false);
+  const [genericBatchNote,setGenericBatchNote]=useState('');
+  const [saveRetainedBatch]=useState(()=>createRetainedDraftBatchGuard({getItem:key=>window.sessionStorage.getItem(key),setItem:(key,value)=>window.sessionStorage.setItem(key,value)}));
   const education=useGroupEducationFacts(organizationId,groupId,educationEnabled);
   type SourceDraft={key:string;at:string;reason:string;dates:Partial<Record<DocType,string>>};
   const blankSourceDraft=():SourceDraft=>({key:education.scopeKey,at:'',reason:'',dates:{}});
@@ -220,6 +224,11 @@ function GroupDocumentsFolderView({
     training_dates_count: ctx?.group.training_dates?.length || 0,
     students_count: ctx?.students.length || 0,
   }), [ctx]);
+
+  const retainedContext = useMemo(()=>{
+    if(!educationEnabled||!education.snapshotValue||!ctx)return null;
+    try{return withEducationArtifact(ctx,education.snapshotValue,exactGoreltechDocuments?'four_date_word':'generic_html');}catch{return null;}
+  },[educationEnabled,education.snapshotValue,ctx,exactGoreltechDocuments]);
 
   const packageRequirements = useMemo(
     () => missingPackageRequirements(PACKAGE_DOC_TYPES, reqSource, mode, requirementProfile),
@@ -290,20 +299,23 @@ function GroupDocumentsFolderView({
     docBlockers?: string[],
     contractBasis?: string,
     dryRun = false,
+    genericBatch = false,
   ) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
     const sourceSnapshot=educationEnabled?education.snapshotValue:null;
+    if(genericBatch&&(!sourceSnapshot||exactGoreltechDocuments||types.length!==3||GENERIC_EDUCATION_DRAFT_TYPES.some(type=>!types.includes(type)))){toast.error('Для трёх черновиков нужен один подтверждённый состав');return false;}
     if(educationEnabled && (!sourceSnapshot || types.includes('contract') || types.some(t=>!educationDates[t]))) {toast.error('Выберите подтверждённый снимок и отдельные даты документов');return false;}
     if(educationEnabled&&exactGoreltechDocuments&&(types.length!==PACKAGE_DOC_TYPES.length||PACKAGE_DOC_TYPES.some(t=>!types.includes(t)))){toast.error('Подтверждённый источник Word используется для полного пакета из девяти документов');return false;}
     if(educationEnabled && !education.scopeCurrent()){toast.error('Доступ к источнику изменился');return false;}
     const sourceScope=educationEnabled?captureEducationScope(organizationId,groupId,education.scopeCurrent,sourceSnapshot?.header.scope.course_id):null;
     let pinnedBearer:string|undefined;
     let programme;
-    try { if(sourceScope){pinnedBearer=await educationBearer(sourceScope);programme=parseEducationArtifactSnapshot(sourceSnapshot,organizationId,groupId).programme;}else programme = await resolveGroupProgramGeneration(supabase, organizationId, groupId, ctx.students.map(s => s.user_id)); }
+    try { if(sourceScope){pinnedBearer=await educationBearer(sourceScope);programme=parseEducationArtifactSnapshot(sourceSnapshot,organizationId,groupId,exactGoreltechDocuments?'four_date_word':'generic_html').programme;}else programme = await resolveGroupProgramGeneration(supabase, organizationId, groupId, ctx.students.map(s => s.user_id)); }
     catch (error) {if(sourceScope){if(!educationScopeCurrent(sourceScope))return false;const safe=normalizeEducationError(error);if(safe.code==='ACCESS_DENIED')education.invalidateAccess();toast.error(educationMessages[safe.code]);}else toast.error(error instanceof Error ? error.message : "Не удалось проверить программу группы");return false;}
-    const authoritativeCtx = sourceSnapshot ? withEducationArtifact(ctx,sourceSnapshot) : withProgramGeneration(ctx, programme);
+    const authoritativeCtx = sourceSnapshot ? withEducationArtifact(ctx,sourceSnapshot,exactGoreltechDocuments?'four_date_word':'generic_html') : withProgramGeneration(ctx, programme);
     const sourceRequirements={...reqSource,program_title:authoritativeCtx.group.program_title,program_hours:authoritativeCtx.group.program_hours,start_date:authoritativeCtx.group.start_date,end_date:authoritativeCtx.group.end_date,instructor_name:authoritativeCtx.group.instructor_name,training_dates_count:authoritativeCtx.group.training_dates?.length??0,students_count:authoritativeCtx.students.length};
-    const gate = sourceSnapshot ? Array.from(new Set([...blockingFields.filter(field=>organizationMissingFields.includes(field)),...missingPackageRequirements(types,sourceRequirements,mode,requirementProfile),...blankSignatoryBlocker])) : docBlockers ?? Array.from(new Set([
+    const retainedGenericDrafts=!!sourceSnapshot&&!exactGoreltechDocuments&&types.every(isGenericEducationDraftType);
+    const gate = retainedGenericDrafts ? [] : sourceSnapshot ? Array.from(new Set([...blockingFields.filter(field=>organizationMissingFields.includes(field)),...missingPackageRequirements(types,sourceRequirements,mode,requirementProfile),...blankSignatoryBlocker])) : docBlockers ?? Array.from(new Set([
       ...packageBlockers,
       ...missingPackageRequirements(types, reqSource, mode, requirementProfile),
       ...blankSignatoryBlocker,
@@ -367,6 +379,7 @@ function GroupDocumentsFolderView({
       // подменяем ею даты приказов о зачислении/завершении.
       const journalDraftDate = sourceSnapshot ? educationDates.class_journal || '' : localDateIso();
       const genOpts = {
+        educationLayout: exactGoreltechDocuments ? ('four_date_word' as const) : ('generic_html' as const),
         programFacts: programme.provenance,
         totalPrice: price,
         mode,
@@ -417,6 +430,11 @@ function GroupDocumentsFolderView({
             });
             return result;
           })
+       : sourceScope && genericBatch && sourceSnapshot ? await saveRetainedBatch({actorId:sourceScope.actorId,organizationId,groupId,source:sourceSnapshot.source,dates:{enrollment_order:educationDates.enrollment_order!,class_journal:educationDates.class_journal!,attestation_sheet:educationDates.attestation_sheet!}},{
+           isCurrent:()=>educationScopeCurrent(sourceScope),
+           read:async()=>{const {data,error}=await (supabase as any).from('group_documents').select('id,organization_id,group_id,doc_type,document_date,doc_status,document_number,layout_format,package_batch_id,package_version,variables_snapshot').eq('organization_id',organizationId).eq('group_id',groupId).eq('status','active').in('doc_type',[...GENERIC_EDUCATION_DRAFT_TYPES]).contains('variables_snapshot',{education_source:{snapshot_id:sourceSnapshot.source.snapshot_id}}).setHeader('Authorization',pinnedBearer!);if(error)throw error;return data??[];},
+           save:()=>saveEducationDocuments(sourceScope,docs,pinnedBearer!),
+         }).then(receipt=>{if(educationScopeCurrent(sourceScope))setGenericBatchNote(`Сохранены 3 черновика в партии ${receipt.batchId}, версия ${receipt.version}. Записи: ${receipt.ids.join(', ')}.`);return receipt;})
        : sourceScope ? await saveEducationDocuments(sourceScope,docs,pinnedBearer!) : await saveGenerated(docs);
       if(sourceScope && !educationScopeCurrent(sourceScope))return false;
       if(sourceScope&&!exactGoreltechDocuments)await refreshDocuments();
@@ -432,6 +450,7 @@ function GroupDocumentsFolderView({
       return ok;
     } catch (e: any) {
       if(sourceScope&&!educationScopeCurrent(sourceScope))return false;
+      if(e instanceof RetainedDraftBatchError){const text=e.code==='BUSY'?'Сохранение уже выполняется.':e.code==='SOURCE_CHANGED'?'Доступ или источник изменился. Обновите сведения.':e.code==='COLLISION'?'Найдены отдельные или неоднозначные документы этого снимка. Новая партия не создавалась.':'Результат предыдущего сохранения не подтверждён. Автоматический повтор заблокирован; обновите список и проверьте сохранённые документы.';setGenericBatchNote(text+(e.savedIds.length?` Записи: ${e.savedIds.join(', ')}.`:''));toast.error(text);return false;}
       if(sourceScope){const code=normalizeEducationError(e).code;if(code==='ACCESS_DENIED')education.invalidateAccess();toast.error(educationMessages[code]);}
       else toast.error("Ошибка генерации: " + (e?.message || ""));
       return false;
@@ -535,11 +554,11 @@ function GroupDocumentsFolderView({
             <AlertTriangle className="w-4 h-4 mt-0.5 text-primary shrink-0" />
             <div className="text-sm">
               <div className="font-medium">
-                {dataBlocked ? "Генерация недоступна: заполните обязательные данные" : "Заполните данные, чтобы документы были без пропусков"}
+                {educationEnabled && !exactGoreltechDocuments ? "Для полного оформления документов заполните перечисленные данные" : dataBlocked ? "Генерация недоступна: заполните обязательные данные" : "Заполните данные, чтобы документы были без пропусков"}
               </div>
               <div className="text-muted-foreground mt-0.5">Не заполнено: {missingFields.join(", ")}</div>
               <div className="text-muted-foreground mt-1">
-                Эти данные нужны для формирования документов. Создание курса, зачисление и обучение остаются доступны.
+                {educationEnabled && !exactGoreltechDocuments ? "Три черновика по подтверждённому составу можно подготовить; незаполненные реквизиты будут явно отмечены." : "Эти данные нужны для формирования документов. Создание курса, зачисление и обучение остаются доступны."}
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {organizationMissingFields.length > 0 && onOpenOrganizationRequisites && (
@@ -614,7 +633,7 @@ function GroupDocumentsFolderView({
       {/* Toolbar */}
       <Card className="p-4 space-y-3 rounded-2xl">
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={educationEnabled} disabled={busy} onChange={v=>setEducationEnabled(v.target.checked)}/>Использовать подтверждённый состав и календарь</label>
-        {educationEnabled&&<><p className="text-xs text-muted-foreground">{EDUCATION_ARTIFACT_NOTICE} Все документы этого источника сохраняются как черновики без официальных номеров. Даты документов задаются отдельно.</p>
+        {educationEnabled&&<><p className="text-xs text-muted-foreground">{exactGoreltechDocuments?EDUCATION_ARTIFACT_NOTICE:EDUCATION_GENERIC_ARTIFACT_NOTICE} Все документы этого источника сохраняются как черновики без официальных номеров. Даты документов задаются отдельно.</p>
           <Input aria-label="Момент состава для документов" disabled={busy||education.busy||education.pending||!!education.snapshotValue} value={educationAt} onChange={v=>updateSourceDraft({at:v.target.value})} placeholder="Пусто — текущий момент; иначе ISO с часовым смещением"/>
           <Input aria-label="Основание фиксации состава" disabled={busy||education.busy||education.pending} value={educationReason} onChange={v=>updateSourceDraft({reason:v.target.value})} placeholder="Основание фиксации состава"/>
           {education.envelope?.prerequisites.map((p,i)=><p key={i} className="text-sm">{p.label}</p>)}
@@ -625,6 +644,7 @@ function GroupDocumentsFolderView({
           <div className="grid grid-cols-2 gap-2">{PACKAGE_DOC_TYPES.map(type=><label className="text-xs" key={type}>{typeTitle.get(type)??type}<Input type="date" disabled={busy||education.busy||education.pending} aria-label={`Дата документа ${type}`} value={educationDates[type]??''} onChange={v=>updateSourceDraft({dates:{...educationDates,[type]:v.target.value}})}/></label>)}</div>
         </>}
       </Card>
+      {educationEnabled&&!exactGoreltechDocuments&&<Card className="p-4 rounded-2xl space-y-2"><Button variant="outline" className="rounded-xl" disabled={busy||education.busy||education.pending||!retainedContext||!education.envelope?.state?.capabilities.can_capture_snapshot||GENERIC_EDUCATION_DRAFT_TYPES.some(type=>!educationDates[type])} onClick={()=>void run([...GENERIC_EDUCATION_DRAFT_TYPES],undefined,undefined,false,true)}>Подготовить 3 черновика из одного состава</Button><p className="text-xs text-muted-foreground">Приказ о зачислении, журнал и итоговая ведомость: одна партия и один снимок. Официальные номера и подписи не проставляются. План не подтверждает посещение или результаты.</p>{ctx&&genericDraftMissingRequisites(ctx).length>0&&<p className="text-xs text-amber-700">Реквизиты для проверки: {genericDraftMissingRequisites(ctx).join(', ')}. В черновиках пропуски помечены «Не указано».</p>}{genericBatchNote&&<p role="status" className="text-xs">{genericBatchNote}</p>}</Card>}
       <div className="flex flex-wrap items-center gap-2">
         <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}
@@ -685,7 +705,7 @@ function GroupDocumentsFolderView({
           <DropdownMenuContent align="start" className="w-80">
             {DOC_TYPES.map(t => {
               const docMissing = Array.from(new Set([
-                ...missingDocRequirements(t.key, reqSource, mode, requirementProfile),
+                ...(educationEnabled&&!exactGoreltechDocuments&&isGenericEducationDraftType(t.key as DocType)?(retainedContext?[]:['подтверждённый состав и календарь']):missingDocRequirements(t.key, reqSource, mode, requirementProfile)),
                 ...blankSignatoryBlocker,
               ]));
               return (

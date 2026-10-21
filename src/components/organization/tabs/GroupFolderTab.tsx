@@ -537,9 +537,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!group?.group_number) missing.push("номер группы");
     if (!generationContext?.group.start_date || !generationContext?.group.end_date) missing.push("даты обучения");
     if (!generationContext?.group.instructor_name) missing.push("преподаватель для журнала");
-    if ((generationContext?.group.training_dates || []).length !== 4) missing.push("4 даты занятий для журнала");
+    const datesCount=(generationContext?.group.training_dates || []).length;
+    if (exactGoreltechDocuments ? datesCount !== 4 : datesCount < 1) missing.push(exactGoreltechDocuments ? "4 даты занятий для журнала" : "занятия в календаре для журнала");
     return missing;
-  }, [blockingDocFields, group?.group_number, generationContext, programPresentation.projection?.state]);
+  }, [blockingDocFields, group?.group_number, generationContext, programPresentation.projection?.state, exactGoreltechDocuments]);
 
   const frdoReadyCount = useMemo(
     () => students.filter(student => resolveFrdoReadiness(student.frdo, student.full_name).status === "complete").length,

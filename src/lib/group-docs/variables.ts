@@ -1,4 +1,6 @@
 import type { DocType, GenerationContext } from "./schema";
+import type { EducationArtifactCalendar } from "../../../supabase/functions/_shared/group-education-artifact";
+import { retainedCalendarJournal } from "./retainedGenericDrafts";
 import { VARIABLE_CATALOG } from "./variableCatalog";
 import { resolveGroupDocumentClientProfile } from "./clientProfile";
 import {
@@ -259,6 +261,8 @@ function numberToWordsRough(n: number): string {
 }
 
 export interface BuildVariablesOptions {
+  /** Already verified retained planned calendar; never a source of attendance. */
+  educationCalendar?: EducationArtifactCalendar;
   documentNumber?: string;
   documentDate?: string;
   primaryStudentIndex?: number;
@@ -280,10 +284,13 @@ export function buildVariables(
   const primary = ctx.students[opts.primaryStudentIndex ?? 0];
   const orderNum = opts.documentNumber || "";
   const price = opts.totalPrice ?? Number(ctx.extras?.total_price || 0);
-  const days = trainingDays(ctx.group.start_date, ctx.group.end_date);
+  const days = opts.educationCalendar
+    ? [...opts.educationCalendar.lessons.map(lesson=>formatDateShort(lesson.local_date)),"","","",""]
+    : trainingDays(ctx.group.start_date, ctx.group.end_date);
   const dataMode = opts.mode === "data";
   const factual = opts.factual || emptyFactualData();
   const journalDates = journalDateColumns(factual.lessonCompletions);
+  const retainedJournal = opts.educationCalendar ? retainedCalendarJournal(opts.educationCalendar,ctx.students) : null;
   const clientProfile = resolveGroupDocumentClientProfile(ctx.organization);
   const signatoryPositionKey = opts.docType
     ? `signatory_position_${opts.docType}`
@@ -448,13 +455,13 @@ export function buildVariables(
     students_table: buildStudentsTable(ctx.students),
     students_list_rows: buildStudentListRows(ctx.students, ctx, basisForOrders),
     student_list_detail_rows: buildStudentListDetailRows(ctx.students),
-    journal_head: dataMode
+    journal_head: retainedJournal ? retainedJournal.head : dataMode
       ? buildJournalHead(journalDates)
       : buildJournalHead([]),
-    journal_rows: dataMode
+    journal_rows: retainedJournal ? retainedJournal.rows : dataMode
       ? buildJournalRowsFromFacts(ctx.students, factual.lessonCompletions, journalDates)
       : buildJournalBlankRows(ctx.students),
-    journal_source_note: dataMode
+    journal_source_note: retainedJournal ? "Плановые занятия сохранённого календаря. Отметки пусты: посещение этим источником не подтверждено." : dataMode
       ? JOURNAL_SOURCE_LABEL
       : "Рабочий бланк: отметки заполняются вручную.",
     attestation_rows: dataMode
