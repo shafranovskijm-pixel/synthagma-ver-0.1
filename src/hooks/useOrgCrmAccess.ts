@@ -4,6 +4,7 @@ import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscript
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
 import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
+import { hasAllPlatformFeatureGrant } from "@/lib/postpaidAccess";
 
 interface CrmAccessState {
   organizationId: string | null;
@@ -60,7 +61,7 @@ export function useOrgCrmAccess(organizationId: string | null) {
   return {
     loading: !!organizationId && (postpaid.isLoading || (current ? state.loading : true)),
     error: profileError || (current ? state.error : null),
-    enabled: current && !state.loading && !state.error && profileReady && (postpaid.data!.active ? postpaid.data!.features.crm : state.enabled),
+    enabled: current && !state.loading && !state.error && profileReady && (postpaid.data!.active ? (hasAllPlatformFeatureGrant(postpaid.data) || postpaid.data!.features.crm) : state.enabled),
     mailingEnabled: current && !state.loading && !state.error && profileReady && (postpaid.data!.active ? true : state.mailingEnabled),
     refresh: async () => { await Promise.all([refresh(), postpaid.refetch()]); },
   };

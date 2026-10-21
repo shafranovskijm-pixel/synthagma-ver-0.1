@@ -202,7 +202,8 @@ export function useOrganizationDashboard() {
     }
   };
 
-  const { isEnabled } = useOrgFeatures(organizationId);
+  const orgFeatures = useOrgFeatures(organizationId);
+  const { isEnabled } = orgFeatures;
   const subscriptionLimits = useSubscriptionLimits(organizationId);
   const { checkLimit } = subscriptionLimits;
 
@@ -402,6 +403,7 @@ export function useOrganizationDashboard() {
     hasCourseOverviewData, isCourseOverviewLoading, courseOverviewErrorKind, retryCourseOverview,
     // Features & limits
     isEnabled, checkLimit, subscriptionLimits, crmAccess,
+    featureAccess: { ready: orgFeatures.ready, loading: orgFeatures.loading, error: orgFeatures.error, refetch: orgFeatures.refetch },
     // UI state
     showImportDialog, setShowImportDialog,
     isMobileSidebarOpen, setIsMobileSidebarOpen,

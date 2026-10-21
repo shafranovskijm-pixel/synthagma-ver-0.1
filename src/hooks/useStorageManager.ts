@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
+import { getSignedStorageUrl, downloadPrivateFile } from "@/utils/storageHelpers";
+import { loadManagedStorageEntries, MANAGED_PRIVATE_BUCKETS, managedObjectPath, managedPublicUrl, storageRequestWithDeadline, validManagedStoragePath } from "@/lib/storage/managedStorageFiles";
 
 export interface StorageFile {
   name: string;
@@ -13,6 +15,13 @@ export interface StorageFile {
   created_at: string;
   type: "video" | "image" | "audio" | "document" | "presentation" | "other";
   isPrivate?: boolean;
+}
+
+export const PRIVATE_DOCUMENT_DELETE_NOTICE = "Удаляйте документ в исходном разделе документов, чтобы сохранить его связи и историю.";
+
+/** Document workflows own their metadata and retained file history. */
+export function canDeleteStorageFile(file: Pick<StorageFile, "bucket" | "isPrivate">): boolean {
+  return !MANAGED_PRIVATE_BUCKETS.has(file.bucket) && !file.isPrivate;
 }
 
 const VIDEO_EXT = ["mp4", "webm", "ogg", "mov", "avi", "mkv"];
@@ -84,102 +93,162 @@ export function useStorageManager(organizationId: string) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const getSignedUrl = useCallback(async (bucket: string, path: string): Promise<string | null> => {
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
-    if (error) { console.error("Error creating signed URL:", error); return null; }
-    return proxiedAssetUrl(data.signedUrl);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const loadRequest = useRef(0);
+  const activeLoad = useRef<AbortController | null>(null);
+  const previewRequest = useRef(0);
+  const currentOrganization = useRef(organizationId);
+  const loadedOrganization = useRef<string | null>(null);
+  if (currentOrganization.current !== organizationId) loadedOrganization.current = null;
+  currentOrganization.current = organizationId;
+
+  const externalStorage = useCallback(async () => {
+    const { data: config, error } = await safeInvoke<any>("get-external-storage-config");
+    if (error) throw error;
+    if (!config?.configured || !config?.url || !config?.key) return null;
+    const { createClient } = await import("@supabase/supabase-js");
+    return { client: createClient(config.url, config.key), baseUrl: config.url };
   }, []);
 
-  const getFileUrl = useCallback(async (file: StorageFile): Promise<string> => {
-    if (file.isPrivate) {
-      const path = `${file.folder}/${file.name}`;
-      const signed = await getSignedUrl(file.bucket, path);
-      return signed || file.url;
+  const getFileUrl = useCallback(async (file: StorageFile): Promise<string | null> => {
+    const path = managedObjectPath(file);
+    if (!path || loadedOrganization.current !== organizationId || !files.some(item => item.bucket === file.bucket && managedObjectPath(item) === path)) return null;
+    if (MANAGED_PRIVATE_BUCKETS.has(file.bucket) || file.isPrivate) {
+      try { return await storageRequestWithDeadline(getSignedStorageUrl(file.bucket, path)); }
+      catch { return null; }
     }
-    return file.url;
-  }, [getSignedUrl]);
+    return file.url || null;
+  }, [files, organizationId]);
 
   const loadFiles = useCallback(async () => {
-    setLoading(true);
+    activeLoad.current?.abort();
+    const controller = new AbortController(); activeLoad.current = controller;
+    const request = ++loadRequest.current;
+    const scope = organizationId;
+    setLoading(true); setLoadErrors([]);
     try {
-      const allFiles: StorageFile[] = [];
-      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const scanPath = async (client: any, bucket: string, prefix: string, urlBase: string, depth = 0, isPrivateBucket = false) => {
-        try {
-          const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
-          if (!items) return;
-          for (const f of items) {
-            if (f.id === null && depth < 2) { await scanPath(client, bucket, `${prefix}/${f.name}`, urlBase, depth + 1, isPrivateBucket); }
-            else if (f.id !== null) {
-              if (isHiddenArtifact(f.name)) continue;
-              const fileSize = (f.metadata as any)?.size || 0;
-              if (fileSize === 0 || !f.name.includes('.')) continue;
-              allFiles.push({ name: f.name, url: isPrivateBucket ? "" : proxiedAssetUrl(`${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`), bucket, folder: prefix, size: fileSize, created_at: (f as any).created_at || "", type: getFileType(f.name), isPrivate: isPrivateBucket });
-            }
-          }
-        } catch { /* path doesn't exist */ }
-      };
-      const { data: courses } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
-      const courseIds = courses?.map(c => c.id) || [];
-      const courseScans = courseIds.flatMap(courseId => [scanPath(supabase, "course-files", courseId, baseUrl), scanPath(supabase, "presentations", courseId, baseUrl)]);
-      const orgScans = [
-        scanPath(supabase, "org-documents", organizationId, baseUrl), scanPath(supabase, "company-documents", organizationId, baseUrl),
-        scanPath(supabase, "org-branding", organizationId, baseUrl), scanPath(supabase, "library-files", `library/${organizationId}`, baseUrl),
-        scanPath(supabase, "billing-documents", organizationId, baseUrl), scanPath(supabase, "student-documents", organizationId, baseUrl, 0, true),
-      ];
-      await Promise.all([...courseScans, ...orgScans]);
-      try {
-        const { data: config } = await safeInvoke<any>("get-external-storage-config");
-        if (config?.configured && config?.url && config?.key) {
-          const { createClient } = await import("@supabase/supabase-js");
-          const extClient = createClient(config.url, config.key);
-          await Promise.all(courseIds.map(courseId => scanPath(extClient, "course-videos", courseId, config.url)));
-        }
-      } catch { /* external not configured */ }
-      allFiles.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
-      setFiles(allFiles);
-    } catch (err) { console.error("Error loading storage files:", err); toast.error("Ошибка загрузки файлов"); }
-    setLoading(false);
-  }, [organizationId]);
+      const result = await loadManagedStorageEntries(supabase, scope, import.meta.env.VITE_SUPABASE_URL, {
+        signal: controller.signal, externalStorage,
+      });
+      if (request !== loadRequest.current || currentOrganization.current !== scope || controller.signal.aborted) return;
+      const loaded: StorageFile[] = result.entries.flatMap(entry => {
+        const split = entry.path.lastIndexOf("/");
+        const name = entry.path.slice(split + 1);
+        if (split < 1 || isHiddenArtifact(name)) return [];
+        const isPrivate = MANAGED_PRIVATE_BUCKETS.has(entry.bucket);
+        return [{ name, folder: entry.path.slice(0, split), bucket: entry.bucket,
+          url: isPrivate ? "" : proxiedAssetUrl(managedPublicUrl(entry.baseUrl, entry.bucket, entry.path)),
+          size: entry.size, created_at: entry.createdAt, type: getFileType(name), isPrivate }];
+      });
+      loaded.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+      loadedOrganization.current = scope;
+      setFiles(loaded); setLoadErrors(result.errors);
+    } catch {
+      if (request === loadRequest.current && currentOrganization.current === scope) setLoadErrors(["load_failed"]);
+    } finally {
+      if (request === loadRequest.current && currentOrganization.current === scope) setLoading(false);
+    }
+  }, [organizationId, externalStorage]);
 
-  useEffect(() => { loadFiles(); }, [loadFiles]);
+  useEffect(() => {
+    setFiles([]); setPreviewFile(null); setPreviewUrl(null); setDeleteFile(null);
+    previewRequest.current++;
+    void loadFiles();
+    return () => { activeLoad.current?.abort(); loadRequest.current++; previewRequest.current++; };
+  }, [loadFiles]);
 
   const handleDelete = async () => {
-    if (!deleteFile) return;
+    const target = deleteFile;
+    if (!target) return;
+    // Enforce this independently of the rendered button or a forged selection.
+    // Removing only the blob leaves active document metadata and history broken.
+    if (!canDeleteStorageFile(target)) {
+      toast.error(PRIVATE_DOCUMENT_DELETE_NOTICE); setDeleteFile(null); return;
+    }
+    const path = managedObjectPath(target);
+    const scope = organizationId;
+    if (!path || loadedOrganization.current !== scope || !files.some(file => file.bucket === target.bucket && managedObjectPath(file) === path)) {
+      toast.error("Файл не принадлежит текущему списку. Обновите хранилище."); return;
+    }
     setDeleting(true);
     try {
-      const path = `${deleteFile.folder}/${deleteFile.name}`;
-      if (deleteFile.bucket === "course-videos") {
-        const { data: config } = await safeInvoke<any>("get-external-storage-config");
-        if (config?.configured && config?.url && config?.key) {
-          const { createClient } = await import("@supabase/supabase-js");
-          const extClient = createClient(config.url, config.key);
-          await extClient.storage.from("course-videos").remove([path]);
-        }
-      } else { await supabase.storage.from(deleteFile.bucket).remove([path]); }
-      setFiles(prev => prev.filter(f => !(f.bucket === deleteFile.bucket && f.folder === deleteFile.folder && f.name === deleteFile.name)));
-      toast.success("Файл удалён");
-    } catch (err) { console.error("Delete error:", err); toast.error("Ошибка удаления файла"); }
-    setDeleting(false); setDeleteFile(null);
+      let storageClient: any = supabase;
+      if (target.bucket === "course-videos") {
+        const external = await storageRequestWithDeadline(externalStorage());
+        if (!external) throw new Error("external_storage_not_available");
+        storageClient = external.client;
+      }
+      const result: any = await storageRequestWithDeadline(storageClient.storage.from(target.bucket).remove([path]));
+      if (result.error || !Array.isArray(result.data) || !result.data.some((item: any) => item?.name === path)) throw new Error("storage_delete_not_confirmed");
+      if (currentOrganization.current === scope) {
+        setFiles(prev => prev.filter(file => !(file.bucket === target.bucket && managedObjectPath(file) === path)));
+        toast.success("Файл удалён");
+      }
+    } catch { if (currentOrganization.current === scope) toast.error("Удаление файла не подтверждено. Файл сохранён в списке; обновите хранилище."); }
+    finally { setDeleting(false); if (currentOrganization.current === scope) setDeleteFile(null); }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
+    const scope = organizationId;
+    const bucket = "course-files";
+    const path = scope + "/" + file.name;
+    if (!scope || file.name.includes("/") || !validManagedStoragePath(path)) {
+      toast.error("Недопустимое имя файла"); input.value = ""; return;
+    }
     setUploading(true);
-    const bucket = "course-files"; const path = `${organizationId}/${file.name}`; const baseUrl = import.meta.env.VITE_SUPABASE_URL;
     try {
-      const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
-      if (error) throw error;
-      setFiles(prev => [{ name: file.name, url: proxiedAssetUrl(`${baseUrl}/storage/v1/object/public/${bucket}/${path}`), bucket, folder: organizationId, size: file.size, created_at: new Date().toISOString(), type: getFileType(file.name) }, ...prev]);
-      toast.success("Файл загружен");
-    } catch (err) { console.error("Upload error:", err); toast.error("Ошибка загрузки файла"); }
-    setUploading(false); e.target.value = "";
+      // A same-name upload must not overwrite a file already referenced by a course.
+      const result: any = await storageRequestWithDeadline(supabase.storage.from(bucket).upload(path, file, { upsert: false }));
+      if (result.error || result.data?.path !== path) throw new Error("storage_upload_not_confirmed");
+      if (currentOrganization.current === scope) {
+        setFiles(prev => [{ name: file.name, url: proxiedAssetUrl(managedPublicUrl(import.meta.env.VITE_SUPABASE_URL, bucket, path)),
+          bucket, folder: scope, size: file.size, created_at: new Date().toISOString(), type: getFileType(file.name), isPrivate: false },
+          ...prev.filter(existing => !(existing.bucket === bucket && managedObjectPath(existing) === path))]);
+        toast.success("Файл загружен");
+      }
+    } catch { if (currentOrganization.current === scope) toast.error("Загрузка файла не подтверждена. Обновите хранилище; если имя уже занято, переименуйте файл."); }
+    finally { setUploading(false); input.value = ""; }
   };
 
-  const openPreview = async (file: StorageFile) => { setPreviewFile(file); setPreviewLoading(true); const url = await getFileUrl(file); setPreviewUrl(url); setPreviewLoading(false); };
-  const openInNewTab = async (file: StorageFile) => { const url = await getFileUrl(file); window.open(url, "_blank"); };
-  const downloadFile = async (file: StorageFile) => { const url = await getFileUrl(file); const a = document.createElement("a"); a.href = url; a.download = file.name; a.target = "_blank"; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+  const openPreview = async (file: StorageFile) => {
+    const request = ++previewRequest.current; const scope = organizationId;
+    setPreviewFile(file); setPreviewUrl(null); setPreviewLoading(true);
+    try {
+      const url = await getFileUrl(file);
+      if (request !== previewRequest.current || currentOrganization.current !== scope) return;
+      setPreviewUrl(url);
+      if (!url) toast.error("Не удалось открыть файл. Проверьте доступ или обновите хранилище.");
+    } finally { if (request === previewRequest.current && currentOrganization.current === scope) setPreviewLoading(false); }
+  };
+  const openInNewTab = async (file: StorageFile) => {
+    const path = managedObjectPath(file);
+    if (!path || loadedOrganization.current !== organizationId || !files.some(item => item.bucket === file.bucket && managedObjectPath(item) === path)) return;
+    if (MANAGED_PRIVATE_BUCKETS.has(file.bucket) || file.isPrivate) {
+      const target = window.open("about:blank", "_blank");
+      if (!target) { toast.error("Браузер заблокировал открытие файла"); return; }
+      target.opener = null;
+      const scope = organizationId;
+      try {
+        const url = await getFileUrl(file);
+        if (!url || currentOrganization.current !== scope) { target.close(); toast.error("Не удалось открыть файл"); return; }
+        target.location.replace(url);
+      } catch { target.close(); toast.error("Не удалось открыть файл"); }
+    } else if (file.url) window.open(file.url, "_blank", "noopener");
+  };
+  const downloadFile = async (file: StorageFile) => {
+    const path = managedObjectPath(file);
+    if (!path || loadedOrganization.current !== organizationId || !files.some(item => item.bucket === file.bucket && managedObjectPath(item) === path)) return;
+    if (MANAGED_PRIVATE_BUCKETS.has(file.bucket) || file.isPrivate) {
+      if (!await downloadPrivateFile(file.bucket, path, file.name)) toast.error("Не удалось скачать файл");
+      return;
+    }
+    if (!file.url) return;
+    const link = document.createElement("a"); link.href = file.url; link.download = file.name; link.target = "_blank"; link.rel = "noopener";
+    document.body.appendChild(link); link.click(); link.remove();
+  };
   const toggleBucket = (bucket: string) => setExpandedBuckets(prev => ({ ...prev, [bucket]: !prev[bucket] }));
 
   const filtered = useMemo(() => files.filter(f => (bucketFilter === "all" || f.bucket === bucketFilter) && (typeFilter === "all" || f.type === typeFilter) && (!search || f.name.toLowerCase().includes(search.toLowerCase()))), [files, bucketFilter, typeFilter, search]);
@@ -198,7 +267,7 @@ export function useStorageManager(organizationId: string) {
   const typeCounts = useMemo(() => { const acc: Record<string, number> = {}; for (const f of files) { acc[f.type] = (acc[f.type] || 0) + 1; } return acc; }, [files]);
 
   return {
-    files, loading, search, setSearch, typeFilter, setTypeFilter, bucketFilter, setBucketFilter,
+    files, loading, loadErrors, search, setSearch, typeFilter, setTypeFilter, bucketFilter, setBucketFilter,
     expandedBuckets, deleteFile, setDeleteFile, deleting, uploading, previewFile, setPreviewFile,
     previewUrl, setPreviewUrl, previewLoading, loadFiles, handleDelete, handleUpload,
     openPreview, openInNewTab, downloadFile, toggleBucket, filtered, groupedByBucket,

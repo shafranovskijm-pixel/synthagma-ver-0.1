@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Search, Trash2, Upload, Video, FileText, Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File, ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen, UserCheck, ExternalLink, Download, Eye, Shield } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { useStorageManager, BUCKET_LABELS, TYPE_LABELS, formatSize, formatDate, getPreviewType, type StorageFile } from "@/hooks/useStorageManager";
+import { useStorageManager, BUCKET_LABELS, TYPE_LABELS, formatSize, formatDate, getPreviewType, canDeleteStorageFile, PRIVATE_DOCUMENT_DELETE_NOTICE, type StorageFile } from "@/hooks/useStorageManager";
 
 interface StorageManagerProps { organizationId: string; }
 
@@ -59,11 +59,13 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         </div>
       </div>
 
+      {h.loadErrors.length > 0 && <p role="status" className="text-sm text-muted-foreground">Список загружен не полностью. Часть файлов временно недоступна; повторите обновление.</p>}
+
       {/* File list */}
       {h.loading ? (
         <div className="flex items-center justify-center py-16"><SigmaSpinner /><span className="ml-2 text-muted-foreground">Загрузка файлов...</span></div>
       ) : h.filtered.length === 0 ? (
-        h.files.length === 0 ? (
+        h.files.length === 0 && h.loadErrors.length === 0 ? (
           <Card className="overflow-hidden border-0 shadow-lg">
             <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8"><div className="flex items-center gap-3 mb-2"><div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center"><HardDrive className="w-6 h-6 text-primary" /></div><div><h2 className="text-2xl font-bold">Ваше облачное хранилище готово к работе</h2><p className="text-muted-foreground">Все файлы организации — в одном месте</p></div></div></div>
             <CardContent className="p-8 pt-6">
@@ -83,7 +85,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
             </CardContent>
           </Card>
         ) : (
-          <div className="text-center py-16 text-muted-foreground"><Search className="w-12 h-12 mx-auto mb-3 opacity-40" /><p className="font-medium">Нет файлов по фильтру</p><p className="text-sm mt-1">Попробуйте изменить параметры поиска</p></div>
+          <div className="text-center py-16 text-muted-foreground"><Search className="w-12 h-12 mx-auto mb-3 opacity-40" /><p className="font-medium">{h.files.length === 0 && h.loadErrors.length ? "Не удалось получить полный список файлов" : "Нет файлов по фильтру"}</p><p className="text-sm mt-1">{h.files.length === 0 && h.loadErrors.length ? "Повторите обновление хранилища" : "Попробуйте изменить параметры поиска"}</p></div>
         )
       ) : (
         <ScrollArea className="h-[calc(100vh-460px)] min-h-[300px]">
@@ -103,11 +105,11 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
                         <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
                           {file.type === "image" && !file.isPrivate ? <img src={file.url} alt={file.name} className="w-full h-full object-cover" loading="lazy" /> : getTypeIcon(file.type)}
                         </div>
-                        <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{file.name}</p><div className="flex items-center gap-2 text-xs text-muted-foreground"><span>{formatSize(file.size)}</span>{file.created_at && <span>{formatDate(file.created_at)}</span>}</div></div>
+                        <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{file.name}</p><div className="flex items-center gap-2 text-xs text-muted-foreground"><span>{formatSize(file.size)}</span>{file.created_at && <span>{formatDate(file.created_at)}</span>}</div>{!canDeleteStorageFile(file) && <p className="text-xs text-muted-foreground mt-1">{PRIVATE_DOCUMENT_DELETE_NOTICE}</p>}</div>
                         <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Предпросмотр" onClick={() => h.openPreview(file)}><Eye className="w-4 h-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Открыть в новой вкладке" onClick={() => h.openInNewTab(file)}><ExternalLink className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.setDeleteFile(file)}><Trash2 className="w-4 h-4" /></Button>
+                          {canDeleteStorageFile(file) && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Удалить файл" onClick={() => h.setDeleteFile(file)}><Trash2 className="w-4 h-4" /></Button>}
                         </div>
                       </div>
                     ))}

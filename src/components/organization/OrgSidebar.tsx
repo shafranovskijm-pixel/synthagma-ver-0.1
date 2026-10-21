@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
-  Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle,
+  Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, LoaderCircle, CircleAlert,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck,
   PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink, HelpCircle, UserRound, UserCog,
   Home, ChevronDown, Send, UserPlus, FolderOpen, Handshake
@@ -174,6 +174,7 @@ export function OrgSidebar() {
   const logoUrl = d.branding.brandingSettings.logoUrl;
   const primaryColor = d.branding.brandingSettings.primaryColor;
   const isEnabled = d.isEnabled;
+  const featureAccess = d.featureAccess;
   const menuSettings = d.dashboardSettings.menuSettings;
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
@@ -310,6 +311,11 @@ export function OrgSidebar() {
       return;
     }
     const category = tabCategoryMap[tab];
+    if (category && featureAccess?.ready === false) {
+      if (featureAccess.error) toast.error(featureAccess.error, { action: { label: "Повторить", onClick: () => void featureAccess.refetch() } });
+      else toast.info("Проверяем доступность функций…");
+      return;
+    }
     if (category && isLocked(category)) {
       setUpgradeDialogOpen(true);
       return;
@@ -320,7 +326,7 @@ export function OrgSidebar() {
       setActiveTab(tab);
     }
     setIsMobileSidebarOpen(false);
-  }, [isLocked, setActiveTab, setIsMobileSidebarOpen, location.pathname, navigate]);
+  }, [isLocked, featureAccess, setActiveTab, setIsMobileSidebarOpen, location.pathname, navigate]);
 
   const handleGoToSubscription = () => {
     setUpgradeDialogOpen(false);
@@ -549,7 +555,8 @@ export function OrgSidebar() {
   // Render single nav button (used by both pinned and section blocks)
   const renderNavItem = (item: NavItem, nested = false, forceExpanded = false) => {
     const isActive = isItemActive(item);
-    const locked = item.forceLocked || (item.category ? isLocked(item.category) : false);
+    const accessUnconfirmed = !!item.category && featureAccess?.ready === false;
+    const locked = !accessUnconfirmed && (item.forceLocked || (item.category ? isLocked(item.category) : false));
     const itemPinned = item.pinnable !== false && isPinned(item.id);
     const itemHref = item.href;
     const itemExpanded = effectiveExpanded || forceExpanded;
@@ -557,10 +564,18 @@ export function OrgSidebar() {
 
     const button = (
       <a
-        href={locked ? undefined : itemHref}
+        href={locked || accessUnconfirmed ? undefined : itemHref}
+        aria-disabled={accessUnconfirmed || undefined}
+        aria-busy={accessUnconfirmed && featureAccess?.loading || undefined}
         title={!itemExpanded ? item.label : undefined}
         data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
         onClick={(event) => {
+          if (accessUnconfirmed) {
+            event.preventDefault();
+            if (featureAccess?.error) toast.error(featureAccess.error, { action: { label: "Повторить", onClick: () => void featureAccess.refetch() } });
+            else toast.info("Проверяем доступность функций…");
+            return;
+          }
           if (locked) {
             event.preventDefault();
             if (!contextPresentation.ready) {
@@ -605,7 +620,10 @@ export function OrgSidebar() {
       >
         <span className="relative flex items-center justify-center shrink-0" style={{ width: 18, height: 18 }}>
           <item.icon className="h-[18px] w-[18px]" />
-          {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
+          {accessUnconfirmed && (featureAccess?.error
+            ? <CircleAlert data-testid="feature-access-error" className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />
+            : <LoaderCircle data-testid="feature-access-checking" className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60 animate-spin" />)}
+          {locked && <Lock data-testid="feature-plan-locked" className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
           {(item.badge ?? 0) > 0 && (
             <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
               {item.badge! > 99 ? "99+" : item.badge}

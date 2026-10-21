@@ -7,11 +7,11 @@ import { useOrgCrmAccess } from "../useOrgCrmAccess";
 import { useOrgFeatures } from "../useOrgFeatures";
 import { fetchPostpaidAccessProfile, type PostpaidAccessProfile } from "@/lib/postpaidAccess";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), featureError: false, featureDeferred: null as Promise<unknown> | null }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc, from: mocks.from,
   channel: () => { const channel = { on: () => channel, subscribe: () => channel }; return channel; }, removeChannel: vi.fn(),
 } }));
-vi.mock("@/hooks/useOrganizationCore", () => ({ useOrganizationCore: (org: string) => ({ data: { id: org, subscription_plan: "free", custom_enabled_categories: ["webinars"] } }) }));
+vi.mock("@/hooks/useOrganizationCore", () => ({ useOrganizationCore: (org: string) => ({ data: { id: org, subscription_plan: "free", custom_enabled_categories: ["webinars"] }, isLoading: false, error: null, refetch: vi.fn(async () => {}) }) }));
 vi.mock("@/lib/storage/organizationStorageUsage", () => ({ getOrganizationStorageUsage: async () => 123456 }));
 const profile = (org = "org", active = true): PostpaidAccessProfile => ({ organization_id: org, active, billing_mode: active ? "postpaid" : "prepaid", limits: active ? { maxCourses: -1, maxStudents: -1, maxTrainedStudents: -1 } : null, features: { crm: false, webinar: false, videoserviceplus: false, frdoplus: false } });
 let access: PostpaidAccessProfile;
@@ -22,7 +22,7 @@ function setup() {
   return { ...result, client };
 }
 beforeEach(() => {
-  vi.clearAllMocks(); access = profile();
+  vi.clearAllMocks(); access = profile(); mocks.featureError = false; mocks.featureDeferred = null;
   mocks.rpc.mockImplementation(async (name, args) => {
     if (name === "get_postpaid_access_profile") return { data: args.p_organization_id === "org" ? access : profile(args.p_organization_id, false), error: null };
     if (name === "get_organization_student_capacity") return { data: { current_students: 500 }, error: null };
@@ -32,8 +32,9 @@ beforeEach(() => {
   });
   mocks.from.mockImplementation(table => {
     const response = table === "organizations" ? { data: { subscription_plan: "free", custom_max_courses: 1, custom_max_students: 1, custom_max_trained_per_month: 1, custom_enabled_categories: ["webinars"] }, error: null }
-      : table === "courses" ? { data: null, count: 80, error: null } : { data: [], error: null };
-    const chain: any = { select: () => chain, eq: () => chain, is: () => chain, single: async () => response, then: (resolve: any, reject: any) => Promise.resolve(response).then(resolve, reject) };
+      : table === "courses" ? { data: null, count: 80, error: null } : { data: [], error: mocks.featureError ? { message: "Synthetic feature availability outage" } : null };
+    const responsePromise = table.includes("feature") && mocks.featureDeferred ? mocks.featureDeferred : Promise.resolve(response);
+    const chain: any = { select: () => chain, eq: () => chain, is: () => chain, single: async () => response, then: (resolve: any, reject: any) => responsePromise.then(resolve, reject) };
     return chain;
   });
 });
@@ -93,5 +94,59 @@ describe("postpaid access stays separate from invoiced tier", () => {
   it("rejects an otherwise valid access profile for another organization", async () => {
     access = profile("foreign");
     await expect(fetchPostpaidAccessProfile("org")).rejects.toThrow("Сервер не подтвердил");
+  });
+});
+
+describe("administrative feature grants and current-tenant verification", () => {
+  it("enables all platform features without fabricating billable consent or changing the recorded plan", async () => {
+    access = { ...profile(), entitlements: { all_platform_features: true } };
+    const original = structuredClone(access);
+    const { result } = setup();
+    await waitFor(() => expect(result.current.features.ready && result.current.limits.accessReady && !result.current.crm.loading).toBe(true));
+    expect(result.current.limits.plan).toBe("free");
+    expect(result.current.limits.limits).toMatchObject({ salesCrmEnabled: true, webinarsEnabled: true, videoServicePlus: true, trainersEnabled: true, storageBytes: -1 });
+    expect(result.current.crm.enabled).toBe(true);
+    for (const key of ["courses", "library", "labor_safety", "services", "webinars"] as const) expect(result.current.features.isEnabled(key)).toBe(true);
+    expect(access).toEqual(original);
+    expect(access.features).toEqual({ crm: false, webinar: false, videoserviceplus: false, frdoplus: false });
+  });
+  it("does not honor a stale grant after the postpaid agreement ends", async () => {
+    access = { ...profile("org", false), entitlements: { all_platform_features: true } };
+    const { result } = setup();
+    await waitFor(() => expect(result.current.features.ready && result.current.limits.accessReady).toBe(true));
+    expect(result.current.limits.isPostpaid).toBe(false);
+    expect(result.current.limits.limits.trainersEnabled).toBe(false);
+    expect(result.current.crm.enabled).toBe(false);
+    expect(result.current.limits.canCreateCourse).toBe(false);
+  });
+  it.each([null, { all_platform_features: "true" }, {}])("rejects malformed administrative entitlements %j", async entitlements => {
+    access = { ...profile(), entitlements } as PostpaidAccessProfile;
+    await expect(fetchPostpaidAccessProfile("org")).rejects.toThrow("Сервер не подтвердил");
+  });
+  it("keeps feature access unconfirmed while its own query is pending even when billing is ready", async () => {
+    let resolveFeatures!: (value: unknown) => void;
+    mocks.featureDeferred = new Promise(resolve => { resolveFeatures = resolve; });
+    const { result } = setup();
+    await waitFor(() => expect(result.current.limits.accessReady).toBe(true));
+    expect(result.current.features).toMatchObject({ ready: false, loading: true, error: null });
+    expect(result.current.features.isEnabled("courses")).toBe(false);
+    await act(async () => { resolveFeatures({ data: [], error: null }); });
+    await waitFor(() => expect(result.current.features.ready).toBe(true));
+    expect(result.current.features.isEnabled("courses")).toBe(true);
+  });
+  it("withdraws stale feature data on a refetch error and recovers only after successful retry", async () => {
+    const { result, client } = setup();
+    await waitFor(() => expect(result.current.features.ready).toBe(true));
+    mocks.featureError = true;
+    await act(async () => { await client.invalidateQueries({ queryKey: ["org-features", "org"] }); });
+    await waitFor(() => expect(result.current.features.error).not.toBeNull());
+    expect(result.current.features).toMatchObject({ ready: false, loading: false });
+    expect(result.current.features.isEnabled("courses")).toBe(false);
+    expect(result.current.limits.accessReady).toBe(true);
+    mocks.featureError = false;
+    await act(async () => { await result.current.features.refetch(); });
+    await waitFor(() => expect(result.current.features.ready).toBe(true));
+    expect(result.current.features.error).toBeNull();
+    expect(result.current.features.isEnabled("courses")).toBe(true);
   });
 });
