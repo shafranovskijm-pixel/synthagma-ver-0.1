@@ -47,6 +47,7 @@ function fixture(options: Options = {}) {
   });
   const createUser = vi.fn(async () => { events.push("auth.create"); return { data: { user: { id: ids.student } }, error: null }; });
   const profileUpdate = vi.fn();
+  const linkUpdate = vi.fn();
   const admin = {
     rpc: adminRpc,
     auth: { admin: { createUser, getUserById: async () => ({ data: { user: { id: ids.student } }, error: null }) } },
@@ -57,7 +58,7 @@ function fixture(options: Options = {}) {
         : table === "registration_links" ? [{ token: "synthetic-token", organization_id: ids.org, student_group_id: ids.group, used_count: 0 }]
         : [];
       const response = () => {
-        if (update) { if (table === "profiles") profileUpdate(update); rows.forEach(row => Object.assign(row, update)); }
+        if (update) { if (table === "profiles") profileUpdate(update); if (table === "registration_links") linkUpdate(update); rows.forEach(row => Object.assign(row, update)); }
         return { data: rows, error: null };
       };
       const chain: any = {
@@ -87,7 +88,7 @@ function fixture(options: Options = {}) {
     { env: { get: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? "service-key" : key === "SUPABASE_ANON_KEY" ? "anon-key" : "https://synthetic.invalid" } },
     isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, isStudentAssignmentQuotaError, studentAssignmentQuotaFailure,
   );
-  return { events, createUser, callerRpc, adminRpc, profileUpdate, profiles,
+  return { events, createUser, callerRpc, adminRpc, profileUpdate, linkUpdate, profiles,
     call: async (fields: Record<string, unknown> = {}, method = "POST") => {
       const response = await handler(new Request("https://synthetic.invalid/register-student", { method,
         headers: { authorization: "Bearer synthetic-caller", "content-type": "application/json" },
@@ -182,6 +183,14 @@ describe("register-student current detail authority before Auth/profile mutation
     expect(result.body.quota_code).toBeUndefined();
     expect(f.createUser).toHaveBeenCalledTimes(1);
     expect(f.profiles.some(p => p.user_id === ids.student)).toBe(true);
+  });
+
+  it("counts a committed public registration once even when group enrollment is denied", async () => {
+    const f = fixture({ groupQuota: true });
+    const result = await f.call({ registration_token: "synthetic-token" });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ success: false, partial_success: true, profile_persisted: true, group_assignment_confirmed: false });
+    expect(f.linkUpdate).toHaveBeenCalledExactlyOnceWith({ used_count: 1 });
   });
 
   it("preserves student-import-v6 and exposes a separate security deployment revision on success and harmless GET probe", async () => {

@@ -665,6 +665,27 @@ serve(async (req) => {
 
     isExisting = !!claim.is_existing;
 
+    // Count the committed public registration even when a later step is partial.
+    // Keep the existing counter behavior; strict max-use reservation is separate.
+    if (publicRegistration && registration_token) {
+      try {
+        await supabaseAdmin.rpc("increment_registration_link_usage" as any, {
+          p_token: registration_token,
+        }).throwOnError();
+      } catch {
+        const { data: cur } = await supabaseAdmin
+          .from("registration_links")
+          .select("used_count")
+          .eq("token", registration_token)
+          .maybeSingle();
+        await supabaseAdmin
+          .from("registration_links")
+          .update({ used_count: Number(cur?.used_count || 0) + 1 })
+          .eq("token", registration_token);
+      }
+    }
+
+
     const enrollmentFailureResponse = (code: string, message: string, status: number) => {
       if (!createdAuthUserThisAttempt) {
         return j({ success: false, partial_success: true, profile_persisted: true,
@@ -934,24 +955,6 @@ serve(async (req) => {
       }
     }
 
-    // Bump registration link usage
-    if (publicRegistration && registration_token) {
-      try {
-        await supabaseAdmin.rpc("increment_registration_link_usage" as any, {
-          p_token: registration_token,
-        }).throwOnError();
-      } catch {
-        const { data: cur } = await supabaseAdmin
-          .from("registration_links")
-          .select("used_count")
-          .eq("token", registration_token)
-          .maybeSingle();
-        await supabaseAdmin
-          .from("registration_links")
-          .update({ used_count: Number(cur?.used_count || 0) + 1 })
-          .eq("token", registration_token);
-      }
-    }
 
     let message: string;
     if (isExisting) {
