@@ -155,9 +155,18 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).not.toContain("const isAdmin = Boolean(adminRoleResult.data)");
     expect(source).toContain("await requireActiveUser(req, admin)");
     expect(source).toContain("await requireDocumentWrite(userClient, body.organizationId, body.groupId)");
-    expect(source).toContain("uc-permissions-20261018-v2");
+    expect(source).toContain(file === FUNCTION_SOURCE ? "uc-group-education-facts-20261019-v1" : "uc-program-facts-20261018-v1");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
+  });
+
+  it('keeps the old capability and dispatches explicit education source before legacy parsing',()=>{
+    const source=fs.readFileSync(FUNCTION_SOURCE,'utf8');
+    expect(source).toContain('goreltech-group-package-dry-run-v14');
+    expect(source).toContain('goreltech-group-package-uc013-v1');
+    expect(source.indexOf('const sourcePresent = hasEducationSource(rawBody)')).toBeLessThan(source.indexOf('BodySchema.safeParse(rawBody)'));
+    expect(source).toContain('resolveGroupEducationArtifact(userClient');
+    expect(source).toContain('educationArtifactDocumentSnapshot(educationArtifact)');
   });
 
   it("не выдаёт фирменный Word-договор при совпавших названии и ИНН, но другом UUID", () => {

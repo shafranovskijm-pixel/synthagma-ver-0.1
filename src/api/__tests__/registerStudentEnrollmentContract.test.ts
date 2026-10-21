@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "../../../supabase/functions/_shared/student-registration-details";
 import { persistStudentJobPosition } from "../../../supabase/functions/_shared/student-job-position";
+import { claimStudentCapacity, confirmStudentCapacityClaim } from "../../../supabase/functions/_shared/student-capacity-claim";
 
 const REGISTER_STUDENT_SOURCE = resolve(
   process.cwd(),
@@ -50,15 +51,13 @@ describe("register-student enrollment deployment contract", () => {
     const lookupFailure = source.indexOf('code: "PROFILE_LOOKUP_FAILED"', emailLookup);
     const studentProfileCheck = source.indexOf('"is_student_profile"', emailLookup);
     const authIdentityCheck = source.indexOf("supabaseAdmin.auth.admin.getUserById", studentProfileCheck);
-    const capacityLookup = source.lastIndexOf('"get_organization_student_capacity"');
     const authCreation = source.indexOf("supabaseAdmin.auth.admin.createUser");
 
     expect(emailLookup).toBeGreaterThan(-1);
     expect(lookupFailure).toBeGreaterThan(emailLookup);
     expect(studentProfileCheck).toBeGreaterThan(lookupFailure);
     expect(authIdentityCheck).toBeGreaterThan(studentProfileCheck);
-    expect(capacityLookup).toBeGreaterThan(authIdentityCheck);
-    expect(authCreation).toBeGreaterThan(capacityLookup);
+    expect(authCreation).toBeGreaterThan(authIdentityCheck);
     expect(source).toContain('code: "PROFILE_LOOKUP_FAILED"');
     expect(source).toContain('code: "EMAIL_PROFILE_AMBIGUOUS"');
     expect(source).toContain('"is_student_profile"');
@@ -266,9 +265,9 @@ function edgeFixture(options: { role?: string; staff?: boolean; expires?: string
   let handler: (request: Request) => Promise<Response>;
   const source = fs.readFileSync(REGISTER_STUDENT_SOURCE, "utf8").replace(/^import .*;\r?\n/gm, "");
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", compiled)(
+  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", "claimStudentCapacity", "confirmStudentCapacityClaim", compiled)(
     (callback: typeof handler) => { handler = callback; }, () => client, { env: { get: () => "fixture" } }, () => false,
-    hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition,
+    hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, claimStudentCapacity, confirmStudentCapacityClaim,
   );
   return { rpc, createUser, profileUpdate, profiles, call: async (body: Record<string, unknown> = {}) => {
     const response = await handler!(new Request("https://fixture.invalid", { method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" }, body: JSON.stringify({ organization_id: "org-1", full_name: "Иванов", custom_login: "Sgt001", department: "Участок 2", ...body }) }));

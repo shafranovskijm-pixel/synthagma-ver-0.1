@@ -17,10 +17,14 @@ import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
 import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
 import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
 import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
-import { JournalCreationWizard } from "./JournalCreationWizard";
+import { CustomJournalsPanel } from './CustomJournalsPanel';
+import { CustomJournalEditor } from './CustomJournalEditor';
+import { useCustomJournals } from '@/hooks/useCustomJournals';
+import { journalUuid } from '@/lib/customJournals/contract';
 import { IdentificationJournal } from "./IdentificationJournal";
 import { GroupContextBanner } from "./GroupContextBanner";
 import { GroupJournalGate } from "./GroupJournalGate";
+import { GroupEducationFactsPanel } from './groups/GroupEducationFactsPanel';
 import {
   type GroupJournalContext,
   isGroupJournalContextActive,
@@ -37,7 +41,6 @@ import {
 // ── Types & Constants ──
 
 interface JournalItem { id: string; title: string; description: string; required: boolean; }
-interface CustomJournal { id: string; title: string; description: string; fields: string[]; createdAt: string; }
 interface JournalCategory { id: string; title: string; icon: React.ElementType; color: string; bgColor: string; journals: JournalItem[]; }
 
 const JOURNAL_CATEGORIES: JournalCategory[] = [
@@ -92,9 +95,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean; copyScope?: CopiesJournalScope; copySource?: string | null } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
-  const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
-  const [editingCustomJournal, setEditingCustomJournal] = useState<CustomJournal | null>(null);
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
   const [groupStatus, setGroupStatus] = useState<"loading" | "ready" | "error">("loading");
   const [groupError, setGroupError] = useState<string | null>(null);
@@ -104,14 +105,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const journalType = searchParams.get("journalType");
   const journalView = searchParams.get("journalView");
   const knownManualJournal = JOURNAL_CATEGORIES.flatMap(category => category.journals).find(journal => journal.id === journalType)
-    ?? customJournals.find(journal => journal.id === journalType);
+;
   const activeJournal = journalView === "manual" && knownManualJournal
     ? { type: knownManualJournal.id, title: knownManualJournal.title } : null;
   const activeAutoJournal = journalView === "auto" && journalType
     && (AUTO_JOURNALS[journalType] || SPECIAL_JOURNALS.has(journalType) || journalType === "identification")
     ? journalType : hasEducationDocumentFocus ? "education_documents" : null;
 
-  const navigateJournal = useCallback((type: string | null, view?: "auto" | "manual") => {
+  const customModel = useCustomJournals(organizationId, !isGroupJournalContextActive({groupId,returnToGroupId}));
+  const navigateJournal = useCallback((type: string | null, view?: "auto" | "manual" | "group-facts" | "custom") => {
     setSearchParams(current => {
       const next = clearEducationDocumentsJournalFocusParams(current);
       if (type && view) {
@@ -151,20 +153,16 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     ? { groupId, courseId: courseId || null, memberUserIds: groupMemberUserIds, status: groupStatus, errorMessage: groupError }
     : null;
 
-  useEffect(() => {
-    const saved = localStorage.getItem(`custom_journals_${organizationId}`);
-    if (saved) setCustomJournals(JSON.parse(saved));
-  }, [organizationId]);
 
 
   const inGroupContext = isGroupJournalContextActive({ groupId, returnToGroupId });
   const customGuard = resolveCustomJournalGuard({ groupId, returnToGroupId });
   const manualEditorGuard = resolveManualJournalEditorGuard({ groupId, returnToGroupId });
 
-  const saveCustomJournals = (journals: CustomJournal[]) => { localStorage.setItem(`custom_journals_${organizationId}`, JSON.stringify(journals)); setCustomJournals(journals); };
 
   const openCreateWizard = () => {
     if (customGuard.blocked) { toast.error(customGuard.reason!); return; }
+    if (!customModel.canWrite || customModel.loading || customModel.pending) return;
     setShowCreateWizard(true);
   };
 
@@ -172,15 +170,6 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     if (manualEditorGuard.blocked) { toast.error(manualEditorGuard.reason!); return; }
     navigateJournal(type, "manual");
   };
-
-  const handleSaveJournal = (data: { id?: string; title: string; description: string; fields: string[] }) => {
-    if (customGuard.blocked) { toast.error(customGuard.reason!); setShowCreateWizard(false); setEditingCustomJournal(null); return; }
-    if (data.id) { saveCustomJournals(customJournals.map((j) => j.id === data.id ? { ...j, ...data } : j)); setEditingCustomJournal(null); toast.success("Журнал обновлён"); }
-    else { saveCustomJournals([...customJournals, { id: `custom_${Date.now()}`, title: data.title, description: data.description, fields: data.fields, createdAt: new Date().toISOString() }]); setShowCreateWizard(false); toast.success("Журнал создан"); }
-  };
-
-  const handleDeleteCustomJournal = (journalId: string) => { if (customGuard.blocked) { toast.error(customGuard.reason!); return; } saveCustomJournals(customJournals.filter((j) => j.id !== journalId)); localStorage.removeItem(`journal_${journalId}_${organizationId}`); toast.success("Журнал удалён"); };
-
 
   useEffect(() => {
     (async () => {
@@ -235,6 +224,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
 
   // Render active auto journal — контекст группы должен быть виден на каждом экране
   const activeView = (() => {
+    if (journalView === 'group-facts' && groupId) return <div className="space-y-3"><Button variant="outline" onClick={()=>navigateJournal(null)}>Назад к журналам</Button><GroupEducationFactsPanel organizationId={organizationId} groupId={groupId} mode="readonly" /><p className="text-xs text-muted-foreground">Это источник состава и календаря. Прежние журналы и отметки сохраняют прежнюю структуру; связь отметок с занятиями здесь не устанавливается.</p></div>;
     const gate = (journalType: string, node: React.ReactNode, onClose?: () => void) => (
       <GroupJournalGate journalType={journalType} groupContext={groupContext} onClose={onClose}>
         {node}
@@ -263,6 +253,10 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     return null;
   })();
 
+  if (journalView==='custom'&&journalUuid.safeParse(journalType).success) {
+    return customGuard.blocked ? <div className="space-y-3"><Button variant="outline" className="rounded-xl" onClick={()=>navigateJournal(null)}>Назад к журналам</Button><p className="text-sm text-muted-foreground">{customGuard.reason}</p></div>
+      : <CustomJournalEditor key={organizationId+'|'+journalType} model={customModel} journalId={journalType!} onClose={()=>navigateJournal(null)} />;
+  }
   if (activeView) {
     return (
       <div className="space-y-6">
@@ -287,9 +281,10 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
               <div><h2 className="text-xl font-bold">Полная система учёта для организаций ДПО</h2><p className="text-sm text-muted-foreground mt-1">Электронные журналы с автоматическим заполнением, экспортом и шаблонами</p></div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {groupId && <Button variant="outline" onClick={()=>navigateJournal('group-facts','group-facts')} className="rounded-xl">Состав и календарь группы</Button>}
               <Button variant="outline" onClick={() => openAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
               {!inGroupContext && (
-                <Button onClick={openCreateWizard} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
+                <Button onClick={openCreateWizard} disabled={!customModel.canWrite||customModel.loading||customModel.pending||customModel.saving} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
               )}
             </div>
 
@@ -357,22 +352,8 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
         })}
       </div>
 
-      {/* Custom Journals */}
-      {!inGroupContext && customJournals.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="flex items-center gap-3 p-4 border-b border-border"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><FileText className="w-5 h-5 text-primary" /></div><div><h3 className="font-semibold">Пользовательские журналы</h3><p className="text-sm text-muted-foreground">{customJournals.length} журналов</p></div></div>
-          <div>{customJournals.map((journal) => (
-            <div key={journal.id} className="flex items-start justify-between p-4 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
-              <div className="flex items-start gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5"><FileText className="w-4 h-4 text-primary" /></div><div className="min-w-0 flex-1"><span className="font-medium">{journal.title}</span><p className="text-sm text-muted-foreground mt-1">{journal.description}</p></div></div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                <Button variant="default" size="sm" className="rounded-lg" onClick={() => openManualJournal(journal.id, journal.title)}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
-                <Button variant="outline" size="icon" className="rounded-lg" onClick={() => setEditingCustomJournal(journal)} title="Настроить журнал"><Settings className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteCustomJournal(journal.id)} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>
-              </div>
-            </div>
-          ))}</div>
-        </div>
-      )}
+      {/* Server custom journals preserve the existing list/card shell. */}
+      {!inGroupContext&&<CustomJournalsPanel organizationId={organizationId} model={customModel} createOpen={showCreateWizard} onCreateOpenChange={setShowCreateWizard} onOpen={id=>navigateJournal(id,'custom')} />}
 
       {/* Delete Dialog */}
       <AlertDialog open={!!deletingJournal && (deletingJournal.type !== "copies_duplicates" || deletingJournal.copyScope === copyScope)} onOpenChange={() => setDeletingJournal(null)}>
@@ -380,7 +361,6 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
         <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={handleDeleteJournals} className="bg-destructive hover:bg-destructive/90">Удалить</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
-      <JournalCreationWizard open={!customGuard.blocked && (showCreateWizard || !!editingCustomJournal)} onClose={() => { setShowCreateWizard(false); setEditingCustomJournal(null); }} onComplete={handleSaveJournal} editingJournal={editingCustomJournal} />
     </div>
   );
 }

@@ -1,0 +1,2020 @@
+{
+  "release": "uc-group-education-facts-20261019",
+  "preparedOnly": true,
+  "preparationProducer": {
+    "mode": "ISOLATED_V4_PACKAGING_COPY_NATIVE_METADATA_ONLY",
+    "path": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\uc-full-cycle-prepare-v4-20261021\\prepare.mjs",
+    "rawSha256": "4de584abb49682729651407e8f614529fad0613605cdbea6320e72d96b095e98",
+    "original": {
+      "path": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\uc-full-cycle-main68-candidate-20261021\\docs\\releases\\sintagma-production\\uc-group-education-facts-20261019\\prepare.mjs",
+      "rawSha256": "0f2087fe7c2d20468b653b0c116b81cb008e51ccd133a5d646ce6a0ce094cda6",
+      "nativeTestedOriginalExecuted": false
+    },
+    "candidateRoot": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\uc-full-cycle-main68-candidate-20261021\\",
+    "outputFolder": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\uc-full-cycle-prepare-v4-20261021\\",
+    "fix": "Verify counter extension original raw SHA separately from canonical LF suffix/prefix/framing transport; product SQL unchanged.",
+    "counterExtension": {
+      "rawSha256": "63da809bbee1165dd466c471ec47f542fc32d959e9adb41d5e1e4ecb9a46c11f",
+      "canonicalLfSha256": "b424ea656c92adb9c9833800253d7fd7e35ffe0bde6cffec295f3fca09286442"
+    }
+  },
+  "nativeStage51Preparation": {
+    "mode": "ACTUAL_NATIVE10_FC01_STAGE51_READONLY_METADATA_NO_PREPARATION_ENGINE",
+    "metadata": {
+      "path": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\pg-lab-uc013-20261019\\results\\uc-full-cycle-native-linux-20261021T104758Z-ecce994d\\stage51-native-metadata.json",
+      "sha256": "88a1a2ae3913734464fbec1fd5e02c1345abd5125bb73b9f37484b3175afdc74"
+    },
+    "native10": {
+      "path": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\pg-lab-uc013-20261019\\results\\uc-full-cycle-native-linux-20261021T104758Z-ecce994d\\result.json",
+      "sha256": "a12a824704dba3b0393e9e173db3a5663ea90a49fb245fd9cc599f64153f344d"
+    },
+    "manifest": {
+      "path": "C:\\Users\\max\\Documents\\Codex\\2026-10-16\\sintagma-local\\work\\uc-full-cycle-native-acceptance-v3-20261021\\profile\\linux-full-cycle-manifest.json",
+      "sha256": "01f23eff48140779e443404f3da978528509973c001f53439a29783f607df2fa"
+    },
+    "noPreparationEngineLaunched": true
+  },
+  "sourceFreezeStatus": "HELD_FOR_NATIVE_VALIDATION",
+  "candidatePreparation": true,
+  "counter51Integration": {
+    "witness": "docs/releases/sintagma-production/uc-group-education-facts-20261019/counter51-integration-witness.json",
+    "witnessSha256": "6e6a0289efbaf9ecb937b6aa4bc7ab045ce9627666456d26d74800692062a729",
+    "exactMode48PrefixSha256": "e31e18c9d6fdb74c01dae596e703c8a1c91fcfe8d9220a4ad0ab1aec87f0cdf3",
+    "counterExtensionSha256": "63da809bbee1165dd466c471ec47f542fc32d959e9adb41d5e1e4ecb9a46c11f",
+    "expectedFunctions": 51,
+    "nativeIntegratedAcceptance": false,
+    "nativeOriginal26Acceptance": {
+      "path": "docs/releases/sintagma-production/uc-group-education-facts-20261019/native51-accepted-full26-metadata.json",
+      "sha256": "2541eacd7496cce5e96a17baff294ebd676a755f37b4ef1f252a86246b061ea5",
+      "resultSha256": "15bc0f137f135ec94dd3a58332c874872baf84f81287ddfebf0c06456069468a",
+      "tests": 26
+    },
+    "privacyStackSource": {
+      "path": "docs/releases/sintagma-production/uc-full-cycle-20261021/privacy-stack-source-plan.json",
+      "sha256": "f01acc00821f2082703f45c43601cc004b5924cd9b44745d3601721c1681545c",
+      "freshCapture": {
+        "status": "ACTUAL_ROOT_POST_SGT609_CAPTURE_SOURCE_REVIEWED",
+        "artifact": "supabase/tests/fixtures/uc-post609-portable-capture.json",
+        "artifactSha256": "b32a1a698eee58c2cf70647b707c20c40cf06f49a28a7eed9067e48e195c9469",
+        "rootReviewed": true,
+        "rootEvidence": "Parent delivered actual28/28 PASS capture after readonly securecontext execution and explicitly authorized finite source implementation.",
+        "context": {
+          "current_user": "postgres",
+          "database": "postgres",
+          "resolved_schemas": [
+            "pg_catalog",
+            "public"
+          ],
+          "search_path": "pg_catalog, public",
+          "server_version": "17.6",
+          "server_version_num": "170006",
+          "session_user": "postgres",
+          "timezone": "UTC",
+          "transaction_read_only": "on"
+        },
+        "ledgerRows": 609,
+        "fullCatalogArtifact": "work/sgt-feature-grants-production-release-v2-20261021/ACTUAL_POSTCOMMIT_BASELINE_20261021.json",
+        "fullCatalogArtifactSha256": "13fe5d6b90933d97fb8a88f384a12a3053393a92d04df90a3008331e8a3c4a85",
+        "capturedAt": "2026-10-21T09:49:25.889518+00:00"
+      }
+    },
+    "currentIntegratedCandidateAcceptance": false
+  },
+  "migrationCount": 1,
+  "batchSha256": "a4925d555009e21ad4ee9a63072a21822ba72fc917a57f7ca7ff583250c743dd",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261019120000_uc_group_education_facts.sql",
+      "version": "20261019120000",
+      "name": "uc_group_education_facts",
+      "sourceSha256": "b54b161b9670f5e06d80fca10413033b2b800c3cb6b5e519069d05b0b349c07b",
+      "sourceMd5": "ad5891021311b1b5a76db8642bd35779",
+      "executableMd5": "d814fcfe52304ad4dff9dd702636917b",
+      "executableSha256": "8480fa73eb403e8c9611aafe6121ef622287ea55e23a2b638259d01b1bd9b361",
+      "transportFraming": {
+        "rule": "Remove exactly one BEGIN; and final COMMIT; from the SHA-pinned counter51 extension only; raw ledger source unchanged.",
+        "counterExtensionSha256": "63da809bbee1165dd466c471ec47f542fc32d959e9adb41d5e1e4ecb9a46c11f",
+        "reversible": true
+      }
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    },
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a"
+    },
+    {
+      "file": "20261018111000_uc_program_facts.sql",
+      "version": "20261018111000",
+      "name": "uc_program_facts",
+      "sourceMd5": "e78179ae3042db206bd562914c87442d"
+    },
+    {
+      "file": "20261018112000_uc_student_frdo_write_boundaries.sql",
+      "version": "20261018112000",
+      "name": "uc_student_frdo_write_boundaries",
+      "sourceMd5": "c03613825507e6f101503f335ee22813"
+    },
+    {
+      "file": "20261018113000_uc_enrollment_delete_boundaries.sql",
+      "version": "20261018113000",
+      "name": "uc_enrollment_delete_boundaries",
+      "sourceMd5": "b6f69536e3619a3c3fd2084b10447151"
+    },
+    {
+      "file": "20261019114000_uc_identification_private_review.sql",
+      "version": "20261019114000",
+      "name": "uc_identification_private_review",
+      "sourceMd5": "e92a1c9ec0a810fbd92b65e6b48efcf2"
+    },
+    {
+      "file": "20261019115000_uc_admission_cases.sql",
+      "version": "20261019115000",
+      "name": "uc_admission_cases",
+      "sourceMd5": "9abe6463e90ed80449d425955052a9d4"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/manifest.json",
+    "sourceSha256": "ecfc67886e9eb5e9a97d4951eb38ed95563fb10dab262e2c4eead3444717a842"
+  },
+  "previousReleaseFiles": [
+    {
+      "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/manifest.json",
+      "sourceSha256": "ecfc67886e9eb5e9a97d4951eb38ed95563fb10dab262e2c4eead3444717a842"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/prepare.mjs",
+      "sourceSha256": "4062f66b717507fcdf957ad9dcdda2f571bdb3cf8453b219969f9a596101b016"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/reviewed-source-anchors.json",
+      "sourceSha256": "6dc618a3fd22fb4b08a727ee5e1142e09d3561c23cc28928d14ba954d9db55a8"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/preflight.sql",
+      "sourceSha256": "fe869e4cc6604c64a6b95a208e61b8735652ce9ee6b15135a1f0510d53bcea3a"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/postcheck.sql",
+      "sourceSha256": "849e104bc96b3ade0a18a9974cbdc5d0bad80b20deb60e2fe632496fa2533617"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/production-batch.sql",
+      "sourceSha256": "f01a89f3d1387cd9d423c6e26179bcaec9b89bf5c2eec33e87b72a12728ef0e0"
+    }
+  ],
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens",
+    "public.org_document_reviews",
+    "public.org_document_review_comments",
+    "public.org_document_review_events",
+    "public.org_document_review_requests",
+    "public.program_fact_states",
+    "public.program_fact_versions",
+    "public.course_program_bindings",
+    "public.group_program_bindings",
+    "public.group_program_enrollment_snapshots",
+    "public.program_fact_events",
+    "public.program_fact_requests",
+    "public.education_document_program_sources",
+    "public.uc_student_frdo_write_contexts",
+    "public.video_identifications",
+    "public.uc_enrollment_delete_witnesses",
+    "public.uc_identification_records",
+    "public.uc_identification_sources",
+    "public.uc_identification_events",
+    "public.uc_identification_requests",
+    "public.uc_identification_write_contexts",
+    "public.uc_admission_cases",
+    "public.uc_admission_rule_sets",
+    "public.uc_admission_case_events",
+    "public.uc_admission_case_evidence",
+    "public.uc_admission_evidence_reservations",
+    "public.uc_admission_case_requests",
+    "public.organization_monthly_course_usage",
+    "public.organization_monthly_student_assignments",
+    "public.organization_monthly_training_completions"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.account_deletion_erase_data(uuid,text)",
+      "definition_md5": "725f8d0d90273d393989e39f10c176b4"
+    },
+    {
+      "signature": "public.account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "6213c0e6f96a92f65e081976af522e74"
+    },
+    {
+      "signature": "public.account_deletion_snapshot(uuid)",
+      "definition_md5": "7238852e3da99d7b769e61d65a95dccb"
+    },
+    {
+      "signature": "public.account_deletion_subject_write_guard()",
+      "definition_md5": "cd0003cc49bdf9a3d074c9e624146e46"
+    },
+    {
+      "signature": "public.add_students_to_groups(uuid,uuid[],uuid[])",
+      "definition_md5": "940699229d4830d7a94f7415453b9f07"
+    },
+    {
+      "signature": "public.auto_create_education_document()",
+      "definition_md5": "b8cde9babf27dd691f78ce356319e47f"
+    },
+    {
+      "signature": "public.bump_enrollment_document_facts_revision()",
+      "definition_md5": "fca7f23c0d51b0a4c03a757fc898e2e6"
+    },
+    {
+      "signature": "public.calc_enrollment_expires_at()",
+      "definition_md5": "99c246e392e7b56a4ae73670ce4146f0"
+    },
+    {
+      "signature": "public.capture_postpaid_study_activity()",
+      "definition_md5": "c69b9d7d8134bdad13d9e368fdc37896"
+    },
+    {
+      "signature": "public.create_student_profile_with_capacity(uuid,uuid,text,text,text,text,uuid,uuid,text)",
+      "definition_md5": "09cc562cc19c7c4d37811e478d4f5a46"
+    },
+    {
+      "signature": "public.csz_guard_course_anchor()",
+      "definition_md5": "d1af520e0ab22028a45791f4cc2687a3"
+    },
+    {
+      "signature": "public.csz_guard_enrollment()",
+      "definition_md5": "292b6f3a1e462bd6a2e45689bfc22436"
+    },
+    {
+      "signature": "public.csz_guard_protected_truncate()",
+      "definition_md5": "482a80e76e9fbd143c2fe367e7776683"
+    },
+    {
+      "signature": "public.enforce_course_insert_limit()",
+      "definition_md5": "22d2cf4e62324fbef5aaba41cfb9b443"
+    },
+    {
+      "signature": "public.get_organization_student_capacity(uuid,integer)",
+      "definition_md5": "c6e3e7c0f7f83044069811acb15dd39a"
+    },
+    {
+      "signature": "public.guard_profile_tenant_identity()",
+      "definition_md5": "20dd578b4211496f92a32ccaac4c8d60"
+    },
+    {
+      "signature": "public.sync_group_course_enrollments()",
+      "definition_md5": "97b3ba66ec588a9fa3d77bcd25f57f7a"
+    },
+    {
+      "signature": "public.sync_profile_group_course_enrollment()",
+      "definition_md5": "3608c6747572c6a98830b62cfb5b4238"
+    },
+    {
+      "signature": "public.uc_capture_enrollment_delete_parent()",
+      "definition_md5": "92daddb33e07e4f417504fd9d0c6e2c1"
+    },
+    {
+      "signature": "public.uc_capture_identification_cascade()",
+      "definition_md5": "4e22445a20d9aa9896274e49278aa83d"
+    },
+    {
+      "signature": "public.uc_capture_program_association_event()",
+      "definition_md5": "2ce633cf62c224ab8cb15171b799d2d3"
+    },
+    {
+      "signature": "public.uc_cleanup_enrollment_delete_parent()",
+      "definition_md5": "589f4dc53bb5bc97130736622025441a"
+    },
+    {
+      "signature": "public.uc_cleanup_identification_cascade()",
+      "definition_md5": "2daf4332809b103b3499ae752e2b569f"
+    },
+    {
+      "signature": "public.uc_guard_admission_org_delete()",
+      "definition_md5": "86846ea9cada0d382aae0f0236b52f2a"
+    },
+    {
+      "signature": "public.uc_guard_bound_program_group()",
+      "definition_md5": "fb1210ed77d70500a78ce06cfe72a97f"
+    },
+    {
+      "signature": "public.uc_guard_enrollment_delete()",
+      "definition_md5": "b81522835dc5b307d084fcf4006a2830"
+    },
+    {
+      "signature": "public.uc_guard_program_artifact()",
+      "definition_md5": "eb7789a817440fd1ecadbbdec4f0f2a6"
+    },
+    {
+      "signature": "public.uc_guard_program_history()",
+      "definition_md5": "43ac0a680636b00151d064691eda14ea"
+    }
+  ],
+  "unchangedPriorFunctionBodiesExceptReviewed": [
+    "account_deletion_erase_data(uuid,text)",
+    "account_deletion_personal_row_counts(uuid)",
+    "account_deletion_snapshot(uuid)",
+    "uc_guard_program_artifact()"
+  ],
+  "previousReleaseCompatibility": {
+    "rule": "Three reviewed account bodies substituted in three SHA-pinned historical clauses with exact applicable signature inventories3/2/1; guard and two specific trigger-only legacy111 fingerprints each global-count1. Historical source files unchanged.",
+    "reviewedChanges": [
+      {
+        "signature": "account_deletion_erase_data(uuid,text)",
+        "historical_before_definition_md5": "56549dc5330b85ada3adeed89ac1457f",
+        "before_definition_md5": "725f8d0d90273d393989e39f10c176b4",
+        "definition_md5": "a10c73088117f3422b4eb2ec708dd0ad"
+      },
+      {
+        "signature": "account_deletion_personal_row_counts(uuid)",
+        "historical_before_definition_md5": "6354209a8ba5614d8539059bc33dc0ed",
+        "before_definition_md5": "6213c0e6f96a92f65e081976af522e74",
+        "definition_md5": "52ed26a701debe2c9f9299c04b9db8bb"
+      },
+      {
+        "signature": "account_deletion_snapshot(uuid)",
+        "historical_before_definition_md5": "7238852e3da99d7b769e61d65a95dccb",
+        "before_definition_md5": "7238852e3da99d7b769e61d65a95dccb",
+        "definition_md5": "7725e2a24c177164694f8266cbf344ba"
+      },
+      {
+        "signature": "uc_guard_program_artifact()",
+        "historical_before_definition_md5": "eb7789a817440fd1ecadbbdec4f0f2a6",
+        "before_definition_md5": "eb7789a817440fd1ecadbbdec4f0f2a6",
+        "definition_md5": "af13f7ea0040bd1924c4f4542dcc1fab"
+      }
+    ],
+    "historicalClauses": [
+      {
+        "label": "exact_reviewed_five_erasure_bodies",
+        "canonicalLfSha256": "47d3b506e6e5931c25e7ae8a5c9c3624053ec44c265403ee0e78b98929346af6",
+        "signatures": [
+          "account_deletion_erase_data(uuid,text)",
+          "account_deletion_personal_row_counts(uuid)",
+          "account_deletion_snapshot(uuid)"
+        ]
+      },
+      {
+        "label": "exact_reviewed_registration_erasure_bodies",
+        "canonicalLfSha256": "5c2cd7fa3bc27ce2952921e44a16dbaa294c0131082f6c4ee7a2b31eba52e897",
+        "signatures": [
+          "account_deletion_erase_data(uuid,text)",
+          "account_deletion_personal_row_counts(uuid)"
+        ]
+      },
+      {
+        "label": "exact_unchanged_authority_dependencies",
+        "canonicalLfSha256": "6a1c13dd87ae18e1bb574cfcb9650e1afb9681b28eae166d9d9c181c3562cd8c",
+        "signatures": [
+          "account_deletion_snapshot(uuid)"
+        ]
+      }
+    ],
+    "legacyShapes": [
+      {
+        "table": "group_program_bindings",
+        "afterMd5": "7224fda938f95ffa4af63063c244f664",
+        "beforeMd5": "3b0d3e152d262d6d56b429f404e192fd",
+        "reconstructedMd5": "3b0d3e152d262d6d56b429f404e192fd",
+        "excludedNewTriggers": [
+          {
+            "name": "aaa_uc013_source_observe",
+            "enabled": "O",
+            "table_name": "group_program_bindings",
+            "schema_name": "public",
+            "definition_md5": "93123d1e330eee9ad242070d8deb9fb2"
+          },
+          {
+            "name": "aaa_uc013_source_preflight",
+            "enabled": "O",
+            "table_name": "group_program_bindings",
+            "schema_name": "public",
+            "definition_md5": "31317d7a65953011e2ff423562696d8d"
+          },
+          {
+            "name": "uc013_source_fold",
+            "enabled": "O",
+            "table_name": "group_program_bindings",
+            "schema_name": "public",
+            "definition_md5": "dfc228d0166322924a7ee8a1e32b8884"
+          },
+          {
+            "name": "uc013_source_truncate",
+            "enabled": "O",
+            "table_name": "group_program_bindings",
+            "schema_name": "public",
+            "definition_md5": "abefb7dad79749aa1de91725b6f6a664"
+          },
+          {
+            "name": "zzzzzz_uc013_statement_end",
+            "enabled": "O",
+            "table_name": "group_program_bindings",
+            "schema_name": "public",
+            "definition_md5": "f3ca1e574387e95f03dfdb23b7000497"
+          }
+        ]
+      },
+      {
+        "table": "group_program_enrollment_snapshots",
+        "afterMd5": "f9f2c19a8d11237b3cc8f9682f9074c4",
+        "beforeMd5": "240e627838876757c5767a0c3704f958",
+        "reconstructedMd5": "240e627838876757c5767a0c3704f958",
+        "excludedNewTriggers": [
+          {
+            "name": "aaa_uc013_source_observe",
+            "enabled": "O",
+            "table_name": "group_program_enrollment_snapshots",
+            "schema_name": "public",
+            "definition_md5": "76580a7fd187d606febcb157bc0f7c11"
+          },
+          {
+            "name": "aaa_uc013_source_preflight",
+            "enabled": "O",
+            "table_name": "group_program_enrollment_snapshots",
+            "schema_name": "public",
+            "definition_md5": "60c4d1c47105326982224767059651bc"
+          },
+          {
+            "name": "uc013_source_fold",
+            "enabled": "O",
+            "table_name": "group_program_enrollment_snapshots",
+            "schema_name": "public",
+            "definition_md5": "594aff78e99102a8424a8bf14e36b211"
+          },
+          {
+            "name": "uc013_source_truncate",
+            "enabled": "O",
+            "table_name": "group_program_enrollment_snapshots",
+            "schema_name": "public",
+            "definition_md5": "4e54a921b3539ea6f2923031bfa180fc"
+          },
+          {
+            "name": "zzzzzz_uc013_statement_end",
+            "enabled": "O",
+            "table_name": "group_program_enrollment_snapshots",
+            "schema_name": "public",
+            "definition_md5": "b7b6092c6967bc06ea85cfc49d9a7903"
+          }
+        ]
+      }
+    ],
+    "shapePredicates": [
+      {
+        "table": "group_program_bindings",
+        "before": "(SELECT md5(jsonb_build_object(\n 'columns',(SELECT jsonb_agg(jsonb_build_array(a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull,pg_get_expr(d.adbin,d.adrelid),a.attacl) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid='public.group_program_bindings'::regclass AND a.attnum>0 AND NOT a.attisdropped),\n 'constraints',(SELECT jsonb_agg(jsonb_build_array(conname,pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid='public.group_program_bindings'::regclass AND contype<>'n'),\n 'indexes',(SELECT jsonb_agg(jsonb_build_array(indexname,indexdef) ORDER BY indexname) FROM pg_indexes WHERE schemaname='public' AND tablename='group_program_bindings'),\n 'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY policyname) FROM pg_policies p WHERE schemaname='public' AND tablename='group_program_bindings'),\n 'triggers',(SELECT jsonb_agg(jsonb_build_array(tgname,tgenabled,pg_get_triggerdef(oid)) ORDER BY tgname) FROM pg_trigger WHERE tgrelid='public.group_program_bindings'::regclass AND NOT tgisinternal),\n 'rls',(SELECT jsonb_build_array(relrowsecurity,relforcerowsecurity) FROM pg_class WHERE oid='public.group_program_bindings'::regclass))::text) hash)='3b0d3e152d262d6d56b429f404e192fd'",
+        "after": "(SELECT md5(jsonb_build_object(\n 'columns',(SELECT jsonb_agg(jsonb_build_array(a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull,pg_get_expr(d.adbin,d.adrelid),a.attacl) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid='public.group_program_bindings'::regclass AND a.attnum>0 AND NOT a.attisdropped),\n 'constraints',(SELECT jsonb_agg(jsonb_build_array(conname,pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid='public.group_program_bindings'::regclass AND contype<>'n'),\n 'indexes',(SELECT jsonb_agg(jsonb_build_array(indexname,indexdef) ORDER BY indexname) FROM pg_indexes WHERE schemaname='public' AND tablename='group_program_bindings'),\n 'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY policyname) FROM pg_policies p WHERE schemaname='public' AND tablename='group_program_bindings'),\n 'triggers',(SELECT jsonb_agg(jsonb_build_array(tgname,tgenabled,pg_get_triggerdef(oid)) ORDER BY tgname) FROM pg_trigger WHERE tgrelid='public.group_program_bindings'::regclass AND NOT tgisinternal),\n 'rls',(SELECT jsonb_build_array(relrowsecurity,relforcerowsecurity) FROM pg_class WHERE oid='public.group_program_bindings'::regclass))::text) hash)='7224fda938f95ffa4af63063c244f664'"
+      },
+      {
+        "table": "group_program_enrollment_snapshots",
+        "before": "(SELECT md5(jsonb_build_object(\n 'columns',(SELECT jsonb_agg(jsonb_build_array(a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull,pg_get_expr(d.adbin,d.adrelid),a.attacl) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid='public.group_program_enrollment_snapshots'::regclass AND a.attnum>0 AND NOT a.attisdropped),\n 'constraints',(SELECT jsonb_agg(jsonb_build_array(conname,pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid='public.group_program_enrollment_snapshots'::regclass AND contype<>'n'),\n 'indexes',(SELECT jsonb_agg(jsonb_build_array(indexname,indexdef) ORDER BY indexname) FROM pg_indexes WHERE schemaname='public' AND tablename='group_program_enrollment_snapshots'),\n 'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY policyname) FROM pg_policies p WHERE schemaname='public' AND tablename='group_program_enrollment_snapshots'),\n 'triggers',(SELECT jsonb_agg(jsonb_build_array(tgname,tgenabled,pg_get_triggerdef(oid)) ORDER BY tgname) FROM pg_trigger WHERE tgrelid='public.group_program_enrollment_snapshots'::regclass AND NOT tgisinternal),\n 'rls',(SELECT jsonb_build_array(relrowsecurity,relforcerowsecurity) FROM pg_class WHERE oid='public.group_program_enrollment_snapshots'::regclass))::text) hash)='240e627838876757c5767a0c3704f958'",
+        "after": "(SELECT md5(jsonb_build_object(\n 'columns',(SELECT jsonb_agg(jsonb_build_array(a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull,pg_get_expr(d.adbin,d.adrelid),a.attacl) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid='public.group_program_enrollment_snapshots'::regclass AND a.attnum>0 AND NOT a.attisdropped),\n 'constraints',(SELECT jsonb_agg(jsonb_build_array(conname,pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid='public.group_program_enrollment_snapshots'::regclass AND contype<>'n'),\n 'indexes',(SELECT jsonb_agg(jsonb_build_array(indexname,indexdef) ORDER BY indexname) FROM pg_indexes WHERE schemaname='public' AND tablename='group_program_enrollment_snapshots'),\n 'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY policyname) FROM pg_policies p WHERE schemaname='public' AND tablename='group_program_enrollment_snapshots'),\n 'triggers',(SELECT jsonb_agg(jsonb_build_array(tgname,tgenabled,pg_get_triggerdef(oid)) ORDER BY tgname) FROM pg_trigger WHERE tgrelid='public.group_program_enrollment_snapshots'::regclass AND NOT tgisinternal),\n 'rls',(SELECT jsonb_build_array(relrowsecurity,relforcerowsecurity) FROM pg_class WHERE oid='public.group_program_enrollment_snapshots'::regclass))::text) hash)='f9f2c19a8d11237b3cc8f9682f9074c4'"
+      }
+    ]
+  },
+  "historicalArchive": {
+    "path": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/manifest.json",
+    "sourceSha256": "0ac85bbd2159398ec5b338e066e3ba2165dfe80d775dfb8b14b179391c68f094",
+    "originalManifest": {
+      "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
+      "sourceSha256": "ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf"
+    },
+    "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+    "entries": [
+      {
+        "originalPath": "src/components/organization/CourseProgramsList.tsx",
+        "rawSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5",
+        "canonicalLfSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "6e482848b20581bf5e0d328c07746a07a5fcfb2d",
+        "sourceByteLength": 8054,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5.source"
+      },
+      {
+        "originalPath": "src/components/organization/group-folder/GenerateContractDialog.tsx",
+        "rawSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709",
+        "canonicalLfSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "387a99db12ae94e7a63e3e6119655fbb11828f2f",
+        "sourceByteLength": 70869,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709.source"
+      },
+      {
+        "originalPath": "src/components/organization/group-folder/GenerateDocxContractDialog.tsx",
+        "rawSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac",
+        "canonicalLfSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "6280182315f64773952335602fbf23a4d7a8ea89",
+        "sourceByteLength": 35742,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac.source"
+      },
+      {
+        "originalPath": "src/components/organization/group-folder/GroupDocumentsFolder.tsx",
+        "rawSha256": "e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a",
+        "canonicalLfSha256": "e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "f72b7870f4f41f512fc65ba289f613e6d13b6384",
+        "sourceByteLength": 45607,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a.source"
+      },
+      {
+        "originalPath": "src/components/organization/programs/GroupProgramFactsPanel.tsx",
+        "rawSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d",
+        "canonicalLfSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "cb3a6e20b0e72b9613cbcff37e2c34c47f731754",
+        "sourceByteLength": 7350,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d.source"
+      },
+      {
+        "originalPath": "src/components/organization/programs/ProgramFactsPanel.tsx",
+        "rawSha256": "8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1",
+        "canonicalLfSha256": "8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "f270c20f63827ec19d4f71d477f9fe4db8aa78c3",
+        "sourceByteLength": 21323,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1.source"
+      },
+      {
+        "originalPath": "src/components/organization/programs/groupProgramPresentation.ts",
+        "rawSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1",
+        "canonicalLfSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "16d42250f86c0dabc1f2fa59a97be82fc08924c0",
+        "sourceByteLength": 820,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1.source"
+      },
+      {
+        "originalPath": "src/components/organization/tabs/DocumentsTab.tsx",
+        "rawSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247",
+        "canonicalLfSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "3fd781a89e2f0da80bbf4adbcd6c22334968ccd0",
+        "sourceByteLength": 35019,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247.source"
+      },
+      {
+        "originalPath": "src/components/organization/tabs/GroupFolderTab.tsx",
+        "rawSha256": "76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425",
+        "canonicalLfSha256": "76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "5e90dbdcff3f96954502ec816e93fd9bc8e53cf4",
+        "sourceByteLength": 72158,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425.source"
+      },
+      {
+        "originalPath": "src/hooks/useContractGenerator.ts",
+        "rawSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708",
+        "canonicalLfSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "4e2fdeacdd89b51713ba54ce4354d0398a2239d7",
+        "sourceByteLength": 27681,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708.source"
+      },
+      {
+        "originalPath": "src/hooks/useGroupDocuments.ts",
+        "rawSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6",
+        "canonicalLfSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "36c382979e8334f7fabac721ddb74e5b0d65443c",
+        "sourceByteLength": 5088,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6.source"
+      },
+      {
+        "originalPath": "src/hooks/useProgramFacts.ts",
+        "rawSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb",
+        "canonicalLfSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "4476793aa5354c60b0eeb9755f2460fc913c1e31",
+        "sourceByteLength": 12666,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb.source"
+      },
+      {
+        "originalPath": "src/lib/group-docs/generate.ts",
+        "rawSha256": "8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9",
+        "canonicalLfSha256": "8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "d601896992dfb99db63eee6f087ecd0d1b14f559",
+        "sourceByteLength": 8610,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9.source"
+      },
+      {
+        "originalPath": "src/lib/group-docs/schema.ts",
+        "rawSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10",
+        "canonicalLfSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "2cf99b4188d7540e8e9e1e1a01e410fe196f113a",
+        "sourceByteLength": 3906,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10.source"
+      },
+      {
+        "originalPath": "src/lib/programFacts.ts",
+        "rawSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+        "canonicalLfSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "79871199a34d63bb0bd8e87e528a6d1e57dae384",
+        "sourceByteLength": 10091,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383.source"
+      },
+      {
+        "originalPath": "supabase/functions/_shared/program-facts.ts",
+        "rawSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660",
+        "canonicalLfSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "767a904ba870d30b40702d3e6615f80a0e6a6dd6",
+        "sourceByteLength": 10685,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660.source"
+      },
+      {
+        "originalPath": "supabase/functions/compile-docx-contract/index.ts",
+        "rawSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1",
+        "canonicalLfSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "f1909706ba24cff75f2a54cb6d1178f6bfb1ba47",
+        "sourceByteLength": 23689,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1.source"
+      },
+      {
+        "originalPath": "supabase/functions/compile-group-class-journal/index.ts",
+        "rawSha256": "a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d",
+        "canonicalLfSha256": "a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d",
+        "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+        "sourceGitBlobOid": "315a2160e6417ac07c88c815da2d9a0155323816",
+        "sourceByteLength": 33777,
+        "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d.source"
+      }
+    ]
+  },
+  "unchangedHistoricalReleaseFiles": [
+    {
+      "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
+      "sourceSha256": "ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-program-facts-20261018/prepare-release.mjs",
+      "sourceSha256": "373422a24c8517196b7910132967237febabf018f51b5ee0fde22cd0bda015f5"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-transaction.sql",
+      "sourceSha256": "e9b50a1c00d88fccb826adc6f70f728f84f352c5232a607252e01c3d6c335142"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-program-facts-20261018/preflight.sql",
+      "sourceSha256": "667d2cfa9072c1a6c5d7caffe089a1f87b2b0ad6b269de7bbf18f0b8fe6abab6"
+    },
+    {
+      "path": "docs/releases/sintagma-production/uc-program-facts-20261018/postcheck.sql",
+      "sourceSha256": "80e1e6f71fff4547c907e1a98d6be1fcd8c2154c9ab616d98187f58ba3cb7f2b"
+    }
+  ],
+  "sourceAnchors": {
+    "path": "docs/releases/sintagma-production/uc-group-education-facts-20261019/reviewed-source-anchors.json",
+    "sourceSha256": "d22533082d6766cdb403f2b2aed276d881e3720232e85e0773c6e49c2c564c3e"
+  },
+  "baselineCapture": {
+    "path": "supabase/tests/fixtures/uc-group-education-facts-baseline.json",
+    "sourceSha256": "ce446f1e9c7a815df7a1ca168e15dd212a27e89d00c37af3f26430a5ded5a494"
+  },
+  "expectedFunctions": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "anon": false,
+      "signature": "apply_group_education_facts_action(uuid,uuid,bigint,uuid,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": true,
+      "definition_md5": "fe4c4d6eb3fdad11c8e8c4d40ab6b454"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "anon": false,
+      "signature": "read_group_education_facts(uuid,uuid,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": true,
+      "definition_md5": "09920d026684f29eeb45af6cb35faffd"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_erase_group_education_facts(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "6edeeaf434b269a82afd156eb5d6eb64"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_actor_allowed(uuid,uuid,uuid,boolean)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "65e768337c08576fe98d2ba4f635be34"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_actor_facts(uuid,uuid,uuid,boolean)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "9f97d20a8bd235af84c11449b7e5cb12"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_append(uuid,uuid,uuid,text,timestamp with time zone,jsonb,text,uuid,uuid,uuid,uuid,uuid,jsonb,uuid,text)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "56323f6159613c47ed4c14271f60b0f1"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_authority(uuid,uuid,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "72197dfa9f61684eabfe36ede4d22143"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_budget_counter(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "cb8ef162e8f93d21241c291543999238"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_budget_ticket_guard()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "d079f53e2c4bed427fa905f4065a8ebb"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_calendar(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "ebdc054dd2c0c6fbf62548d01d97a920"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_calendar_input(uuid,uuid,jsonb,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "f9efa636d923a36030efc0d440edbdf6"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_capabilities(uuid,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "ea19e09040a38de728289010a64a3c71"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_compact_budget_tickets()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "27c422e48b2a8376cc9405578c8f709a"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_correct(uuid,uuid,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "389b7ea12c5016c47a02426c7345c973"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_count(integer,boolean)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "d5ba9fbd1e5c76394f349c682bc6ef59"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_deletion_preview(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "51d07ce570983fb238735f8f13f37b00"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_envelope(uuid,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "2099370b881bd939afc15ef7c988026d"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_erasing(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "e15622bfe33ad971c09d6207b42734ba"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_error(text)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "7d95f86c32312dc49915faab9b7d308b"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_event(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "8896759b8f07e52d74a0a7a6b6b0f3d6"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_event_complete(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "becd22ad94aa3cc358987a340ad170f7"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_legacy(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "00a57bc8ceeba84f47d32cb0bbcf59d2"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_lock(uuid,uuid,uuid[],uuid,boolean)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "7817c2332be2dbfa1ae95501e7754768"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_offset(text)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "9cbc88b36c56e1c529f65fc7975706ac"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_open_gap(uuid,uuid,timestamp with time zone,bigint,text,uuid,text)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "0e369032ef03eacc66c7508298239d43"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_own_source(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "295789143ed6adf7acf6811dd6146e7a"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_parent_cleanup()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "e62e759ef88a0527f9841036f223745a"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_personal_counts(uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "878070544bd428c4fb28e85f0891fb71"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_prerequisite(text,text,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "5f1d5a04c557fa334a46c5f551062604"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_program(uuid,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "3ddfcb97fa76f4b979f899bd9e6f6667"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_program_proof(uuid,uuid,jsonb,uuid[])",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "088b178a74cb60f1b6eff0fdb5a67247"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_public_row(jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "7b7ee4bcbac0546aa5b93ced4ee57cc6"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_redact(jsonb,uuid,boolean,boolean,uuid[],uuid[])",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "f8441ea984564bc6f07ca5c2094265c9"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_retained_program_valid(uuid,uuid,uuid,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "aab8ea38bf12c2e057896c59851a7648"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_roster_context(uuid,uuid,jsonb,bigint,uuid,integer)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "3546a3593fcfe91fb7e7217e50175428"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_scan(uuid,uuid,timestamp with time zone,uuid,jsonb,boolean,uuid[])",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "0ada0f370189530fd49e488a06cdd186"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_scope(uuid,uuid,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "4b9809e8bae980279d8af2556761ebf8"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_short_name(text)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "bb8cb4314cae48f242c27bcc51cfab62"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_snapshot_page(uuid,uuid,uuid,uuid,integer)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "5f0cc6e8df03a7c551da9e0745a22d60"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_after()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "905572a7872607018081ea3d59c2b711"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_before()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "6fe87318dc3a19f4124095e44adc4ce6"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_fold()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "1bd1d631df99920fed70af8c693a31e3"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_observe()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "cd900fc5f511e5f1cce72e1132984ed2"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_queue(uuid,uuid,uuid[],text,text,jsonb,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "fff27fbc0e285171ddb3c2ce9c22b5b3"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_relevant(text,jsonb,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "471f1b04846b39c455b239381dd7e797"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_scopes(text,jsonb,jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "65f474abe5339ab6dce057f6d71e3e82"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_statement_end()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "25668455ef6d3f4d5821022f5aa329cb"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_source_truncate()",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "3f544fa385e6f9a7fb78dbf72fee467b"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_teacher_allowed(uuid,uuid,uuid)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "dc1310b73e4f84a8deeabb556ffb1369"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_valid_zone(text)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "76657e8d633f02cc1a0a5f2da2de51f0"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "anon": false,
+      "signature": "uc_group_education_validate_artifact(jsonb)",
+      "owner_name": "postgres",
+      "service_role": false,
+      "authenticated": false,
+      "definition_md5": "e26fda60fe424fe09bdd0e2f3fbfdd6d"
+    }
+  ],
+  "expectedChangedFunctions": [
+    {
+      "signature": "account_deletion_erase_data(uuid,text)",
+      "definition_md5": "a10c73088117f3422b4eb2ec708dd0ad"
+    },
+    {
+      "signature": "account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "52ed26a701debe2c9f9299c04b9db8bb"
+    },
+    {
+      "signature": "account_deletion_snapshot(uuid)",
+      "definition_md5": "7725e2a24c177164694f8266cbf344ba"
+    },
+    {
+      "signature": "uc_guard_program_artifact()",
+      "definition_md5": "af13f7ea0040bd1924c4f4542dcc1fab"
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "uc_group_calendar_versions",
+      "schemaMd5": "d05dfa6718d8c16d98b3e1fb385b6ab9"
+    },
+    {
+      "table": "uc_group_education_events",
+      "schemaMd5": "5795c2a787d2cfedd12e25b9f7171ac1"
+    },
+    {
+      "table": "uc_group_education_requests",
+      "schemaMd5": "3a23617cb0d102f62a0839eb7b541cd8"
+    },
+    {
+      "table": "uc_group_education_states",
+      "schemaMd5": "17d216ab7d8ba758d17494495881311d"
+    },
+    {
+      "table": "uc_group_roster_snapshots",
+      "schemaMd5": "491552c89abd2eaef4595d2bd132e84c"
+    }
+  ],
+  "expectedPolicies": [],
+  "expectedTriggers": [
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "definition_md5": "4aa33249831190a612e5f0297defcebc"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "definition_md5": "787d49799ae412bdc75f2768032ee44e"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "definition_md5": "ef98dbe4436331eb5c0a1905f00f9391"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "definition_md5": "16b6eb0d9ba9d69cb4296ca9d399a919"
+    },
+    {
+      "name": "zzzzz_uc013_parent_cleanup",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "definition_md5": "22761d4caacae687272d0ffb10d80c73"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "definition_md5": "fb2d366d57ba585b536b338fdbcfceaa"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "definition_md5": "8cd883ffbd2a78ea393e1bd784516280"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "definition_md5": "c4ad06597a760e801094ad6c0fc64967"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "definition_md5": "822f283b7b42f9d87fc26b5cd7836ee8"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "definition_md5": "e79b9753b31a78fb5a0155d47a2d07a0"
+    },
+    {
+      "name": "zzzzz_uc013_parent_cleanup",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "definition_md5": "bc2a64ad7ed8ca69e06f02483f15134b"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "definition_md5": "6a0fbad6a1200658ed5f5afabcc7ac94"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "group_program_bindings",
+      "schema_name": "public",
+      "definition_md5": "93123d1e330eee9ad242070d8deb9fb2"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "group_program_bindings",
+      "schema_name": "public",
+      "definition_md5": "31317d7a65953011e2ff423562696d8d"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "group_program_bindings",
+      "schema_name": "public",
+      "definition_md5": "dfc228d0166322924a7ee8a1e32b8884"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "group_program_bindings",
+      "schema_name": "public",
+      "definition_md5": "abefb7dad79749aa1de91725b6f6a664"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "group_program_bindings",
+      "schema_name": "public",
+      "definition_md5": "f3ca1e574387e95f03dfdb23b7000497"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "group_program_enrollment_snapshots",
+      "schema_name": "public",
+      "definition_md5": "76580a7fd187d606febcb157bc0f7c11"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "group_program_enrollment_snapshots",
+      "schema_name": "public",
+      "definition_md5": "60c4d1c47105326982224767059651bc"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "group_program_enrollment_snapshots",
+      "schema_name": "public",
+      "definition_md5": "594aff78e99102a8424a8bf14e36b211"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "group_program_enrollment_snapshots",
+      "schema_name": "public",
+      "definition_md5": "4e54a921b3539ea6f2923031bfa180fc"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "group_program_enrollment_snapshots",
+      "schema_name": "public",
+      "definition_md5": "b7b6092c6967bc06ea85cfc49d9a7903"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "definition_md5": "593467322d518ee0b18c63b984938056"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "definition_md5": "98e0d0cc371b2d776c9cce87381e51bf"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "definition_md5": "29ce22dfc853cb019a819fdfe88661b8"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "definition_md5": "de173882441ab888070d4aa58fe26f73"
+    },
+    {
+      "name": "zzzzz_uc013_parent_cleanup",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "definition_md5": "c83b573e34e0038e4e06978d6768cf89"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "definition_md5": "c3f37fed3a2ef37e321176486c452a88"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "definition_md5": "5acccf5f2a0ba7637bfc024e4044879a"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "definition_md5": "7ef780a159d2a498165d57bfc3c46e40"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "definition_md5": "4545c0f11e7b4e0f032c78ce43b41745"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "definition_md5": "8a954ec14238b358320ab263d0116c6e"
+    },
+    {
+      "name": "zzzzz_uc013_parent_cleanup",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "definition_md5": "077d26466069f629d3a6f9f12320e90c"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "definition_md5": "9019ef61c104f8baf35a4d27b8179cb8"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "definition_md5": "199ec65d3353de9ba2fb48d33aeb35b6"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "definition_md5": "09c21b33d69589c22ad9bd076d458ec8"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "definition_md5": "3d6806184e74f0d7fd1ba5eec73a8f2e"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "definition_md5": "6c44c5649aab332d3e6be0c4ecb65d6d"
+    },
+    {
+      "name": "zzzzz_uc013_parent_cleanup",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "definition_md5": "ba4671de74bd90e30a188d4ad7b1b08b"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "definition_md5": "d6aac957a965a7c526659f0ccd003d7b"
+    },
+    {
+      "name": "aaa_uc013_source_observe",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "definition_md5": "482141eacf2fd8f93ddb6592e11904e4"
+    },
+    {
+      "name": "aaa_uc013_source_preflight",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "definition_md5": "d601200cbada1cdbbacc5e5494c076a9"
+    },
+    {
+      "name": "uc013_source_fold",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "definition_md5": "8d255939adfc4f915ad4523eeda1e60f"
+    },
+    {
+      "name": "uc013_source_truncate",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "definition_md5": "f3280e467054955aaa51d621c1644290"
+    },
+    {
+      "name": "zzzzz_uc013_parent_cleanup",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "definition_md5": "b95e76b436fc54c7d7427c057fca64f1"
+    },
+    {
+      "name": "zzzzzz_uc013_statement_end",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "definition_md5": "f8f4bcdd68d0f952fdabc70cc00b6f1e"
+    },
+    {
+      "name": "aaa_uc013_budget_ticket_guard",
+      "enabled": "O",
+      "table_name": "uc_group_education_requests",
+      "schema_name": "public",
+      "definition_md5": "cce28951d7713e7e9ae1be6667dbc24f"
+    }
+  ],
+  "expectedNewConstraints": [
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "courses",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "ef98dbe4436331eb5c0a1905f00f9391"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "enrollments",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "822f283b7b42f9d87fc26b5cd7836ee8"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "group_program_bindings",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "dfc228d0166322924a7ee8a1e32b8884"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "group_program_enrollment_snapshots",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "594aff78e99102a8424a8bf14e36b211"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "organizations",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "29ce22dfc853cb019a819fdfe88661b8"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "profiles",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "4545c0f11e7b4e0f032c78ce43b41745"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "student_group_memberships",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "3d6806184e74f0d7fd1ba5eec73a8f2e"
+    },
+    {
+      "name": "uc013_source_fold",
+      "type": "t",
+      "enabled": "O",
+      "table_name": "student_groups",
+      "schema_name": "public",
+      "trigger_name": "uc013_source_fold",
+      "definition_md5": "aac6dc9e89c94dfced18fa2e02f5e5bc",
+      "trigger_definition_md5": "8d255939adfc4f915ad4523eeda1e60f"
+    }
+  ],
+  "productFiles": [
+    {
+      "path": "src/components/organization/CourseProgramsList.tsx",
+      "sourceSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/group-folder/GenerateContractDialog.tsx",
+      "sourceSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/group-folder/GenerateDocxContractDialog.tsx",
+      "sourceSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/group-folder/GroupDocumentsFolder.tsx",
+      "sourceSha256": "443446f477a02c97b5f93c087baecf920662640f1d942e945397ec5392b8243d",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/groups/GroupEducationFactsPanel.tsx",
+      "sourceSha256": "dd2eaacad8e701d4939692c5e9a476493139461e28c5b6c9935a09b7c39186a2",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/GroupSettingsDialog.tsx",
+      "sourceSha256": "dda731cdcc1b6120b7103765604240c17c17da88c5c2a501f95ede8129f81f18",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/JournalsManager.tsx",
+      "sourceSha256": "9d64a8561b2914070f2cd92e1990f84d2fefd16850627ec7a6bff5c33950caed",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/programs/GroupProgramFactsPanel.tsx",
+      "sourceSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/programs/groupProgramPresentation.ts",
+      "sourceSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/programs/ProgramFactsPanel.tsx",
+      "sourceSha256": "61cfb3aca00654aa2e3c52a515aac8392597689d8576ac9a3c7e491267d90231",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/tabs/DocumentsTab.tsx",
+      "sourceSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/tabs/GroupFolderTab.tsx",
+      "sourceSha256": "99bee9495a4fcf5ff5077b7aaffd50345398cbdfd2564da6c4a9a1fd3cce2f0f",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useContractGenerator.ts",
+      "sourceSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useCopiesJournalScope.ts",
+      "kind": "current_runtime",
+      "sourceSha256": "0014783ffd43d478af97f2ac443ba08430df6f13f72137eccc8affb883fc6cae"
+    },
+    {
+      "path": "src/hooks/useGroupDocuments.ts",
+      "sourceSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useGroupEducationFacts.ts",
+      "sourceSha256": "885a52fc9f9044469a21b9aae4d61eb1ca1bffbfca478229bad10700eb3d798e",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useProgramFacts.ts",
+      "sourceSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/group-docs/docxJournal.ts",
+      "sourceSha256": "bb961bb9b40625859053e15e1c19d4930469617719e351c625988c7f9354867a",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/group-docs/generate.ts",
+      "sourceSha256": "2321e13913c3ef48c0f1518b88216baeb150b7e05e5fa3db73564c4aa11d7b75",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/group-docs/schema.ts",
+      "sourceSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/groupEducationFacts/client.ts",
+      "sourceSha256": "a5bcc1d72501eb962e341f277998ad30264c4d9e9df378d9c0ddb71ec804e73c",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/groupEducationFacts/contract.ts",
+      "sourceSha256": "3a908e054805728b791b97b8e7509afcb0ec08089ae0aa1209b5db11e193b3b9",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/journals/copiesJournalStorage.ts",
+      "kind": "current_runtime",
+      "sourceSha256": "5627f93135af7de634e1d4d2f21b61cc56ca72fc74e57f4ae5cb0dcd82f4749c"
+    },
+    {
+      "path": "src/lib/journals/groupJournalContext.ts",
+      "sourceSha256": "f5b8d1822e154ad8eecd29620ff05a30b4b121e047ece51e0ac1e6737eed226d",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/programFacts.ts",
+      "sourceSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/pages/CourseLanding.tsx",
+      "sourceSha256": "43e8e2318b4019e306a47a09ba144d7a836730cb7be6cc43a245580767f19e8c",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "supabase/config.toml",
+      "sourceSha256": "c25f4a9d69c162a7b68b24fd188b6bfe1f76759bd94d5b870004a48fe47589a2",
+      "kind": "config_semantic"
+    },
+    {
+      "path": "supabase/functions/_shared/course-quota-error.ts",
+      "kind": "native_edge_ts",
+      "sourceSha256": "472dbc5ed5b57fc9638c2a75b72e872b942d9b3c202dc9f59bc9d1d87bc0ee37"
+    },
+    {
+      "path": "supabase/functions/_shared/document-operation-access.ts",
+      "sourceSha256": "579d7496636d2154cff688069061afe0fe1898d98ba939d5418e2f51855dc5c9",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/classJournal.ts",
+      "sourceSha256": "a9155857f7b4b34b99d243933421eff4ffb4a0ea7d17d542544f706e26b193da",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/compile.ts",
+      "sourceSha256": "90bbf33377d7c0f216c8ed5d1d02a87dd653d70287ccc33e94c2e60e57351560",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/groupDocument.ts",
+      "sourceSha256": "881478e984719d78119ae82d21fee76bc93b43242a84dab7320fef3c92a0539b",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/money.ts",
+      "sourceSha256": "70f86377ab95486dcf037c32cfe530bfe1f7364ac6c3b317dd840d53b1a13807",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/xml.ts",
+      "sourceSha256": "7399721b2e3bb460f6afc805886fc22e677926bf5880861bb5207c4f9e4ab318",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/enrollment-access.ts",
+      "sourceSha256": "a0881e4daff5e252446af2cccd20a05b59637fff40275631762c71f267c31301",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts",
+      "sourceSha256": "25eaf6ec371b7ab908619a247dd576ffab980c22be48c72b657d5eede0261913",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/group-doc-templates/goreltech/group-package/v1/embedded.ts",
+      "sourceSha256": "7d94b12eb9131f48a653d165d72befd0bbe73ad95d7dc600f23ed759c29410aa",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/group-education-artifact.ts",
+      "sourceSha256": "955cc788efb788449b74065455136b1d536d228ed31a227730bfcf4081d9083d",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/privileged-access.ts",
+      "sourceSha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/program-facts.ts",
+      "sourceSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/rate-limiter.ts",
+      "sourceSha256": "588eb2774f91c5afd397244540f52bd2f2abee19f2cf702c872a6c81bd573085",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-capacity-claim.ts",
+      "sourceSha256": "e8a5053e52a05f9910fc6f76fc118ad1a3681dd9682789acaf5e8550030bad2a",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-group-memberships.ts",
+      "sourceSha256": "15148dc83ed9c4fbf4ae8a71957490d6bf5a8f88e2021b30a24633e8f4473d8e",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-job-position.ts",
+      "sourceSha256": "73acc9b5fcf478ba9c87c82d395382f18919843791da54b9accfecbe68fb205c",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-quota-rules.ts",
+      "kind": "native_edge_ts",
+      "sourceSha256": "c5f423cfff6ed25af232b4338ffd7b2c7a583e3bd9c60adea7a74d0251d76c85"
+    },
+    {
+      "path": "supabase/functions/_shared/student-registration-details.ts",
+      "sourceSha256": "78ef74f39d2b4ca5d6602db115bfdf59c4431ab101861ca3d0cb1a17da71b1af",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/telegram-html.ts",
+      "sourceSha256": "3b06145786fa1b4009aa8219afd125a069c44efcfa400cb3fd81d287ffb98b13",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/compile-docx-contract/index.ts",
+      "sourceSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "supabase/functions/compile-group-class-journal/index.ts",
+      "sourceSha256": "a3e65594c0f42b67d8d4218ff373d07438bf076bfbbf0fd801be032ad3d7d4be",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/landing-self-enroll/index.ts",
+      "sourceSha256": "4e6d97bb3b9c99b8002e8011ba6bb30132e41215ac5912a03d8a0f03b60c975b",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/register-student/index.ts",
+      "sourceSha256": "e701a465a5e29354c643c0662ff1c0064a70c36b2540c40f11ff67fd52a07cf4",
+      "kind": "native_edge_ts"
+    }
+  ],
+  "edgeFunctions": [
+    "compile-group-class-journal",
+    "register-student",
+    "landing-self-enroll"
+  ],
+  "edgeRuntimeGraph": [
+    "supabase/functions/_shared/course-quota-error.ts",
+    "supabase/functions/_shared/document-operation-access.ts",
+    "supabase/functions/_shared/docx-ooxml/classJournal.ts",
+    "supabase/functions/_shared/docx-ooxml/compile.ts",
+    "supabase/functions/_shared/docx-ooxml/groupDocument.ts",
+    "supabase/functions/_shared/docx-ooxml/money.ts",
+    "supabase/functions/_shared/docx-ooxml/xml.ts",
+    "supabase/functions/_shared/enrollment-access.ts",
+    "supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts",
+    "supabase/functions/_shared/group-doc-templates/goreltech/group-package/v1/embedded.ts",
+    "supabase/functions/_shared/group-education-artifact.ts",
+    "supabase/functions/_shared/privileged-access.ts",
+    "supabase/functions/_shared/program-facts.ts",
+    "supabase/functions/_shared/rate-limiter.ts",
+    "supabase/functions/_shared/student-capacity-claim.ts",
+    "supabase/functions/_shared/student-group-memberships.ts",
+    "supabase/functions/_shared/student-job-position.ts",
+    "supabase/functions/_shared/student-quota-rules.ts",
+    "supabase/functions/_shared/student-registration-details.ts",
+    "supabase/functions/_shared/telegram-html.ts",
+    "supabase/functions/compile-group-class-journal/index.ts",
+    "supabase/functions/landing-self-enroll/index.ts",
+    "supabase/functions/register-student/index.ts"
+  ],
+  "mode48Integration": {
+    "status": "POST609_SOURCE_REBASED_COUNTER51_NATIVE_ACCEPTANCE_PENDING",
+    "original74bbSha256": "74bb868b18665e37fdde0a6166b69ace25d1b29a425d3110c17488b719fb4f67",
+    "candidateRawSha256": "a088be22ba91863a04b15b51f49318a60f1fde44254a7e3d017d5abc4798ca2b",
+    "witness": "docs/releases/sintagma-production/uc-group-education-facts-20261019/mode48-integration-witness.json",
+    "witnessSha256": "7fe61e005f129ed1f308abbc6cbce472bcaf257a6e3dd88394cccac1d74f5d16",
+    "original72SourceUnchanged": true,
+    "base": "246940bbb7ce61d98a2b8ca7cd224456358d8554",
+    "counter51Witness": "counter51-integration-witness.json",
+    "counter51WitnessSha256": "6e6a0289efbaf9ecb937b6aa4bc7ab045ce9627666456d26d74800692062a729",
+    "foldedMigrationSha256": "b54b161b9670f5e06d80fca10413033b2b800c3cb6b5e519069d05b0b349c07b",
+    "oldNative72Untouched": true,
+    "actualPost609CaptureSha256": "b32a1a698eee58c2cf70647b707c20c40cf06f49a28a7eed9067e48e195c9469",
+    "currentMain": "5c47b98afaa5b582538e13edd231e20de72ccbe3"
+  },
+  "urgentPreservation": {
+    "file": "20261020050000_students_page_scope_evaluation.sql",
+    "version": "20261020050000",
+    "name": "students_page_scope_evaluation",
+    "sourceMd5": "52b7991123db54e5e6baa856fe5ebf98",
+    "sourceSha256": "97a8b98cd254790b724bdf0aa4638fae49a38468c644c272eb904760bf814517",
+    "rpcDefinitionMd5": "f38189a9960f714e43a3ebcbc60f336e"
+  },
+  "deploymentOrder": [
+    "Check exact16 prior ledger sources and unchanged115 preflight",
+    "Submit entire116 atomic transaction once; every final flag must be true",
+    "Root performs exact native source/type/build, PostgreSQL17 multi-session and safe live acceptance; no backfill or official document issuance"
+  ]
+}

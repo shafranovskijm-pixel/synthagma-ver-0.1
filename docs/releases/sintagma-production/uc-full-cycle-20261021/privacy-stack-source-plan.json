@@ -1,0 +1,284 @@
+{
+  "status": "CAPTURED_AND_REVIEWED_POSTPRICING_EXACT_SEQUENCE",
+  "schemaVersion": 1,
+  "sourceOnly": true,
+  "pricing": {
+    "migrationSha256": "79dab4f4c684a69e76ba09da386a77fbf15000bb8a587d216a7c568c2348269e",
+    "predictedFunctionsArtifact": "work/monthly-assignment-quota-backend-20261021/privacy-postpricing-predicted-functions.json",
+    "predictedArtifactSha256": "6bdd36ac1ba462e25a32afb2d37731dbb4eabdebfb7d117fbbf1ddec1e6ff2a2",
+    "predictionIsNotActualCapture": true
+  },
+  "freshCapture": {
+    "status": "ACTUAL_ROOT_POST_SGT609_CAPTURE_SOURCE_REVIEWED",
+    "artifact": "supabase/tests/fixtures/uc-post609-portable-capture.json",
+    "artifactSha256": "b32a1a698eee58c2cf70647b707c20c40cf06f49a28a7eed9067e48e195c9469",
+    "rootReviewed": true,
+    "rootEvidence": "Parent delivered actual28/28 PASS capture after readonly securecontext execution and explicitly authorized finite source implementation.",
+    "context": {
+      "current_user": "postgres",
+      "database": "postgres",
+      "resolved_schemas": [
+        "pg_catalog",
+        "public"
+      ],
+      "search_path": "pg_catalog, public",
+      "server_version": "17.6",
+      "server_version_num": "170006",
+      "session_user": "postgres",
+      "timezone": "UTC",
+      "transaction_read_only": "on"
+    },
+    "ledgerRows": 609,
+    "fullCatalogArtifact": "work/sgt-feature-grants-production-release-v2-20261021/ACTUAL_POSTCOMMIT_BASELINE_20261021.json",
+    "fullCatalogArtifactSha256": "13fe5d6b90933d97fb8a88f384a12a3053393a92d04df90a3008331e8a3c4a85",
+    "capturedAt": "2026-10-21T09:49:25.889518+00:00"
+  },
+  "order": [
+    "PRICING1200",
+    "SGT1400",
+    "UC013",
+    "UC014",
+    "UC015",
+    "UC017"
+  ],
+  "steps": [
+    {
+      "stage": "UC013",
+      "status": "SOURCE_VERIFIED_FROM_ACTUAL_POST609_CAPTURE_NOT_EXECUTED",
+      "transforms": [
+        {
+          "signature": "public.account_deletion_erase_data(uuid,text)",
+          "beforeDefinitionMd5": "725f8d0d90273d393989e39f10c176b4",
+          "afterDefinitionMd5": "a10c73088117f3422b4eb2ec708dd0ad",
+          "beforeDefinitionSha256": "3ceebc5ac98b80e5d012a57bd5e3c4804781113a8b813ac1620a5af9170c7d76",
+          "afterDefinitionSha256": "6fda2b3d890f4056f6af8f70a586564462b3ffa0767a15dc9e1bd65be503a81e",
+          "anchors": [
+            {
+              "needle": " PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n",
+              "replacement": " PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n PERFORM public.uc_erase_group_education_facts(u);\n"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_personal_row_counts(uuid)",
+          "beforeDefinitionMd5": "6213c0e6f96a92f65e081976af522e74",
+          "afterDefinitionMd5": "52ed26a701debe2c9f9299c04b9db8bb",
+          "beforeDefinitionSha256": "b0f751da9cd146a25c6909cd5c935c6534c515795a2ad53ab8436e165c2440cc",
+          "afterDefinitionSha256": "a0c9bf93b3c96a49c35c8747e8773d4f692f910dcce6063b6e26096e1fdcabed",
+          "anchors": [
+            {
+              "needle": " RETURN result;",
+              "replacement": " result:=result||public.uc_group_education_personal_counts(p_user_id);\n RETURN result;"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_snapshot(uuid)",
+          "beforeDefinitionMd5": "7238852e3da99d7b769e61d65a95dccb",
+          "afterDefinitionMd5": "7725e2a24c177164694f8266cbf344ba",
+          "beforeDefinitionSha256": "4e847b1fe2996a7c7014582bc57d77dcd833f8d25ed5a0968361e9413abf3abb",
+          "afterDefinitionSha256": "6b2f18e098e9ba97945971a60561d1779aecb65ceb454d1237fa518d03f9846d",
+          "anchors": [
+            {
+              "needle": " v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_admission_cases WHERE organization_id=v_org);",
+              "replacement": " v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_admission_cases WHERE organization_id=v_org);\n v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_group_education_states WHERE organization_id=v_org);"
+            },
+            {
+              "needle": " v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'",
+              "replacement": " v_categories:=v_categories||public.uc_group_education_deletion_preview(p_user_id);\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        }
+      ]
+    },
+    {
+      "stage": "UC014",
+      "status": "SOURCE_VERIFIED_FROM_ACTUAL_POST609_CAPTURE_NOT_EXECUTED",
+      "transforms": [
+        {
+          "signature": "public.account_deletion_personal_row_counts(uuid)",
+          "beforeDefinitionMd5": "52ed26a701debe2c9f9299c04b9db8bb",
+          "afterDefinitionMd5": "d263532fd944bf09e2adec1f0eac9fee",
+          "beforeDefinitionSha256": "a0c9bf93b3c96a49c35c8747e8773d4f692f910dcce6063b6e26096e1fdcabed",
+          "afterDefinitionSha256": "aba6900140e9625bba32cbf69178a543aff4e3ed926232ed8a6b40c0205c3f59",
+          "anchors": [
+            {
+              "needle": " RETURN result;",
+              "replacement": " result:=result||public.uc_learning_personal_counts(p_user_id);\n RETURN result;"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_snapshot(uuid)",
+          "beforeDefinitionMd5": "7725e2a24c177164694f8266cbf344ba",
+          "afterDefinitionMd5": "dce5ffea181b5136a9eb82490438f962",
+          "beforeDefinitionSha256": "6b2f18e098e9ba97945971a60561d1779aecb65ceb454d1237fa518d03f9846d",
+          "afterDefinitionSha256": "f157d2826046bd5f087db820f01fdb84ca87713c8d45f2442a285ea5f4801ecd",
+          "anchors": [
+            {
+              "needle": " v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'",
+              "replacement": " SELECT coalesce(sum((v->>'count')::bigint),0) INTO v_count FROM jsonb_array_elements(public.uc_learning_personal_counts(p_user_id))v;\n IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','learning_outcomes','label','Результаты обучения и решения: личные строки удаляются, атрибуция обезличивается','count',v_count,'action','delete_or_anonymize'));END IF;\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_erase_data(uuid,text)",
+          "beforeDefinitionMd5": "a10c73088117f3422b4eb2ec708dd0ad",
+          "afterDefinitionMd5": "8b2de268a017d85ee99eb3acee4c87a5",
+          "beforeDefinitionSha256": "6fda2b3d890f4056f6af8f70a586564462b3ffa0767a15dc9e1bd65be503a81e",
+          "afterDefinitionSha256": "00af0652ca52e4d9e5973d4a9298b7a9ddfde05bdeb47f904cc4e6aea5a5366d",
+          "anchors": [
+            {
+              "needle": " IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0)",
+              "replacement": " PERFORM public.uc_learning_erase_user(u);\n IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0)"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        }
+      ]
+    },
+    {
+      "stage": "UC015",
+      "status": "SOURCE_VERIFIED_FROM_ACTUAL_POST609_CAPTURE_NOT_EXECUTED",
+      "transforms": [
+        {
+          "signature": "public.account_deletion_personal_row_counts(uuid)",
+          "beforeDefinitionMd5": "d263532fd944bf09e2adec1f0eac9fee",
+          "afterDefinitionMd5": "bf7c8c1cb09cfdfe35b3c67ecc653ff3",
+          "beforeDefinitionSha256": "aba6900140e9625bba32cbf69178a543aff4e3ed926232ed8a6b40c0205c3f59",
+          "afterDefinitionSha256": "48d12d1599698a30b800b7a096caff5c07448d198339e1b13272c290027d69fb",
+          "anchors": [
+            {
+              "needle": " RETURN result;",
+              "replacement": " result:=result||public.uc_custom_journal_personal_counts(p_user_id);\n RETURN result;"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_snapshot(uuid)",
+          "beforeDefinitionMd5": "dce5ffea181b5136a9eb82490438f962",
+          "afterDefinitionMd5": "f3100b7f572115c4b22c84a82690a584",
+          "beforeDefinitionSha256": "f157d2826046bd5f087db820f01fdb84ca87713c8d45f2442a285ea5f4801ecd",
+          "afterDefinitionSha256": "7553f4224a41bba5a7c6f62c29523be56fd0795b8052e93336b4506d786d3dfb",
+          "anchors": [
+            {
+              "needle": " v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'",
+              "replacement": " SELECT coalesce(sum((v->>'count')::bigint),0)INTO v_count FROM jsonb_array_elements(public.uc_custom_journal_personal_counts(p_user_id))v;\n IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','custom_journals','label','Собственные журналы: строки выбранного лица удаляются, авторские копии обезличиваются','count',v_count,'action','delete_or_anonymize'));END IF;\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_erase_data(uuid,text)",
+          "beforeDefinitionMd5": "8b2de268a017d85ee99eb3acee4c87a5",
+          "afterDefinitionMd5": "96a99f5bbe4c1389ef920dcdc82ce82b",
+          "beforeDefinitionSha256": "00af0652ca52e4d9e5973d4a9298b7a9ddfde05bdeb47f904cc4e6aea5a5366d",
+          "afterDefinitionSha256": "e8fd1a937d76b1611c8865a5cf5d95ebaaf54a627094d23ce8fbe69bd1e4e5a7",
+          "anchors": [
+            {
+              "needle": " PERFORM public.uc_learning_erase_user(u);",
+              "replacement": " PERFORM public.uc_learning_erase_user(u);\n PERFORM public.uc_custom_journal_erase_user(u);"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        }
+      ]
+    },
+    {
+      "stage": "UC017",
+      "status": "SOURCE_VERIFIED_FROM_ACTUAL_POST609_CAPTURE_NOT_EXECUTED",
+      "transforms": [
+        {
+          "signature": "public.account_deletion_personal_row_counts(uuid)",
+          "beforeDefinitionMd5": "bf7c8c1cb09cfdfe35b3c67ecc653ff3",
+          "afterDefinitionMd5": "5b88dbf3ae72ae78fcd5c9f3dbca3872",
+          "beforeDefinitionSha256": "48d12d1599698a30b800b7a096caff5c07448d198339e1b13272c290027d69fb",
+          "afterDefinitionSha256": "bf15dcd2881aab10fb34b6c01e4eb08569a600949e552fe586e12564a3192fff",
+          "anchors": [
+            {
+              "needle": " RETURN result;",
+              "replacement": " result:=result||public.uc_session_personal_counts(p_user_id);\n RETURN result;"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_snapshot(uuid)",
+          "beforeDefinitionMd5": "f3100b7f572115c4b22c84a82690a584",
+          "afterDefinitionMd5": "bd5bd6dd7079951d1712d51fe2b4d3b1",
+          "beforeDefinitionSha256": "7553f4224a41bba5a7c6f62c29523be56fd0795b8052e93336b4506d786d3dfb",
+          "afterDefinitionSha256": "c7ef6c5b4099a303abd24648353eb4e525078bb1fab7d884e5851bf4dfd880a1",
+          "anchors": [
+            {
+              "needle": " v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'",
+              "replacement": " SELECT coalesce(sum((v->>'count')::bigint),0) INTO v_count FROM jsonb_array_elements(public.uc_session_personal_counts(p_user_id))v;\n IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','conducted_sessions','label','Проведённые занятия, посещение и черновики: личные сведения обезличиваются, редакции сохраняются','count',v_count,'action','anonymize'));END IF;\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        },
+        {
+          "signature": "public.account_deletion_erase_data(uuid,text)",
+          "beforeDefinitionMd5": "96a99f5bbe4c1389ef920dcdc82ce82b",
+          "afterDefinitionMd5": "a496bbcd2154d994c9e83888313a84a3",
+          "beforeDefinitionSha256": "e8fd1a937d76b1611c8865a5cf5d95ebaaf54a627094d23ce8fbe69bd1e4e5a7",
+          "afterDefinitionSha256": "a3f00ae05915519873f6a7b286a52678600e77ed1573e27ee47d9ce9e5b2b476",
+          "anchors": [
+            {
+              "needle": " IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0)",
+              "replacement": " PERFORM public.uc_session_erase_user(u);\n IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0)"
+            }
+          ],
+          "metadata": "Require captured owner, raw ACL, security_definer, volatility, proconfig and full ABI unchanged"
+        }
+      ]
+    }
+  ],
+  "requiredSourceEdits": [
+    {
+      "path": "supabase/migrations/20261019120000_uc_group_education_facts.sql",
+      "action": "Replace exact old privacy dependency/before-body pins only with actual captured postpricing definitions; preserve all 3 new pricing hooks and UC013 program artifact fourth-body transformation; regenerate folded51 source witness because migration bytes change",
+      "status": "APPLIED_IN_SOURCE_CANDIDATE_ROOT_NATIVE_ACCEPTANCE_PENDING"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc-group-education-facts-baseline.json",
+      "action": "Rebuild exact reviewed baseline from actual postpricing source capture; never silently override a live function or reuse old dependency fingerprints",
+      "status": "APPLIED_IN_SOURCE_CANDIDATE_ROOT_NATIVE_ACCEPTANCE_PENDING"
+    },
+    {
+      "path": "supabase/migrations/20261020140000_uc_learning_outcome_foundation.sql",
+      "action": "Replace both six-row historical/held privacy allowlists with exactly3 postUC013 predecessor rows from this stage; require exact single sequence, no preUC013 fallback",
+      "status": "APPLIED_IN_SOURCE_CANDIDATE_ROOT_NATIVE_ACCEPTANCE_PENDING"
+    },
+    {
+      "path": "supabase/migrations/20261020150000_uc_server_custom_journals.sql",
+      "action": "Update top3 privacy prerequisites plus bottom3 predecessor pins to exact postUC014 definitions; do not copy generic previous bodies",
+      "status": "APPLIED_IN_SOURCE_CANDIDATE_ROOT_NATIVE_ACCEPTANCE_PENDING"
+    },
+    {
+      "path": "supabase/migrations/20261021160000_uc_conducted_sessions.sql",
+      "action": "Insert UC017 exact3 pinned transforms immediately before privacy_required; verify final metadata and helper-call equality; retain gate until all are installed",
+      "status": "APPLIED_IN_SOURCE_CANDIDATE_ROOT_NATIVE_ACCEPTANCE_PENDING"
+    }
+  ],
+  "invariants": [
+    "Before every replacement exact input MD5 and one needle occurrence",
+    "After every replacement exact output pg_get_functiondef MD5 and equality to patched text, raw owner+ACL unchanged",
+    "Never remove or change quota-assignment ledger scrubbing",
+    "Full source-only predicted definitions stored under work receipt, not production claim",
+    "Privacy helpers remain owner-only; no external grant or raw-rows snapshot export",
+    "Runtime erase: released base, assignment scrub, UC013 erase context, UC014, UC015, UC017, final residual-count fence; outer account-deletion transaction/job controls unchanged",
+    "Every replacement compares complete in-database pg_proc row exceptprosrc before/after; no production OID is imposed on a native fixture."
+  ],
+  "releaseReady": false,
+  "executions": {
+    "sql": 0,
+    "prepare": 0,
+    "production": 0
+  }
+}

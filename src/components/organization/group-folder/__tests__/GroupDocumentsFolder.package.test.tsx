@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { GroupDocumentsFolder } from "../GroupDocumentsFolder";
 import { SAMPLE_CONTEXT } from "@/lib/group-docs/sampleContext";
 import { emptyFactualData } from "@/lib/group-docs/factualData";
 import { PACKAGE_DOC_TYPES } from "@/lib/group-docs/packageTypes";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
+import {compatibleArtifactSnapshot,envelope,id} from '@/lib/groupEducationFacts/__tests__/fixtures';
+vi.mock('@/hooks/useGroupEducationFacts',()=>({useGroupEducationFacts:()=>mocks.education}));
+vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:mocks.actor},loading:false})}));
+vi.mock('@/utils/courseCache',()=>({captureOfflineActor:()=>mocks.accessRevision}));
+vi.mock('@/lib/groupEducationFacts/client',async original=>({...await original<typeof import('@/lib/groupEducationFacts/client')>(),captureEducationScope:vi.fn((organizationId,groupId,current)=>({organizationId,groupId,current,actorId:mocks.actor,accessRevision:mocks.accessRevision})),educationBearer:()=>mocks.bearer(),educationScopeCurrent:(s:any)=>s.actorId===mocks.actor&&s.accessRevision===mocks.accessRevision&&s.current(),saveEducationDocuments:(...args:any[])=>mocks.saveEducation(...args)}));
 
 const mocks = vi.hoisted(() => ({
+  actor:'',accessRevision:1,
+  education:{} as any,
+  bearer:vi.fn(),
+  saveEducation:vi.fn(),
   useGroupDocuments: vi.fn(),
   resolveProgram: vi.fn(),
   useGroupFactualData: vi.fn(),
@@ -176,6 +185,9 @@ async function confirmSourceSignatories() {
 describe("GroupDocumentsFolder package contract routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.actor=id(40);mocks.accessRevision=1;
+    mocks.education={scopeKey:'actor-a:1',envelope:null,calendarValue:null,snapshotValue:null,busy:false,pending:false,error:null,scopeCurrent:()=>false,calendar:vi.fn(),invalidateAccess:vi.fn()};
+    mocks.bearer.mockReset().mockResolvedValue('Bearer original');mocks.saveEducation.mockReset().mockResolvedValue({version:1});
     mocks.dialogState.docxProps = null;
     mocks.dialogState.individualProps = null;
     mocks.dialogState.legalProps = null;
@@ -699,4 +711,29 @@ describe("GroupDocumentsFolder package contract routing", () => {
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledWith(docxRow.id));
     expect(mocks.onDataChanged).toHaveBeenCalledTimes(1);
   });
+
+  it('explicit source selection sends only canonical retained participants, pinned bearer and separate dates',async()=>{
+    const source=compatibleArtifactSnapshot(),ctx=structuredClone(SAMPLE_CONTEXT);ctx.organization.id=id(1);ctx.organization.name='ТЕСТОВЫЙ УЦ';ctx.organization.inn='0000000000';ctx.organization.director_position='Директор';ctx.organization.director_name='Учебный руководитель';ctx.group.id=id(2);ctx.group.instructor_name='Текущая подпись';
+    mocks.education={...mocks.education,envelope:envelope(),snapshotValue:source,scopeCurrent:()=>true};
+    render(<GroupDocumentsFolder organizationId={id(1)} groupId={id(2)} groupName="Учебная группа" students={ctx.students} ctx={ctx}/>);
+    fireEvent.click(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'}));
+    for(const type of PACKAGE_DOC_TYPES)fireEvent.change(screen.getByLabelText(`Дата документа ${type}`),{target:{value:'2026-11-01'}});
+    fireEvent.click(screen.getByRole('button',{name:'Пакет компании (универсальный)'}));fireEvent.click(await screen.findByRole('button',{name:'Сохранить универсальный договор компании'}));
+    await waitFor(()=>expect(mocks.saveEducation).toHaveBeenCalledTimes(1));
+    expect(mocks.resolveProgram).not.toHaveBeenCalled();expect(mocks.saveGenerated).not.toHaveBeenCalled();expect(mocks.bearer).toHaveBeenCalledTimes(1);
+    expect(mocks.generatePackage).toHaveBeenCalledWith(expect.objectContaining({students:[expect.objectContaining({user_id:id(20),full_name:'Учебная подпись'})]}),PACKAGE_DOC_TYPES,expect.objectContaining({educationSnapshot:source,requestedStatus:'draft',factual:null,documentDates:expect.objectContaining({class_journal:'2026-11-01'})}));
+    expect(mocks.saveEducation.mock.calls[0][2]).toBe('Bearer original');expect(screen.getByLabelText('Момент состава для документов')).toBeDisabled();
+  });
+
+  it.each(['actor','access'])('same group %s ABA clears source selection/drafts and suppresses a late compiler continuation',async kind=>{
+    const source=compatibleArtifactSnapshot(),ctx=goreltechContext();ctx.group.id=id(2);source.header.scope.organization_id=GORELTECH_ORGANIZATION_ID;source.projection.scope.organization_id=GORELTECH_ORGANIZATION_ID;source.projection.calendar.scope.organization_id=GORELTECH_ORGANIZATION_ID;source.projection.program_facts.organization_id=GORELTECH_ORGANIZATION_ID;
+    let finish!:(value:any)=>void;mocks.generateClassJournalDocx.mockImplementationOnce(()=>new Promise(r=>finish=r));mocks.education={...mocks.education,envelope:{...envelope(),organization_id:GORELTECH_ORGANIZATION_ID},snapshotValue:source,scopeCurrent:()=>true};
+    const props={organizationId:GORELTECH_ORGANIZATION_ID,groupId:id(2),groupName:'Учебная группа',students:ctx.students,ctx,onDataChanged:mocks.onDataChanged};const view=render(<GroupDocumentsFolder {...props}/>);
+    fireEvent.click(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'}));fireEvent.change(screen.getByLabelText('Основание фиксации состава'),{target:{value:'PRIVATE-A-SOURCE-REASON'}});for(const type of PACKAGE_DOC_TYPES)fireEvent.change(screen.getByLabelText(`Дата документа ${type}`),{target:{value:'2026-11-01'}});await confirmSourceSignatories();fireEvent.click(screen.getByRole('button',{name:'Пересобрать 9 Word-документов'}));await waitFor(()=>expect(mocks.generateClassJournalDocx).toHaveBeenCalledTimes(1));
+    const originalParams=mocks.generateClassJournalDocx.mock.calls[0][0];expect(originalParams.isCurrent()).toBe(true);mocks.accessRevision++;if(kind==='actor')mocks.actor=id(41);mocks.education={...mocks.education,scopeKey:'B:2'};view.rerender(<GroupDocumentsFolder {...props}/>);
+    expect(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'})).not.toBeChecked();expect(screen.queryByDisplayValue('PRIVATE-A-SOURCE-REASON')).toBeNull();expect(originalParams.isCurrent()).toBe(false);
+    fireEvent.click(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'}));expect(screen.getByLabelText('Основание фиксации состава')).toHaveValue('');expect(screen.getByLabelText('Дата документа class_journal')).toHaveValue('');mocks.accessRevision++;mocks.actor=id(40);mocks.education={...mocks.education,scopeKey:'A:3'};view.rerender(<GroupDocumentsFolder {...props}/>);expect(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'})).not.toBeChecked();
+    await act(async()=>finish({dryRun:false,version:7,warnings:[]}));expect(mocks.refreshDocuments).not.toHaveBeenCalled();expect(mocks.saveEducation).not.toHaveBeenCalled();expect(mocks.saveGenerated).not.toHaveBeenCalled();expect(mocks.toastSuccess).not.toHaveBeenCalled();expect(mocks.onDataChanged).not.toHaveBeenCalled();
+  });
+  it('same actor hook authority epoch masks unsaved source fields synchronously',()=>{mocks.education={...mocks.education,scopeCurrent:()=>true};const props={organizationId:id(1),groupId:id(2),groupName:'Учебная группа',students:SAMPLE_CONTEXT.students,ctx:structuredClone(SAMPLE_CONTEXT)};const view=render(<GroupDocumentsFolder {...props}/>);fireEvent.click(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'}));fireEvent.change(screen.getByLabelText('Основание фиксации состава'),{target:{value:'PRIVATE-OLD-EPOCH'}});fireEvent.change(screen.getByLabelText('Дата документа class_journal'),{target:{value:'2026-11-01'}});mocks.education={...mocks.education,scopeKey:'actor-a:new-authority'};view.rerender(<GroupDocumentsFolder {...props}/>);expect(screen.queryByDisplayValue('PRIVATE-OLD-EPOCH')).toBeNull();expect(screen.getByLabelText('Дата документа class_journal')).toHaveValue('');});
 });

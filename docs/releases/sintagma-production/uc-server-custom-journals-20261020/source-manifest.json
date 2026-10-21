@@ -1,0 +1,439 @@
+{
+  "status": "SOURCE_AUTHORED_NOT_EXECUTED_RELEASE_HELD",
+  "base": "156283545206fd096f60f822ffee77f254ef283e",
+  "version": "20261020150000",
+  "migration": "supabase/migrations/20261020150000_uc_server_custom_journals.sql",
+  "migration_sha256": "35205a466e41adc463e0ba85c84f77de31b3427ba47c65c0ebd56a58a969b019",
+  "migration_md5": "f9a33fcbe44f02956446069fed4c8c05",
+  "raw_migration_sha256": "35205a466e41adc463e0ba85c84f77de31b3427ba47c65c0ebd56a58a969b019",
+  "new_tables": [
+    "uc_custom_journals",
+    "uc_custom_journal_schemas",
+    "uc_custom_journal_records",
+    "uc_custom_journal_history",
+    "uc_custom_journal_requests"
+  ],
+  "new_functions": [
+    {
+      "signature": "public.uc_custom_journal_error(text)",
+      "name": "uc_custom_journal_error",
+      "result": "void",
+      "argument_names": [
+        "p_code"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "v",
+      "configuration": [
+        "search_path=pg_catalog"
+      ],
+      "body_md5": "90cd98b74247b4357b03b0215368210d"
+    },
+    {
+      "signature": "public.uc_custom_journal_shape(jsonb,text[])",
+      "name": "uc_custom_journal_shape",
+      "result": "boolean",
+      "argument_names": [
+        "p",
+        "p_keys"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog"
+      ],
+      "body_md5": "1731cc7d9b83cdba82127653f4bfee2f"
+    },
+    {
+      "signature": "public.uc_custom_journal_uuid(jsonb)",
+      "name": "uc_custom_journal_uuid",
+      "result": "boolean",
+      "argument_names": [
+        "p"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog"
+      ],
+      "body_md5": "655990c41c2ff439e049eff7d9977e7c"
+    },
+    {
+      "signature": "public.uc_custom_journal_text_units(text)",
+      "name": "uc_custom_journal_text_units",
+      "result": "integer",
+      "argument_names": [
+        "p_text"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog"
+      ],
+      "body_md5": "8ccbde86a17f75c16c9435940bc05218"
+    },
+    {
+      "signature": "public.uc_custom_journal_text(jsonb,integer,boolean)",
+      "name": "uc_custom_journal_text",
+      "result": "boolean",
+      "argument_names": [
+        "p",
+        "p_max",
+        "p_empty"
+      ],
+      "defaults": "false",
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog"
+      ],
+      "body_md5": "55f0bdbe6c88c593901d72218ef85360"
+    },
+    {
+      "signature": "public.uc_custom_journal_person(uuid)",
+      "name": "uc_custom_journal_person",
+      "result": "boolean",
+      "argument_names": [
+        "p_user"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "b36752535164eff6eb855f4825f65184"
+    },
+    {
+      "signature": "public.uc_custom_journal_allowed(uuid,boolean)",
+      "name": "uc_custom_journal_allowed",
+      "result": "boolean",
+      "argument_names": [
+        "p_org",
+        "p_write"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "1141427e2dae81ea8e355ffe86cfcdac"
+    },
+    {
+      "signature": "public.uc_custom_journal_subject(uuid,uuid)",
+      "name": "uc_custom_journal_subject",
+      "result": "boolean",
+      "argument_names": [
+        "p_org",
+        "p_user"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "c52158c2a08fe363037a2a9b9c5745d4"
+    },
+    {
+      "signature": "public.uc_custom_journal_fields(jsonb)",
+      "name": "uc_custom_journal_fields",
+      "result": "boolean",
+      "argument_names": [
+        "p"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "5037efd21fb5a076abc5cb552629b31f"
+    },
+    {
+      "signature": "public.uc_custom_journal_values(jsonb,jsonb)",
+      "name": "uc_custom_journal_values",
+      "result": "boolean",
+      "argument_names": [
+        "p_fields",
+        "p_values"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "27cb681b342a417f90b0af30b3338e0e"
+    },
+    {
+      "signature": "public.uc_custom_journal_legacy(jsonb)",
+      "name": "uc_custom_journal_legacy",
+      "result": "jsonb",
+      "argument_names": [
+        "p"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "3cc861a5ed967864bedb78648595f468"
+    },
+    {
+      "signature": "public.uc_custom_journal_identities(jsonb)",
+      "name": "uc_custom_journal_identities",
+      "result": "jsonb",
+      "argument_names": [
+        "p_fields"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "i",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "4208f57ad9930822b875587126d8d933"
+    },
+    {
+      "signature": "public.uc_custom_journal_schema_json(uuid)",
+      "name": "uc_custom_journal_schema_json",
+      "result": "jsonb",
+      "argument_names": [
+        "p_id"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "34ed84a92cc803ca7a8fecf6ac83132e"
+    },
+    {
+      "signature": "public.uc_custom_journal_detail(uuid,boolean)",
+      "name": "uc_custom_journal_detail",
+      "result": "jsonb",
+      "argument_names": [
+        "p_id",
+        "p_full"
+      ],
+      "defaults": "true",
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "770a469fb7ba28209a1384c8b0177d7f"
+    },
+    {
+      "signature": "public.uc_custom_journal_record_json(uuid)",
+      "name": "uc_custom_journal_record_json",
+      "result": "jsonb",
+      "argument_names": [
+        "p_id"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "a89aea759413ce39e3391a8250c03ed2"
+    },
+    {
+      "signature": "public.uc_custom_journal_base(uuid)",
+      "name": "uc_custom_journal_base",
+      "result": "jsonb",
+      "argument_names": [
+        "p_org"
+      ],
+      "defaults": null,
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "95c598572298e9de984c89c1e46ce67c"
+    },
+    {
+      "signature": "public.uc_custom_journal_preview(uuid,jsonb)",
+      "name": "uc_custom_journal_preview",
+      "result": "jsonb",
+      "argument_names": [
+        "p_org",
+        "p_definition"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "8fe9bc1b91b41f0ee63b0e6292a27b6e"
+    },
+    {
+      "signature": "public.read_custom_journals(uuid,jsonb)",
+      "name": "read_custom_journals",
+      "result": "jsonb",
+      "argument_names": [
+        "p_organization_id",
+        "p_query"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "8248952395b32a29d9fb336ba39541ee"
+    },
+    {
+      "signature": "public.apply_custom_journal_action(uuid,bigint,uuid,jsonb)",
+      "name": "apply_custom_journal_action",
+      "result": "jsonb",
+      "argument_names": [
+        "p_organization_id",
+        "p_expected_revision",
+        "p_request_id",
+        "p_action"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "c0340558fd14a5bb96ef0f413d46ff6c"
+    },
+    {
+      "signature": "public.uc_custom_journal_guard()",
+      "name": "uc_custom_journal_guard",
+      "result": "trigger",
+      "argument_names": null,
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "7a4a41c4bfa3172e6fc7744b33457111"
+    },
+    {
+      "signature": "public.uc_custom_journal_personal_counts(uuid)",
+      "name": "uc_custom_journal_personal_counts",
+      "result": "jsonb",
+      "argument_names": [
+        "p_user"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "f0ac6ef8aeae4a9393c85ac0bc36d69e"
+    },
+    {
+      "signature": "public.uc_custom_journal_erase_user(uuid)",
+      "name": "uc_custom_journal_erase_user",
+      "result": "void",
+      "argument_names": [
+        "p_user"
+      ],
+      "defaults": null,
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "configuration": [
+        "search_path=pg_catalog, public"
+      ],
+      "body_md5": "c9b33cea7efed79bc6948568234187da"
+    }
+  ],
+  "erasure_predecessors": [
+    {
+      "signature": "public.account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "c39e5d0a54c50d0fb7503e479509dc5a",
+      "uc013_predecessor_md5": "5ca533d6ab29cc7065072b6845e554ed"
+    },
+    {
+      "signature": "public.account_deletion_snapshot(uuid)",
+      "definition_md5": "dce5ffea181b5136a9eb82490438f962",
+      "uc013_predecessor_md5": "7725e2a24c177164694f8266cbf344ba"
+    },
+    {
+      "signature": "public.account_deletion_erase_data(uuid,text)",
+      "definition_md5": "80ed2a7e2fb287e272acff82f384eda0",
+      "uc013_predecessor_md5": "5a0ae24ca3c06c88442b29b4e02fd7ac"
+    }
+  ],
+  "erasure_targets": [
+    {
+      "signature": "public.account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "c39e5d0a54c50d0fb7503e479509dc5a",
+      "uc013_predecessor_md5": "5ca533d6ab29cc7065072b6845e554ed",
+      "post_definition_md5": "635ab8308ea57834cea7d783e67df309"
+    },
+    {
+      "signature": "public.account_deletion_snapshot(uuid)",
+      "definition_md5": "dce5ffea181b5136a9eb82490438f962",
+      "uc013_predecessor_md5": "7725e2a24c177164694f8266cbf344ba",
+      "post_definition_md5": "f3100b7f572115c4b22c84a82690a584"
+    },
+    {
+      "signature": "public.account_deletion_erase_data(uuid,text)",
+      "definition_md5": "80ed2a7e2fb287e272acff82f384eda0",
+      "uc013_predecessor_md5": "5a0ae24ca3c06c88442b29b4e02fd7ac",
+      "post_definition_md5": "45e967ab29d92ee2e903fe954adc8bab"
+    }
+  ],
+  "urgent_rpc_definition_md5": "f38189a9960f714e43a3ebcbc60f336e",
+  "uc014_hold_sha256": "6bde3a3d91d4375065565144317f33881c6e751f25108c401924c1494694e14f",
+  "uc014_31_raw_verified": true,
+  "execution_count": 0,
+  "release_sha256": "6562bc9e31a20f26a74585b6573cb18d2cdb99c78168e6b5a601d4643ff9e966",
+  "rollback_sha256": "8f77cbb3b259170db141cd01c2fe0f345546e3afd856f8c998498a701534c22a",
+  "privacy_boundary": "Exact declared subject/actor erasure. No claim to discover undeclared third-party PII in arbitrary free text. Unlinked records unsupported.",
+  "native_gates": [
+    "UC013 stable native26 and release",
+    "UC014 native acceptance and release",
+    "Actual PG17 transaction/locks/revocation/defaultACL/collision/rollback and full account erasure chain",
+    "Fresh full ledger + old-function catalog metadata; only intended row/3 erasure bodies may change",
+    "Synthetic two-employee/two-device browser acceptance; legacy unchanged"
+  ],
+  "not_claimed": [
+    "SQL or frontend tests executed",
+    "Native acceptance",
+    "Production release",
+    "Legal signature",
+    "Automatic PII discovery",
+    "Org-only unlinked journals"
+  ]
+}

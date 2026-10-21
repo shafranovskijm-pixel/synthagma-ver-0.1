@@ -1,0 +1,357 @@
+{
+  "status": "HELD_FOR_NATIVE_VALIDATION",
+  "migrationCanonicalLfSha256": "b54b161b9670f5e06d80fca10413033b2b800c3cb6b5e519069d05b0b349c07b",
+  "fourOnly": [
+    {
+      "signature": "account_deletion_erase_data(uuid,text)",
+      "beforeMd5": "725f8d0d90273d393989e39f10c176b4",
+      "anchors": [
+        {
+          "needle": " PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n",
+          "replacement": " PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n PERFORM public.uc_erase_group_education_facts(u);\n"
+        }
+      ],
+      "historicalBeforeMd5": "56549dc5330b85ada3adeed89ac1457f"
+    },
+    {
+      "signature": "account_deletion_personal_row_counts(uuid)",
+      "beforeMd5": "6213c0e6f96a92f65e081976af522e74",
+      "anchors": [
+        {
+          "needle": " RETURN result;",
+          "replacement": " result:=result||public.uc_group_education_personal_counts(p_user_id);\n RETURN result;"
+        }
+      ],
+      "historicalBeforeMd5": "6354209a8ba5614d8539059bc33dc0ed"
+    },
+    {
+      "signature": "account_deletion_snapshot(uuid)",
+      "beforeMd5": "7238852e3da99d7b769e61d65a95dccb",
+      "anchors": [
+        {
+          "needle": " v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_admission_cases WHERE organization_id=v_org);",
+          "replacement": " v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_admission_cases WHERE organization_id=v_org);\n v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_group_education_states WHERE organization_id=v_org);"
+        },
+        {
+          "needle": " v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'",
+          "replacement": " v_categories:=v_categories||public.uc_group_education_deletion_preview(p_user_id);\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'"
+        }
+      ],
+      "historicalBeforeMd5": "7238852e3da99d7b769e61d65a95dccb"
+    },
+    {
+      "signature": "uc_guard_program_artifact()",
+      "beforeMd5": "eb7789a817440fd1ecadbbdec4f0f2a6",
+      "anchors": [
+        {
+          "needle": " IF grp IS NULL THEN RETURN NEW; END IF;\n",
+          "replacement": " IF coalesce(j->'variables_snapshot','{}'::jsonb) ? 'education_source' THEN\n  IF TG_TABLE_NAME<>'group_documents' OR grp IS NULL THEN RAISE EXCEPTION 'GROUP_FACTS_ACCESS_DENIED' USING ERRCODE='42501';END IF;\n IF TG_OP='UPDATE' THEN\n  prior:=to_jsonb(OLD);\n  -- Operational archive/trash/version-list metadata does not regenerate old\n  -- content or invent a historical programme source. Every other column,\n  -- including document numbers, dates, doc_status and byte hashes, is compared.\n  IF (j-ARRAY['status','is_current','updated_at','archived_at','deleted_at','deleted_by'])\n   =(prior-ARRAY['status','is_current','updated_at','archived_at','deleted_at','deleted_by'])\n   AND (j->'status' IS NOT DISTINCT FROM prior->'status'\n    OR TG_TABLE_NAME='group_documents' AND prior->>'status' IN('active','archived') AND j->>'status' IN('active','archived')\n    OR TG_TABLE_NAME='org_contracts' AND prior->>'status' IN('active','approved','signed') AND j->>'status' IN('archived','cancelled'))\n  THEN RETURN NEW; END IF;\n END IF;\n  PERFORM public.uc_group_education_validate_artifact(j);\n  RETURN NEW;\n END IF;\n IF grp IS NULL THEN RETURN NEW; END IF;\n"
+        }
+      ],
+      "historicalBeforeMd5": "eb7789a817440fd1ecadbbdec4f0f2a6"
+    }
+  ],
+  "historicalAccountClauses": [
+    {
+      "label": "exact_reviewed_five_erasure_bodies",
+      "canonicalLfSha256": "47d3b506e6e5931c25e7ae8a5c9c3624053ec44c265403ee0e78b98929346af6",
+      "signatures": [
+        "account_deletion_erase_data(uuid,text)",
+        "account_deletion_personal_row_counts(uuid)",
+        "account_deletion_snapshot(uuid)"
+      ]
+    },
+    {
+      "label": "exact_reviewed_registration_erasure_bodies",
+      "canonicalLfSha256": "5c2cd7fa3bc27ce2952921e44a16dbaa294c0131082f6c4ee7a2b31eba52e897",
+      "signatures": [
+        "account_deletion_erase_data(uuid,text)",
+        "account_deletion_personal_row_counts(uuid)"
+      ]
+    },
+    {
+      "label": "exact_unchanged_authority_dependencies",
+      "canonicalLfSha256": "6a1c13dd87ae18e1bb574cfcb9650e1afb9681b28eae166d9d9c181c3562cd8c",
+      "signatures": [
+        "account_deletion_snapshot(uuid)"
+      ]
+    }
+  ],
+  "productFiles": [
+    {
+      "path": "src/components/organization/CourseProgramsList.tsx",
+      "sourceSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/group-folder/GenerateContractDialog.tsx",
+      "sourceSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/group-folder/GenerateDocxContractDialog.tsx",
+      "sourceSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/group-folder/GroupDocumentsFolder.tsx",
+      "sourceSha256": "443446f477a02c97b5f93c087baecf920662640f1d942e945397ec5392b8243d",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/groups/GroupEducationFactsPanel.tsx",
+      "sourceSha256": "dd2eaacad8e701d4939692c5e9a476493139461e28c5b6c9935a09b7c39186a2",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/GroupSettingsDialog.tsx",
+      "sourceSha256": "dda731cdcc1b6120b7103765604240c17c17da88c5c2a501f95ede8129f81f18",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/JournalsManager.tsx",
+      "sourceSha256": "9d64a8561b2914070f2cd92e1990f84d2fefd16850627ec7a6bff5c33950caed",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/programs/GroupProgramFactsPanel.tsx",
+      "sourceSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/programs/groupProgramPresentation.ts",
+      "sourceSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/programs/ProgramFactsPanel.tsx",
+      "sourceSha256": "61cfb3aca00654aa2e3c52a515aac8392597689d8576ac9a3c7e491267d90231",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/tabs/DocumentsTab.tsx",
+      "sourceSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/components/organization/tabs/GroupFolderTab.tsx",
+      "sourceSha256": "99bee9495a4fcf5ff5077b7aaffd50345398cbdfd2564da6c4a9a1fd3cce2f0f",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useContractGenerator.ts",
+      "sourceSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useCopiesJournalScope.ts",
+      "kind": "current_runtime",
+      "sourceSha256": "0014783ffd43d478af97f2ac443ba08430df6f13f72137eccc8affb883fc6cae"
+    },
+    {
+      "path": "src/hooks/useGroupDocuments.ts",
+      "sourceSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useGroupEducationFacts.ts",
+      "sourceSha256": "885a52fc9f9044469a21b9aae4d61eb1ca1bffbfca478229bad10700eb3d798e",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/hooks/useProgramFacts.ts",
+      "sourceSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/group-docs/docxJournal.ts",
+      "sourceSha256": "bb961bb9b40625859053e15e1c19d4930469617719e351c625988c7f9354867a",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/group-docs/generate.ts",
+      "sourceSha256": "2321e13913c3ef48c0f1518b88216baeb150b7e05e5fa3db73564c4aa11d7b75",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/group-docs/schema.ts",
+      "sourceSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/groupEducationFacts/client.ts",
+      "sourceSha256": "a5bcc1d72501eb962e341f277998ad30264c4d9e9df378d9c0ddb71ec804e73c",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/groupEducationFacts/contract.ts",
+      "sourceSha256": "3a908e054805728b791b97b8e7509afcb0ec08089ae0aa1209b5db11e193b3b9",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/journals/copiesJournalStorage.ts",
+      "kind": "current_runtime",
+      "sourceSha256": "5627f93135af7de634e1d4d2f21b61cc56ca72fc74e57f4ae5cb0dcd82f4749c"
+    },
+    {
+      "path": "src/lib/journals/groupJournalContext.ts",
+      "sourceSha256": "f5b8d1822e154ad8eecd29620ff05a30b4b121e047ece51e0ac1e6737eed226d",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/lib/programFacts.ts",
+      "sourceSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "src/pages/CourseLanding.tsx",
+      "sourceSha256": "43e8e2318b4019e306a47a09ba144d7a836730cb7be6cc43a245580767f19e8c",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "supabase/config.toml",
+      "sourceSha256": "c25f4a9d69c162a7b68b24fd188b6bfe1f76759bd94d5b870004a48fe47589a2",
+      "kind": "config_semantic"
+    },
+    {
+      "path": "supabase/functions/_shared/course-quota-error.ts",
+      "kind": "native_edge_ts",
+      "sourceSha256": "472dbc5ed5b57fc9638c2a75b72e872b942d9b3c202dc9f59bc9d1d87bc0ee37"
+    },
+    {
+      "path": "supabase/functions/_shared/document-operation-access.ts",
+      "sourceSha256": "579d7496636d2154cff688069061afe0fe1898d98ba939d5418e2f51855dc5c9",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/classJournal.ts",
+      "sourceSha256": "a9155857f7b4b34b99d243933421eff4ffb4a0ea7d17d542544f706e26b193da",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/compile.ts",
+      "sourceSha256": "90bbf33377d7c0f216c8ed5d1d02a87dd653d70287ccc33e94c2e60e57351560",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/groupDocument.ts",
+      "sourceSha256": "881478e984719d78119ae82d21fee76bc93b43242a84dab7320fef3c92a0539b",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/money.ts",
+      "sourceSha256": "70f86377ab95486dcf037c32cfe530bfe1f7364ac6c3b317dd840d53b1a13807",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/docx-ooxml/xml.ts",
+      "sourceSha256": "7399721b2e3bb460f6afc805886fc22e677926bf5880861bb5207c4f9e4ab318",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/enrollment-access.ts",
+      "sourceSha256": "a0881e4daff5e252446af2cccd20a05b59637fff40275631762c71f267c31301",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts",
+      "sourceSha256": "25eaf6ec371b7ab908619a247dd576ffab980c22be48c72b657d5eede0261913",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/group-doc-templates/goreltech/group-package/v1/embedded.ts",
+      "sourceSha256": "7d94b12eb9131f48a653d165d72befd0bbe73ad95d7dc600f23ed759c29410aa",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/group-education-artifact.ts",
+      "sourceSha256": "955cc788efb788449b74065455136b1d536d228ed31a227730bfcf4081d9083d",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/privileged-access.ts",
+      "sourceSha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/program-facts.ts",
+      "sourceSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/rate-limiter.ts",
+      "sourceSha256": "588eb2774f91c5afd397244540f52bd2f2abee19f2cf702c872a6c81bd573085",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-capacity-claim.ts",
+      "sourceSha256": "e8a5053e52a05f9910fc6f76fc118ad1a3681dd9682789acaf5e8550030bad2a",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-group-memberships.ts",
+      "sourceSha256": "15148dc83ed9c4fbf4ae8a71957490d6bf5a8f88e2021b30a24633e8f4473d8e",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-job-position.ts",
+      "sourceSha256": "73acc9b5fcf478ba9c87c82d395382f18919843791da54b9accfecbe68fb205c",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/student-quota-rules.ts",
+      "kind": "native_edge_ts",
+      "sourceSha256": "c5f423cfff6ed25af232b4338ffd7b2c7a583e3bd9c60adea7a74d0251d76c85"
+    },
+    {
+      "path": "supabase/functions/_shared/student-registration-details.ts",
+      "sourceSha256": "78ef74f39d2b4ca5d6602db115bfdf59c4431ab101861ca3d0cb1a17da71b1af",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/telegram-html.ts",
+      "sourceSha256": "3b06145786fa1b4009aa8219afd125a069c44efcfa400cb3fd81d287ffb98b13",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/compile-docx-contract/index.ts",
+      "sourceSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1",
+      "kind": "current_runtime"
+    },
+    {
+      "path": "supabase/functions/compile-group-class-journal/index.ts",
+      "sourceSha256": "a3e65594c0f42b67d8d4218ff373d07438bf076bfbbf0fd801be032ad3d7d4be",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/landing-self-enroll/index.ts",
+      "sourceSha256": "4e6d97bb3b9c99b8002e8011ba6bb30132e41215ac5912a03d8a0f03b60c975b",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/register-student/index.ts",
+      "sourceSha256": "e701a465a5e29354c643c0662ff1c0064a70c36b2540c40f11ff67fd52a07cf4",
+      "kind": "native_edge_ts"
+    }
+  ],
+  "authorFreezeInput": {
+    "artifact": "..\\uc-release-20261018\\uc116-delayed-mirror-four-body-source-anchors.json",
+    "sourceSha256": "e806472d6a201cedfb8785fcd7221f8e70b150e9af20e9d78f47101b06c6ca1e"
+  },
+  "limits": "No production reads/writes. Static current runtime hashes are separate from original historical archive. Native import graph is exact relative TS closure for three deployable handlers; native engine/live checks belong to root.",
+  "integration": {
+    "status": "POST609_SOURCE_REBASED_COUNTER51_NATIVE_ACCEPTANCE_PENDING",
+    "original74bbSha256": "74bb868b18665e37fdde0a6166b69ace25d1b29a425d3110c17488b719fb4f67",
+    "candidateRawSha256": "a088be22ba91863a04b15b51f49318a60f1fde44254a7e3d017d5abc4798ca2b",
+    "witness": "docs/releases/sintagma-production/uc-group-education-facts-20261019/mode48-integration-witness.json",
+    "witnessSha256": "7fe61e005f129ed1f308abbc6cbce472bcaf257a6e3dd88394cccac1d74f5d16",
+    "original72SourceUnchanged": true,
+    "base": "246940bbb7ce61d98a2b8ca7cd224456358d8554",
+    "counter51Witness": "counter51-integration-witness.json",
+    "counter51WitnessSha256": "6e6a0289efbaf9ecb937b6aa4bc7ab045ce9627666456d26d74800692062a729",
+    "foldedMigrationSha256": "b54b161b9670f5e06d80fca10413033b2b800c3cb6b5e519069d05b0b349c07b",
+    "oldNative72Untouched": true,
+    "actualPost609CaptureSha256": "b32a1a698eee58c2cf70647b707c20c40cf06f49a28a7eed9067e48e195c9469",
+    "currentMain": "5c47b98afaa5b582538e13edd231e20de72ccbe3"
+  }
+}

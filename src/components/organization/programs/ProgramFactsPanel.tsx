@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OrgDocumentVersionsDialog } from "@/components/organization/OrgDocumentVersionsDialog";
 import { useCourseProgramBinding, useProgramFacts } from "@/hooks/useProgramFacts";
+import { LearningCriteriaPanel } from "./LearningCriteriaPanel";
 import { emptyProgramFacts, programFactsReady, programFactsSchema, programFactStateLabels, programTypeLabels, trainingFormLabels,
   type ProgramEnvelope, type ProgramFacts, type ProgramVersion } from "@/lib/programFacts";
 
@@ -127,5 +128,6 @@ function CourseProgramBindingPanel({ organizationId, courses, approved, canConfi
     {h.error && <div role="alert" className="text-sm space-y-2"><p>{h.error}</p><Button variant="outline" size="sm" disabled={h.saving} onClick={() => void h.reload()}>Обновить связь курса</Button></div>}
     {courseId && h.data && !h.loading && <p className="text-sm">{h.data.binding ? bound ? `Связано: ${bound.name}, версия ${bound.version.version_number}.` : "У курса есть сохранённая связь с версией программы. Сведения этой версии сейчас недоступны." : "У курса пока нет подтверждённой связи с версией программы."}</p>}
     {canConfigure && courseId && <><Label htmlFor="course-program-version">Утверждённая версия для курса</Label><Select value={versionId} onValueChange={setVersionId} disabled={h.saving}><SelectTrigger id="course-program-version"><SelectValue placeholder="Выберите утверждённые сведения" /></SelectTrigger><SelectContent>{approved.map(v => <SelectItem key={v.version.id} value={v.version.id}>{v.name} · версия {v.version.version_number}</SelectItem>)}</SelectContent></Select><Button className={actionClass} disabled={h.loading || h.saving || !!h.error || !h.data || !versionId || versionId === h.data.binding?.version_id} onClick={() => void h.bind(versionId)}>Связать с курсом для будущих групп</Button></>}
+    {courseId && h.data?.binding?.version_id && !h.loading && !h.error && <LearningCriteriaPanel organizationId={organizationId} courseId={courseId} programVersionId={h.data.binding.version_id} />}
   </div></details>;
 }

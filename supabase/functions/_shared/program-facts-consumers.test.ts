@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as access from "./privileged-access";
 import { requireDocumentWrite } from "./document-operation-access";
 import * as programFacts from "./program-facts";
+import * as educationArtifacts from "./group-education-artifact";
 import * as contractCompiler from "./docx-ooxml/compile";
 import * as contractRelations from "./docx-ooxml/relational";
 import * as journalCompiler from "./docx-ooxml/classJournal";
@@ -78,7 +79,7 @@ function actualHandler(name: string, options: { unconfirmed?: boolean; rejectCom
     : ts.canHaveModifiers(s) ? (ts.getModifiers(s) || []).filter(m => m.kind === ts.SyntaxKind.ExportKeyword).map(m => ({ start: m.getStart(ast), end: m.end })) : []);
   const stripped = ranges.sort((a, b) => b.start - a.start).reduce((s, r) => s.slice(0, r.start) + s.slice(r.end), source);
   const executable = ts.transpileModule(stripped, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  const deps = { ...access, ...programFacts, ...contractCompiler, ...contractRelations, ...journalCompiler, ...groupCompiler, ...money,
+  const deps = { ...access, ...programFacts, ...educationArtifacts, ...contractCompiler, ...contractRelations, ...journalCompiler, ...groupCompiler, ...money,
     ...contractTemplate, ...journalTemplate, GROUP_DOCUMENT_TEMPLATE_BUNDLE, sha256CanonicalJson,
     requireDocumentWrite, z, JSZip, createClient: () => db, readEffectiveGroupProfiles: async () => ({ data: [profile], error: null }),
     corsHeaders: {}, console: { log() {}, warn() {}, error() {} },
