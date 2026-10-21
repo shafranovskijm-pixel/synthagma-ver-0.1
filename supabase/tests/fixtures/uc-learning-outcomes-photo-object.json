@@ -1,0 +1,42 @@
+{
+  "status": "ACTUAL_METADATA_ONLY_FIXTURE_DEPENDENCY",
+  "capturedAtUtc": "2026-10-20T06:23:42.298Z",
+  "projectId": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "sql": "SELECT jsonb_build_object('signature','_final_test_photo_object_valid(uuid)','found',p.oid IS NOT NULL,'owner',pg_get_userbyid(p.proowner),'acl',p.proacl::text,'definition',pg_get_functiondef(p.oid),'definition_md5',md5(pg_get_functiondef(p.oid))) function FROM pg_proc p WHERE p.oid=to_regprocedure('public._final_test_photo_object_valid(uuid)');",
+  "function": {
+    "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+    "definition": "CREATE OR REPLACE FUNCTION public._final_test_photo_object_valid(p_challenge_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1 FROM public.final_test_photo_challenges c\n    JOIN storage.objects o ON o.bucket_id = 'final-test-photos' AND o.name = c.object_path\n    WHERE c.id = p_challenge_id\n      AND c.object_path = c.user_id::text || '/' || c.id::text || '/capture.jpg'\n      AND coalesce(to_jsonb(o)->>'owner_id', to_jsonb(o)->>'owner') = c.user_id::text\n      AND o.created_at >= c.created_at AND o.created_at <= c.expires_at\n      AND o.metadata->>'mimetype' = 'image/jpeg'\n      AND CASE WHEN o.metadata->>'size' ~ '^[0-9]+$'\n        THEN (o.metadata->>'size')::numeric BETWEEN 1 AND 5242880 ELSE false END\n      AND (c.storage_object_id IS NULL OR c.storage_object_id = o.id)\n  )\n$function$\n",
+    "definition_md5": "5cbfe0c9e37168f7ba7c5eaa0c79487e",
+    "found": true,
+    "owner": "postgres",
+    "signature": "_final_test_photo_object_valid(uuid)"
+  },
+  "dependencyClosure": {
+    "functions": [],
+    "relations": {
+      "public.final_test_photo_challenges": [
+        "id",
+        "object_path",
+        "user_id",
+        "created_at",
+        "expires_at",
+        "storage_object_id"
+      ],
+      "storage.objects": [
+        "id",
+        "bucket_id",
+        "name",
+        "owner_id",
+        "owner",
+        "created_at",
+        "metadata"
+      ]
+    },
+    "fixtureSource": "Exact captured session columns and existing UC114 storage columns; actual helper is installed unchanged with captured effective anon/auth/service grants. No allow stub."
+  },
+  "limits": [
+    "Fixture only. Product migration and its 16 source pins unchanged.",
+    "Captured production sandbox technical role is not fabricated in the PGlite fixture.",
+    "No full real-photo lifecycle or native/production acceptance claimed."
+  ]
+}

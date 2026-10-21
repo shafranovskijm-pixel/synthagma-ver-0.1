@@ -1,0 +1,574 @@
+{
+  "schemaVersion": 1,
+  "status": "READ_ONLY_PRODUCTION_METADATA_CAPTURED_FOR_FOUNDATION_SOURCE_FIDELITY",
+  "projectId": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "authorization": "Root authorized bounded metadata SELECT only. No business rows, PII, DDL or load tests.",
+  "sql": "WITH signatures(signature) AS (VALUES\n('can_access_course_as_learner(uuid)'),('_paid_20260922_lesson_read(uuid,boolean,boolean)'),\n('_test_manual_credit(uuid)'),('_test_session_payload(uuid)'),('_test_grade_payload(uuid)'),\n('_test_normalize_options(jsonb,integer)'),('_test_attempt_limits(uuid,uuid)'),\n('_assert_test_learner_access(uuid)'),('start_test_attempt(uuid,uuid)'),('submit_test_attempt(uuid,jsonb)'),\n('_final_test_photo_required(uuid)'),('account_deletion_access_allowed()')),\ntables(name) AS (VALUES('lessons'),('course_modules'),('lesson_progress'),('course_manual_credits')),\npayload AS(SELECT jsonb_build_object('status','UC014_METADATA_ONLY','captured_at',clock_timestamp(),'server_version',current_setting('server_version'),\n'functions',(SELECT jsonb_agg(jsonb_build_object('signature',s.signature,'found',p.oid IS NOT NULL,'owner',pg_get_userbyid(p.proowner),'acl',p.proacl::text,'definition',CASE WHEN p.oid IS NOT NULL THEN pg_get_functiondef(p.oid)END,'definition_md5',CASE WHEN p.oid IS NOT NULL THEN md5(pg_get_functiondef(p.oid))END) ORDER BY s.signature)FROM signatures s LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||s.signature)),\n'relations',(SELECT jsonb_agg(jsonb_build_object('name',t.name,'columns',(SELECT jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'not_null',a.attnotnull,'default',pg_get_expr(d.adbin,d.adrelid))ORDER BY a.attnum)FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=to_regclass('public.'||t.name)AND a.attnum>0 AND NOT a.attisdropped),'constraints',(SELECT jsonb_agg(jsonb_build_object('name',c.conname,'definition',pg_get_constraintdef(c.oid,true))ORDER BY c.conname)FROM pg_constraint c WHERE c.conrelid=to_regclass('public.'||t.name)),'indexes',(SELECT jsonb_agg(jsonb_build_object('name',c.relname,'definition',pg_get_indexdef(i.indexrelid))ORDER BY c.relname)FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE i.indrelid=to_regclass('public.'||t.name)))ORDER BY t.name)FROM tables t))value)\nSELECT CASE WHEN octet_length(value::text)>262144 THEN jsonb_build_object('status','OVERSIZE_METADATA_UNAVAILABLE') ELSE value END metadata FROM payload;",
+  "metadata": {
+    "captured_at": "2026-10-20T05:53:38.135722+00:00",
+    "functions": [
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._assert_test_learner_access(p_lesson_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nBEGIN\n  IF NOT public._paid_20260922_lesson_read(p_lesson_id,false,true) THEN\n    RAISE EXCEPTION 'Paid test content is not available for this user' USING ERRCODE='42501';\n  END IF;\n  IF auth.uid() IS NULL OR EXISTS (\n    SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND blocked_at IS NOT NULL\n  ) OR NOT EXISTS (\n    SELECT 1 FROM public.lessons l JOIN public.courses c ON c.id = l.course_id\n    WHERE l.id = p_lesson_id AND l.type = 'test' AND c.is_published = true\n      AND public.can_access_course_as_learner(c.id)\n  ) THEN\n    RAISE EXCEPTION 'Test is not available for this learner' USING ERRCODE = '42501';\n  END IF;\nEND;\n$function$\n",
+        "definition_md5": "121b38460edcfebb91a3b0ec5d5a4de5",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_assert_test_learner_access(uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._final_test_photo_required(p_lesson_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  SELECT coalesce((SELECT c.require_final_test_photo AND l.id = (\n    SELECT candidate.id FROM public.lessons candidate\n    LEFT JOIN public.course_modules m ON m.id = candidate.module_id AND m.course_id = candidate.course_id\n    WHERE candidate.course_id = c.id AND candidate.type = 'test'\n    ORDER BY (m.id IS NULL) DESC, m.order_index DESC NULLS FIRST,\n      m.id DESC NULLS FIRST, candidate.order_index DESC, candidate.id DESC\n    LIMIT 1\n  ) FROM public.lessons l JOIN public.courses c ON c.id = l.course_id\n  WHERE l.id = p_lesson_id AND l.type = 'test'), false)\n$function$\n",
+        "definition_md5": "d147738f2ea89383f9ea876c5aabdde0",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_final_test_photo_required(uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres,anon=X/postgres,authenticated=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._paid_20260922_lesson_read(p_lesson_id uuid, p_allow_demo boolean, p_allow_learner boolean)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\n SET row_security TO 'off'\nAS $function$\nDECLARE v_course_id uuid;\nBEGIN\n SELECT l.course_id INTO v_course_id FROM public.lessons l WHERE l.id=p_lesson_id;\n IF NOT FOUND THEN RETURN false; END IF;\n -- Reserved interface only: no demo UUIDs exist, and mutable flags grant nothing.\n RETURN public._paid_20260922_course_read(v_course_id,p_allow_learner);\nEND\n$function$\n",
+        "definition_md5": "0eb744d6b438b88f76ed164e8ec3131c",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_paid_20260922_lesson_read(uuid,boolean,boolean)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._test_attempt_limits(p_lesson_id uuid, p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_now timestamptz := clock_timestamp();\n  v_day_start timestamptz;\n  v_reset timestamptz;\n  v_total integer;\n  v_today integer;\n  v_max integer;\n  v_daily integer;\nBEGIN\n  v_day_start := date_trunc('day', v_now AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow';\n  v_reset := (date_trunc('day', v_now AT TIME ZONE 'Europe/Moscow') + interval '1 day') AT TIME ZONE 'Europe/Moscow';\n  SELECT test_max_attempts, test_max_attempts_per_day INTO v_max, v_daily\n    FROM public.lessons WHERE id = p_lesson_id;\n  SELECT count(*)::integer, count(*) FILTER (WHERE attempt_time >= v_day_start AND attempt_time < v_reset)::integer\n    INTO v_total, v_today\n  FROM (\n    SELECT started_at AS attempt_time FROM public.test_attempt_sessions\n      WHERE user_id = p_user_id AND lesson_id = p_lesson_id\n    UNION ALL\n    SELECT completed_at FROM public.test_attempts\n      WHERE user_id = p_user_id AND lesson_id = p_lesson_id AND session_id IS NULL\n  ) attempts;\n  RETURN jsonb_build_object('maxAttempts', v_max, 'maxAttemptsPerDay', v_daily,\n    'attemptsUsed', v_total, 'attemptsUsedToday', v_today,\n    'dayTimezone', 'Europe/Moscow', 'resetAt', v_reset);\nEND;\n$function$\n",
+        "definition_md5": "b44145c47907f5fc4396e385d776acd2",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_test_attempt_limits(uuid,uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._test_grade_payload(p_session_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  a public.test_attempts%ROWTYPE;\n  s public.test_attempt_sessions%ROWTYPE;\n  v_correct jsonb := '{}'::jsonb;\n  v_explanations jsonb := '{}'::jsonb;\n  v_show boolean;\nBEGIN\n  SELECT * INTO STRICT s FROM public.test_attempt_sessions WHERE id = p_session_id;\n  SELECT * INTO STRICT a FROM public.test_attempts WHERE session_id = p_session_id;\n  SELECT s.show_answers AND l.test_show_answers INTO v_show FROM public.lessons l WHERE l.id = s.lesson_id;\n  IF v_show THEN\n    SELECT coalesce(jsonb_object_agg(q->>'id', q->'correct_answer'), '{}'::jsonb),\n      coalesce(jsonb_object_agg(q->>'id', q->'explanation'), '{}'::jsonb)\n      INTO v_correct, v_explanations FROM jsonb_array_elements(s.questions_snapshot) q;\n  END IF;\n  RETURN public._test_attempt_limits(s.lesson_id, s.user_id) || jsonb_build_object(\n    'attemptId', s.id, 'score', a.score, 'maxScore', a.max_score,\n    'scorePercent', CASE WHEN a.max_score > 0 THEN round(a.score * 100.0 / a.max_score)::integer ELSE 0 END,\n    'passed', a.passed, 'passingScore', a.passing_score, 'showAnswers', v_show,\n    'correctAnswers', v_correct, 'explanations', v_explanations);\nEND;\n$function$\n",
+        "definition_md5": "5fd2c208ab1da1c99f53e39068a3853b",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_test_grade_payload(uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._test_manual_credit(p_lesson_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE v_credit jsonb;\nBEGIN\n  -- The following migration installs the manual-credit table. Safe during rollout.\n  IF to_regclass('public.course_manual_credits') IS NULL THEN RETURN NULL; END IF;\n  SELECT jsonb_build_object('creditedAt', mc.credited_at, 'creditedBy', mc.credited_by)\n    INTO v_credit\n  FROM public.course_manual_credits mc\n  JOIN public.enrollments e ON e.id = mc.enrollment_id\n  JOIN public.lessons l ON l.course_id = e.course_id\n  WHERE l.id = p_lesson_id AND e.user_id = auth.uid() AND mc.revoked_at IS NULL\n  ORDER BY mc.credited_at DESC LIMIT 1;\n  RETURN v_credit;\nEND;\n$function$\n",
+        "definition_md5": "e23a3f0ed56fe05fd0a9a97422d93487",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_test_manual_credit(uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._test_normalize_options(p_options jsonb, p_correct_answer integer)\n RETURNS jsonb\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE v_options jsonb := p_options;\nBEGIN\n  IF jsonb_typeof(v_options) = 'string' THEN\n    BEGIN\n      v_options := (v_options #>> '{}')::jsonb;\n    EXCEPTION WHEN invalid_text_representation THEN\n      RAISE EXCEPTION 'Test content invalid: answer options are not a valid JSON array' USING ERRCODE = '22023';\n    END;\n  END IF;\n  IF jsonb_typeof(v_options) IS DISTINCT FROM 'array' THEN\n    RAISE EXCEPTION 'Test content invalid: answer options must be an array' USING ERRCODE = '22023';\n  END IF;\n  IF jsonb_array_length(v_options) = 0 THEN\n    RAISE EXCEPTION 'Test content invalid: answer options are empty' USING ERRCODE = '22023';\n  END IF;\n  -- Preserve legacy keys, including NULL and out-of-range values, in the snapshot.\n  -- Legal answers still use zero-based option indexes; these keys cannot earn a point.\n  RETURN v_options;\nEND;\n$function$\n",
+        "definition_md5": "3d9019fdcfec6541dbdc251f0d735deb",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_test_normalize_options(jsonb,integer)"
+      },
+      {
+        "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public._test_session_payload(p_session_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE s public.test_attempt_sessions%ROWTYPE;\nBEGIN\n  SELECT * INTO STRICT s FROM public.test_attempt_sessions WHERE id = p_session_id;\n  RETURN public._test_attempt_limits(s.lesson_id, s.user_id) || jsonb_build_object(\n    'attemptId', s.id, 'startedAt', s.started_at, 'status', s.status,\n    'questions', public._test_public_questions(s.questions_snapshot, false),\n    'passingScore', s.passing_score, 'showAnswers', s.show_answers);\nEND;\n$function$\n",
+        "definition_md5": "c41f809267021233b71c6715f0d50364",
+        "found": true,
+        "owner": "postgres",
+        "signature": "_test_session_payload(uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+        "definition_md5": "64b0a90b7db9813950ccca6dff208f3a",
+        "found": true,
+        "owner": "postgres",
+        "signature": "account_deletion_access_allowed()"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public.can_access_course_as_learner(_course_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT auth.uid() IS NOT NULL AND EXISTS (\n    SELECT 1\n    FROM public.enrollments e\n    JOIN public.courses c ON c.id = e.course_id\n    JOIN public.profiles p\n      ON p.user_id = e.user_id\n     AND p.organization_id = c.organization_id\n    WHERE e.user_id = auth.uid()\n      AND e.course_id = _course_id\n      AND e.status IN ('active', 'completed')\n      -- Keep the existing SINTAGMA enrollment contract: completion preserves\n      -- course access even when the original access period has elapsed.\n      AND (\n        e.expires_at IS NULL\n        OR e.expires_at > now()\n        OR e.status = 'completed'\n      )\n  )\n$function$\n",
+        "definition_md5": "fff57f8e966305869e67d97b578fee4b",
+        "found": true,
+        "owner": "postgres",
+        "signature": "can_access_course_as_learner(uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public.start_test_attempt(p_lesson_id uuid, p_request_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_session uuid;\n  v_limits jsonb;\n  v_questions jsonb;\n  v_count integer;\n  v_passing integer;\n  v_show boolean;\n  v_photo_required boolean;\n  v_photo_id uuid;\n  v_started_at timestamptz;\nBEGIN\n  PERFORM public._assert_test_learner_access(p_lesson_id);\n  IF p_request_id IS NULL THEN RAISE EXCEPTION 'request_id is required' USING ERRCODE = '22023'; END IF;\n  PERFORM pg_advisory_xact_lock(hashtextextended(v_user::text || ':' || p_lesson_id::text, 0));\n  PERFORM 1 FROM public.enrollments e JOIN public.lessons l ON l.course_id = e.course_id\n    WHERE l.id = p_lesson_id AND e.user_id = v_user FOR UPDATE OF e;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Enrollment is not available' USING ERRCODE = '42501'; END IF;\n  PERFORM public._assert_test_learner_access(p_lesson_id);\n  IF public._test_manual_credit(p_lesson_id) IS NOT NULL THEN\n    RAISE EXCEPTION 'Course already credited by the organization' USING ERRCODE = 'P0001';\n  END IF;\n  SELECT session_id INTO v_session FROM public.test_attempt_start_requests\n    WHERE user_id = v_user AND lesson_id = p_lesson_id AND request_id = p_request_id;\n  IF v_session IS NOT NULL THEN RETURN public._test_session_payload(v_session); END IF;\n  -- A second tab or a network retry resumes the same attempt, including across midnight.\n  SELECT id INTO v_session FROM public.test_attempt_sessions\n    WHERE user_id = v_user AND lesson_id = p_lesson_id AND status = 'in_progress';\n  IF v_session IS NOT NULL THEN\n    INSERT INTO public.test_attempt_start_requests(user_id, lesson_id, request_id, session_id)\n      VALUES (v_user, p_lesson_id, p_request_id, v_session);\n    RETURN public._test_session_payload(v_session);\n  END IF;\n  v_limits := public._test_attempt_limits(p_lesson_id, v_user);\n  IF (v_limits->>'maxAttempts')::integer > 0\n    AND (v_limits->>'attemptsUsed')::integer >= (v_limits->>'maxAttempts')::integer THEN\n    RAISE EXCEPTION 'Attempts exhausted' USING ERRCODE = 'P0001', DETAIL = v_limits::text;\n  END IF;\n  IF (v_limits->>'maxAttemptsPerDay')::integer > 0\n    AND (v_limits->>'attemptsUsedToday')::integer >= (v_limits->>'maxAttemptsPerDay')::integer THEN\n    RAISE EXCEPTION 'Daily attempts exhausted' USING ERRCODE = 'P0001', DETAIL = v_limits::text;\n  END IF;\n  SELECT test_questions_to_show, test_passing_score, test_show_answers\n    INTO v_count, v_passing, v_show FROM public.lessons WHERE id = p_lesson_id;\n  -- Validate every candidate before sampling: malformed content must not randomly\n  -- consume a quota slot or silently disappear from the configured question bank.\n  WITH normalized AS MATERIALIZED (\n    SELECT tq.id, tq.lesson_id, tq.question,\n      public._test_normalize_options(tq.options, tq.correct_answer) AS options,\n      tq.order_index, tq.correct_answer, tq.explanation, tq.image_url, tq.is_bank_question\n    FROM public.test_questions tq WHERE tq.lesson_id = p_lesson_id\n  )\n  SELECT jsonb_agg(to_jsonb(q) ORDER BY q.position) INTO v_questions FROM (\n    SELECT tq.*, row_number() OVER () AS position\n    FROM (SELECT * FROM normalized ORDER BY random()\n      LIMIT CASE WHEN v_count > 0 THEN v_count ELSE NULL END) tq\n  ) q;\n  IF v_questions IS NULL OR jsonb_array_length(v_questions) = 0 THEN\n    RAISE EXCEPTION 'No test questions available' USING ERRCODE = '22023';\n  END IF;\n  -- Use one reservation timestamp for expiry and the session. Crossing the\n  -- expiry boundary between SELECT and INSERT must not consume an invalid slot.\n  v_started_at := clock_timestamp();\n  v_photo_required := public._final_test_photo_required(p_lesson_id);\n  IF v_photo_required THEN\n    SELECT c.id INTO v_photo_id FROM public.final_test_photo_challenges c\n      JOIN public.enrollments e ON e.id = c.enrollment_id AND e.user_id = v_user AND e.course_id = c.course_id\n      WHERE c.user_id = v_user AND c.lesson_id = p_lesson_id AND c.request_id = p_request_id\n        AND c.completed_at IS NOT NULL AND c.expires_at > v_started_at AND c.session_id IS NULL\n        AND public._final_test_photo_object_valid(c.id)\n      FOR UPDATE OF c;\n    IF v_photo_id IS NULL THEN\n      RAISE EXCEPTION 'Final test photo required' USING ERRCODE = 'P0001';\n    END IF;\n  END IF;\n  INSERT INTO public.test_attempt_sessions(user_id, lesson_id, request_id, started_at, questions_snapshot, passing_score, show_answers, requires_final_test_photo)\n    VALUES (v_user, p_lesson_id, p_request_id, v_started_at, v_questions, coalesce(v_passing, 60), v_show, v_photo_required)\n    RETURNING id INTO v_session;\n  IF v_photo_id IS NOT NULL THEN\n    UPDATE public.final_test_photo_challenges SET session_id = v_session WHERE id = v_photo_id;\n  END IF;\n  INSERT INTO public.test_attempt_start_requests(user_id, lesson_id, request_id, session_id)\n    VALUES (v_user, p_lesson_id, p_request_id, v_session);\n  RETURN public._test_session_payload(v_session);\nEND;\n$function$\n",
+        "definition_md5": "43978d2d2dc843ec563dbc0d1fd6e313",
+        "found": true,
+        "owner": "postgres",
+        "signature": "start_test_attempt(uuid,uuid)"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "definition": "CREATE OR REPLACE FUNCTION public.submit_test_attempt(p_attempt_id uuid, p_answers jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  s public.test_attempt_sessions%ROWTYPE;\n  v_score integer;\n  v_max integer;\n  v_passed boolean;\n  v_completed timestamptz;\nBEGIN\n  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501'; END IF;\n  SELECT * INTO s FROM public.test_attempt_sessions WHERE id = p_attempt_id AND user_id = auth.uid();\n  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt not found' USING ERRCODE = '42501'; END IF;\n  PERFORM public._assert_test_learner_access(s.lesson_id);\n  PERFORM pg_advisory_xact_lock(hashtextextended(s.user_id::text || ':' || s.lesson_id::text, 0));\n  SELECT * INTO STRICT s FROM public.test_attempt_sessions WHERE id = p_attempt_id FOR UPDATE;\n  PERFORM public._assert_test_learner_access(s.lesson_id);\n  -- A response can be lost after commit: return the original result, never regrade or recount.\n  IF s.status = 'completed' THEN RETURN public._test_grade_payload(s.id); END IF;\n  -- Expiry limits the START window, not test duration. An attached photo remains\n  -- valid during a long attempt, even if the course setting is later disabled.\n  IF s.requires_final_test_photo AND NOT EXISTS (\n    SELECT 1 FROM public.final_test_photo_challenges c\n    WHERE c.session_id = s.id AND c.user_id = s.user_id AND c.lesson_id = s.lesson_id\n      AND c.request_id = s.request_id AND c.completed_at IS NOT NULL\n      AND c.completed_at <= s.started_at AND s.started_at < c.expires_at\n      AND public._final_test_photo_object_valid(c.id)\n  ) THEN\n    RAISE EXCEPTION 'Final test photo required' USING ERRCODE = 'P0001';\n  END IF;\n  IF p_answers IS NULL OR jsonb_typeof(p_answers) <> 'object' THEN\n    RAISE EXCEPTION 'answers must be an object' USING ERRCODE = '22023';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM jsonb_each(p_answers) a\n    LEFT JOIN LATERAL (SELECT q FROM jsonb_array_elements(s.questions_snapshot) q WHERE q->>'id' = a.key) item ON true\n    WHERE item.q IS NULL OR jsonb_typeof(a.value) <> 'number'\n      OR a.value::text !~ '^[0-9]+$'\n      OR CASE WHEN jsonb_typeof(a.value) = 'number' AND a.value::text ~ '^[0-9]+$'\n        THEN (a.value::text)::numeric >= jsonb_array_length(item.q->'options') ELSE false END\n  ) THEN\n    RAISE EXCEPTION 'Answer is not a valid option in this attempt' USING ERRCODE = '22023';\n  END IF;\n  SELECT count(*)::integer, count(*) FILTER (WHERE p_answers->(q->>'id') = q->'correct_answer')::integer\n    INTO v_max, v_score FROM jsonb_array_elements(s.questions_snapshot) q;\n  v_passed := round(v_score * 100.0 / v_max) >= s.passing_score;\n  v_completed := clock_timestamp();\n  INSERT INTO public.test_attempts(user_id, lesson_id, session_id, started_at, completed_at,\n    score, max_score, answers, shown_question_ids, passing_score, passed)\n  VALUES (s.user_id, s.lesson_id, s.id, s.started_at, v_completed, v_score, v_max, p_answers,\n    (SELECT jsonb_agg(q->'id') FROM jsonb_array_elements(s.questions_snapshot) q), s.passing_score, v_passed);\n  UPDATE public.test_attempt_sessions SET status = 'completed', submitted_at = v_completed WHERE id = s.id;\n  IF v_passed THEN\n    INSERT INTO public.lesson_progress(user_id, lesson_id, completed, completed_at)\n      VALUES (s.user_id, s.lesson_id, true, v_completed)\n    ON CONFLICT (user_id, lesson_id) DO UPDATE SET completed = true,\n      completed_at = coalesce(public.lesson_progress.completed_at, EXCLUDED.completed_at);\n  END IF;\n  RETURN public._test_grade_payload(s.id);\nEND;\n$function$\n",
+        "definition_md5": "9cff05e090f0c8da170d2bed99b728cf",
+        "found": true,
+        "owner": "postgres",
+        "signature": "submit_test_attempt(uuid,jsonb)"
+      }
+    ],
+    "relations": [
+      {
+        "columns": [
+          {
+            "default": "gen_random_uuid()",
+            "name": "id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "enrollment_id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "credited_by",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": "now()",
+            "name": "credited_at",
+            "not_null": true,
+            "type": "timestamp with time zone"
+          },
+          {
+            "default": null,
+            "name": "revoked_by",
+            "not_null": false,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "revoked_at",
+            "not_null": false,
+            "type": "timestamp with time zone"
+          }
+        ],
+        "constraints": [
+          {
+            "definition": "FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE",
+            "name": "course_manual_credits_enrollment_id_fkey"
+          },
+          {
+            "definition": "PRIMARY KEY (id)",
+            "name": "course_manual_credits_pkey"
+          }
+        ],
+        "indexes": [
+          {
+            "definition": "CREATE UNIQUE INDEX course_manual_credits_one_active ON public.course_manual_credits USING btree (enrollment_id) WHERE (revoked_at IS NULL)",
+            "name": "course_manual_credits_one_active"
+          },
+          {
+            "definition": "CREATE UNIQUE INDEX course_manual_credits_pkey ON public.course_manual_credits USING btree (id)",
+            "name": "course_manual_credits_pkey"
+          }
+        ],
+        "name": "course_manual_credits"
+      },
+      {
+        "columns": [
+          {
+            "default": "gen_random_uuid()",
+            "name": "id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "course_id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": "'Новый модуль'::text",
+            "name": "title",
+            "not_null": true,
+            "type": "text"
+          },
+          {
+            "default": "0",
+            "name": "order_index",
+            "not_null": true,
+            "type": "integer"
+          },
+          {
+            "default": "now()",
+            "name": "created_at",
+            "not_null": true,
+            "type": "timestamp with time zone"
+          },
+          {
+            "default": "now()",
+            "name": "updated_at",
+            "not_null": true,
+            "type": "timestamp with time zone"
+          }
+        ],
+        "constraints": [
+          {
+            "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+            "name": "course_modules_course_id_fkey"
+          },
+          {
+            "definition": "PRIMARY KEY (id)",
+            "name": "course_modules_pkey"
+          }
+        ],
+        "indexes": [
+          {
+            "definition": "CREATE UNIQUE INDEX course_modules_pkey ON public.course_modules USING btree (id)",
+            "name": "course_modules_pkey"
+          },
+          {
+            "definition": "CREATE INDEX idx_course_modules_course_id ON public.course_modules USING btree (course_id)",
+            "name": "idx_course_modules_course_id"
+          },
+          {
+            "definition": "CREATE INDEX idx_course_modules_order ON public.course_modules USING btree (course_id, order_index)",
+            "name": "idx_course_modules_order"
+          }
+        ],
+        "name": "course_modules"
+      },
+      {
+        "columns": [
+          {
+            "default": "gen_random_uuid()",
+            "name": "id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "user_id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "lesson_id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": "false",
+            "name": "completed",
+            "not_null": true,
+            "type": "boolean"
+          },
+          {
+            "default": "0",
+            "name": "time_spent",
+            "not_null": true,
+            "type": "integer"
+          },
+          {
+            "default": null,
+            "name": "completed_at",
+            "not_null": false,
+            "type": "timestamp with time zone"
+          },
+          {
+            "default": "0",
+            "name": "video_position",
+            "not_null": false,
+            "type": "real"
+          },
+          {
+            "default": "0",
+            "name": "video_duration",
+            "not_null": false,
+            "type": "real"
+          }
+        ],
+        "constraints": [
+          {
+            "definition": "FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE",
+            "name": "lesson_progress_lesson_id_fkey"
+          },
+          {
+            "definition": "PRIMARY KEY (id)",
+            "name": "lesson_progress_pkey"
+          },
+          {
+            "definition": "UNIQUE (user_id, lesson_id)",
+            "name": "lesson_progress_user_id_lesson_id_key"
+          }
+        ],
+        "indexes": [
+          {
+            "definition": "CREATE INDEX idx_lesson_progress_user_completed ON public.lesson_progress USING btree (user_id, completed, completed_at DESC)",
+            "name": "idx_lesson_progress_user_completed"
+          },
+          {
+            "definition": "CREATE INDEX idx_lesson_progress_user_lesson_completed ON public.lesson_progress USING btree (user_id, lesson_id) WHERE (completed = true)",
+            "name": "idx_lesson_progress_user_lesson_completed"
+          },
+          {
+            "definition": "CREATE UNIQUE INDEX lesson_progress_pkey ON public.lesson_progress USING btree (id)",
+            "name": "lesson_progress_pkey"
+          },
+          {
+            "definition": "CREATE UNIQUE INDEX lesson_progress_user_id_lesson_id_key ON public.lesson_progress USING btree (user_id, lesson_id)",
+            "name": "lesson_progress_user_id_lesson_id_key"
+          }
+        ],
+        "name": "lesson_progress"
+      },
+      {
+        "columns": [
+          {
+            "default": "gen_random_uuid()",
+            "name": "id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "course_id",
+            "not_null": true,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "title",
+            "not_null": true,
+            "type": "text"
+          },
+          {
+            "default": "'text'::text",
+            "name": "type",
+            "not_null": true,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "content",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "0",
+            "name": "order_index",
+            "not_null": true,
+            "type": "integer"
+          },
+          {
+            "default": "now()",
+            "name": "created_at",
+            "not_null": true,
+            "type": "timestamp with time zone"
+          },
+          {
+            "default": "now()",
+            "name": "updated_at",
+            "not_null": true,
+            "type": "timestamp with time zone"
+          },
+          {
+            "default": "5",
+            "name": "test_questions_count",
+            "not_null": false,
+            "type": "integer"
+          },
+          {
+            "default": "60",
+            "name": "test_passing_score",
+            "not_null": true,
+            "type": "integer"
+          },
+          {
+            "default": null,
+            "name": "test_questions_to_show",
+            "not_null": false,
+            "type": "integer"
+          },
+          {
+            "default": "false",
+            "name": "is_locked",
+            "not_null": true,
+            "type": "boolean"
+          },
+          {
+            "default": null,
+            "name": "ai_avatar_name",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "ai_avatar_image_url",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'Nec_24000'::text",
+            "name": "ai_avatar_voice_id",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "ai_avatar_system_prompt",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "ai_avatar_greeting",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "ai_avatar_subject",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'friendly'::text",
+            "name": "ai_avatar_style",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "5",
+            "name": "ai_avatar_session_minutes",
+            "not_null": false,
+            "type": "integer"
+          },
+          {
+            "default": "'google/gemini-3-flash-preview'::text",
+            "name": "ai_avatar_model",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'deepgram'::text",
+            "name": "ai_avatar_stt_provider",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'nova-2'::text",
+            "name": "ai_avatar_stt_model",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'openai'::text",
+            "name": "ai_avatar_llm_provider",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'gpt-4o-mini'::text",
+            "name": "ai_avatar_llm_model",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'elevenlabs'::text",
+            "name": "ai_avatar_tts_provider",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'EXAVITQu4vr4xnSDxMaL'::text",
+            "name": "ai_avatar_tts_voice",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "'ru'::text",
+            "name": "ai_avatar_language",
+            "not_null": false,
+            "type": "text"
+          },
+          {
+            "default": "true",
+            "name": "ai_avatar_allow_interruptions",
+            "not_null": false,
+            "type": "boolean"
+          },
+          {
+            "default": null,
+            "name": "module_id",
+            "not_null": false,
+            "type": "uuid"
+          },
+          {
+            "default": null,
+            "name": "test_max_attempts",
+            "not_null": false,
+            "type": "integer"
+          },
+          {
+            "default": "true",
+            "name": "test_show_answers",
+            "not_null": true,
+            "type": "boolean"
+          },
+          {
+            "default": "'{}'::jsonb",
+            "name": "metadata",
+            "not_null": true,
+            "type": "jsonb"
+          },
+          {
+            "default": null,
+            "name": "test_max_attempts_per_day",
+            "not_null": false,
+            "type": "integer"
+          }
+        ],
+        "constraints": [
+          {
+            "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+            "name": "lessons_course_id_fkey"
+          },
+          {
+            "definition": "CHECK (jsonb_typeof(metadata) = 'object'::text)",
+            "name": "lessons_metadata_is_object"
+          },
+          {
+            "definition": "FOREIGN KEY (module_id) REFERENCES course_modules(id) ON DELETE SET NULL",
+            "name": "lessons_module_id_fkey"
+          },
+          {
+            "definition": "PRIMARY KEY (id)",
+            "name": "lessons_pkey"
+          },
+          {
+            "definition": "CHECK (test_max_attempts_per_day IS NULL OR test_max_attempts_per_day > 0)",
+            "name": "lessons_test_max_attempts_per_day_positive"
+          }
+        ],
+        "indexes": [
+          {
+            "definition": "CREATE INDEX idx_lessons_course_id ON public.lessons USING btree (course_id)",
+            "name": "idx_lessons_course_id"
+          },
+          {
+            "definition": "CREATE INDEX idx_lessons_final_assessment ON public.lessons USING btree (course_id, order_index) WHERE (metadata @> '{\"final_assessment\": true}'::jsonb)",
+            "name": "idx_lessons_final_assessment"
+          },
+          {
+            "definition": "CREATE INDEX idx_lessons_module_id ON public.lessons USING btree (module_id)",
+            "name": "idx_lessons_module_id"
+          },
+          {
+            "definition": "CREATE UNIQUE INDEX lessons_pkey ON public.lessons USING btree (id)",
+            "name": "lessons_pkey"
+          }
+        ],
+        "name": "lessons"
+      }
+    ],
+    "server_version": "17.6",
+    "status": "UC014_METADATA_ONLY"
+  },
+  "productionWrites": 0
+}
+

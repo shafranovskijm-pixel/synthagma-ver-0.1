@@ -1,5 +1,6 @@
 // @vitest-environment node
-import {readFile} from 'node:fs/promises';
+import {readFile,lstat,readdir,realpath} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {afterEach,it,expect} from 'vitest';
 import type {PGlite} from '@electric-sql/pglite';
@@ -7,6 +8,32 @@ import {createUcProgramFactsReleaseFixture} from './uc-program-facts-release.fix
 const folder=new URL('../../../docs/releases/sintagma-production/uc-program-facts-20261018/',import.meta.url);
 const norm=(s:string)=>s.replaceAll('\r\n','\n'),hash=(s:string,a='sha256')=>createHash(a).update(norm(s)).digest('hex');
 const read=async(name:string)=>norm(await readFile(new URL(name,folder),'utf8'));
+const archiveFolder=new URL('../uc-program-facts-source-archive-20261019/',folder);
+const archiveIndexSha='0ac85bbd2159398ec5b338e066e3ba2165dfe80d775dfb8b14b179391c68f094';
+const originalManifestSha='ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf';
+async function historicalSources(manifest:any,load=(url:URL)=>readFile(url)){
+ const fail=()=>{throw Error('Historical111 source archive mismatch');};
+ const indexBytes=await load(new URL('manifest.json',archiveFolder));
+ if(hash(indexBytes.toString('utf8'))!==archiveIndexSha||hash(await read('release-manifest.json'))!==originalManifestSha)fail();
+ const index=JSON.parse(indexBytes.toString('utf8'));
+ if(index.schemaVersion!==1||index.sourceCommit!=='d1089fc11c1115800e2b24423783eb324744e7b1'||index.entryCount!==18||index.objectCount!==18||index.entries.length!==18||manifest.productFiles.length!==18||index.originalReleaseManifest.canonicalLfSha256!==originalManifestSha)fail();
+ if(norm((await load(new URL('.gitattributes',archiveFolder))).toString('utf8'))!=='objects/*.source -text\n')fail();
+ const expected=new Map<string,string>(manifest.productFiles.map((f:any)=>[f.path,f.sourceSha256]));
+ const result=new Map<string,string>(),objects=new Set<string>();
+ for(const part of [archiveFolder,new URL('objects/',archiveFolder)])if((await lstat(part)).isSymbolicLink()||await realpath(part)!==fileURLToPath(part).replace(/[\\/]$/,''))fail();
+ if(JSON.stringify((await readdir(archiveFolder)).sort())!==JSON.stringify(['.gitattributes','manifest.json','objects']))fail();
+ for(const entry of index.entries){
+  const digest=expected.get(entry.originalPath);
+  if(!digest||result.has(entry.originalPath)||entry.sourceCommit!==index.sourceCommit||entry.rawSha256!==digest||entry.canonicalLfSha256!==digest||!/^([a-f0-9]{40})$/.test(entry.sourceGitBlobOid)||entry.archivePath!==`docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/${digest}.source`)fail();
+  const filename=`${digest}.source`,url=new URL(`objects/${filename}`,archiveFolder),stat=await lstat(url);
+  if(stat.isSymbolicLink()||!stat.isFile())fail();
+  const bytes=await load(url);
+  if(bytes.length!==entry.sourceByteLength||createHash('sha256').update(bytes).digest('hex')!==digest||!bytes.equals(Buffer.from(norm(bytes.toString('utf8'))))||createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`),bytes])).digest('hex')!==entry.sourceGitBlobOid)fail();
+  result.set(entry.originalPath,bytes.toString('utf8'));objects.add(filename);
+ }
+ if(result.size!==18||objects.size!==18||JSON.stringify((await readdir(new URL('objects/',archiveFolder))).sort())!==JSON.stringify([...objects].sort()))fail();
+ return result;
+}
 let db:PGlite;
 const one=async(sql:string,args:any[]=[]) => (await db.query<any>(sql,args)).rows[0];
 const org='00000000-0000-4000-8000-000000000100',owner='00000000-0000-4000-8000-000000000001';
@@ -34,12 +61,21 @@ async function rolledBack(priorCount=11){
  expect(await one('SELECT document_html,document_hash FROM document_signatures')).toEqual({document_html:'Original signed HTML',document_hash:'original-preserved-hash'});
 }
 afterEach(async()=>db?.close());
+it('verifies all18 archived immutable sources and rejects changed object/index/expected correspondence',async()=>{
+ const manifest=JSON.parse(await read('release-manifest.json'));
+ expect((await historicalSources(manifest)).size).toBe(18);
+ for(const suffix of ['.source','manifest.json','.gitattributes'])await expect(historicalSources(manifest,async url=>{
+  const bytes=await readFile(url);return url.pathname.endsWith(suffix)?Buffer.concat([bytes,Buffer.from('tamper')]):bytes;
+ })).rejects.toThrow(/archive mismatch/);
+ await expect(historicalSources({...manifest,productFiles:manifest.productFiles.slice(1)})).rejects.toThrow(/archive mismatch/);
+});
 it('runs one exact111 transaction after100-110 while preserving populated profiles, reviews and legacy programme metadata',async()=>{
  await setup();const manifest=JSON.parse(await read('release-manifest.json')),batch=await read('release-transaction.sql');expect(hash(batch)).toBe(manifest.batchSha256);expect(manifest.priorMigrations).toHaveLength(11);
  expect(Object.values(await one(await read('preflight.sql'))).every(v=>v===true)).toBe(true);await db.exec(batch);
  expect(Object.values(await one(await read('postcheck.sql'))).every(v=>v===true)).toBe(true);expect(await one('SELECT count(*)::int n FROM supabase_migrations.schema_migrations')).toEqual({n:12});
  for(const m of manifest.migrations){const source=norm(await readFile(new URL('../../migrations/'+m.file,import.meta.url),'utf8'));expect(hash(source)).toBe(m.sourceSha256);expect((await one('SELECT statements[1] source FROM supabase_migrations.schema_migrations WHERE version=$1',[m.version])).source).toBe(source);}
- for(const f of [...manifest.productFiles,manifest.previousReleaseManifest])expect(hash(await readFile(new URL('../../../'+f.path,import.meta.url),'utf8'))).toBe(f.sourceSha256);
+ const historical=await historicalSources(manifest);for(const f of manifest.productFiles)expect(hash(historical.get(f.path)!)).toBe(f.sourceSha256);
+ for(const f of [manifest.previousReleaseManifest])expect(hash(await readFile(new URL('../../../'+f.path,import.meta.url),'utf8'))).toBe(f.sourceSha256);
  for(const t of manifest.expectedTables)expect(await one('SELECT count(*)::int n FROM '+t.table)).toEqual({n:0});
  expect(await one('SELECT count(*)::int n FROM org_document_review_events')).toEqual({n:1});expect(await one('SELECT last_number FROM document_number_sequences')).toEqual({last_number:73});
  await expect(db.exec(batch)).rejects.toThrow(/preflight failed/);await db.exec('ROLLBACK');

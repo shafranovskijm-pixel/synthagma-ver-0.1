@@ -3,6 +3,8 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { generateClassJournalDocx } from "../docxJournal";
 import { generatePackage } from "../generate";
 import { SAMPLE_CONTEXT } from "../sampleContext";
+import { compatibleArtifactSnapshot,id } from '@/lib/groupEducationFacts/__tests__/fixtures';
+import { GROUP_EDUCATION_COMPILER_REVISION } from '../docxJournal';
 
 const supabaseInvokeMock = vi.hoisted(() => vi.fn());
 
@@ -454,4 +456,13 @@ describe("generateClassJournalDocx", () => {
     expect(compileBody.journalDocumentDate).not.toBe(documents[0].document_date);
     expect(compileBody.journalDocumentDate).not.toBe(documents[1].document_date);
   });
+});
+describe('UC013 source compiler capability and pinned caller',()=>{
+ beforeEach(()=>{invokeMock.mockReset();supabaseInvokeMock.mockReset();});
+ const params=()=>({organizationId:id(1),groupId:id(2),studentUserIds:[id(20)],journalDocumentDate:'2026-10-19',fillMode:'blank' as const,otherDocuments:[],educationSource:compatibleArtifactSnapshot().source,originalBearer:'Bearer original',isCurrent:()=>true});
+ const capability=()=>({data:null,error:{context:new Response('{}',{status:400,headers:{'X-Sintagma-Compiler-Revision':GROUP_EDUCATION_COMPILER_REVISION}})}});
+ it('requires new scoped capability before persist and pins original bearer/source',async()=>{supabaseInvokeMock.mockResolvedValue(capability());const p=params();invokeMock.mockResolvedValue({data:{compilerRevision:GROUP_EDUCATION_COMPILER_REVISION,educationSource:p.educationSource,documentCount:1,writesPerformed:true,batch:{batch_id:id(70),batch_version:1,inserted_count:1},documents:[{doc_type:'class_journal',name:'Учебный журнал',docx_sha256:'A'.repeat(64)}]},error:null});await generateClassJournalDocx(p);expect(supabaseInvokeMock).toHaveBeenCalledWith('compile-group-class-journal',{body:{capabilityProbe:true,requiredRevision:GROUP_EDUCATION_COMPILER_REVISION,organizationId:id(1),groupId:id(2)},headers:{Authorization:'Bearer original'}});expect(invokeMock.mock.calls[0][1]).toMatchObject({body:{educationSource:p.educationSource},headers:{Authorization:'Bearer original','X-Sintagma-Required-Compiler-Revision':GROUP_EDUCATION_COMPILER_REVISION}});});
+ it('oldv14 and current403 cannot receive the source payload',async()=>{supabaseInvokeMock.mockResolvedValue({data:null,error:{context:new Response('{}',{status:403,headers:{'X-Sintagma-Compiler-Revision':GROUP_EDUCATION_COMPILER_REVISION}})}});await expect(generateClassJournalDocx(params())).rejects.toMatchObject({code:'ACCESS_DENIED'});expect(invokeMock).not.toHaveBeenCalled();});
+ it('drops late new capability after actor/scope invalidation',async()=>{let current=true;supabaseInvokeMock.mockImplementation(async()=>{current=false;return capability();});await expect(generateClassJournalDocx({...params(),isCurrent:()=>current})).rejects.toThrow();expect(invokeMock).not.toHaveBeenCalled();});
+ it('no-error empty response is not confirmed newsource success',async()=>{supabaseInvokeMock.mockResolvedValue(capability());invokeMock.mockResolvedValue({data:null,error:null});await expect(generateClassJournalDocx(params())).rejects.toMatchObject({code:'DEPENDENCY_UNAVAILABLE'});});
 });

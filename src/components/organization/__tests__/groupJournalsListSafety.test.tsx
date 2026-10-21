@@ -29,6 +29,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 const toastError = vi.fn();
+vi.mock("@/hooks/useCustomJournals",()=>({useCustomJournals:()=>({contextKey:'SYN_TEST',refresh:0,journals:[],next:null,loading:false,error:null,canRead:true,canWrite:true,saving:false,pending:false,mutationError:null,read:vi.fn(async()=>({kind:'legacy_inventory',legacy_journals:[],next_after_legacy_id:null})),reload:vi.fn(),loadMore:vi.fn(),mutate:vi.fn(),retry:vi.fn()})}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...a: any[]) => toastError(...a), info: vi.fn() } }));
 
 vi.mock("@/components/organization/GroupContextBanner", () => ({
@@ -65,7 +66,7 @@ describe("JournalsManager without group context", () => {
     localStorage.clear();
   });
 
-  it("keeps organization-wide wizard and custom journals", async () => {
+  it("keeps the organization wizard and requires an explicit legacy import preview", async () => {
     localStorage.setItem(
       "custom_journals_org-1",
       JSON.stringify([{ id: "custom_1", title: "Мой журнал", description: "d", fields: ["a"], createdAt: "2026-01-01" }]),
@@ -76,7 +77,9 @@ describe("JournalsManager without group context", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByText("Создать журнал")).toBeInTheDocument());
-    expect(screen.getByText("Мой журнал")).toBeInTheDocument();
+    expect(screen.queryByText("Мой журнал")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", {name:"Перенести из браузера"})).toBeInTheDocument();
+    expect(localStorage.getItem("custom_journals_org-1")).toContain("Мой журнал");
     expect(screen.getAllByText("Пользовательские журналы").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("group-journals-scope-notice")).not.toBeInTheDocument();
   });

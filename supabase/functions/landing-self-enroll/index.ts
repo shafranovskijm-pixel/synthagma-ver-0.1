@@ -7,6 +7,7 @@ import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from '..
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
+import { claimStudentCapacity, confirmStudentCapacityClaim } from "../_shared/student-capacity-claim.ts";
 import {
   formatTelegramUtm,
   telegramHtmlValue,
@@ -15,6 +16,9 @@ import {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "uc-group-facts-registration-20261019-v1",
+  "Cache-Control": "no-store",
 };
 
 interface Payload {
@@ -147,9 +151,7 @@ serve(async (req) => {
       userId = authData.user.id;
 
       // Persist the unlimited personal file before attempting a course assignment
-      const { data: claimRes, error: claimErr } = await admin.rpc(
-        "create_student_profile_with_capacity",
-        {
+      const claimArguments = Object.freeze({
           p_organization_id: course.organization_id,
           p_user_id: userId,
           p_full_name: body.full_name.trim(),
@@ -159,23 +161,33 @@ serve(async (req) => {
           p_company_id: null,
           p_student_group_id: studentGroupId,
           p_region: null,
-        },
-      );
+        });
+      const { data: claimRes, error: claimErr } = await claimStudentCapacity(() => admin.rpc(
+        "create_student_profile_with_capacity", claimArguments,
+      ));
 
-      let claim: any = claimRes;
-      if (claimErr || !claim || !claim.success) {
-        // An RPC transport error may follow a committed profile. Read it back
-        // before compensation; never delete a claimed or unverified account.
-        const { data: savedProfile, error: savedProfileError } = await admin.from('profiles')
-          .select('organization_id,archived_at').eq('user_id', userId).maybeSingle();
-        if (!savedProfileError && savedProfile?.organization_id === course.organization_id && !savedProfile.archived_at) {
-          claim = { success: true };
+      let claim: any = !claimErr && claimRes && typeof claimRes === "object" && !Array.isArray(claimRes)
+        && typeof (claimRes as any).success === "boolean" ? claimRes : null;
+      if (!claim || !claim.success) {
+        // Only a positive same-tenant read-back proves a persisted claim.
+        // Absence is not proof against another in-flight operation; never
+        // delete this Auth identity across services on that basis.
+        const confirmed = await confirmStudentCapacityClaim(async () => {
+          const { data: claimed, error: readError } = await admin.from("profiles")
+            .select("user_id, organization_id, archived_at").eq("user_id", userId).maybeSingle();
+          return !readError && claimed?.organization_id === course.organization_id && !claimed.archived_at;
+        });
+        if (confirmed) {
+          claim = { success: true, is_existing: false };
         } else {
           console.error('profile claim not confirmed:', claimErr, claim?.code);
+          const definitiveQuota = claim?.success === false && claim.code === studentAssignmentQuotaFailure.code;
           return json({ ok: false, success: false, partial_success: true,
             profile_persisted: null, enrollment_confirmed: false, recovery_required: true,
-            code: 'CLAIM_RESULT_UNKNOWN',
-            error: 'Не удалось подтвердить регистрацию. Обратитесь к администратору школы; повторное создание учётной записи не требуется.' }, 503);
+            code: definitiveQuota ? studentAssignmentQuotaFailure.code : 'CLAIM_RESULT_UNKNOWN',
+            quota_code: definitiveQuota ? studentAssignmentQuotaFailure.quota_code : undefined,
+            error: definitiveQuota ? studentAssignmentQuotaFailure.message
+              : 'Не удалось подтвердить регистрацию. Обратитесь к администратору школы; повторное создание учётной записи не требуется.' }, definitiveQuota ? 409 : 503);
         }
       }
       if (claim.group_assignment_confirmed === false) {

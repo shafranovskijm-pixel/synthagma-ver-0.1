@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
+vi.mock('@/components/organization/groups/GroupEducationFactsPanel',()=>({GroupEducationFactsPanel:()=>null}));
 
 type QueryResult = { data: Record<string, unknown> | null; error: unknown };
 

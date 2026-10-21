@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "status": "READ_ONLY_ORIGINAL_QUESTION_PROJECTION_SOURCE_ONLY",
+  "function": {
+    "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+    "definition": "CREATE OR REPLACE FUNCTION public._test_public_questions(p_questions jsonb, p_feedback boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  SELECT coalesce(jsonb_agg(CASE WHEN p_feedback THEN q ELSE q - 'correct_answer' - 'explanation' END ORDER BY ord), '[]'::jsonb)\n  FROM jsonb_array_elements(p_questions) WITH ORDINALITY AS item(q, ord)\n$function$\n",
+    "definition_md5": "f6cd1a2451ad7cf80b1afde037c5e8cb",
+    "owner": "postgres",
+    "signature": "_test_public_questions(jsonb,boolean)"
+  },
+  "productionWrites": 0
+}
+

@@ -28,6 +28,9 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { journalFieldsSchema, type JournalField as TypedJournalField } from '@/lib/customJournals/contract';
+import { builtinJournalFields } from '@/lib/customJournals/legacy';
+
 interface JournalField {
   id: string;
   label: string;
@@ -59,7 +62,7 @@ const AVAILABLE_FIELDS: JournalField[] = [
   { id: "result", label: "Результат", icon: CheckCircle2, description: "Итог/оценка", category: "result" },
   { id: "grade", label: "Оценка/Балл", icon: Award, description: "Числовая оценка", category: "result" },
   { id: "notes", label: "Примечания", icon: MessageSquare, description: "Дополнительные заметки", category: "result" },
-  { id: "signature", label: "Подпись", icon: User, description: "Подпись ответственного", category: "result" },
+  { id: "signature", label: "Подпись (текст, не ЭП)", icon: User, description: "Подпись ответственного", category: "result" },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -77,12 +80,19 @@ interface JournalCreationWizardProps {
     title: string;
     description: string;
     fields: string[];
-  }) => void;
+    schemaFields: TypedJournalField[];
+    reason: string;
+  }) => void | Promise<unknown>;
+  busy?: boolean;
+  error?: string | null;
+  canRetry?: boolean;
+  onRetry?: () => void;
   editingJournal?: {
     id: string;
     title: string;
     description: string;
     fields: string[];
+    schemaFields?: TypedJournalField[];
   } | null;
 }
 
@@ -90,13 +100,27 @@ export function JournalCreationWizard({
   open,
   onClose,
   onComplete,
-  editingJournal,
+  editingJournal, busy = false, error, canRetry, onRetry,
 }: JournalCreationWizardProps) {
   const [step, setStep] = useState(1);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [journalTitle, setJournalTitle] = useState("");
   const [journalDescription, setJournalDescription] = useState("");
 
+  const [fieldDefinitions, setFieldDefinitions] = useState<TypedJournalField[]>([]);
+  const [customLabel, setCustomLabel] = useState('');
+  const [customType, setCustomType] = useState<TypedJournalField['type']>('text');
+  const [customOptions, setCustomOptions] = useState('');
+  const [changeReason, setChangeReason] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const getField = (id: string) => { const base = AVAILABLE_FIELDS.find(f => f.id === id); const typed = fieldDefinitions.find(f => f.id === id);
+    return typed ? {...typed, icon: base?.icon ?? FileText, description: base?.description ?? 'Пользовательское поле', category: base?.category ?? 'event'} : base; };
+  const addCustomField = () => {
+    const field: TypedJournalField = {id: crypto.randomUUID(),label:customLabel.trim(),type:customType,semantic:'custom',...(customType==='select'?{options:customOptions.split(',').map(v=>v.trim()).filter(Boolean)}:{})};
+    const parsed=journalFieldsSchema.safeParse([...selectedFields.map(id=>fieldDefinitions.find(f=>f.id===id)??builtinJournalFields[id]),field]);
+    if(!parsed.success){setValidationError('Проверьте название, тип и варианты поля. Всего можно выбрать до 32 полей.');return;}
+    setFieldDefinitions(prev=>[...prev,field]);setSelectedFields(prev=>[...prev,field.id]);setCustomLabel('');setCustomOptions('');setValidationError(null);
+  };
   const isEditMode = !!editingJournal;
   const totalSteps = 3;
 
@@ -104,10 +128,13 @@ export function JournalCreationWizard({
   useEffect(() => {
     if (open && editingJournal) {
       setSelectedFields(editingJournal.fields || []);
+      setFieldDefinitions(editingJournal.schemaFields ?? editingJournal.fields.map(id=>builtinJournalFields[id]).filter(Boolean));
+      setValidationError(null);
       setJournalTitle(editingJournal.title || "");
       setJournalDescription(editingJournal.description || "");
       setStep(1);
     } else if (!open) {
+      setFieldDefinitions([]); setCustomLabel(''); setCustomOptions(''); setValidationError(null); setChangeReason('');
       // Reset when closing
       setStep(1);
       setSelectedFields([]);
@@ -139,26 +166,18 @@ export function JournalCreationWizard({
     }
   };
 
-  const handleComplete = () => {
-    if (!journalTitle.trim()) return;
-    
-    onComplete({
-      id: editingJournal?.id,
-      title: journalTitle.trim(),
-      description: journalDescription.trim() || generateDescription(),
-      fields: selectedFields,
-    });
-
-    // Reset state
-    setStep(1);
-    setSelectedFields([]);
-    setJournalTitle("");
-    setJournalDescription("");
+  const handleComplete = async () => {
+    if (busy || !journalTitle.trim()) return;
+    if(isEditMode&&!changeReason.trim()){setValidationError('Укажите причину изменения схемы.');return;}
+    const parsed=journalFieldsSchema.safeParse(selectedFields.map(id=>fieldDefinitions.find(f=>f.id===id)??builtinJournalFields[id]));
+    if(!parsed.success){setValidationError('Структура журнала не подтверждена. Проверьте поля.');return;}
+    try { await onComplete({id:editingJournal?.id,title:journalTitle.trim(),description:journalDescription.trim()||generateDescription(),fields:selectedFields,schemaFields:parsed.data,reason:changeReason.trim()}); }
+    catch { /* Parent retains values and displays a normalized server error. */ }
   };
 
   const generateDescription = () => {
     const fieldLabels = selectedFields
-      .map((id) => AVAILABLE_FIELDS.find((f) => f.id === id)?.label)
+      .map((id) => getField(id)?.label)
       .filter(Boolean)
       .slice(0, 3);
     
@@ -166,6 +185,7 @@ export function JournalCreationWizard({
   };
 
   const handleClose = () => {
+    if (busy) return;
     setStep(1);
     setSelectedFields([]);
     setJournalTitle("");
@@ -278,6 +298,16 @@ export function JournalCreationWizard({
               ))}
             </div>
 
+            <div className="space-y-3 border border-border rounded-xl p-3">
+              <p className="text-sm font-medium">Своё поле</p>
+              <Input aria-label="Название нового поля" value={customLabel} onChange={e=>setCustomLabel(e.target.value)} maxLength={120} className="rounded-xl" />
+              <select aria-label="Тип нового поля" value={customType} onChange={e=>setCustomType(e.target.value as TypedJournalField['type'])} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                <option value="text">Текст</option><option value="long_text">Длинный текст</option><option value="date">Дата</option><option value="time">Время</option><option value="decimal">Число</option><option value="integer">Целое число</option><option value="boolean">Да / нет</option><option value="select">Выбор из списка</option>
+              </select>
+              {customType==='select'&&<Input aria-label="Варианты нового поля через запятую" value={customOptions} onChange={e=>setCustomOptions(e.target.value)} className="rounded-xl" />}
+              <Button type="button" variant="outline" className="rounded-xl" onClick={addCustomField} disabled={busy||selectedFields.length>=32}>Добавить поле</Button>
+              {fieldDefinitions.filter(f=>f.semantic==='custom').map(f=><div key={f.id} className="flex items-center gap-2 text-sm"><Checkbox checked={selectedFields.includes(f.id)} onCheckedChange={()=>toggleField(f.id)} /><span>{f.label}</span></div>)}
+            </div>
             {selectedFields.length > 0 && (
               <div className="bg-primary/5 rounded-xl p-3 border border-primary/20">
                 <p className="text-sm">
@@ -307,7 +337,7 @@ export function JournalCreationWizard({
                   №
                 </div>
                 {selectedFields.map((fieldId) => {
-                  const field = AVAILABLE_FIELDS.find((f) => f.id === fieldId);
+                  const field = getField(fieldId);
                   if (!field) return null;
                   const Icon = field.icon;
                   return (
@@ -331,6 +361,7 @@ export function JournalCreationWizard({
           </div>
         )}
 
+        {step===2&&<div className="space-y-3">{selectedFields.map(id=>{const field=fieldDefinitions.find(f=>f.id===id)??builtinJournalFields[id];return field&&<div key={id} className="space-y-1"><label className="text-sm text-muted-foreground">Название колонки</label><Input aria-label={'Название поля '+id} value={field.label} maxLength={120} className="rounded-xl" onChange={e=>{const label=e.target.value;setFieldDefinitions(prev=>[...prev.filter(f=>f.id!==id),{...field,label}]);}} /></div>;})}</div>}
         {/* Step 3: Name and description */}
         {step === 3 && (
           <div className="space-y-6">
@@ -367,11 +398,12 @@ export function JournalCreationWizard({
               </div>
             </div>
 
+            {isEditMode&&<Input aria-label="Причина изменения схемы" className="rounded-xl" value={changeReason} maxLength={1000} onChange={e=>setChangeReason(e.target.value)} placeholder="Причина изменения схемы" />}
             <div className="bg-secondary/30 rounded-xl p-4">
               <h4 className="text-sm font-medium mb-2">Выбранные поля:</h4>
               <div className="flex flex-wrap gap-2">
                 {selectedFields.map((fieldId) => {
-                  const field = AVAILABLE_FIELDS.find((f) => f.id === fieldId);
+                  const field = getField(fieldId);
                   if (!field) return null;
                   return (
                     <span
@@ -387,6 +419,8 @@ export function JournalCreationWizard({
           </div>
         )}
 
+        {(validationError||error)&&<p role="alert" className="text-sm text-destructive">{validationError||error}</p>}
+        {canRetry&&<Button type="button" variant="outline" onClick={onRetry} disabled={busy} className="rounded-xl">Повторить тот же запрос</Button>}
         {/* Navigation buttons */}
         <div className="flex justify-between pt-4 border-t border-border">
           <Button
@@ -407,7 +441,7 @@ export function JournalCreationWizard({
           {step < totalSteps ? (
             <Button
               onClick={handleNext}
-              disabled={step === 1 && selectedFields.length === 0}
+              disabled={busy || (step === 1 && selectedFields.length === 0)}
               className="rounded-xl"
             >
               Далее
@@ -416,7 +450,7 @@ export function JournalCreationWizard({
           ) : (
             <Button
               onClick={handleComplete}
-              disabled={!journalTitle.trim()}
+              disabled={busy || canRetry || !journalTitle.trim() || (isEditMode&&!changeReason.trim())}
               className="rounded-xl"
             >
               <Sparkles className="w-4 h-4 mr-2" />

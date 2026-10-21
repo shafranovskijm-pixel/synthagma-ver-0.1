@@ -11,8 +11,14 @@ import {
 import { requiresDocumentNumber, willBeFinalDocument } from "./documentNumbers";
 import { localDateIso } from "@/lib/date/localDate";
 import { UNCONFIRMED_PROGRAM_NOTICE, type ProgramFactsProof } from "../../../supabase/functions/_shared/program-facts";
+import { withEducationArtifact, educationArtifactDocumentSnapshot, EDUCATION_ARTIFACT_NOTICE, type EducationArtifactSnapshot } from '../../../supabase/functions/_shared/group-education-artifact';
+import { signatoriesToGenerationExtras,type GroupDocumentSignatories } from './signatories';
 
 export interface GenerateOptions {
+  educationSnapshot?: EducationArtifactSnapshot;
+  /** Explicit separately selected manual draft fields, never old profile extras. */
+  manualSignatories?: GroupDocumentSignatories;
+  documentBasis?: string;
   programFacts?: ProgramFactsProof;
   /** Явный номер (уже зарезервированный сервером). */
   documentNumber?: string;
@@ -72,6 +78,13 @@ export function generateDocument(
   docType: DocType,
   opts: GenerateOptions = {}
 ): GeneratedDocument {
+  const sourcePresent = Object.prototype.hasOwnProperty.call(opts,'educationSnapshot');
+  if (sourcePresent) {
+    if (!opts.educationSnapshot || docType === 'contract') throw new Error('Неподдерживаемый источник документа');
+    ctx = withEducationArtifact(ctx,opts.educationSnapshot);
+    ctx = {...ctx,extras:{...(opts.manualSignatories?signatoriesToGenerationExtras(opts.manualSignatories):{}),...(opts.documentBasis?{contract_basis:opts.documentBasis}:{})}};
+    if (!isIsoDate(opts.documentDates?.[docType] || opts.documentDate)) throw new Error('Укажите отдельную дату документа');
+  }
   const tpl = getTemplate(docType);
   if (!tpl) throw new Error(`Нет шаблона для типа: ${docType}`);
 
@@ -80,7 +93,7 @@ export function generateDocument(
 
   // Статус определяется ДО номера: черновик/бланк не расходует юридическую
   // последовательность и остаётся явно без номера («Черновик»).
-  const docStatus: "draft" | "final" = willBeFinalDocument(docType, {
+  const docStatus: "draft" | "final" = !sourcePresent && willBeFinalDocument(docType, {
     mode,
     requestedStatus: opts.requestedStatus === "final" ? "final" : "draft",
     finalBlocked: () => opts.programFacts?.state === "unconfirmed" || (readiness?.finalBlocked ?? false),
@@ -116,7 +129,7 @@ export function generateDocument(
     primaryStudentIndex: opts.primaryStudentIndex,
     totalPrice: opts.totalPrice,
     mode,
-    factual: opts.factual ?? null,
+    factual: sourcePresent ? null : opts.factual ?? null,
     docType,
   });
 
@@ -139,11 +152,11 @@ export function generateDocument(
 
 
   return {
-    variables_snapshot: opts.programFacts ? { program_facts: opts.programFacts, student_user_ids: ctx.students.map(s => s.user_id).sort() } : undefined,
+    variables_snapshot: sourcePresent ? educationArtifactDocumentSnapshot(opts.educationSnapshot!) : opts.programFacts ? { program_facts: opts.programFacts, student_user_ids: ctx.students.map(s => s.user_id).sort() } : undefined,
     id: `doc-${docType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     doc_type: docType,
     name: `${tpl.title}${documentNumber ? ` № ${documentNumber}` : ""}`,
-    document_number: documentNumber,
+    document_number: sourcePresent ? null : documentNumber,
     document_date: documentDate,
     variables,
     html,
@@ -154,7 +167,7 @@ export function generateDocument(
     layout_format: docType === "contract" ? "docx_first" : LEGACY_LAYOUT_FORMAT,
     package_batch_id: opts.packageBatchId ?? null,
     package_version: opts.packageVersion ?? null,
-    source_note: [readiness ? readiness.source : LEGACY_LAYOUT_NOTICE,
+    source_note: [sourcePresent ? EDUCATION_ARTIFACT_NOTICE : readiness ? readiness.source : LEGACY_LAYOUT_NOTICE,
       opts.programFacts?.state === "unconfirmed" ? UNCONFIRMED_PROGRAM_NOTICE : ""].filter(Boolean).join(". "),
   };
 }

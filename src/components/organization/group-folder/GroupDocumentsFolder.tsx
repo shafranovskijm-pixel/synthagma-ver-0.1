@@ -57,6 +57,11 @@ import {
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
 import { localDateIso } from "@/lib/date/localDate";
 import { resolveGroupProgramGeneration, withProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE } from "../../../../supabase/functions/_shared/program-facts";
+import { parseEducationArtifactSnapshot, withEducationArtifact, EDUCATION_ARTIFACT_NOTICE } from '../../../../supabase/functions/_shared/group-education-artifact';
+import { useGroupEducationFacts } from '@/hooks/useGroupEducationFacts';
+import { useAuth } from '@/hooks/useAuth';
+import { captureOfflineActor } from '@/utils/courseCache';
+import { captureEducationScope, educationBearer, educationScopeCurrent, saveEducationDocuments, normalizeEducationError, educationMessages } from '@/lib/groupEducationFacts/client';
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
@@ -90,7 +95,11 @@ interface Props {
 /** В отдельном меню — только документы папки «docs». Договоры живут в папке «Договоры». */
 const DOC_TYPES = GROUP_DOCUMENT_TYPES.filter(t => t.folder === "docs" && t.key !== "contract");
 
-export function GroupDocumentsFolder({
+export function GroupDocumentsFolder(props:Props){
+  const {user,loading}=useAuth(),revision=captureOfflineActor(user?.id);
+  return <GroupDocumentsFolderView key={JSON.stringify([user?.id,revision,loading,props.organizationId,props.groupId])} {...props}/>;
+}
+function GroupDocumentsFolderView({
   organizationId,
   groupId,
   groupName,
@@ -142,6 +151,15 @@ export function GroupDocumentsFolder({
   );
   const [documentSignatories, setDocumentSignatories] =
     useState<GroupDocumentSignatories>(defaultSignatories);
+  const [educationEnabled,setEducationEnabled]=useState(false);
+  const education=useGroupEducationFacts(organizationId,groupId,educationEnabled);
+  type SourceDraft={key:string;at:string;reason:string;dates:Partial<Record<DocType,string>>};
+  const blankSourceDraft=():SourceDraft=>({key:education.scopeKey,at:'',reason:'',dates:{}});
+  const [sourceDraft,setSourceDraft]=useState<SourceDraft>(blankSourceDraft);
+  const scopedDraft=sourceDraft.key===education.scopeKey?sourceDraft:blankSourceDraft();
+  const educationAt=scopedDraft.at,educationReason=scopedDraft.reason,educationDates=scopedDraft.dates;
+  const updateSourceDraft=(change:Partial<SourceDraft>)=>setSourceDraft(previous=>({... (previous.key===education.scopeKey?previous:blankSourceDraft()),...change,key:education.scopeKey}));
+  useEffect(()=>{if(education.envelope?.state)void education.calendar({kind:'current',view:'published'});},[education.envelope?.state?.revision]);
   useEffect(() => {
     setDocumentSignatories(defaultSignatories);
     setBlankSignatoriesConfirmed(false);
@@ -274,11 +292,18 @@ export function GroupDocumentsFolder({
     dryRun = false,
   ) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
+    const sourceSnapshot=educationEnabled?education.snapshotValue:null;
+    if(educationEnabled && (!sourceSnapshot || types.includes('contract') || types.some(t=>!educationDates[t]))) {toast.error('Выберите подтверждённый снимок и отдельные даты документов');return false;}
+    if(educationEnabled&&exactGoreltechDocuments&&(types.length!==PACKAGE_DOC_TYPES.length||PACKAGE_DOC_TYPES.some(t=>!types.includes(t)))){toast.error('Подтверждённый источник Word используется для полного пакета из девяти документов');return false;}
+    if(educationEnabled && !education.scopeCurrent()){toast.error('Доступ к источнику изменился');return false;}
+    const sourceScope=educationEnabled?captureEducationScope(organizationId,groupId,education.scopeCurrent,sourceSnapshot?.header.scope.course_id):null;
+    let pinnedBearer:string|undefined;
     let programme;
-    try { programme = await resolveGroupProgramGeneration(supabase, organizationId, groupId, ctx.students.map(s => s.user_id)); }
-    catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось проверить программу группы"); return false; }
-    const authoritativeCtx = withProgramGeneration(ctx, programme);
-    const gate = docBlockers ?? Array.from(new Set([
+    try { if(sourceScope){pinnedBearer=await educationBearer(sourceScope);programme=parseEducationArtifactSnapshot(sourceSnapshot,organizationId,groupId).programme;}else programme = await resolveGroupProgramGeneration(supabase, organizationId, groupId, ctx.students.map(s => s.user_id)); }
+    catch (error) {if(sourceScope){if(!educationScopeCurrent(sourceScope))return false;const safe=normalizeEducationError(error);if(safe.code==='ACCESS_DENIED')education.invalidateAccess();toast.error(educationMessages[safe.code]);}else toast.error(error instanceof Error ? error.message : "Не удалось проверить программу группы");return false;}
+    const authoritativeCtx = sourceSnapshot ? withEducationArtifact(ctx,sourceSnapshot) : withProgramGeneration(ctx, programme);
+    const sourceRequirements={...reqSource,program_title:authoritativeCtx.group.program_title,program_hours:authoritativeCtx.group.program_hours,start_date:authoritativeCtx.group.start_date,end_date:authoritativeCtx.group.end_date,instructor_name:authoritativeCtx.group.instructor_name,training_dates_count:authoritativeCtx.group.training_dates?.length??0,students_count:authoritativeCtx.students.length};
+    const gate = sourceSnapshot ? Array.from(new Set([...blockingFields.filter(field=>organizationMissingFields.includes(field)),...missingPackageRequirements(types,sourceRequirements,mode,requirementProfile),...blankSignatoryBlocker])) : docBlockers ?? Array.from(new Set([
       ...packageBlockers,
       ...missingPackageRequirements(types, reqSource, mode, requirementProfile),
       ...blankSignatoryBlocker,
@@ -287,13 +312,13 @@ export function GroupDocumentsFolder({
       toast.error("Заполните обязательные данные группы", { description: gate.join(", ") });
       return false;
     }
-    if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
+    if (authoritativeCtx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
 
     setBusy(true);
     try {
       // Точные DOCX ГОРЭЛТЕХ пока содержат legacy browser-transport строк.
       // Не резервируем официальные номера до полной серверной сверки полей.
-      const requestedStatus = exactGoreltechDocuments || programme.state === "unconfirmed"
+      const requestedStatus = sourceSnapshot || exactGoreltechDocuments || programme.state === "unconfirmed"
         ? ("draft" as const)
         : mode === "data"
           ? ("final" as const)
@@ -307,7 +332,7 @@ export function GroupDocumentsFolder({
       // Официальные номера резервируются ТОЛЬКО для документов, которые реально
       // станут final. Бланки/черновики остаются без номера — последовательности
       // не расходуются. Ошибка нумерации — ничего не сохраняем.
-      const toReserve = typesRequiringReservation(types, eligibility);
+      const toReserve = sourceSnapshot ? [] : typesRequiringReservation(types, eligibility);
       let numbers: Record<string, string> = {};
       try {
         numbers = await reserveGroupDocumentNumbers(toReserve, new Date().getFullYear(), async (seqKey, year) => {
@@ -330,7 +355,7 @@ export function GroupDocumentsFolder({
       const generationCtx = {
         ...authoritativeCtx,
         extras: {
-          ...(ctx.extras || {}),
+          ...(sourceSnapshot ? {} : ctx.extras || {}),
           ...(exactGoreltechDocuments
             ? signatoriesToGenerationExtras(documentSignatories)
             : {}),
@@ -340,15 +365,16 @@ export function GroupDocumentsFolder({
       // Отдельного подтверждённого поля даты оформления журнала в БД пока нет.
       // Для текущего принудительного draft фиксируем дату сборки отдельно и не
       // подменяем ею даты приказов о зачислении/завершении.
-      const journalDraftDate = localDateIso();
+      const journalDraftDate = sourceSnapshot ? educationDates.class_journal || '' : localDateIso();
       const genOpts = {
         programFacts: programme.provenance,
         totalPrice: price,
         mode,
         numbers,
-        factual: mode === "data" ? factual : null,
+        factual: sourceSnapshot ? null : mode === "data" ? factual : null,
         requestedStatus,
-        documentDates: { class_journal: journalDraftDate },
+        documentDates: sourceSnapshot ? {...educationDates} : { class_journal: journalDraftDate },
+        ...(sourceSnapshot ? {educationSnapshot:sourceSnapshot,manualSignatories:documentSignatories,documentBasis:contractBasis} : {}),
       };
 
       const includeJournal = types.includes("class_journal");
@@ -360,11 +386,13 @@ export function GroupDocumentsFolder({
         : generatedTypes.length > 1
           ? generatePackage(generationCtx, generatedTypes, genOpts)
           : [];
+      if(sourceScope && !educationScopeCurrent(sourceScope))return false;
       const res = exactGoreltechDocuments
         ? await generateClassJournalDocx({
             organizationId,
             groupId,
-            studentUserIds: ctx.students.map((student) => student.user_id),
+            studentUserIds: authoritativeCtx.students.map((student) => student.user_id),
+            ...(sourceSnapshot&&sourceScope ? {educationSource:sourceSnapshot.source,originalBearer:pinnedBearer,isCurrent:()=>educationScopeCurrent(sourceScope)} : {}),
              journalDocumentDate: journalDraftDate,
              fillMode: mode,
              dryRun,
@@ -372,6 +400,7 @@ export function GroupDocumentsFolder({
             journalSignatory: documentSignatories.class_journal,
             otherDocuments: docs,
           }).then(async result => {
+            if(sourceScope&&!educationScopeCurrent(sourceScope))return null;
             if (result.dryRun) {
               toast.success("Проверка пройдена: 9 Word-документов собраны без сохранения", {
                 description: "Storage и база данных не изменялись. Контрольные SHA-256 рассчитаны на сервере.",
@@ -379,6 +408,7 @@ export function GroupDocumentsFolder({
               return result;
             }
              await refreshDocuments();
+            if(sourceScope&&!educationScopeCurrent(sourceScope))return null;
             const warnings = result.warnings || [];
             toast.warning("Документы ГОРЭЛТЕХ сохранены как черновики", {
               description: warnings.length
@@ -387,7 +417,9 @@ export function GroupDocumentsFolder({
             });
             return result;
           })
-       : await saveGenerated(docs);
+       : sourceScope ? await saveEducationDocuments(sourceScope,docs,pinnedBearer!) : await saveGenerated(docs);
+      if(sourceScope && !educationScopeCurrent(sourceScope))return false;
+      if(sourceScope&&!exactGoreltechDocuments)await refreshDocuments();
       const ok = !!res;
       if (ok && programme.state === "unconfirmed") toast.warning(UNCONFIRMED_PROGRAM_NOTICE);
       if (ok && exactGoreltechDocuments && "dryRun" in res && res.dryRun) return true;
@@ -399,7 +431,9 @@ export function GroupDocumentsFolder({
       }
       return ok;
     } catch (e: any) {
-      toast.error("Ошибка генерации: " + (e?.message || ""));
+      if(sourceScope&&!educationScopeCurrent(sourceScope))return false;
+      if(sourceScope){const code=normalizeEducationError(e).code;if(code==='ACCESS_DENIED')education.invalidateAccess();toast.error(educationMessages[code]);}
+      else toast.error("Ошибка генерации: " + (e?.message || ""));
       return false;
     } finally {
       setBusy(false);
@@ -578,6 +612,19 @@ export function GroupDocumentsFolder({
       </Card>
 
       {/* Toolbar */}
+      <Card className="p-4 space-y-3 rounded-2xl">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={educationEnabled} disabled={busy} onChange={v=>setEducationEnabled(v.target.checked)}/>Использовать подтверждённый состав и календарь</label>
+        {educationEnabled&&<><p className="text-xs text-muted-foreground">{EDUCATION_ARTIFACT_NOTICE} Все документы этого источника сохраняются как черновики без официальных номеров. Даты документов задаются отдельно.</p>
+          <Input aria-label="Момент состава для документов" disabled={busy||education.busy||education.pending||!!education.snapshotValue} value={educationAt} onChange={v=>updateSourceDraft({at:v.target.value})} placeholder="Пусто — текущий момент; иначе ISO с часовым смещением"/>
+          <Input aria-label="Основание фиксации состава" disabled={busy||education.busy||education.pending} value={educationReason} onChange={v=>updateSourceDraft({reason:v.target.value})} placeholder="Основание фиксации состава"/>
+          {education.envelope?.prerequisites.map((p,i)=><p key={i} className="text-sm">{p.label}</p>)}
+          <Button variant="outline" disabled={education.busy||education.pending||!educationReason||!education.envelope?.state?.capabilities.can_capture_snapshot||!education.calendarValue?.calendar} onClick={async()=>{const state=education.envelope!.state!,cal=education.calendarValue!.calendar!;const result=await education.mutate({action:'capture_roster_snapshot',as_of:educationAt?{kind:'at',at:educationAt,timezone:state.timezone}:{kind:'current'},knowledge_revision:state.revision,calendar_version_id:cal.id,expected_calendar_hash:cal.content_hash,expected_program_ref:state.program_ref,purpose:'document_batch',reason:educationReason});if(result&&result.receipt.snapshot_id)await education.snapshot(result.receipt.snapshot_id);}}>Подтвердить снимок для пакета</Button>
+          {education.pending&&<Button variant="outline" onClick={()=>void education.retry()}>Повторить тот же запрос фиксации</Button>}
+          {education.error&&<p role="alert" className="text-sm text-destructive">Подтверждённый источник недоступен. Обновите сведения группы.</p>}
+          {education.snapshotValue&&<p className="text-sm">Подтверждено участников: {education.snapshotValue.header.row_count}; состав на {education.snapshotValue.header.as_of}.</p>}
+          <div className="grid grid-cols-2 gap-2">{PACKAGE_DOC_TYPES.map(type=><label className="text-xs" key={type}>{typeTitle.get(type)??type}<Input type="date" disabled={busy||education.busy||education.pending} aria-label={`Дата документа ${type}`} value={educationDates[type]??''} onChange={v=>updateSourceDraft({dates:{...educationDates,[type]:v.target.value}})}/></label>)}</div>
+        </>}
+      </Card>
       <div className="flex flex-wrap items-center gap-2">
         <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}

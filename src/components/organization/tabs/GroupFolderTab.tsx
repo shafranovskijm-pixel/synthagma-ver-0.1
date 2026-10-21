@@ -38,6 +38,7 @@ import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddSt
 import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { useGroupProgramFacts } from "@/hooks/useProgramFacts";
 import { GroupProgramFactsPanel } from "@/components/organization/programs/GroupProgramFactsPanel";
+import { GroupEducationFactsPanel } from '@/components/organization/groups/GroupEducationFactsPanel';
 import { groupProgramPresentation } from "@/components/organization/programs/groupProgramPresentation";
 import { withProgramGeneration } from "../../../../supabase/functions/_shared/program-facts";
 
@@ -787,6 +788,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
       <GroupProgramFactsPanel organizationId={organizationId} groupId={groupId} courseId={resolvedCourseId} courseTitle={courseInfo?.title}
         students={students} resource={groupProgram} canConfigure={!permissionsLoading && can("documents.write")} />
+      <GroupEducationFactsPanel organizationId={organizationId} groupId={groupId} enabled={!loading && !permissionsLoading && group?.id === groupId && can('documents.read') && can('students.read')} observedAccessKey={JSON.stringify([permissionsLoading,can('documents.read'),can('students.read'),can('documents.write'),can('students.write')])} />
 
       {/* Работа с группой */}
       <Card className="p-4 rounded-2xl border-border">

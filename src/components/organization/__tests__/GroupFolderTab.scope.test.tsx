@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
+vi.mock('@/components/organization/groups/GroupEducationFactsPanel',()=>({GroupEducationFactsPanel:()=>null}));
 
 const db = vi.hoisted(() => {
   const builder = {

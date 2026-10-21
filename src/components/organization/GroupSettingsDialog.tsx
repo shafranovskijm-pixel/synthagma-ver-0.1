@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { GroupEducationFactsPanel } from './groups/GroupEducationFactsPanel';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -646,6 +647,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
                   {activeTab === "learning" && (
                     <>
+                      <GroupEducationFactsPanel organizationId={organizationId} groupId={groupId} enabled={open && loadedGroupIdentityRef.current === groupIdentity} />
                       <SettingRow
                         label="Ограничить время доступа к курсу"
                         help="Ограничьте доступ учеников к курсу по времени. После истечения срока доступ будет закрыт"

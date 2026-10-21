@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +85,11 @@ export default function CourseLanding() {
   const [promoChecking, setPromoChecking] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [justSubmitted, setJustSubmitted] = useState(false);
+  const instantRouteKey = JSON.stringify([courseId, slug]);
+  const instantSubmission = useRef({ route: instantRouteKey, phase: "idle" as "idle" | "sending" | "recovery" | "complete" });
+  if (instantSubmission.current.route !== instantRouteKey) instantSubmission.current = { route: instantRouteKey, phase: "idle" };
+  const [instantRecoveryRoute, setInstantRecoveryRoute] = useState<string | null>(null);
+  const instantRecovery = instantRecoveryRoute === instantRouteKey;
 
   const landingContent = course?.landing_content as Record<string, any> | null;
   const analytics = landingContent?.analytics;
@@ -174,6 +179,15 @@ export default function CourseLanding() {
 
     // ── Режим INSTANT — самозачисление через edge-функцию (не требует логина) ──
     if (enrollmentConfig.mode === "instant" && formData?.email && formData?.name) {
+      if (instantSubmission.current.phase !== "idle") return;
+      const submission = instantSubmission.current;
+      submission.phase = "sending";
+      const stillCurrent = () => instantSubmission.current === submission;
+      const requireRecovery = () => {
+        if (!stillCurrent()) return;
+        submission.phase = "recovery"; setInstantRecoveryRoute(instantRouteKey);
+        toast.error("Завершение записи требует проверки", { description: "Не отправляйте форму повторно. Обратитесь в учебный центр, чтобы проверить созданную запись." });
+      };
       try {
         const { data, error } = await supabase.functions.invoke("landing-self-enroll", {
           body: {
@@ -188,11 +202,23 @@ export default function CourseLanding() {
             landing_referrer: tracking.landing_referrer,
           },
         });
-        if (error) throw error;
-        if ((data as any)?.error) {
-          toast.error((data as any).error);
+        if (!stillCurrent()) return;
+        if (error) {
+          // Only explicit pre-Auth validation/restriction responses allow a
+          // corrected form submission. Other errors may hide a committed claim.
+          const response = (error as { context?: unknown }).context;
+          if (response instanceof Response && [400, 403, 404, 405, 429].includes(response.status)) {
+            submission.phase = "idle"; toast.error("Не удалось завершить запись", { description: "Проверьте данные формы и доступность записи в учебном центре." });
+          } else requireRecovery();
           return;
         }
+        if ((data as any)?.recovery_required === true) { requireRecovery(); return; }
+        if ((data as any)?.error) {
+          requireRecovery();
+          return;
+        }
+        if ((data as any)?.ok !== true || typeof (data as any)?.created_new !== "boolean" || typeof (data as any)?.enrolled !== "boolean") { requireRecovery(); return; }
+        submission.phase = "complete";
         // Редирект на success_url, если задан
         if (enrollmentConfig.success_url) {
           window.location.href = enrollmentConfig.success_url;
@@ -202,7 +228,7 @@ export default function CourseLanding() {
         toast.success((data as any)?.message || "Вы зачислены на курс");
       } catch (e: any) {
         console.error("self-enroll error:", e);
-        toast.error("Не удалось завершить запись", { description: getErrorMessage(e) });
+        requireRecovery();
       }
       return;
     }
@@ -342,6 +368,8 @@ export default function CourseLanding() {
     <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)}>
       <Play className="w-5 h-5" />Продолжить обучение
     </Button>
+  ) : instantRecovery ? (
+    <Button size="lg" disabled className="gap-2 opacity-80">Запись требует проверки</Button>
   ) : hasPendingRequest ? (
     <Button size="lg" disabled className="gap-2 opacity-80">
       Заявка отправлена
@@ -415,6 +443,9 @@ export default function CourseLanding() {
           <LandingFaqSection key={sectionId} title={faq.title} items={faq.items} />
         ) : null;
       case "cta":
+        if (instantRecovery) return <section key={sectionId} className="py-20 px-6 landing-bg-cta"><div role="status" className="max-w-md mx-auto bg-card border border-border rounded-2xl p-8 space-y-3">
+          <h2 className="text-xl font-bold">Завершение записи требует проверки</h2><p className="text-muted-foreground">Не отправляйте форму повторно: учётная запись могла быть создана. Обратитесь в учебный центр, чтобы проверить результат записи.</p>
+        </div></section>;
         return (
           <LandingCtaSection
             key={sectionId}
@@ -425,7 +456,7 @@ export default function CourseLanding() {
             isEnrolled={isEnrolled}
             price={finalPrice}
             enrollmentConfig={enrollmentConfig}
-            submitted={justSubmitted}
+            submitted={justSubmitted && instantSubmission.current.phase === "complete"}
           />
         );
       default:

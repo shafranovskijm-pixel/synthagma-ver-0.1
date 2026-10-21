@@ -7,6 +7,7 @@
 import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
 import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
 import { ProgramFactsError, resolveGroupProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE, programGenerationScalars, programTrainingPeriod, programGroupLabel, programDate } from "../_shared/program-facts.ts";
+import { GroupEducationArtifactError, hasEducationSource, parseEducationSource, resolveGroupEducationArtifact, educationArtifactDocumentSnapshot, educationArtifactRows, sameEducationValue, EDUCATION_ARTIFACT_NOTICE } from "../_shared/group-education-artifact.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
@@ -42,6 +43,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * embedded-template compiler from the older Deno.readFile implementation.
  */
 export const COMPILER_REVISION = "goreltech-group-package-dry-run-v14";
+export const GROUP_EDUCATION_COMPILER_REVISION = "goreltech-group-package-uc013-v1";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -141,20 +143,21 @@ function instructorShortSlots(value: unknown): {
 
 Deno.serve(async (req) => {
   const requestId = crypto.randomUUID();
+  let responseRevision = COMPILER_REVISION;
   const responseHeaders = {
     ...corsHeaders,
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-sintagma-required-compiler-revision",
     "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
     "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
-    "X-Sintagma-Function-Revision": "uc-program-facts-20261018-v1",
+    "X-Sintagma-Function-Revision": "uc-group-education-facts-20261019-v1",
     "X-Sintagma-Request-Id": requestId,
   };
   if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
   const json = (payload: unknown, status = 200) =>
     new Response(JSON.stringify(
       payload && typeof payload === "object" && !Array.isArray(payload)
-        ? { ...(payload as Record<string, unknown>), compilerRevision: COMPILER_REVISION, requestId }
+        ? { ...(payload as Record<string, unknown>), compilerRevision: responseRevision, requestId }
         : payload,
     ), {
       status,
@@ -170,9 +173,31 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader.startsWith("Bearer ")) return json({ error: "Требуется авторизация" }, 401);
 
-    const parsed = BodySchema.safeParse(await req.json());
+    const rawBody = await req.json();
+    const sourcePresent = hasEducationSource(rawBody);
+    if (rawBody?.capabilityProbe === true && rawBody?.requiredRevision !== undefined && rawBody?.requiredRevision !== COMPILER_REVISION) {
+      const probe = z.object({capabilityProbe:z.literal(true),requiredRevision:z.literal(GROUP_EDUCATION_COMPILER_REVISION),organizationId:z.string().uuid(),groupId:z.string().uuid()}).strict().safeParse(rawBody);
+      if (!probe.success) throw new GroupEducationArtifactError('INVALID_INPUT',400);
+      const probeUrl=Deno.env.get('SUPABASE_URL')!,probeAnon=Deno.env.get('SUPABASE_ANON_KEY')!,probeService=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const probeCaller=createClient(probeUrl,probeAnon,{global:{headers:{Authorization:authHeader}},auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+      await requireActiveUser(req,createClient(probeUrl,probeService));
+      await requireDocumentWrite(probeCaller,probe.data.organizationId,probe.data.groupId);
+      const readAllowed=await probeCaller.rpc('uc_document_action_allowed',{p_org:probe.data.organizationId,p_action:'read',p_group:probe.data.groupId,p_enrollment:null}).setHeader('Authorization',authHeader);
+      if(readAllowed.error||readAllowed.data!==true)throw new GroupEducationArtifactError('ACCESS_DENIED',403);
+      responseRevision = GROUP_EDUCATION_COMPILER_REVISION;
+      responseHeaders['X-Sintagma-Compiler-Revision'] = responseRevision;
+      return json({error:'Проверка совместимости завершена без чтения источника',writesPerformed:false},400);
+    }
+    // Presence is checked before legacy Zod can strip unknown fields. Even
+    // present null/malformed source is an error, never a legacy request.
+    const educationSource = sourcePresent ? parseEducationSource(rawBody.educationSource) : null;
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) {
       return json({ error: "Некорректные данные", details: parsed.error.flatten().fieldErrors }, 400);
+    }
+    if (sourcePresent) {
+      responseRevision=GROUP_EDUCATION_COMPILER_REVISION;
+      responseHeaders['X-Sintagma-Compiler-Revision']=responseRevision;
     }
     const body = {
       ...parsed.data,
@@ -190,8 +215,9 @@ Deno.serve(async (req) => {
       })),
     };
     if (
-      body.dryRun
+      body.dryRun && !sourcePresent
       && req.headers.get("X-Sintagma-Required-Compiler-Revision") !== COMPILER_REVISION
+      || sourcePresent && req.headers.get("X-Sintagma-Required-Compiler-Revision") !== GROUP_EDUCATION_COMPILER_REVISION
     ) {
       return json({
         error: "Клиент не подтвердил точную ревизию безопасной серверной проверки",
@@ -201,7 +227,7 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
+    const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
     const admin = createClient(url, service);
     storageAdmin = admin;
 
@@ -211,8 +237,13 @@ Deno.serve(async (req) => {
     stage = "authorization";
     await requireDocumentWrite(userClient, body.organizationId, body.groupId);
     stage = "program-facts";
-    const programme = await resolveGroupProgramGeneration(userClient, body.organizationId, body.groupId, body.studentUserIds);
+    const educationArtifact = educationSource ? await resolveGroupEducationArtifact(userClient, body.organizationId, body.groupId, educationSource, authHeader) : null;
+    const programme = educationArtifact?.programme ?? await resolveGroupProgramGeneration(userClient, body.organizationId, body.groupId, body.studentUserIds);
     if (programme.state === "unconfirmed") statusWarnings.push(UNCONFIRMED_PROGRAM_NOTICE);
+    if (educationArtifact) {
+      if (!sameEducationValue(body.studentUserIds, educationArtifact.rows.map(row => row.user_id))) throw new GroupEducationArtifactError('SOURCE_CHANGED');
+      statusWarnings.push(EDUCATION_ARTIFACT_NOTICE);
+    }
 
     stage = "source-data";
     const [groupResult, orgResult, profilesResult] = await Promise.all([
@@ -226,7 +257,8 @@ Deno.serve(async (req) => {
         .select("id, name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
         .eq("id", body.organizationId)
         .maybeSingle(),
-      readEffectiveGroupProfiles(admin, body.organizationId, body.groupId, "user_id, full_name, organization_id, student_group_id"),
+      educationArtifact ? Promise.resolve({ data: educationArtifact.rows.map(row => ({user_id:row.user_id,full_name:row.subject_label})), error: null })
+        : readEffectiveGroupProfiles(admin, body.organizationId, body.groupId, "user_id, full_name, organization_id, student_group_id"),
     ]);
     if (groupResult.error) throw groupResult.error;
     if (orgResult.error) throw orgResult.error;
@@ -283,7 +315,10 @@ Deno.serve(async (req) => {
       course = courseResult.data;
     }
 
-    const instructorSlots = instructorShortSlots(group.instructor_name);
+    // A retained UC013 display label belongs to one eligible teacher even when it contains separators.
+    const instructorSlots = educationArtifact
+      ? {first: shortInstructorNames(group.instructor_name), second: ""}
+      : instructorShortSlots(group.instructor_name);
     const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
     const programTitle = programme.fields?.program_title ?? String(group.program_title || course?.title || "").trim();
     const programHours = programme.fields?.program_hours ?? firstPositiveFiniteNumber(
@@ -330,6 +365,7 @@ Deno.serve(async (req) => {
     const activeStudentNames = ((profilesResult.data as any[]) || [])
       .map((profile) => profile.full_name);
     for (const document of body.otherDocuments) {
+      if (educationArtifact) continue; // Canonical rows are built below, never browser profile/mark fields.
       const templateEntry = GROUP_DOCUMENT_TEMPLATE_BUNDLE[document.doc_type];
       if (!templateEntry) {
         return json({ error: `Нет Word-шаблона для ${document.doc_type}`, stage }, 422);
@@ -478,6 +514,7 @@ Deno.serve(async (req) => {
         })),
         signatory_source: journalSignatory.source,
         attendance_source: "unavailable_blank",
+        ...(educationArtifact ? educationArtifactDocumentSnapshot(educationArtifact) : {}),
       },
       docx_sha256: outputHash,
       pdf_status: "unavailable",
@@ -546,7 +583,17 @@ Deno.serve(async (req) => {
         EXPULSION_OUTCOME: "без выдачи удостоверений о повышении квалификации",
         STUDENTS_COUNT: String(((profilesResult.data as any[]) || []).length),
       });
-      const packageRows = packageManifest.row_source_key
+      if (educationArtifact && programme.groupFields) for (let index = 0; index < 4; index++) {
+        const suffix = String(index + 1);
+        packageScalars[`SCHEDULE_DATE_${suffix}`] = programDate(programme.groupFields.training_dates[index]);
+        packageScalars[`SCHEDULE_TIME_${suffix}`] = programme.groupFields.schedule_text;
+        packageScalars[`SCHEDULE_TEACHER_${suffix}`] = programme.groupFields.instructor_name;
+        // Full typed topics/hours remain in the immutable calendar; the retained
+        // Word layout renders only its four-date/scalar draft fields.
+        packageScalars[`SCHEDULE_TOPIC_${suffix}`] = '';
+        packageScalars[`SCHEDULE_HOURS_${suffix}`] = '';
+      }
+      const packageRows = educationArtifact && packageManifest.row_source_key ? educationArtifactRows(educationArtifact, packageManifest.row_tokens) : packageManifest.row_source_key
         ? parseGeneratedHtmlRows(
             document.variables?.[packageManifest.row_source_key],
             packageManifest.row_tokens,
@@ -604,6 +651,7 @@ Deno.serve(async (req) => {
           rows: packageRows,
           signatory_source: documentSignatory.source,
           fidelity_status: packageManifest.fidelity_status,
+          ...(educationArtifact ? educationArtifactDocumentSnapshot(educationArtifact) : {}),
         },
         docx_sha256: packageHash,
         pdf_status: "unavailable",
@@ -611,6 +659,12 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (educationArtifact) {
+      const currentActor = await requireActiveUser(req, admin);
+      if (currentActor.userId !== userId) throw new GroupEducationArtifactError('ACCESS_DENIED', 403);
+      const freshSource = await resolveGroupEducationArtifact(userClient, body.organizationId, body.groupId, educationSource, authHeader);
+      if (!sameEducationValue(educationArtifactDocumentSnapshot(freshSource), educationArtifactDocumentSnapshot(educationArtifact))) throw new GroupEducationArtifactError('SOURCE_CHANGED');
+    }
     if (body.dryRun) {
       stage = "dry-run-complete";
       const validatedDocuments = [
@@ -633,6 +687,7 @@ Deno.serve(async (req) => {
         documentCount: validatedDocuments.length,
         documents: validatedDocuments,
         warnings: statusWarnings,
+        ...(educationArtifact ? {educationSource: educationArtifact.source} : {}),
       });
     }
 
@@ -705,6 +760,10 @@ Deno.serve(async (req) => {
         : null,
       batch,
       warnings: statusWarnings,
+      ...(educationArtifact ? {educationSource: educationArtifact.source,writesPerformed:true,documentCount:persistedDocuments.length,documents:persistedDocuments.map(document=>({
+        doc_type:document.doc_type,name:document.name,doc_status:document.doc_status,document_number:document.document_number,document_date:document.document_date,
+        template_registry_key:document.template_registry_key,template_version_label:document.template_version_label,template_sha256:document.template_sha256,docx_sha256:document.docx_sha256,
+      }))} : {}),
     });
   } catch (error) {
     if (uploadedPaths.length && storageAdmin) {
@@ -720,6 +779,7 @@ Deno.serve(async (req) => {
         });
       }
     }
+    if (error instanceof GroupEducationArtifactError) return json({error:error.message,code:error.code,stage},error.status);
     if (error instanceof AccessError || error instanceof ProgramFactsError) return json({ error: error.message, stage }, error.status);
     console.error("compile-group-class-journal error", {
       requestId,

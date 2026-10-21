@@ -3,32 +3,49 @@ import { BarChart3, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { fetchStudentLearningResults, type StudentLearningCourse } from "@/api/studentLearningResults";
+import { LearningOutcomeCard } from "./LearningOutcomeCard";
+import { useAuth } from "@/hooks/useAuth";
+import { captureOfflineActor, isOfflineActorCurrent } from "@/utils/courseCache";
 
 function dateLabel(value: string | null): string {
   return value ? new Date(value).toLocaleString("ru-RU") : "—";
 }
 
-export function LearningResultsTab({ organizationId, userId }: { organizationId: string; userId: string }) {
-  const scope = `${organizationId}:${userId}`;
-  const currentScope = useRef(scope);
-  currentScope.current = scope;
+export function LearningResultsTab({ organizationId, userId, observedAccessKey = "" }: { organizationId: string; userId: string; observedAccessKey?: string }) {
+  const { user, userRole, loading: authLoading } = useAuth();
+  const authorityRevision = captureOfflineActor(user?.id);
+  const target = JSON.stringify([user?.id, userRole, authorityRevision, authLoading, organizationId, userId, observedAccessKey]);
+  const currentScope = useRef({ target, generation: 0 });
+  if (currentScope.current.target !== target) currentScope.current = { target, generation: currentScope.current.generation + 1 };
+  const generation = currentScope.current.generation;
+  const scope = JSON.stringify([target, generation]);
+  const canRead = !authLoading && !!user && isOfflineActorCurrent(user.id, authorityRevision);
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<{ scope: string; rows: StudentLearningCourse[]; loading: boolean; error: string | null }>(
     { scope, rows: [], loading: true, error: null },
   );
   useEffect(() => {
     let cancelled = false;
-    setState({ scope, rows: [], loading: true, error: null });
+    const current = () => !cancelled && currentScope.current.generation === generation && canRead && !!user
+      && isOfflineActorCurrent(user.id, authorityRevision);
+    setState({ scope, rows: [], loading: canRead, error: null });
+    if (!current()) return () => { cancelled = true; };
     fetchStudentLearningResults(organizationId, userId).then(rows => {
-      if (!cancelled && currentScope.current === scope) setState({ scope, rows, loading: false, error: null });
-    }).catch(() => {
-      if (!cancelled && currentScope.current === scope) setState({ scope, rows: [], loading: false, error: "Не удалось загрузить результаты обучения. Повторите попытку." });
+      if (current()) setState({ scope, rows, loading: false, error: null });
+    }).catch((error: unknown) => {
+      const value = error as { code?: string; status?: number; statusCode?: number } | null;
+      const denied = ["42501", "PGRST301", "PGRST302"].includes(value?.code || "")
+        || [401, 403].includes(value?.status || value?.statusCode || 0);
+      if (current()) setState({ scope, rows: [], loading: false, error: denied
+        ? "Не удалось подтвердить доступ к результатам обучения. Обновите права доступа."
+        : "Не удалось загрузить результаты обучения. Повторите попытку." });
     });
     return () => { cancelled = true; };
   }, [organizationId, userId, scope, revision]);
-  const loading = state.scope !== scope || state.loading;
-  const rows = state.scope === scope ? state.rows : [];
-  const error = state.scope === scope ? state.error : null;
+  const loading = authLoading || canRead && (state.scope !== scope || state.loading);
+  const rows = canRead && state.scope === scope ? state.rows : [];
+  const error = !canRead && !authLoading ? "Не удалось подтвердить доступ к результатам обучения. Обновите права доступа."
+    : canRead && state.scope === scope ? state.error : null;
   return <section className="space-y-4" aria-label="Результаты обучения ученика">
     <div className="flex items-start justify-between gap-3">
       <div>
@@ -52,6 +69,7 @@ export function LearningResultsTab({ organizationId, userId }: { organizationId:
                 <td className="pr-3">{test.attempts_used}</td><td>{dateLabel(test.manual_credited_at || test.completed_at)}</td>
               </tr>)}</tbody>
             </table></div>}
+            <LearningOutcomeCard organizationId={organizationId} studentUserId={userId} courseId={course.course_id} enrollmentId={course.enrollment_id} observedAccessKey={observedAccessKey} />
           </article>)}
   </section>;
 }

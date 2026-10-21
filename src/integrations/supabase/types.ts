@@ -15886,6 +15886,372 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_group_calendar_versions: {
+        Row: {
+          base_version_id: string | null
+          content: Json
+          content_hash: string
+          course_id: string
+          coverage: string
+          group_id: string
+          id: string
+          known_academic_hours_total: number
+          lessons: Json
+          missing_hours_count: number
+          organization_id: string
+          partial_reason: string | null
+          planned_end_date: string
+          planned_start_date: string
+          program_ref: Json
+          published_at: string | null
+          published_by: string | null
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision_created: number
+          teacher_proofs: Json
+          timezone: string
+        }
+        Insert: {
+          base_version_id?: string | null
+          content: Json
+          content_hash: string
+          course_id: string
+          coverage: string
+          group_id: string
+          id?: string
+          known_academic_hours_total: number
+          lessons: Json
+          missing_hours_count: number
+          organization_id: string
+          partial_reason?: string | null
+          planned_end_date: string
+          planned_start_date: string
+          program_ref: Json
+          published_at?: string | null
+          published_by?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision_created: number
+          teacher_proofs?: Json
+          timezone: string
+        }
+        Update: {
+          base_version_id?: string | null
+          content?: Json
+          content_hash?: string
+          course_id?: string
+          coverage?: string
+          group_id?: string
+          id?: string
+          known_academic_hours_total?: number
+          lessons?: Json
+          missing_hours_count?: number
+          organization_id?: string
+          partial_reason?: string | null
+          planned_end_date?: string
+          planned_start_date?: string
+          program_ref?: Json
+          published_at?: string | null
+          published_by?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision_created?: number
+          teacher_proofs?: Json
+          timezone?: string
+        }
+        Relationships: []
+      }
+      uc_group_education_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          authority_snapshot: Json
+          authority_snapshot_hash: string
+          calendar_version_id: string | null
+          course_id: string
+          effective_at: string | null
+          group_id: string
+          id: string
+          input_hash: string
+          next_row: Json | null
+          organization_id: string
+          origin: string
+          payload: Json
+          previous_row: Json | null
+          reason: string | null
+          recorded_at: string
+          redacted: boolean
+          revision: number
+          snapshot_id: string | null
+          source_event_id: string | null
+          source_receipt_id: string | null
+          source_snapshot: Json | null
+          source_snapshot_hash: string | null
+          subject_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          authority_snapshot: Json
+          authority_snapshot_hash: string
+          calendar_version_id?: string | null
+          course_id: string
+          effective_at?: string | null
+          group_id: string
+          id?: string
+          input_hash: string
+          next_row?: Json | null
+          organization_id: string
+          origin: string
+          payload: Json
+          previous_row?: Json | null
+          reason?: string | null
+          recorded_at?: string
+          redacted?: boolean
+          revision: number
+          snapshot_id?: string | null
+          source_event_id?: string | null
+          source_receipt_id?: string | null
+          source_snapshot?: Json | null
+          source_snapshot_hash?: string | null
+          subject_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          authority_snapshot?: Json
+          authority_snapshot_hash?: string
+          calendar_version_id?: string | null
+          course_id?: string
+          effective_at?: string | null
+          group_id?: string
+          id?: string
+          input_hash?: string
+          next_row?: Json | null
+          organization_id?: string
+          origin?: string
+          payload?: Json
+          previous_row?: Json | null
+          reason?: string | null
+          recorded_at?: string
+          redacted?: boolean
+          revision?: number
+          snapshot_id?: string | null
+          source_event_id?: string | null
+          source_receipt_id?: string | null
+          source_snapshot?: Json | null
+          source_snapshot_hash?: string | null
+          subject_user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_group_education_requests: {
+        Row: {
+          action: string | null
+          actor_id: string | null
+          actor_ids: string[]
+          backend_pid: number | null
+          body: Json | null
+          context: Json | null
+          course_id: string | null
+          created_at: string
+          expected_revision: number | null
+          full_transaction_id: string | null
+          group_id: string | null
+          id: string
+          input_hash: string | null
+          organization_id: string | null
+          receipt: Json | null
+          request_id: string | null
+          row_kind: string
+          subject_ids: string[]
+          teacher_ids: string[]
+        }
+        Insert: {
+          action?: string | null
+          actor_id?: string | null
+          actor_ids?: string[]
+          backend_pid?: number | null
+          body?: Json | null
+          context?: Json | null
+          course_id?: string | null
+          created_at?: string
+          expected_revision?: number | null
+          full_transaction_id?: string | null
+          group_id?: string | null
+          id?: string
+          input_hash?: string | null
+          organization_id?: string | null
+          receipt?: Json | null
+          request_id?: string | null
+          row_kind: string
+          subject_ids?: string[]
+          teacher_ids?: string[]
+        }
+        Update: {
+          action?: string | null
+          actor_id?: string | null
+          actor_ids?: string[]
+          backend_pid?: number | null
+          body?: Json | null
+          context?: Json | null
+          course_id?: string | null
+          created_at?: string
+          expected_revision?: number | null
+          full_transaction_id?: string | null
+          group_id?: string | null
+          id?: string
+          input_hash?: string | null
+          organization_id?: string | null
+          receipt?: Json | null
+          request_id?: string | null
+          row_kind?: string
+          subject_ids?: string[]
+          teacher_ids?: string[]
+        }
+        Relationships: []
+      }
+      uc_group_education_states: {
+        Row: {
+          active_gap: Json | null
+          course_id: string
+          coverage_known_from: string
+          coverage_segment_id: string | null
+          draft_calendar_id: string | null
+          group_id: string
+          legacy_calendar_changed: boolean
+          legacy_source_hash: string
+          organization_id: string
+          program_proof: Json
+          program_ref: Json
+          published_calendar_id: string | null
+          recorded_at: string
+          recorded_by: string | null
+          revision: number
+          source_redacted: boolean
+          source_rows: Json | null
+          timezone: string
+        }
+        Insert: {
+          active_gap?: Json | null
+          course_id: string
+          coverage_known_from: string
+          coverage_segment_id?: string | null
+          draft_calendar_id?: string | null
+          group_id: string
+          legacy_calendar_changed?: boolean
+          legacy_source_hash: string
+          organization_id: string
+          program_proof: Json
+          program_ref: Json
+          published_calendar_id?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          revision: number
+          source_redacted?: boolean
+          source_rows?: Json | null
+          timezone: string
+        }
+        Update: {
+          active_gap?: Json | null
+          course_id?: string
+          coverage_known_from?: string
+          coverage_segment_id?: string | null
+          draft_calendar_id?: string | null
+          group_id?: string
+          legacy_calendar_changed?: boolean
+          legacy_source_hash?: string
+          organization_id?: string
+          program_proof?: Json
+          program_ref?: Json
+          published_calendar_id?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          revision?: number
+          source_redacted?: boolean
+          source_rows?: Json | null
+          timezone?: string
+        }
+        Relationships: []
+      }
+      uc_group_roster_snapshots: {
+        Row: {
+          as_of: string
+          calendar_hash: string
+          calendar_version_id: string
+          course_id: string
+          coverage_known_from: string
+          coverage_segment_id: string
+          group_id: string
+          id: string
+          knowledge_revision: number
+          organization_id: string
+          program_proof: Json
+          program_ref: Json
+          purpose: string
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          roster_hash: string
+          roster_rows: Json
+          row_count: number
+          source_hash: string
+          source_input: Json | null
+          timezone: string
+        }
+        Insert: {
+          as_of: string
+          calendar_hash: string
+          calendar_version_id: string
+          course_id: string
+          coverage_known_from: string
+          coverage_segment_id: string
+          group_id: string
+          id?: string
+          knowledge_revision: number
+          organization_id: string
+          program_proof: Json
+          program_ref: Json
+          purpose: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          roster_hash: string
+          roster_rows: Json
+          row_count: number
+          source_hash: string
+          source_input?: Json | null
+          timezone: string
+        }
+        Update: {
+          as_of?: string
+          calendar_hash?: string
+          calendar_version_id?: string
+          course_id?: string
+          coverage_known_from?: string
+          coverage_segment_id?: string
+          group_id?: string
+          id?: string
+          knowledge_revision?: number
+          organization_id?: string
+          program_proof?: Json
+          program_ref?: Json
+          purpose?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          roster_hash?: string
+          roster_rows?: Json
+          row_count?: number
+          source_hash?: string
+          source_input?: Json | null
+          timezone?: string
+        }
+        Relationships: []
+      }
       uc_identification_events: {
         Row: {
           action: string
@@ -17144,6 +17510,16 @@ export type Database = {
         Returns: Json
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
+      apply_group_education_facts_action: {
+        Args: {
+          p_action: Json
+          p_expected_revision: number
+          p_group_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       apply_student_admission_case_action: {
         Args: {
           p_command: Json
@@ -19102,6 +19478,14 @@ export type Database = {
       purge_recycle_bin_30d: { Args: never; Returns: number }
       read_group_completion_decisions: {
         Args: { p_group_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      read_group_education_facts: {
+        Args: {
+          p_group_id: string
+          p_organization_id: string
+          p_query: Json
+        }
         Returns: Json
       }
       read_student_admission_case: {

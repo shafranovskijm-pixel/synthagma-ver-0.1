@@ -6,7 +6,7 @@ import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from '..
 //   and public.create_student_profile_with_capacity for the atomic slot
 //   claim under an advisory lock (see phase 5A.2 migration).
 // - Multi-role aware caller authorization (no .single() on user_roles).
-// - Compensates a freshly-created auth-user only before a profile is claimed.
+// - Retains a freshly-created auth-user when claim recovery is needed.
 // - Reports profile-without-enrollment as an explicit partial success.
 // - Idempotent for existing students whose course access is still valid.
 
@@ -15,9 +15,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "../_shared/student-registration-details.ts";
 import { persistStudentJobPosition } from "../_shared/student-job-position.ts";
+import { claimStudentCapacity, confirmStudentCapacityClaim } from "../_shared/student-capacity-claim.ts";
 
 const REGISTER_STUDENT_REVISION = "student-import-v6";
-const FUNCTION_REVISION = "uc-ocr-scope-20261019-v1";
+const FUNCTION_REVISION = "uc-group-facts-registration-20261019-v1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -529,74 +530,25 @@ serve(async (req) => {
       }
     }
 
-    // Compensation is allowed only before a profile was successfully claimed.
-    // auth.users has no reliable cascade to these application rows, so a bare
-    // deleteUser would leave a ghost profile/role behind.
-    const compensateUnclaimedAuthUser = async () => {
-      if (!createdAuthUserThisAttempt || !userId) {
-        return { cleaned: true, profileOrganizationId: null as string | null, error: null as string | null };
-      }
-
-      const { data: freshProfile, error: freshProfileError } = await supabaseAdmin
-        .from("profiles")
-        .select("user_id, organization_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (freshProfileError) {
-        console.error("[register-student] rollback profile read failed:", freshProfileError);
-        return { cleaned: false, profileOrganizationId: null, error: freshProfileError.message };
-      }
-      if (freshProfile?.organization_id) {
-        return { cleaned: false, profileOrganizationId: freshProfile.organization_id, error: null };
-      }
-
-      const { error: profileDeleteError } = await supabaseAdmin
-        .from("profiles")
-        .delete()
-        .eq("user_id", userId)
-        .is("organization_id", null);
-      if (profileDeleteError) {
-        console.error("[register-student] rollback profile delete failed:", profileDeleteError);
-        return { cleaned: false, profileOrganizationId: null, error: profileDeleteError.message };
-      }
-
-      const { error: roleDeleteError } = await supabaseAdmin
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userId)
-        .eq("role", "student");
-      if (roleDeleteError) {
-        console.error("[register-student] rollback role delete failed:", roleDeleteError);
-        return { cleaned: false, profileOrganizationId: null, error: roleDeleteError.message };
-      }
-
-      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-      if (authDeleteError) {
-        console.error("[register-student] rollback auth delete failed:", authDeleteError);
-        return { cleaned: false, profileOrganizationId: null, error: authDeleteError.message };
-      }
-      return { cleaned: true, profileOrganizationId: null, error: null };
-    };
-
-    const recoveryRequiredResponse = (code: string, message: string) => j({
+    // A null profile read cannot exclude another in-flight claim. Retain the
+    // Auth identity rather than delete across services without atomic proof.
+    const recoveryRequiredResponse = (code: string, message: string, status = 200) => j({
       success: false,
       partial_success: true,
       profile_persisted: null,
       enrollment_confirmed: false,
       recovery_required: true,
       created_auth_user: createdAuthUserThisAttempt,
-      user_id: userId || undefined,
-      login: generatedLogin || undefined,
+      user_id: publicRegistration ? undefined : (userId || undefined),
+      login: publicRegistration ? undefined : (generatedLogin || undefined),
       password: publicRegistration ? undefined : (generatedPassword || undefined),
       code,
       error: message,
       message,
-    });
+    }, status);
 
     // ── Atomic capacity claim + profile / role write ──
-    const { data: claimRes, error: claimError } = await supabaseAdmin.rpc(
-      "create_student_profile_with_capacity",
-      {
+    const claimArguments = Object.freeze({
         p_organization_id: effectiveOrgId,
         p_user_id: userId,
         p_full_name: full_name,
@@ -606,27 +558,30 @@ serve(async (req) => {
         p_company_id: effectiveCompanyId || null,
         p_student_group_id: effectiveStudentGroupId || null,
         p_region: region ? String(region).trim() : null,
-      },
-    );
+      });
+    const { data: claimRes, error: claimError } = await claimStudentCapacity(() => supabaseAdmin.rpc(
+      "create_student_profile_with_capacity", claimArguments,
+    ));
 
-    let claim: any = claimRes;
+    let claim: any = !claimError && claimRes && typeof claimRes === "object" && !Array.isArray(claimRes)
+      && typeof (claimRes as any).success === "boolean" ? claimRes : null;
     if (claimError || !claim) {
       console.error("[register-student] claim error:", claimError);
       if (createdAuthUserThisAttempt) {
         // The transport result is ambiguous: the database transaction may
         // still be finishing. A positive same-tenant read-back proves commit;
         // an empty/error read-back does NOT prove rollback, so never delete.
-        const { data: claimedProfile, error: claimedProfileReadError } = await supabaseAdmin
-          .from("profiles")
-          .select("user_id, organization_id")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (!claimedProfileReadError && claimedProfile?.organization_id === effectiveOrgId) {
+        const confirmed = await confirmStudentCapacityClaim(async () => {
+          const { data: claimedProfile, error: readError } = await supabaseAdmin
+            .from("profiles").select("user_id, organization_id, archived_at").eq("user_id", userId).maybeSingle();
+          return !readError && claimedProfile?.organization_id === effectiveOrgId && !claimedProfile.archived_at;
+        });
+        if (confirmed) {
           // The response was lost after commit; a same-tenant read-back proves
           // the profile claim and it is safer to continue to enrollment.
           claim = { success: true, is_existing: false };
         } else {
-          console.error("[register-student] claim result remains ambiguous:", claimedProfileReadError);
+          console.error("[register-student] claim result remains unconfirmed");
           return recoveryRequiredResponse(
             "CLAIM_RESULT_UNKNOWN",
             "Учётная запись могла быть создана, но завершение регистрации не подтверждено. Не создавайте дубль и обратитесь к администратору СИНТАГМЫ.",
@@ -634,20 +589,19 @@ serve(async (req) => {
         }
       }
       if (!claim) {
-        return j({ error: "Не удалось создать профиль: " + (claimError?.message || "unknown") }, 500);
+        return recoveryRequiredResponse("CLAIM_RESULT_UNKNOWN", "Завершение регистрации не подтверждено. Не создавайте дубль и обратитесь к администратору СИНТАГМЫ.");
       }
     }
 
     if (!claim.success) {
       if (createdAuthUserThisAttempt) {
-        const compensation = await compensateUnclaimedAuthUser();
-        if (compensation.profileOrganizationId === effectiveOrgId) {
+        const confirmed = await confirmStudentCapacityClaim(async () => {
+          const { data: freshProfile, error: readError } = await supabaseAdmin
+            .from("profiles").select("user_id, organization_id, archived_at").eq("user_id", userId).maybeSingle();
+          return !readError && freshProfile?.organization_id === effectiveOrgId && !freshProfile.archived_at;
+        });
+        if (confirmed) {
           claim = { ...claim, success: true, is_existing: false };
-        } else if (!compensation.cleaned) {
-          return recoveryRequiredResponse(
-            "ROLLBACK_INCOMPLETE",
-            "Регистрация отклонена, но автоматическая очистка завершилась не полностью. Не создавайте дубль и обратитесь к администратору СИНТАГМЫ.",
-          );
         }
       }
       if (!claim.success) {
@@ -659,6 +613,12 @@ serve(async (req) => {
           max_students: claim.max_students,
           is_unlimited: claim.is_unlimited,
           limit_source: claim.limit_source,
+          ...(createdAuthUserThisAttempt ? {
+            success: false, partial_success: true, recovery_required: true,
+            enrollment_confirmed: false, profile_persisted: null,
+            user_id: publicRegistration ? undefined : userId,
+            message: "Регистрация отклонена. Учётная запись сохранена для проверки; не создавайте дубль и обратитесь к администратору СИНТАГМЫ.",
+          } : {}),
         }, 409);
       }
     }
@@ -954,7 +914,6 @@ serve(async (req) => {
         }
       }
     }
-
 
     let message: string;
     if (isExisting) {

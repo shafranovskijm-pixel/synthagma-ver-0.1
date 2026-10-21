@@ -1,8 +1,12 @@
 import type { GeneratedDocument } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { educationSourceSchema, type EducationSource } from '@/lib/groupEducationFacts/contract';
+import { EducationError } from '@/lib/groupEducationFacts/client';
 
 export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-dry-run-v14";
+export const GROUP_EDUCATION_COMPILER_REVISION = 'goreltech-group-package-uc013-v1';
+function denied(error:unknown){const e=error as {status?:number;context?:{status?:number}}|null;return [401,403].includes(e?.status??e?.context?.status??0);}
 
 async function readCompilerRevision(error: unknown): Promise<string> {
   if (!error || typeof error !== "object" || !("context" in error)) return "";
@@ -28,15 +32,18 @@ async function readCompilerRevision(error: unknown): Promise<string> {
   }
 }
 
-async function assertDryRunCompilerCapability(): Promise<void> {
+async function assertDryRunCompilerCapability(requiredRevision = GORELTECH_DRY_RUN_COMPILER_REVISION, originalBearer?:string, isCurrent?:()=>boolean, organizationId?:string,groupId?:string): Promise<void> {
+  if(isCurrent && !isCurrent()) throw new Error('Доступ к источнику изменился');
   const { error } = await supabase.functions.invoke("compile-group-class-journal", {
-    // Намеренно невалидный обезличенный payload: обе версии завершают запрос до
-    // чтения tenant-данных, а заголовок ответа позволяет fail-closed проверить
-    // развёрнутую ревизию до отправки настоящего состава группы.
-    body: { capabilityProbe: true },
+    // Legacy probe stays source-less. The new probe checks the original actor's
+    // current group rights before advertising its revision; neither sends a roster.
+    body: requiredRevision===GROUP_EDUCATION_COMPILER_REVISION ? {capabilityProbe:true,requiredRevision,organizationId,groupId} : { capabilityProbe: true },
+    ...(originalBearer ? {headers:{Authorization:originalBearer}} : {}),
   });
+  if(requiredRevision===GROUP_EDUCATION_COMPILER_REVISION && denied(error))throw new EducationError('ACCESS_DENIED');
+  if(isCurrent && !isCurrent()) throw new Error('Доступ к источнику изменился');
   const revision = await readCompilerRevision(error);
-  if (revision !== GORELTECH_DRY_RUN_COMPILER_REVISION) {
+  if (revision !== requiredRevision) {
     throw new Error(
       "Безопасная серверная проверка ещё не развёрнута. Документы не отправлены и не сохранены",
     );
@@ -44,6 +51,9 @@ async function assertDryRunCompilerCapability(): Promise<void> {
 }
 
 export interface GenerateClassJournalParams {
+  educationSource?: EducationSource;
+  originalBearer?: string;
+  isCurrent?: ()=>boolean;
   organizationId: string;
   groupId: string;
   /** Снимок активного состава группы, использованный для всех документов пакета. */
@@ -99,7 +109,10 @@ const legacyPayload = (document: GeneratedDocument) => ({
 export async function generateClassJournalDocx(
   params: GenerateClassJournalParams,
 ): Promise<GenerateClassJournalResult> {
-  if (params.dryRun) await assertDryRunCompilerCapability();
+  const sourcePresent=Object.prototype.hasOwnProperty.call(params,'educationSource');
+  if(sourcePresent && (!educationSourceSchema.safeParse(params.educationSource).success || !params.originalBearer || !params.isCurrent?.())) throw new Error('Подтверждённый источник недоступен');
+  const requiredRevision=sourcePresent ? GROUP_EDUCATION_COMPILER_REVISION : GORELTECH_DRY_RUN_COMPILER_REVISION;
+  if (params.dryRun || sourcePresent) await assertDryRunCompilerCapability(requiredRevision,params.originalBearer,params.isCurrent,params.organizationId,params.groupId);
   const { data, error } = await safeInvoke<any>("compile-group-class-journal", {
     body: {
       organizationId: params.organizationId,
@@ -112,18 +125,22 @@ export async function generateClassJournalDocx(
       includeJournal: params.includeJournal ?? true,
       journalSignatory: params.journalSignatory,
       otherDocuments: params.otherDocuments.map(legacyPayload),
+      ...(sourcePresent ? {educationSource:params.educationSource} : {}),
     },
-    ...(params.dryRun
+    ...(params.dryRun || sourcePresent
       ? {
           headers: {
-            "X-Sintagma-Required-Compiler-Revision": GORELTECH_DRY_RUN_COMPILER_REVISION,
+            "X-Sintagma-Required-Compiler-Revision": requiredRevision,
+            ...(params.originalBearer ? {Authorization:params.originalBearer} : {}),
           },
         }
       : {}),
   });
-  if (error) throw new Error(error.message || "Не удалось сформировать журнал Word");
+  if(params.isCurrent && !params.isCurrent()) throw new Error('Доступ к источнику изменился');
+  if(sourcePresent && denied(error))throw new EducationError('ACCESS_DENIED');
+  if (error) throw new Error(sourcePresent ? 'Не удалось подтвердить формирование документов' : error.message || "Не удалось сформировать журнал Word");
   const payload = data;
-  if (payload?.error) throw new Error(payload.error);
+  if (payload?.error) throw new Error(sourcePresent ? 'Не удалось подтвердить формирование документов' : payload.error);
   const batch = payload?.batch || {};
   const documents = Array.isArray(payload?.documents)
     ? payload.documents.map((document: Record<string, unknown>) => ({
@@ -132,6 +149,12 @@ export async function generateClassJournalDocx(
         docxSha256: String(document.docx_sha256 || ""),
       }))
     : [];
+  if(sourcePresent){
+    const echo=educationSourceSchema.safeParse(payload?.educationSource);
+    const expectedCount=params.otherDocuments.length+(params.includeJournal===false?0:1);
+    if(!echo.success || JSON.stringify(echo.data)!==JSON.stringify(educationSourceSchema.parse(params.educationSource)) || payload?.compilerRevision!==GROUP_EDUCATION_COMPILER_REVISION || payload?.documentCount!==expectedCount || documents.length!==expectedCount || documents.some(d=>!/^[a-fA-F0-9]{64}$/.test(d.docxSha256))
+      || !params.dryRun && (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(batch.batch_id??'') || !Number.isSafeInteger(batch.batch_version) || batch.batch_version<1 || batch.inserted_count!==expectedCount || payload?.writesPerformed!==true))throw new EducationError();
+  }
   if (params.dryRun) {
     const expectedCount = params.otherDocuments.length + (params.includeJournal === false ? 0 : 1);
     const validHashes = documents.every((document) => /^[A-F0-9]{64}$/.test(document.docxSha256));

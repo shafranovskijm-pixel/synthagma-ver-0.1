@@ -1,0 +1,376 @@
+{
+  "status": "LOCAL_SQL_FE_TESTS_PASS_NATIVE_RELEASE_HELD",
+  "base": "04febc6e424e922ed37d1f57f7a5afb0b39361db",
+  "version": "20261020140000",
+  "name": "uc_learning_outcome_foundation",
+  "migration": "supabase/migrations/20261020140000_uc_learning_outcome_foundation.sql",
+  "migration_canonical_lf_sha256": "4ef8ef8bcdb95990047d8d65c8ed8154849813ab9a5dab4924865d7c3b14458a",
+  "migration_canonical_lf_md5": "e63e4166f77f1c355a3f37468df3dcd7",
+  "raw_migration_sha256": "13b2e1faf82753aa629a6a21865ea31cb3d524bd46574987ae3ee1dd86d8a126",
+  "new_tables": [
+    "uc_learning_criteria_versions",
+    "uc_learning_outcome_states",
+    "uc_learning_attempt_contexts",
+    "uc_learning_machine_results",
+    "uc_learning_attestation_decisions",
+    "uc_learning_outcome_requests"
+  ],
+  "new_functions": [
+    {
+      "signature": "public.uc_learning_error(text)",
+      "name": "uc_learning_error",
+      "return_type": "void",
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "v",
+      "search_path": "search_path=pg_catalog",
+      "body_md5": "902ff9eb52edcefb96a8aa15c59e7dff"
+    },
+    {
+      "signature": "public.uc_learning_shape(jsonb,text[])",
+      "name": "uc_learning_shape",
+      "return_type": "boolean",
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "search_path": "search_path=pg_catalog",
+      "body_md5": "9dc5fd42fdde710e3974ec4f20ab8179"
+    },
+    {
+      "signature": "public.uc_learning_uuid(jsonb)",
+      "name": "uc_learning_uuid",
+      "return_type": "boolean",
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "i",
+      "search_path": "search_path=pg_catalog",
+      "body_md5": "655990c41c2ff439e049eff7d9977e7c"
+    },
+    {
+      "signature": "public.uc_learning_ids(jsonb,integer,integer)",
+      "name": "uc_learning_ids",
+      "return_type": "boolean",
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "58f328b0ba8a6717eea25e04d25d74a0"
+    },
+    {
+      "signature": "public.uc_learning_text(jsonb,integer)",
+      "name": "uc_learning_text",
+      "return_type": "boolean",
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "i",
+      "search_path": "search_path=pg_catalog",
+      "body_md5": "2cb5db71f48fd221656d20edd286696c"
+    },
+    {
+      "signature": "public.uc_learning_person(uuid)",
+      "name": "uc_learning_person",
+      "return_type": "boolean",
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "59bf7c34b747d238fbadc343e37a658c"
+    },
+    {
+      "signature": "public.uc_learning_staff(uuid,uuid,uuid,boolean)",
+      "name": "uc_learning_staff",
+      "return_type": "boolean",
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "a464915eca87a977ea0727593a5448fa"
+    },
+    {
+      "signature": "public.uc_learning_scope(uuid)",
+      "name": "uc_learning_scope",
+      "return_type": "jsonb",
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "cc028d73cdb946cc45544d02fab527d0"
+    },
+    {
+      "signature": "public.uc_learning_scope_valid(uuid,jsonb)",
+      "name": "uc_learning_scope_valid",
+      "return_type": "boolean",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "c28731a55b6487fc3e49f6c8c6b67d93"
+    },
+    {
+      "signature": "public.uc_learning_envelope(uuid,jsonb)",
+      "name": "uc_learning_envelope",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "651c51fd204fcb36bf8ca5d21af5ba23"
+    },
+    {
+      "signature": "public.read_learning_outcome(uuid,jsonb)",
+      "name": "read_learning_outcome",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "b156cdaed9f6e4de74500d96d035191e"
+    },
+    {
+      "signature": "public.uc_learning_validate_test(jsonb)",
+      "name": "uc_learning_validate_test",
+      "return_type": "boolean",
+      "language": "plpgsql",
+      "security_definer": false,
+      "volatility": "i",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "90a338c5b9189b3e2de51b9f63741912"
+    },
+    {
+      "signature": "public.uc_learning_validate_criteria(uuid,uuid,jsonb,boolean)",
+      "name": "uc_learning_validate_criteria",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "99f51539230bca8f6d341a1b02ec6d22"
+    },
+    {
+      "signature": "public.uc_learning_observe_session()",
+      "name": "uc_learning_observe_session",
+      "return_type": "trigger",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "984e399cd398cf5358144ecc3c438fcc"
+    },
+    {
+      "signature": "public.uc_learning_test_component(public.uc_learning_outcome_states,jsonb)",
+      "name": "uc_learning_test_component",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "e1ea55341ed796e107c3dcbc066a2dfa"
+    },
+    {
+      "signature": "public.uc_learning_evaluate(public.uc_learning_outcome_states)",
+      "name": "uc_learning_evaluate",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "059419f8b236213bbde9ff8d1e8d8818"
+    },
+    {
+      "signature": "public.uc_learning_access(uuid,jsonb,boolean)",
+      "name": "uc_learning_access",
+      "return_type": "text",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "8906d1848181831ba04d823913f02658"
+    },
+    {
+      "signature": "public.uc_learning_programme_proof(uuid,uuid)",
+      "name": "uc_learning_programme_proof",
+      "return_type": "jsonb",
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "d1935216ba1a0444f141f59617d94f6a"
+    },
+    {
+      "signature": "public.uc_learning_criteria_ref(public.uc_learning_criteria_versions)",
+      "name": "uc_learning_criteria_ref",
+      "return_type": "jsonb",
+      "language": "sql",
+      "security_definer": false,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog",
+      "body_md5": "36a4ddde290547d3866de5911ac52b7e"
+    },
+    {
+      "signature": "public.uc_learning_try_people(uuid[])",
+      "name": "uc_learning_try_people",
+      "return_type": "void",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "4023628b3344db162c378498e48bf43f"
+    },
+    {
+      "signature": "public.apply_learning_outcome_action(uuid,uuid,jsonb)",
+      "name": "apply_learning_outcome_action",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "4b9ba3863d32ce24fddef45c2a4ffa9d"
+    },
+    {
+      "signature": "public.uc_learning_recognition_proof(uuid,uuid)",
+      "name": "uc_learning_recognition_proof",
+      "return_type": "jsonb",
+      "language": "sql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "4f2bf9fc32285e10b69f261e8a0fb3a2"
+    },
+    {
+      "signature": "public.uc_learning_options(uuid,jsonb)",
+      "name": "uc_learning_options",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "3a4db3ffefca56af33ee97d6f0ac627b"
+    },
+    {
+      "signature": "public.uc_learning_guard()",
+      "name": "uc_learning_guard",
+      "return_type": "trigger",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "88567fbea0f68e9283d805d90300da4b"
+    },
+    {
+      "signature": "public.uc_learning_personal_counts(uuid)",
+      "name": "uc_learning_personal_counts",
+      "return_type": "jsonb",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "s",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "2b053046c665058e61289f154d51b0a0"
+    },
+    {
+      "signature": "public.uc_learning_erase_user(uuid)",
+      "name": "uc_learning_erase_user",
+      "return_type": "void",
+      "language": "plpgsql",
+      "security_definer": true,
+      "volatility": "v",
+      "search_path": "search_path=pg_catalog, public",
+      "body_md5": "cb4104f8eb7c7bd0242c11875b35bbff"
+    }
+  ],
+  "original_16_source_pins": [
+    {
+      "signature": "public._assert_test_learner_access(uuid)",
+      "source_md5": "121b38460edcfebb91a3b0ec5d5a4de5"
+    },
+    {
+      "signature": "public._final_test_photo_required(uuid)",
+      "source_md5": "d147738f2ea89383f9ea876c5aabdde0"
+    },
+    {
+      "signature": "public._paid_20260922_lesson_read(uuid,boolean,boolean)",
+      "source_md5": "0eb744d6b438b88f76ed164e8ec3131c"
+    },
+    {
+      "signature": "public._test_attempt_limits(uuid,uuid)",
+      "source_md5": "b44145c47907f5fc4396e385d776acd2"
+    },
+    {
+      "signature": "public._test_grade_payload(uuid)",
+      "source_md5": "5fd2c208ab1da1c99f53e39068a3853b"
+    },
+    {
+      "signature": "public._test_manual_credit(uuid)",
+      "source_md5": "e23a3f0ed56fe05fd0a9a97422d93487"
+    },
+    {
+      "signature": "public._test_normalize_options(jsonb,integer)",
+      "source_md5": "3d9019fdcfec6541dbdc251f0d735deb"
+    },
+    {
+      "signature": "public._test_public_questions(jsonb,boolean)",
+      "source_md5": "f6cd1a2451ad7cf80b1afde037c5e8cb"
+    },
+    {
+      "signature": "public._test_session_payload(uuid)",
+      "source_md5": "c41f809267021233b71c6715f0d50364"
+    },
+    {
+      "signature": "public.account_deletion_access_allowed()",
+      "source_md5": "64b0a90b7db9813950ccca6dff208f3a"
+    },
+    {
+      "signature": "public.can_access_course_as_learner(uuid)",
+      "source_md5": "fff57f8e966305869e67d97b578fee4b"
+    },
+    {
+      "signature": "public.start_test_attempt(uuid,uuid)",
+      "source_md5": "43978d2d2dc843ec563dbc0d1fd6e313"
+    },
+    {
+      "signature": "public.submit_test_attempt(uuid,jsonb)",
+      "source_md5": "9cff05e090f0c8da170d2bed99b728cf"
+    },
+    {
+      "signature": "public._paid_20260922_course_read(uuid,boolean)",
+      "source_md5": "6e826c917b69c2e37ef99407c9808ed9"
+    },
+    {
+      "signature": "public._paid_20260922_course_scope(uuid)",
+      "source_md5": "77b5addf47ccd0b51e133098b391eb2d"
+    },
+    {
+      "signature": "public._paid_20260922_original_ids()",
+      "source_md5": "cd7bc9e459525c66f1c5cfa5b2b635b6"
+    }
+  ],
+  "rollback": "rollback-empty-foundation.sql",
+  "rollback_sha256": "8e984a972b38b60ec9ca372982bf24e9e2cf2930663567bd4552cc6b18813206",
+  "release_gates": [
+    "UC013 integration/release first",
+    "independent frozen implementation review",
+    "coordinated actual focused SQL/UI tests",
+    "native PostgreSQL Auth/ACL/default-grant and legacy start/resume/photo/quota/erasure regressions",
+    "both finite erasure predecessors and empty-only rollback restore",
+    "fresh live metadata/ledger baseline and forward version review",
+    "strict closure build and production browser acceptance"
+  ],
+  "not_claimed": [
+    "UC014 complete roadmap acceptance",
+    "production deployed",
+    "native concurrency",
+    "original N07 or native26",
+    "legal attestation protocol/commission/signatures",
+    "legacy issuance replaced"
+  ],
+  "authoring_fallback": "Node writes already saved Python template as text; no Python execution; original interpreter crash retained separately",
+  "local_validation": {
+    "readout": "work/resume-20261020/uc014-local-validation-readout.json",
+    "readoutSha256": "1c1e04c0b6af05eae6a2bdc4f93d283d7af2c73fcd5f0ceb31af0f20dd83438f",
+    "actualTestProcesses": 9,
+    "sqlPassed": 39,
+    "fePassed": 58,
+    "skipped": 0,
+    "nativeExecutions": 0,
+    "productionExecutions": 0
+  }
+}

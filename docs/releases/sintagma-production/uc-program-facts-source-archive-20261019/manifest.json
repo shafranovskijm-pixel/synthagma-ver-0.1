@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "archiveKind": "historical_uc111_source_not_runtime",
+  "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+  "gitObjectFormat": "sha1",
+  "originalReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
+    "canonicalLfSha256": "ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf"
+  },
+  "rawSha256Meaning": "SHA256 of exact immutable source Git blob bytes, not Windows working-tree CRLF bytes. All18 witnessed Git blobs are already LF, so raw and canonical hashes coincide and are independently verifiable from archived objects.",
+  "normalization": "Replace CRLF with LF only; preserve UTF8/BOM, loneCR, all whitespace and final-newline presence. Archive bytes are exact resulting bytes; no wrapper, banner or added newline.",
+  "entryCount": 18,
+  "objectCount": 18,
+  "entries": [
+    {
+      "originalPath": "src/components/organization/CourseProgramsList.tsx",
+      "rawSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5",
+      "canonicalLfSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "6e482848b20581bf5e0d328c07746a07a5fcfb2d",
+      "sourceByteLength": 8054,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5.source"
+    },
+    {
+      "originalPath": "src/components/organization/group-folder/GenerateContractDialog.tsx",
+      "rawSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709",
+      "canonicalLfSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "387a99db12ae94e7a63e3e6119655fbb11828f2f",
+      "sourceByteLength": 70869,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709.source"
+    },
+    {
+      "originalPath": "src/components/organization/group-folder/GenerateDocxContractDialog.tsx",
+      "rawSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac",
+      "canonicalLfSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "6280182315f64773952335602fbf23a4d7a8ea89",
+      "sourceByteLength": 35742,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac.source"
+    },
+    {
+      "originalPath": "src/components/organization/group-folder/GroupDocumentsFolder.tsx",
+      "rawSha256": "e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a",
+      "canonicalLfSha256": "e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "f72b7870f4f41f512fc65ba289f613e6d13b6384",
+      "sourceByteLength": 45607,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a.source"
+    },
+    {
+      "originalPath": "src/components/organization/programs/GroupProgramFactsPanel.tsx",
+      "rawSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d",
+      "canonicalLfSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "cb3a6e20b0e72b9613cbcff37e2c34c47f731754",
+      "sourceByteLength": 7350,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d.source"
+    },
+    {
+      "originalPath": "src/components/organization/programs/ProgramFactsPanel.tsx",
+      "rawSha256": "8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1",
+      "canonicalLfSha256": "8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "f270c20f63827ec19d4f71d477f9fe4db8aa78c3",
+      "sourceByteLength": 21323,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1.source"
+    },
+    {
+      "originalPath": "src/components/organization/programs/groupProgramPresentation.ts",
+      "rawSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1",
+      "canonicalLfSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "16d42250f86c0dabc1f2fa59a97be82fc08924c0",
+      "sourceByteLength": 820,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1.source"
+    },
+    {
+      "originalPath": "src/components/organization/tabs/DocumentsTab.tsx",
+      "rawSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247",
+      "canonicalLfSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "3fd781a89e2f0da80bbf4adbcd6c22334968ccd0",
+      "sourceByteLength": 35019,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247.source"
+    },
+    {
+      "originalPath": "src/components/organization/tabs/GroupFolderTab.tsx",
+      "rawSha256": "76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425",
+      "canonicalLfSha256": "76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "5e90dbdcff3f96954502ec816e93fd9bc8e53cf4",
+      "sourceByteLength": 72158,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425.source"
+    },
+    {
+      "originalPath": "src/hooks/useContractGenerator.ts",
+      "rawSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708",
+      "canonicalLfSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "4e2fdeacdd89b51713ba54ce4354d0398a2239d7",
+      "sourceByteLength": 27681,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708.source"
+    },
+    {
+      "originalPath": "src/hooks/useGroupDocuments.ts",
+      "rawSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6",
+      "canonicalLfSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "36c382979e8334f7fabac721ddb74e5b0d65443c",
+      "sourceByteLength": 5088,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6.source"
+    },
+    {
+      "originalPath": "src/hooks/useProgramFacts.ts",
+      "rawSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb",
+      "canonicalLfSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "4476793aa5354c60b0eeb9755f2460fc913c1e31",
+      "sourceByteLength": 12666,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb.source"
+    },
+    {
+      "originalPath": "src/lib/group-docs/generate.ts",
+      "rawSha256": "8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9",
+      "canonicalLfSha256": "8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "d601896992dfb99db63eee6f087ecd0d1b14f559",
+      "sourceByteLength": 8610,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9.source"
+    },
+    {
+      "originalPath": "src/lib/group-docs/schema.ts",
+      "rawSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10",
+      "canonicalLfSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "2cf99b4188d7540e8e9e1e1a01e410fe196f113a",
+      "sourceByteLength": 3906,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10.source"
+    },
+    {
+      "originalPath": "src/lib/programFacts.ts",
+      "rawSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+      "canonicalLfSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "79871199a34d63bb0bd8e87e528a6d1e57dae384",
+      "sourceByteLength": 10091,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383.source"
+    },
+    {
+      "originalPath": "supabase/functions/_shared/program-facts.ts",
+      "rawSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660",
+      "canonicalLfSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "767a904ba870d30b40702d3e6615f80a0e6a6dd6",
+      "sourceByteLength": 10685,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660.source"
+    },
+    {
+      "originalPath": "supabase/functions/compile-docx-contract/index.ts",
+      "rawSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1",
+      "canonicalLfSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "f1909706ba24cff75f2a54cb6d1178f6bfb1ba47",
+      "sourceByteLength": 23689,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1.source"
+    },
+    {
+      "originalPath": "supabase/functions/compile-group-class-journal/index.ts",
+      "rawSha256": "a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d",
+      "canonicalLfSha256": "a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d",
+      "sourceCommit": "d1089fc11c1115800e2b24423783eb324744e7b1",
+      "sourceGitBlobOid": "315a2160e6417ac07c88c815da2d9a0155323816",
+      "sourceByteLength": 33777,
+      "archivePath": "docs/releases/sintagma-production/uc-program-facts-source-archive-20261019/objects/a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d.source"
+    }
+  ]
+}

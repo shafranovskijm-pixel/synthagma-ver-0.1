@@ -1,0 +1,12 @@
+import type { DraftResponse } from './contract';
+const escape=(value:unknown)=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]!));
+export const attendanceLabels={present:'Присутствовал',absent:'Отсутствовал',excused:'Уважительная причина'};
+export const draftLabels={journal:'Журнал занятия',protocol:'Протокол результатов',education_document:'Документ об обучении'};
+/** Render only a fresh server-pinned draft. It is not issued, signed or numbered. */
+export function renderSessionDraft(value:DraftResponse):string {
+ const d=value.draft,p=d.source_proof;
+ if(!d.source_current||d.redacted||!p||d.officially_issued||p.officially_issued)throw new Error('UC_SESSION_SOURCE_UNAVAILABLE');
+ const rows=p.attendance.map(r=>{const o=p.outcomes.find(x=>x.user_id===r.user_id)?.outcome;const decision=o?.last_decision;
+  return `<tr><td>${escape(r.subject_label)}</td><td>${escape(attendanceLabels[r.status])}</td><td>${escape(decision?.learner_summary??'Решение не подтверждено')}</td><td>${escape(decision?.id??'')}</td></tr>`;}).join('');
+ return `<!doctype html><html lang="ru"><meta charset="utf-8"><title>Черновик — ${escape(draftLabels[d.kind])}</title><style>body{font:15px system-ui;margin:40px;line-height:1.5;color:#17202a}table{border-collapse:collapse;width:100%}td,th{border:1px solid #bbb;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}.notice{border:2px solid #a66b00;padding:12px}</style><h1>ЧЕРНОВИК: ${escape(draftLabels[d.kind])}</h1><p class="notice">Требуется проверка уполномоченным человеком. Документ не выдан, не подписан и не имеет регистрационного номера. Отображаемые имена не подтверждают юридическое имя.</p><p>${escape(p.session_source.program_proof.facts_snapshot.full_title)}</p><p>Занятие: ${escape(p.session_source.lesson.topic)}<br>${escape(p.starts_at)} — ${escape(p.ends_at)}; ${escape(p.academic_hours)} акад. ч.</p><table><thead><tr><th>Участник</th><th>Посещение</th><th>Результат</th><th>Решение</th></tr></thead><tbody>${rows}</tbody></table><p>Черновик ${escape(d.id)}, редакция ${d.revision}. Источник занятия: ${escape(p.session_version_id)}, редакция ${p.session_revision}. Хеш сохранённых фактов: ${escape(d.content_hash)}.</p><details><summary>Происхождение сохранённых сведений</summary><pre>${escape(JSON.stringify(p,null,2))}</pre></details></html>`;
+}

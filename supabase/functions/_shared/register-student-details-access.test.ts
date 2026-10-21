@@ -6,6 +6,7 @@ import { isEnrollmentAccessExpired } from "./enrollment-access";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "./student-registration-details";
 import { persistStudentJobPosition } from "./student-job-position";
 import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from "./course-quota-error";
+import { claimStudentCapacity, confirmStudentCapacityClaim } from "./student-capacity-claim";
 
 const ids = { actor: "a1000000-0000-4000-8000-000000000001", org: "a1000000-0000-4000-8000-000000000002",
   student: "a1000000-0000-4000-8000-000000000003", group: "a1000000-0000-4000-8000-000000000004" };
@@ -83,10 +84,10 @@ function fixture(options: Options = {}) {
   let handler!: (request: Request) => Promise<Response>;
   const source = readFileSync("supabase/functions/register-student/index.ts", "utf8").replace(/^import .*;\r?\n/gm, "");
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", "isStudentAssignmentQuotaError", "studentAssignmentQuotaFailure", compiled)(
+  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", "isStudentAssignmentQuotaError", "studentAssignmentQuotaFailure", "claimStudentCapacity", "confirmStudentCapacityClaim", compiled)(
     (callback: typeof handler) => { handler = callback; }, createClient,
     { env: { get: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? "service-key" : key === "SUPABASE_ANON_KEY" ? "anon-key" : "https://synthetic.invalid" } },
-    isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, isStudentAssignmentQuotaError, studentAssignmentQuotaFailure,
+    isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, isStudentAssignmentQuotaError, studentAssignmentQuotaFailure, claimStudentCapacity, confirmStudentCapacityClaim,
   );
   return { events, createUser, callerRpc, adminRpc, profileUpdate, linkUpdate, profiles,
     call: async (fields: Record<string, unknown> = {}, method = "POST") => {
@@ -197,7 +198,7 @@ describe("register-student current detail authority before Auth/profile mutation
     const f = fixture();
     for (const result of [await f.call(), await f.call({}, "GET")]) {
       expect(result.headers.get("X-Sintagma-Register-Student-Revision")).toBe("student-import-v6");
-      expect(result.headers.get("X-Sintagma-Function-Revision")).toBe("uc-ocr-scope-20261019-v1");
+      expect(result.headers.get("X-Sintagma-Function-Revision")).toBe("uc-group-facts-registration-20261019-v1");
       expect(result.headers.get("Access-Control-Expose-Headers")).toContain("X-Sintagma-Function-Revision");
     }
   });
