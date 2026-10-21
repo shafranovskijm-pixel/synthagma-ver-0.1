@@ -1,0 +1,82 @@
+{
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+      "signature": "account_deletion_subject_write_guard()",
+      "source_md5": "16edf9d392db190610be2fa99c21c8f0"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.guard_profile_tenant_identity()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nBEGIN\n  IF NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id\n     AND NEW.company_id IS NOT DISTINCT FROM OLD.company_id\n     AND NEW.student_group_id IS NOT DISTINCT FROM OLD.student_group_id\n  THEN\n    RETURN NEW;\n  END IF;\n\n  -- Service-role provisioning, global platform administrators and existing\n  -- SECURITY DEFINER ownership/provisioning functions remain able to perform\n  -- an explicit tenant transfer. A direct authenticated PostgREST request has\n  -- current_user = authenticated and therefore cannot use this exception.\n  IF auth.role() = 'service_role'\n     OR public.has_role('admin'::public.app_role, auth.uid())\n     OR current_user IN ('postgres', 'supabase_admin')\n  THEN\n    RETURN NEW;\n  END IF;\n\n  -- students.write managers may keep assigning a student to a company/group\n  -- inside the student's existing organization. This does not let a student\n  -- self-enrol by changing student_group_id or let a company account\n  -- self-select another tenant, while preserving the current organization UI.\n  IF NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id\n     AND public.can_access_organization(OLD.organization_id, 'students.write')\n     AND (\n       NEW.company_id IS NOT DISTINCT FROM OLD.company_id\n       OR NEW.company_id IS NULL\n       OR EXISTS (\n         SELECT 1\n         FROM public.companies c\n         WHERE c.id = NEW.company_id\n           AND c.organization_id = OLD.organization_id\n       )\n     )\n     AND (\n       NEW.student_group_id IS NOT DISTINCT FROM OLD.student_group_id\n       OR NEW.student_group_id IS NULL\n       OR EXISTS (\n         SELECT 1\n         FROM public.student_groups g\n         WHERE g.id = NEW.student_group_id\n           AND g.organization_id = OLD.organization_id\n       )\n     )\n  THEN\n    RETURN NEW;\n  END IF;\n\n  RAISE EXCEPTION 'Profile tenant identity may only be changed by a trusted provisioning workflow'\n    USING ERRCODE = '42501';\nEND\n$function$\n",
+      "signature": "guard_profile_tenant_identity()",
+      "source_md5": "5278469d9ec561f908ae8e93dde9b442"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function": "account_deletion_subject_write_guard()",
+      "relname": "profiles",
+      "tgname": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER guard_profile_tenant_identity BEFORE UPDATE OF organization_id, company_id, student_group_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_tenant_identity()",
+      "function": "guard_profile_tenant_identity()",
+      "relname": "profiles",
+      "tgname": "guard_profile_tenant_identity"
+    },
+    {
+      "definition": "CREATE TRIGGER sync_profile_group_course_enrollment_trigger AFTER INSERT OR UPDATE OF student_group_id, organization_id, user_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION sync_profile_group_course_enrollment()",
+      "function": "sync_profile_group_course_enrollment()",
+      "relname": "profiles",
+      "tgname": "sync_profile_group_course_enrollment_trigger"
+    },
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function": "account_deletion_subject_write_guard()",
+      "relname": "enrollments",
+      "tgname": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER on_enrollment_delete AFTER DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()",
+      "function": "log_enrollment_change()",
+      "relname": "enrollments",
+      "tgname": "on_enrollment_delete"
+    },
+    {
+      "definition": "CREATE TRIGGER on_enrollment_insert AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()",
+      "function": "log_enrollment_change()",
+      "relname": "enrollments",
+      "tgname": "on_enrollment_insert"
+    },
+    {
+      "definition": "CREATE TRIGGER trg_calc_enrollment_expires BEFORE INSERT OR UPDATE OF access_days, started_at ON public.enrollments FOR EACH ROW EXECUTE FUNCTION calc_enrollment_expires_at()",
+      "function": "calc_enrollment_expires_at()",
+      "relname": "enrollments",
+      "tgname": "trg_calc_enrollment_expires"
+    },
+    {
+      "definition": "CREATE TRIGGER trigger_auto_complete_enrollment BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_complete_enrollment()",
+      "function": "auto_complete_enrollment()",
+      "relname": "enrollments",
+      "tgname": "trigger_auto_complete_enrollment"
+    },
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.lesson_progress FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function": "account_deletion_subject_write_guard()",
+      "relname": "lesson_progress",
+      "tgname": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER trg_recalc_enrollment_progress AFTER INSERT OR DELETE OR UPDATE ON public.lesson_progress FOR EACH ROW EXECUTE FUNCTION recalc_enrollment_progress()",
+      "function": "recalc_enrollment_progress()",
+      "relname": "lesson_progress",
+      "tgname": "trg_recalc_enrollment_progress"
+    },
+    {
+      "definition": "CREATE TRIGGER sync_group_course_enrollments_trigger AFTER INSERT OR UPDATE OF course_id, organization_id ON public.student_groups FOR EACH ROW EXECUTE FUNCTION sync_group_course_enrollments()",
+      "function": "sync_group_course_enrollments()",
+      "relname": "student_groups",
+      "tgname": "sync_group_course_enrollments_trigger"
+    }
+  ]
+}

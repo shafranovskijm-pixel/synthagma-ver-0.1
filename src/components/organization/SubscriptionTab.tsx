@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_LABEL, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import { Link } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, formatStorageSize } from "@/constants/subscriptionPlans";
@@ -63,7 +64,7 @@ export function SubscriptionTab() {
       <p className="text-xs text-muted-foreground">За полный месяц доступа без активности — 4 490 ₽. Платные функции учитываются при фактическом использовании после предварительного уведомления и вашего подтверждения. Счёт за октябрь охватывает период с 01.10.2026 до 01.11.2026.</p>
       <Button variant="outline" size="sm" onClick={() => d.tabNavigation.setActiveTab("documents" as any)}>Счета и документы</Button>
     </CardContent></Card>
-    <Card><CardHeader><CardTitle className="text-base">Текущие данные организации</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid gap-3 sm:grid-cols-3 text-sm"><p>Курсы: <strong>{s.subscriptionLimits.usage.coursesCount}</strong></p><p>Добавлено учеников в этом месяце: <strong>{s.subscriptionLimits.usage.studentsCount}</strong></p><p>Хранилище: <strong>{storageUsageLabel}</strong></p></div><p className="text-xs text-muted-foreground">Это текущие показатели кабинета. Итоговый счёт использует отдельный журнал фактического обучения за месяц; количество завершений, ИИ и объём хранилища не повышают тариф.</p></CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base">Текущие данные организации</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid gap-3 sm:grid-cols-3 text-sm"><p>Курсы: <strong>{s.subscriptionLimits.usage.coursesCount}</strong></p><p>Ученикам назначен курс в этом месяце: <strong>{s.subscriptionLimits.usage.studentsCount}</strong></p><p>Хранилище: <strong>{storageUsageLabel}</strong></p></div><p className="text-xs text-muted-foreground">Это текущие показатели кабинета. Итоговый счёт использует отдельный журнал фактического обучения за месяц; количество завершений, ИИ и объём хранилища не повышают тариф.</p></CardContent></Card>
   </div>;
 
 
@@ -208,10 +209,12 @@ export function SubscriptionTab() {
                 </CardContent></Card>
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-medium"><Users className="w-4 h-4 text-primary" />Активные ученики</div>
+                    <div className="flex items-center gap-2 text-sm font-medium"><Users className="w-4 h-4 text-primary" />{STUDENT_MONTHLY_QUOTA_LABEL}</div>
                     <span className="text-sm text-muted-foreground">{s.subscriptionLimits.usage.studentsCount} / {s.subscriptionLimits.limits.maxStudents === -1 ? "∞" : s.subscriptionLimits.limits.maxStudents}</span>
                   </div>
                   <Progress value={s.subscriptionLimits.limits.maxStudents === -1 ? 0 : s.studentsPercent} className="h-2" />
+                  <p className="text-xs text-muted-foreground">{STUDENT_MONTHLY_QUOTA_DESCRIPTION}</p>
+                  <p className="text-xs text-muted-foreground">{STUDENT_RECORDS_STORAGE_LABEL}. {STUDENT_RECORDS_STORAGE_DESCRIPTION}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">

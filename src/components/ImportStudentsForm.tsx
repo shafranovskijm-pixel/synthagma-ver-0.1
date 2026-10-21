@@ -267,21 +267,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
     setProgress({ current: 0, total: dedupedRows.length });
 
     try {
-      // Server-canonical capacity preflight (informational only).
-      // Часть строк может быть уже существующими учениками — они не расходуют месячный слот.
-      const { data: capRows } = await supabase.rpc(
-        "get_organization_student_capacity" as any,
-        { p_organization_id: organizationId, p_requested_count: 0 },
-      );
-      const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
-      if (cap && !cap.is_unlimited && (cap.remaining_students ?? 0) < dedupedRows.length) {
-        toast.warning(
-          `Осталось ${cap.remaining_students} новых учеников в месяце (${cap.current_students}/${cap.max_students}). ` +
-          `Уже существующие лимит не расходуют — импорт продолжится.`,
-          { duration: 6000 },
-        );
-      }
-
+      // Profiles are unlimited. Actual course assignments consume unique monthly places atomically on the server.
       const out: ImportResultRow[] = [...dupSkipped];
 
       for (let i = 0; i < dedupedRows.length; i++) {
@@ -352,7 +338,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
               success: false, status: "student_limit_exceeded",
               full_name: row.full_name, login: row.login, email: row.email,
               group_name: row.group_name, courses_enrolled: 0, courses_missing: missing,
-              error: serverError || "Достигнут месячный лимит новых учеников",
+              error: serverError || "Достигнут месячный лимит учеников с назначенными курсами. Личные дела можно хранить без ограничений",
             });
           } else if (serverCode === "STUDENT_ARCHIVED") {
             out.push({

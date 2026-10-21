@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL } from "@/lib/studentQuotaRules";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +56,7 @@ export interface FeatureRow {
 
 export const featureRows: FeatureRow[] = [
   { label: "Курсы", key: "maxCourses", format: (v: number) => v === -1 ? "∞" : String(v) },
-  { label: "Активные ученики", key: "maxStudents", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: STUDENT_MONTHLY_QUOTA_LABEL, key: "maxStudents", format: (v: number) => v === -1 ? "∞" : String(v) },
   { label: "Завершённых обучений в месяц", key: "maxTrainedPerMonth", format: (v: number) => v === -1 ? "∞" : String(v) },
   { label: "Хранилище файлов", key: "storageBytes", format: formatStorageSize },
   { label: "Настройки курсов", key: "courseSettings", format: (v: boolean) => v, link: "/feature/course-settings" },

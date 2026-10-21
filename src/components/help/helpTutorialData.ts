@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import registrationOrganizationForm from "@/assets/help/registration-organization-form.jpg";
 
 export interface HelpTutorialScreenshot {
@@ -110,7 +111,7 @@ export const helpTutorials: HelpTutorial[] = [
       },
       {
         title: "Выберите курсы",
-        description: "В форме ученика отметьте нужные опубликованные курсы. Если ученик уже создан, откройте курс и используйте действие «Зачислить ученика».",
+        description: "В форме ученика отметьте нужные опубликованные курсы. Если ученик уже создан, откройте курс и используйте действие «Зачислить ученика». " + STUDENT_MONTHLY_QUOTA_DESCRIPTION,
       },
       {
         title: "Подтвердите зачисление",
@@ -204,7 +205,7 @@ export const helpTutorials: HelpTutorial[] = [
   {
     id: "student-personal-file",
     title: "Личное дело ученика",
-    summary: "Профиль, идентификация, курсы, документы и история работы с учеником.",
+    summary: "Профиль, идентификация, курсы, документы и история работы с учеником. " + STUDENT_RECORDS_STORAGE_DESCRIPTION,
     section: "Ученики",
     icon: "profile",
     keywords: ["личное дело", "профиль", "паспорт", "снилс", "образование", "идентификация", "документы ученика"],

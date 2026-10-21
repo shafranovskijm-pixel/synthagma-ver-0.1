@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_LABEL, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import { CONTRACT_SIGNATURE_B64, CONTRACT_STAMP_B64 } from './contractAssets';
 
 export interface ContractCustomService {
@@ -23,7 +24,7 @@ export interface ContractData {
   customServices: ContractCustomService[];
   notes: string;
   maxStudents: string;
-  maxNewStudentsPerMonth: string;
+  maxNewStudentsPerMonth: string; // Legacy input retained for compatibility; never caps stored profiles.
   storageLimit: string;
   skillspaceBonusDays: number;
 }
@@ -82,8 +83,8 @@ export function generateSintagmaContract(data: ContractData, withStamp: boolean 
 <table class="contract-table">
   <tr><th>Функция</th><th>Описание / Лимит</th></tr>
   <tr><td>Курсы</td><td>До 30 курсов</td></tr>
-  <tr><td>Ученики</td><td>${isNaN(Number(data.maxStudents)) ? '<strong>' + data.maxStudents + '</strong>' : 'До <strong>' + data.maxStudents + '</strong> учеников'}</td></tr>
-  <tr><td>Новые ученики</td><td>${isNaN(Number(data.maxNewStudentsPerMonth)) ? '<strong>' + data.maxNewStudentsPerMonth + '</strong>' : 'До <strong>' + data.maxNewStudentsPerMonth + '</strong> новых учеников в месяц'}</td></tr>
+  <tr><td>${STUDENT_MONTHLY_QUOTA_LABEL}</td><td>${isNaN(Number(data.maxStudents)) ? '<strong>' + data.maxStudents + '</strong>' : 'До <strong>' + data.maxStudents + '</strong> учеников в месяц'}</td></tr>
+  <tr><td>${STUDENT_RECORDS_STORAGE_LABEL}</td><td>Без ограничений по количеству</td></tr>
   <tr><td>Свободное место</td><td><strong>${data.storageLimit}</strong></td></tr>
   <tr><td>ИИ-генерация</td><td>Генерация курсов и озвучка с помощью ИИ</td></tr>
   <tr><td>Настройки курсов</td><td>Запрет перемотки видео, последовательное прохождение уроков</td></tr>
@@ -95,6 +96,7 @@ export function generateSintagmaContract(data: ContractData, withStamp: boolean 
   <tr><td>Техническая поддержка</td><td>В рабочие дни с 9:00 до 18:00 (МСК)</td></tr>
 </table>
 
+<p>${STUDENT_MONTHLY_QUOTA_DESCRIPTION} ${STUDENT_RECORDS_STORAGE_DESCRIPTION}</p>
 <p>1.3. Срок действия доступа к Платформе: <strong>${data.durationMonths} (${data.durationMonths === 12 ? 'двенадцать' : data.durationMonths}) месяцев</strong> с момента предоставления доступа.</p>
 ${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предоставляет Заказчику дополнительно <strong>${data.skillspaceBonusDays} календарных дней</strong> доступа к Платформе в счёт неиспользованного оплаченного периода на платформе SkillSpace.</p>` : ''}
 

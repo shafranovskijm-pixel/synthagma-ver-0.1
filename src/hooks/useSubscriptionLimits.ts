@@ -78,17 +78,26 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organizationId)
           .is("system_key", null),
-        // Canonical student count — active real students, honours custom_max_students.
+        // Monthly unique course assignees from the canonical capacity RPC; never total stored profiles.
         supabase.rpc("get_organization_student_capacity" as any, {
           p_organization_id: organizationId,
           p_requested_count: 0,
         }),
-        supabase.rpc("count_org_completions_this_month" as any, { org_id: organizationId }),
+        supabase.rpc("get_organization_training_capacity" as any, {
+          p_organization_id: organizationId,
+          p_requested_count: 0,
+        }),
       ]);
 
       if (!isCurrent()) return;
       if (orgResult.error || !orgResult.data || coursesResult.error || capacityResult.error || trainedResult.error) {
         throw new Error("subscription_limits_unconfirmed");
+      }
+      const capRow: any = Array.isArray(capacityResult.data) ? capacityResult.data[0] : capacityResult.data;
+      const trainedRow: any = Array.isArray(trainedResult.data) ? trainedResult.data[0] : trainedResult.data;
+      if (!Number.isSafeInteger(capRow?.current_students) || capRow.current_students < 0 ||
+          !Number.isSafeInteger(trainedRow?.current_trainings) || trainedRow.current_trainings < 0) {
+        throw new Error("subscription_usage_unconfirmed");
       }
 
       if (orgResult.data?.subscription_plan) {
@@ -106,9 +115,8 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
         setCustomEnabledCategories(Array.isArray(d.custom_enabled_categories) ? d.custom_enabled_categories : []);
       }
       setCoursesCount(coursesResult.count || 0);
-      const capRow: any = Array.isArray(capacityResult.data) ? capacityResult.data[0] : capacityResult.data;
-      setStudentsCount(Number(capRow?.current_students) || 0);
-      setTrainedThisMonth(Number(trainedResult.data) || 0);
+      setStudentsCount(capRow.current_students);
+      setTrainedThisMonth(trainedRow.current_trainings);
       setLoadedOrganization(organizationId);
     } catch (error) {
       console.error("Error fetching subscription limits:", error);
@@ -192,7 +200,8 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   }, [planInfo, customOverrides, customEnabledCategories, isPostpaid, postpaid.data, postpaid.error, currentData]);
 
   const canCreateCourse = accessReady && (limits.maxCourses === -1 || coursesCount < limits.maxCourses);
-  const canAddStudent = accessReady && (limits.maxStudents === -1 || studentsCount < limits.maxStudents);
+  // Creating a profile consumes no monthly assignment slot. Server authorization remains required.
+  const canAddStudent = accessReady;
   const canCompleteCourse = accessReady && (limits.maxTrainedPerMonth === -1 || trainedThisMonth < limits.maxTrainedPerMonth);
 
   const checkLimit = useCallback((type: 'course' | 'student' | 'trained' | 'course_settings'): LimitCheckResult => {
@@ -220,12 +229,8 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
         message: `Лимит тарифа "${planInfo.name}": ${limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`,
       };
     }
-    if (canAddStudent) return { allowed: true, message: '' };
-    return {
-      allowed: false,
-      reason: "quota",
-      message: `Лимит тарифа "${planInfo.name}": ${limits.maxStudents} новых учеников в месяц. Перейдите на следующий тариф.`,
-    };
+    // 'student' is the legacy profile-creation check. Assignments are checked atomically by the server.
+    return { allowed: true, message: '' };
   }, [canCreateCourse, canAddStudent, canCompleteCourse, planInfo.name, limits, accessReady, accessError]);
 
   return {

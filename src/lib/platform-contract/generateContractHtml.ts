@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_LABEL, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import { OPERATOR } from "@/constants/operatorDetails";
 import { clampRequisite, escapeHtml as escapeHtmlValue, HTML_WRAP_STYLE } from "@/lib/html/escapeHtml";
 import { formatRub } from "./derive";
@@ -292,7 +293,8 @@ export function buildPlatformContractPagesHtml(draft: PlatformContractDraft): st
       <tbody>
         ${[
           ["Курсы (программы обучения)", draft.limits.courses],
-          ["Ученики в кабинете", draft.limits.students],
+          [STUDENT_MONTHLY_QUOTA_LABEL, draft.limits.students],
+          [STUDENT_RECORDS_STORAGE_LABEL, "Без ограничений по количеству"],
           ["Завершённых обучений в месяц", draft.limits.trainedPerMonth],
           ["Объём хранилища", draft.limits.storage],
           ["Период доступа", periodLabel(draft.periodMonths)],
@@ -310,6 +312,7 @@ export function buildPlatformContractPagesHtml(draft: PlatformContractDraft): st
       </tbody>
     </table>
 
+    <p style="font-size:11.5px;line-height:1.5;">${escapeHtml(STUDENT_MONTHLY_QUOTA_DESCRIPTION)} ${escapeHtml(STUDENT_RECORDS_STORAGE_DESCRIPTION)}</p>
     <div style="margin-top:16px;font-size:12px;font-weight:700;margin-bottom:6px;">Функции, входящие в тариф</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       ${draft.features

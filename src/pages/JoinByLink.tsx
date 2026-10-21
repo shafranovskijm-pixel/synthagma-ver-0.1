@@ -188,8 +188,8 @@ const JoinByLink = () => {
       const errText = (result && (result.error as string | undefined)) || undefined;
       if (errText) {
         if (errCode === "STUDENT_LIMIT_EXCEEDED") {
-          toast.error("Регистрация невозможна", {
-            description: "Организация достигла лимита учеников. Обратитесь к администратору.",
+          toast.error(result?.profile_persisted ? "Личное дело сохранено, курс не назначен" : "Курс не назначен", {
+            description: errText || "Организация достигла месячного лимита учеников с назначенными курсами. Личные дела можно хранить без ограничений. Обратитесь к администратору.",
           });
         } else if (errCode === "STUDENT_ARCHIVED") {
           toast.error("Учётная запись отключена", {

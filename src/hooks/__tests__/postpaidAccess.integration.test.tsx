@@ -26,7 +26,7 @@ beforeEach(() => {
   mocks.rpc.mockImplementation(async (name, args) => {
     if (name === "get_postpaid_access_profile") return { data: args.p_organization_id === "org" ? access : profile(args.p_organization_id, false), error: null };
     if (name === "get_organization_student_capacity") return { data: { current_students: 500 }, error: null };
-    if (name === "count_org_completions_this_month") return { data: 900, error: null };
+    if (name === "get_organization_training_capacity") return { data: { current_trainings: 900 }, error: null };
     if (name === "get_organization_core") return { data: { id: args.p_org_id, subscription_plan: "free", custom_enabled_categories: [] }, error: null };
     throw new Error(name);
   });
@@ -80,7 +80,13 @@ describe("postpaid access stays separate from invoiced tier", () => {
     expect(result.current.limits.canAddStudent).toBe(false);
     await waitFor(() => expect(result.current.limits.loading).toBe(false));
     expect(result.current.limits.isPostpaid).toBe(false);
-    expect(result.current.limits.canAddStudent).toBe(false);
+    expect(result.current.limits.limits.maxStudents).toBe(1);
+    expect(result.current.limits.usage.studentsCount).toBe(500);
+    // A full assignment quota never caps creation or storage of personal files.
+    expect(result.current.limits.canAddStudent).toBe(true);
+    expect(result.current.limits.checkLimit("student").allowed).toBe(true);
+    expect(result.current.limits.canCreateCourse).toBe(false);
+    expect(result.current.limits.canCompleteCourse).toBe(false);
     expect(result.current.crm.mailingEnabled).toBe(false);
   });
 

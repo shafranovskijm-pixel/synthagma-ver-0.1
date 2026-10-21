@@ -1,3 +1,4 @@
+import { STUDENT_RECORDS_STORAGE_LABEL } from "@/lib/studentQuotaRules";
 import { Crown, Check } from "lucide-react";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER, formatPriceRu } from "@/lib/pricingFeatureRows";
@@ -6,25 +7,25 @@ const START_PLAN_LIMITS = SUBSCRIPTION_PLANS.start.limits;
 
 const HIGHLIGHTS: Record<string, string[]> = {
   free: [
-    "До 3 курсов и 10 учеников",
+    "До 3 курсов; 10 учеников в месяц",
     "ИИ-генерация курсов и озвучка",
     "ФИС ФРДО, документы ЛОО, журналы",
     "Видеоидентификация и брендирование",
   ],
   start: [
-    `До ${START_PLAN_LIMITS.maxCourses} курсов и ${START_PLAN_LIMITS.maxStudents} учеников`,
+    `До ${START_PLAN_LIMITS.maxCourses} курсов; ${START_PLAN_LIMITS.maxStudents} учеников в месяц`,
     `${START_PLAN_LIMITS.maxTrainedPerMonth} завершённых обучений в месяц`,
     "Email-рассылки с SMTP, drip и A/B",
     `Хранилище файлов — ${formatStorageSize(START_PLAN_LIMITS.storageBytes)}`,
   ],
   standard: [
-    "До 30 курсов и 200 учеников",
+    "До 30 курсов; 200 учеников в месяц",
     "100 обучений в месяц",
     "Полноценная CRM продаж: КП, договоры, счета",
     "Email-рассылки + продвинутая аналитика",
   ],
   professional: [
-    "Безлимитные курсы, ученики и обучения",
+    "Курсы — безлимит; ученики и обучения в месяц — безлимит",
     "Вебинары на Kinescope Live",
     "ФИС ФРДО+ — выгружаем за вас",
     "Видеосервис+ (файлы > 2 ГБ)",
@@ -66,7 +67,7 @@ export function PlatformProposalPlanCards() {
               </div>
             )}
             <ul className="mt-5 space-y-2">
-              {HIGHLIGHTS[p].map((item) => (
+              {[...HIGHLIGHTS[p], STUDENT_RECORDS_STORAGE_LABEL].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                   <span className="text-foreground/90">{item}</span>

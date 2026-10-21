@@ -1,3 +1,4 @@
+import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from '../_shared/course-quota-error.ts';
 // supabase/functions/register-student/index.ts
 // Server-canonical student registration.
 // - Removes local plan matrix.
@@ -451,29 +452,7 @@ serve(async (req) => {
       }, 409);
     }
 
-    // Informational preflight only for a genuinely new student. The database
-    // RPC below remains the atomic source of truth under concurrency.
-    if (!existingUserId) {
-      const { data: capacityRow, error: capacityError } = await supabaseAdmin.rpc(
-        "get_organization_student_capacity",
-        { p_organization_id: effectiveOrgId, p_requested_count: 1 },
-      );
-      if (capacityError) {
-        console.error("[register-student] capacity lookup error:", capacityError);
-        return j({ error: "Не удалось проверить вместимость организации." }, 500);
-      }
-      const capacity = Array.isArray(capacityRow) ? capacityRow[0] : capacityRow;
-      if (capacity && !capacity.is_unlimited && !capacity.can_add) {
-        return j({
-          error: `Достигнут лимит учеников: ${capacity.current_students} из ${capacity.max_students}`,
-          code: "STUDENT_LIMIT_EXCEEDED",
-          current_students: capacity.current_students,
-          max_students: capacity.max_students,
-          is_unlimited: false,
-          limit_source: capacity.limit_source,
-        }, 409);
-      }
-    }
+    // Personal files are unlimited. The enrollment trigger owns monthly assignment quota.
 
     let userId: string = existingUserId ?? "";
     let isExisting = !!existingUserId;
@@ -688,7 +667,13 @@ serve(async (req) => {
 
     const enrollmentFailureResponse = (code: string, message: string, status: number) => {
       if (!createdAuthUserThisAttempt) {
-        return j({ error: message, code }, status);
+        return j({ success: false, partial_success: true, profile_persisted: true,
+          student_created: false, created_auth_user: false, enrollment_confirmed: false,
+          details_confirmed: hasRegistrationDetails ? true : undefined,
+          job_position_confirmed: jobPositionConfirmed,
+          group_assignment_confirmed: typeof claim.group_assignment_confirmed === 'boolean' ? claim.group_assignment_confirmed : null,
+          user_id: userId, is_existing: isExisting, error: message, message, code,
+          quota_code: code === studentAssignmentQuotaFailure.code ? studentAssignmentQuotaFailure.quota_code : undefined });
       }
       // The student profile is already committed and must remain usable. Return
       // HTTP 200 so the frontend receives the structured partial state instead
@@ -699,7 +684,11 @@ serve(async (req) => {
         student_created: true,
         profile_persisted: true,
         enrollment_confirmed: false,
+        details_confirmed: hasRegistrationDetails ? true : undefined,
+        job_position_confirmed: jobPositionConfirmed,
+        group_assignment_confirmed: typeof claim.group_assignment_confirmed === 'boolean' ? claim.group_assignment_confirmed : null,
         created_auth_user: true,
+        quota_code: code === studentAssignmentQuotaFailure.code ? studentAssignmentQuotaFailure.quota_code : undefined,
         user_id: userId,
         is_existing: isExisting,
         enrollment_created: false,
@@ -786,6 +775,18 @@ serve(async (req) => {
       });
     }
 
+    if (claim.group_assignment_confirmed === false) {
+      return enrollmentFailureResponse(studentAssignmentQuotaFailure.code,
+        'Личное дело ученика сохранено. Курс группы не назначен: ' + studentAssignmentQuotaFailure.message, 409);
+    }
+
+    // A same-tenant personal-file read-back after a lost RPC response does not
+    // prove that the requested group (and its automatic course) was assigned.
+    if (effectiveStudentGroupId && claim.group_assignment_confirmed !== true) {
+      return enrollmentFailureResponse('GROUP_ASSIGNMENT_NOT_CONFIRMED',
+        'Личное дело ученика сохранено, но назначение группы и её курса не подтверждено. Проверьте карточку и повторите назначение; не создавайте дубль.', 409);
+    }
+
     // ── Enrollment (idempotent) ──
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
@@ -836,6 +837,11 @@ serve(async (req) => {
             })
             .select("id, user_id, course_id")
             .maybeSingle();
+
+        if (isStudentAssignmentQuotaError(enrollError)) {
+          return enrollmentFailureResponse(studentAssignmentQuotaFailure.code,
+            'Личное дело ученика сохранено. Курс не назначен: ' + studentAssignmentQuotaFailure.message, 409);
+        }
 
         if (enrollError?.code === "23505") {
           // A concurrent request may have won the unique(user_id, course_id)

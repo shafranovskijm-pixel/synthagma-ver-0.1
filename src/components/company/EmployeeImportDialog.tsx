@@ -6,7 +6,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 // xlsx is dynamically imported inside handleFileUpload to keep it out of the main bundle
 import { toast } from "sonner";
@@ -66,21 +65,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
   const handleImport = async () => {
     setImporting(true);
 
-    // Информационный preflight: часть строк может быть уже существующими сотрудниками
-    // и не расходовать месячный слот. Финальное решение — за сервером, здесь только warn.
-    const { data: capRows } = await supabase.rpc(
-      "get_organization_student_capacity" as any,
-      { p_organization_id: organizationId, p_requested_count: 0 },
-    );
-    const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
-    if (cap && !cap.is_unlimited && (cap.remaining_students ?? 0) < rows.length) {
-      toast.warning(
-        `Осталось ${cap.remaining_students} новых учеников в месяце (${cap.current_students}/${cap.max_students}). ` +
-        `Существующие лимит не расходуют — импорт продолжится.`,
-        { duration: 6000 },
-      );
-    }
-
+    // Importing personal files does not consume course-assignment places.
     const updated = [...rows];
 
     for (let i = 0; i < updated.length; i++) {

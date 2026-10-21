@@ -62,6 +62,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import {
+  StudentAssignmentQuotaError,
   EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
   ensureEnrollmentVerified,
@@ -126,6 +127,18 @@ describe("insertEnrollmentsVerified", () => {
     testState.insertResult = { data: [], error: databaseError };
 
     await expect(insertEnrollmentsVerified(rows)).rejects.toBe(databaseError);
+    expect(testState.readBackSelect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { code: "P0001", message: "STUDENT_ASSIGNMENT_LIMIT_EXCEEDED", hint: "Лимит назначений" },
+    { code: "P0001", message: "Месячный лимит назначений исчерпан", details: "STUDENT_ASSIGNMENT_LIMIT_EXCEEDED" },
+  ])("shows an assignment quota failure without treating it as persisted enrollment", async (databaseError) => {
+    testState.insertResult = { data: [], error: databaseError };
+    const outcome = insertEnrollmentsVerified(rows);
+    await expect(outcome).rejects.toBeInstanceOf(StudentAssignmentQuotaError);
+    await expect(outcome).rejects.toMatchObject({ code: "STUDENT_ASSIGNMENT_LIMIT_EXCEEDED", databaseError });
+    await expect(outcome).rejects.toThrow("месячный лимит");
     expect(testState.readBackSelect).not.toHaveBeenCalled();
   });
 

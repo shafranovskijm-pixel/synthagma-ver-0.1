@@ -5,6 +5,7 @@ import ts from "typescript";
 import { isEnrollmentAccessExpired } from "./enrollment-access";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "./student-registration-details";
 import { persistStudentJobPosition } from "./student-job-position";
+import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from "./course-quota-error";
 
 const ids = { actor: "a1000000-0000-4000-8000-000000000001", org: "a1000000-0000-4000-8000-000000000002",
   student: "a1000000-0000-4000-8000-000000000003", group: "a1000000-0000-4000-8000-000000000004" };
@@ -12,6 +13,7 @@ type ResponseData = { data: unknown; error: unknown };
 interface Options {
   prepare?: unknown; prepareError?: boolean; prepareThrows?: boolean; detailsError?: boolean;
   role?: string; staff?: boolean; staffExpires?: string; existing?: boolean;
+  groupQuota?: boolean; unknownGroupClaim?: boolean;
 }
 
 // Execute the actual served function against synthetic SDK doubles. The caller
@@ -36,7 +38,7 @@ function fixture(options: Options = {}) {
     if (name === "get_organization_student_capacity") return { data: { can_add: true, is_unlimited: true }, error: null };
     if (name === "create_student_profile_with_capacity") {
       if (!options.existing) profiles.push({ user_id: ids.student, organization_id: ids.org, full_name: args.p_full_name, login: args.p_login, job_position: null, archived_at: null });
-      return { data: { success: true, is_existing: !!options.existing }, error: null };
+      return { data: options.unknownGroupClaim ? null : { success: true, is_existing: !!options.existing, group_assignment_confirmed: !options.groupQuota }, error: options.unknownGroupClaim ? { message: "Synthetic lost claim response" } : null };
     }
     if (name === "save_student_registration_details") return options.detailsError
       ? { data: null, error: { message: "Synthetic late authority revocation" } }
@@ -80,10 +82,10 @@ function fixture(options: Options = {}) {
   let handler!: (request: Request) => Promise<Response>;
   const source = readFileSync("supabase/functions/register-student/index.ts", "utf8").replace(/^import .*;\r?\n/gm, "");
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", compiled)(
+  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", "isStudentAssignmentQuotaError", "studentAssignmentQuotaFailure", compiled)(
     (callback: typeof handler) => { handler = callback; }, createClient,
     { env: { get: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? "service-key" : key === "SUPABASE_ANON_KEY" ? "anon-key" : "https://synthetic.invalid" } },
-    isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition,
+    isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, isStudentAssignmentQuotaError, studentAssignmentQuotaFailure,
   );
   return { events, createUser, callerRpc, adminRpc, profileUpdate, profiles,
     call: async (fields: Record<string, unknown> = {}, method = "POST") => {
@@ -161,6 +163,27 @@ describe("register-student current detail authority before Auth/profile mutation
     expect(result.status).toBe(200); expect(result.body).toMatchObject({ success: false, partial_success: true, profile_persisted: true, student_created: true, details_confirmed: false, code: "STUDENT_DETAILS_NOT_CONFIRMED" });
     expect(f.createUser).toHaveBeenCalledTimes(1); expect(result.body.error).toContain("Зачисление на курс не проверено");
   });
+  it.each([false, true])("persists personal details at a full group-course quota for existing=%s", async existing => {
+    const f = fixture({ existing, groupQuota: true });
+    const result = await f.call({ student_group_id: ids.group, department: "Synthetic department", job_position: "Synthetic position" });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ success: false, partial_success: true, profile_persisted: true, enrollment_confirmed: false, details_confirmed: true, job_position_confirmed: true, group_assignment_confirmed: false, quota_code: "STUDENT_ASSIGNMENT_LIMIT_EXCEEDED" });
+    expect(f.adminRpc).toHaveBeenCalledWith("save_student_registration_details", expect.objectContaining({ p_department: "Synthetic department" }));
+    expect(f.profileUpdate).toHaveBeenCalledWith({ job_position: "Synthetic position" });
+    expect(f.createUser).toHaveBeenCalledTimes(existing ? 0 : 1);
+    expect(f.profiles.find(p => p.user_id === ids.student)?.job_position).toBe("Synthetic position");
+  });
+
+  it("does not infer group enrollment from a personal-file read-back after a lost claim response", async () => {
+    const f = fixture({ unknownGroupClaim: true });
+    const result = await f.call({ student_group_id: ids.group, department: "Synthetic department" });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ success: false, partial_success: true, profile_persisted: true, enrollment_confirmed: false, group_assignment_confirmed: null, code: "GROUP_ASSIGNMENT_NOT_CONFIRMED" });
+    expect(result.body.quota_code).toBeUndefined();
+    expect(f.createUser).toHaveBeenCalledTimes(1);
+    expect(f.profiles.some(p => p.user_id === ids.student)).toBe(true);
+  });
+
   it("preserves student-import-v6 and exposes a separate security deployment revision on success and harmless GET probe", async () => {
     const f = fixture();
     for (const result of [await f.call(), await f.call({}, "GET")]) {

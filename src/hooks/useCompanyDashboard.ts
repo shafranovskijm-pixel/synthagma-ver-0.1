@@ -170,21 +170,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     setAddingEmployee(true);
 
     try {
-      // Server-canonical capacity preflight. Final decision belongs to
-      // the edge function (create_student_profile_with_capacity).
-      const { data: capRows } = await supabase.rpc(
-        "get_organization_student_capacity" as any,
-        { p_organization_id: company.organization_id, p_requested_count: 1 },
-      );
-      const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
-      if (cap && !cap.is_unlimited && !cap.can_add) {
-        toast.error("Лимит учеников", {
-          description: `Достигнут лимит: ${cap.current_students} из ${cap.max_students}. Обратитесь к организации.`,
-        });
-        setAddingEmployee(false);
-        return;
-      }
-
+      // Profile creation consumes no monthly course-assignment slot; register-student enforces authorization.
       const { data: result, error } = await safeInvoke<any>('register-student', {
         body: {
           full_name: fullName,

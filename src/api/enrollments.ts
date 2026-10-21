@@ -1,3 +1,4 @@
+import { STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE, STUDENT_ASSIGNMENT_QUOTA_LIMIT_MESSAGE } from "@/lib/studentQuotaRules";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface EnrollmentInsertRow {
@@ -18,6 +19,14 @@ export interface ConfirmedEnrollmentRow {
 export interface EnrollmentAccessRow extends ConfirmedEnrollmentRow {
   status: string | null;
   expires_at: string | null;
+}
+
+export class StudentAssignmentQuotaError extends Error {
+  readonly code = STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE;
+  constructor(readonly databaseError: unknown) {
+    super(STUDENT_ASSIGNMENT_QUOTA_LIMIT_MESSAGE);
+    this.name = "StudentAssignmentQuotaError";
+  }
 }
 
 export class EnrollmentAccessExpiredError extends Error {
@@ -132,7 +141,12 @@ export async function insertEnrollmentsVerified(
     .from("enrollments")
     .insert(rows)
     .select("id, user_id, course_id");
-  if (insertError) throw insertError;
+  if (insertError) {
+    if (insertError.message === STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE || insertError.details === STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE) {
+      throw new StudentAssignmentQuotaError(insertError);
+    }
+    throw insertError;
+  }
 
   const returnedUserIds = matchingUserIds(
     (returned ?? []) as ConfirmedEnrollmentRow[],

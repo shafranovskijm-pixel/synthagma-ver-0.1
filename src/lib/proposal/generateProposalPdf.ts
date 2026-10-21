@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_LABEL, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import {
   PROPOSAL_CONDITIONS,
   PROPOSAL_CONTACTS,
@@ -171,7 +172,7 @@ export function buildProposalPagesHtml(): string[] {
           <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">Тариф</th>
           <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">Стоимость</th>
           <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">Курсы</th>
-          <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">Ученики</th>
+          <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">${esc(STUDENT_MONTHLY_QUOTA_LABEL)}</th>
           <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">Обучений в месяц</th>
           <th style="text-align:left;padding:9px 8px;background:${SOFT};border:1px solid ${LINE};font-weight:700;">Хранилище</th>
         </tr>
@@ -193,6 +194,8 @@ export function buildProposalPagesHtml(): string[] {
       </tbody>
     </table>
 
+    <p style="font-size:11px;line-height:1.5;">${esc(STUDENT_MONTHLY_QUOTA_DESCRIPTION)}</p>
+    <p style="font-size:11px;line-height:1.5;">${esc(STUDENT_RECORDS_STORAGE_LABEL)}. ${esc(STUDENT_RECORDS_STORAGE_DESCRIPTION)}</p>
     <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       ${plans
         .map(

@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_RECORDS_STORAGE_LABEL } from "@/lib/studentQuotaRules";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
 export const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
@@ -17,12 +18,13 @@ export const pricingFeatureRows: PricingFeatureRow[] = [
     },
   },
   {
-    label: "Ученики",
+    label: STUDENT_MONTHLY_QUOTA_LABEL,
     getValue: (p) => {
       const l = SUBSCRIPTION_PLANS[p].limits;
       return l.maxStudents === -1 ? "Безлимит" : String(l.maxStudents);
     },
   },
+  { label: STUDENT_RECORDS_STORAGE_LABEL, getValue: () => true },
   { label: "Настройки курсов", link: "/feature/course-settings", getValue: () => true },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('services') },
   { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: () => true },

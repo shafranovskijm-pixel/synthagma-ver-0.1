@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_LABEL, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Check, X, Crown, Sparkles, Info, FileText, ArrowRight } from "lucide-react";
@@ -8,6 +9,8 @@ import { FloatingParticles } from "./FloatingParticles";
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
+  [STUDENT_MONTHLY_QUOTA_LABEL]: { description: STUDENT_MONTHLY_QUOTA_DESCRIPTION, minPlan: "Бесплатный" },
+  [STUDENT_RECORDS_STORAGE_LABEL]: { description: STUDENT_RECORDS_STORAGE_DESCRIPTION, minPlan: "Бесплатный" },
   "Завершённых обучений в месяц": { description: "Лимит за календарный месяц. Когда один ученик завершает один курс, это считается одним обучением.", minPlan: "Бесплатный" },
   "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Бесплатный" },
   "Магазин курсов": { description: "Витрина курсов для самостоятельной записи учеников. Настройте цены и описания.", minPlan: "Бесплатный" },
@@ -33,7 +36,7 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxCourses === -1 ? "Безлимит" : String(l.maxCourses);
   }},
-  { label: "Активные ученики", getValue: (p: SubscriptionPlan) => {
+  { label: STUDENT_MONTHLY_QUOTA_LABEL, getValue: (p: SubscriptionPlan) => {
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxStudents === -1 ? "Безлимит" : String(l.maxStudents);
   }},
@@ -41,6 +44,7 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxTrainedPerMonth === -1 ? "Безлимит" : String(l.maxTrainedPerMonth);
   }},
+  { label: STUDENT_RECORDS_STORAGE_LABEL, getValue: () => true },
   { label: "Хранилище файлов", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
   { label: "Настройки курсов", link: "/feature/course-settings", getValue: () => true },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('services') },
@@ -186,7 +190,7 @@ export function PricingPlans() {
           </h2>
           <div className="divider mb-6" />
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Начните бесплатно и масштабируйтесь по мере роста учебного центра.
+            Лимит учеников считается за месяц: учитываем тех, кому назначили хотя бы один курс. Несколько курсов одному ученику — одно место. Количество личных дел не ограничено.
           </p>
         </motion.div>
 

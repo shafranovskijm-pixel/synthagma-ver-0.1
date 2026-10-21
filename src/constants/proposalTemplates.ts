@@ -1,3 +1,4 @@
+import { STUDENT_RECORDS_STORAGE_LABEL } from "@/lib/studentQuotaRules";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from './subscriptionPlans';
 
 export interface ProposalTemplateLine {
@@ -34,6 +35,7 @@ function buildFeaturesList(plan: SubscriptionPlan): string[] {
   const f: string[] = [];
   f.push(`Курсы: ${p.limits.maxCourses === -1 ? '∞' : p.limits.maxCourses}`);
   f.push(`Учеников в месяц: ${p.limits.maxStudents === -1 ? '∞' : p.limits.maxStudents}`);
+  f.push(STUDENT_RECORDS_STORAGE_LABEL);
   f.push(`Обученных/мес: ${p.limits.maxTrainedPerMonth === -1 ? '∞' : p.limits.maxTrainedPerMonth}`);
   if (p.limits.courseSettings) f.push('Настройки курсов');
   if (p.limits.documentChecklist) f.push('Чек-лист документов');

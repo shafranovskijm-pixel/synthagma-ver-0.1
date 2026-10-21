@@ -1,3 +1,4 @@
+import { STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE, STUDENT_ASSIGNMENT_QUOTA_LIMIT_MESSAGE, TRAINING_COMPLETION_QUOTA_ERROR_CODE, TRAINING_COMPLETION_QUOTA_LIMIT_MESSAGE } from "@/lib/studentQuotaRules";
 /**
  * Унифицированная обработка ошибок Supabase / edge-функций.
  */
@@ -95,6 +96,8 @@ const GATEWAY_MESSAGE =
 export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
   if (!err) return fallback;
   if (typeof err === "string") {
+    if (err === STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE) return STUDENT_ASSIGNMENT_QUOTA_LIMIT_MESSAGE;
+    if (err === TRAINING_COMPLETION_QUOTA_ERROR_CODE) return TRAINING_COMPLETION_QUOTA_LIMIT_MESSAGE;
     if (isHtmlOrGatewayError(err)) return GATEWAY_MESSAGE;
     return err || fallback;
   }
@@ -114,6 +117,8 @@ export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
   }
 
   if (isObject(err)) {
+    if (err.code === STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE || err.message === STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE || err.details === STUDENT_ASSIGNMENT_QUOTA_ERROR_CODE) return STUDENT_ASSIGNMENT_QUOTA_LIMIT_MESSAGE;
+    if (err.code === TRAINING_COMPLETION_QUOTA_ERROR_CODE || err.message === TRAINING_COMPLETION_QUOTA_ERROR_CODE || err.details === TRAINING_COMPLETION_QUOTA_ERROR_CODE) return TRAINING_COMPLETION_QUOTA_LIMIT_MESSAGE;
     const code = typeof err.code === "string" ? err.code : undefined;
     if (code && AUTH_CODES[code]) return AUTH_CODES[code];
     if (code && KNOWN_CODES[code]) return KNOWN_CODES[code];
