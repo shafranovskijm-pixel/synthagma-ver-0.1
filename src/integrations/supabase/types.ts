@@ -15814,6 +15814,421 @@ export type Database = {
           },
         ]
       }
+      uc_conducted_session_requests: {
+        Row: {
+          actor_id: string
+          group_id: string
+          input_hash: string
+          organization_id: string
+          participant_ids: string[]
+          receipt: Json
+          request_id: string
+        }
+        Insert: {
+          actor_id: string
+          group_id: string
+          input_hash: string
+          organization_id: string
+          participant_ids: string[]
+          receipt: Json
+          request_id: string
+        }
+        Update: {
+          actor_id?: string
+          group_id?: string
+          input_hash?: string
+          organization_id?: string
+          participant_ids?: string[]
+          receipt?: Json
+          request_id?: string
+        }
+        Relationships: []
+      }
+      uc_conducted_session_versions: {
+        Row: {
+          academic_hours: number
+          actor_id: string | null
+          attendance: Json
+          authority_snapshot: Json
+          content_hash: string
+          ends_at: string
+          group_id: string
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          recorded_at: string
+          redacted: boolean
+          revision: number
+          session_id: string
+          source_proof: Json
+          starts_at: string
+          supersedes_id: string | null
+          teacher_user_id: string | null
+        }
+        Insert: {
+          academic_hours: number
+          actor_id?: string | null
+          attendance: Json
+          authority_snapshot: Json
+          content_hash: string
+          ends_at: string
+          group_id: string
+          id?: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          recorded_at?: string
+          redacted?: boolean
+          revision: number
+          session_id: string
+          source_proof: Json
+          starts_at: string
+          supersedes_id?: string | null
+          teacher_user_id?: string | null
+        }
+        Update: {
+          academic_hours?: number
+          actor_id?: string | null
+          attendance?: Json
+          authority_snapshot?: Json
+          content_hash?: string
+          ends_at?: string
+          group_id?: string
+          id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          reason?: string
+          recorded_at?: string
+          redacted?: boolean
+          revision?: number
+          session_id?: string
+          source_proof?: Json
+          starts_at?: string
+          supersedes_id?: string | null
+          teacher_user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_conducted_sessions: {
+        Row: {
+          calendar_hash: string
+          calendar_version_id: string
+          course_id: string
+          created_at: string
+          group_id: string
+          id: string
+          lesson_id: string
+          organization_id: string
+          roster_hash: string
+          roster_snapshot_id: string
+          source_hash: string
+        }
+        Insert: {
+          calendar_hash: string
+          calendar_version_id: string
+          course_id: string
+          created_at?: string
+          group_id: string
+          id?: string
+          lesson_id: string
+          organization_id: string
+          roster_hash: string
+          roster_snapshot_id: string
+          source_hash: string
+        }
+        Update: {
+          calendar_hash?: string
+          calendar_version_id?: string
+          course_id?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          lesson_id?: string
+          organization_id?: string
+          roster_hash?: string
+          roster_snapshot_id?: string
+          source_hash?: string
+        }
+        Relationships: []
+      }
+      uc_custom_journal_history: {
+        Row: {
+          action: string
+          archived: boolean
+          field_values: Json
+          id: string
+          journal_id: string
+          organization_id: string
+          reason: string
+          record_id: string
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          schema_version_id: string
+          subject_user_id: string
+        }
+        Insert: {
+          action: string
+          archived: boolean
+          field_values: Json
+          id?: string
+          journal_id: string
+          organization_id: string
+          reason: string
+          record_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          schema_version_id: string
+          subject_user_id: string
+        }
+        Update: {
+          action?: string
+          archived?: boolean
+          field_values?: Json
+          id?: string
+          journal_id?: string
+          organization_id?: string
+          reason?: string
+          record_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          schema_version_id?: string
+          subject_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_custom_journal_history_record_id_journal_id_organizatio_fkey"
+            columns: ["record_id", "journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journal_records"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_custom_journal_history_schema_version_id_journal_id_org_fkey"
+            columns: ["schema_version_id", "journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journal_schemas"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+        ]
+      }
+      uc_custom_journal_records: {
+        Row: {
+          archived: boolean
+          field_values: Json
+          id: string
+          journal_id: string
+          organization_id: string
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          schema_version_id: string
+          subject_user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          field_values: Json
+          id?: string
+          journal_id: string
+          organization_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          schema_version_id: string
+          subject_user_id: string
+        }
+        Update: {
+          archived?: boolean
+          field_values?: Json
+          id?: string
+          journal_id?: string
+          organization_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          schema_version_id?: string
+          subject_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_custom_journal_records_schema_version_id_journal_id_org_fkey"
+            columns: ["schema_version_id", "journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journal_schemas"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+        ]
+      }
+      uc_custom_journal_requests: {
+        Row: {
+          actor_id: string
+          journal_id: string
+          organization_id: string
+          payload_hash: string
+          receipt: Json
+          record_id: string | null
+          recorded_at: string
+          request_id: string
+          subject_user_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          journal_id: string
+          organization_id: string
+          payload_hash: string
+          receipt: Json
+          record_id?: string | null
+          recorded_at?: string
+          request_id: string
+          subject_user_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          journal_id?: string
+          organization_id?: string
+          payload_hash?: string
+          receipt?: Json
+          record_id?: string | null
+          recorded_at?: string
+          request_id?: string
+          subject_user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_custom_journal_schemas: {
+        Row: {
+          action: string
+          archived: boolean
+          created_at: string
+          created_by: string | null
+          description: string
+          field_identities: Json
+          fields: Json
+          hash: string
+          id: string
+          journal_id: string
+          organization_id: string
+          reason: string
+          redacted: boolean
+          title: string
+          version: number
+        }
+        Insert: {
+          action: string
+          archived: boolean
+          created_at?: string
+          created_by?: string | null
+          description: string
+          field_identities: Json
+          fields: Json
+          hash: string
+          id?: string
+          journal_id: string
+          organization_id: string
+          reason: string
+          redacted?: boolean
+          title: string
+          version: number
+        }
+        Update: {
+          action?: string
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          field_identities?: Json
+          fields?: Json
+          hash?: string
+          id?: string
+          journal_id?: string
+          organization_id?: string
+          reason?: string
+          redacted?: boolean
+          title?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_custom_journal_schemas_journal_id_organization_id_fkey"
+            columns: ["journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journals"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_custom_journals: {
+        Row: {
+          archived: boolean
+          created_at: string
+          created_by: string | null
+          current_schema_id: string
+          description: string
+          id: string
+          legacy_id: string | null
+          legacy_source_hash: string | null
+          organization_id: string
+          redacted: boolean
+          revision: number
+          title: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          current_schema_id: string
+          description: string
+          id?: string
+          legacy_id?: string | null
+          legacy_source_hash?: string | null
+          organization_id: string
+          redacted?: boolean
+          revision: number
+          title: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          current_schema_id?: string
+          description?: string
+          id?: string
+          legacy_id?: string | null
+          legacy_source_hash?: string | null
+          organization_id?: string
+          redacted?: boolean
+          revision?: number
+          title?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_custom_journals_current_schema"
+            columns: ["current_schema_id", "id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journal_schemas"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_custom_journals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uc_enrollment_delete_witnesses: {
         Row: {
           actor_id: string
@@ -16514,6 +16929,345 @@ export type Database = {
           source_id?: string | null
           transaction_id?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      uc_learning_attempt_contexts: {
+        Row: {
+          binding_state: string
+          criteria_id: string | null
+          lesson_id: string
+          observed_at: string
+          scope: Json | null
+          session_id: string
+          session_started_at: string
+          state_id: string | null
+          user_id: string
+        }
+        Insert: {
+          binding_state: string
+          criteria_id?: string | null
+          lesson_id: string
+          observed_at?: string
+          scope?: Json | null
+          session_id: string
+          session_started_at: string
+          state_id?: string | null
+          user_id: string
+        }
+        Update: {
+          binding_state?: string
+          criteria_id?: string | null
+          lesson_id?: string
+          observed_at?: string
+          scope?: Json | null
+          session_id?: string
+          session_started_at?: string
+          state_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_learning_attestation_decisions: {
+        Row: {
+          actor_id: string | null
+          authority_snapshot: Json
+          basis: string
+          criteria_id: string
+          id: string
+          learner_summary: string
+          machine_input_hash: string
+          machine_result_id: string
+          organization_id: string
+          outcome: string
+          participant_ids: string[]
+          recorded_at: string
+          redacted: boolean
+          revision_created: number
+          source_proof: Json
+          staff_reason: string
+          state_id: string
+          supersedes_id: string | null
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          authority_snapshot: Json
+          basis: string
+          criteria_id: string
+          id?: string
+          learner_summary: string
+          machine_input_hash: string
+          machine_result_id: string
+          organization_id: string
+          outcome: string
+          participant_ids: string[]
+          recorded_at?: string
+          redacted?: boolean
+          revision_created: number
+          source_proof: Json
+          staff_reason: string
+          state_id: string
+          supersedes_id?: string | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          authority_snapshot?: Json
+          basis?: string
+          criteria_id?: string
+          id?: string
+          learner_summary?: string
+          machine_input_hash?: string
+          machine_result_id?: string
+          organization_id?: string
+          outcome?: string
+          participant_ids?: string[]
+          recorded_at?: string
+          redacted?: boolean
+          revision_created?: number
+          source_proof?: Json
+          staff_reason?: string
+          state_id?: string
+          supersedes_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_learning_criteria_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          content_hash: string
+          course_id: string
+          created_at: string
+          created_by: string | null
+          definition: Json
+          id: string
+          module_snapshots: Json
+          organization_id: string
+          participant_ids: string[]
+          program_version_id: string
+          programme_proof: Json
+          redacted: boolean
+          reviewer_id: string | null
+          revision: number
+          state: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content_hash: string
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          definition: Json
+          id?: string
+          module_snapshots?: Json
+          organization_id: string
+          participant_ids: string[]
+          program_version_id: string
+          programme_proof: Json
+          redacted?: boolean
+          reviewer_id?: string | null
+          revision: number
+          state: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content_hash?: string
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          definition?: Json
+          id?: string
+          module_snapshots?: Json
+          organization_id?: string
+          participant_ids?: string[]
+          program_version_id?: string
+          programme_proof?: Json
+          redacted?: boolean
+          reviewer_id?: string | null
+          revision?: number
+          state?: string
+        }
+        Relationships: []
+      }
+      uc_learning_machine_results: {
+        Row: {
+          criteria_ref: Json
+          evaluated_at: string
+          evaluation: Json
+          id: string
+          input_hash: string
+          organization_id: string
+          revision_created: number
+          state_id: string
+          user_id: string
+        }
+        Insert: {
+          criteria_ref: Json
+          evaluated_at?: string
+          evaluation: Json
+          id?: string
+          input_hash: string
+          organization_id: string
+          revision_created: number
+          state_id: string
+          user_id: string
+        }
+        Update: {
+          criteria_ref?: Json
+          evaluated_at?: string
+          evaluation?: Json
+          id?: string
+          input_hash?: string
+          organization_id?: string
+          revision_created?: number
+          state_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_learning_outcome_requests: {
+        Row: {
+          action: string
+          actor_id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          receipt: Json
+          recorded_at: string
+          request_id: string
+          state_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          receipt: Json
+          recorded_at?: string
+          request_id: string
+          state_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload_hash?: string
+          receipt?: Json
+          recorded_at?: string
+          request_id?: string
+          state_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_learning_outcome_states: {
+        Row: {
+          course_id: string
+          created_at: string
+          criteria_id: string
+          decision_id: string | null
+          enrollment_id: string
+          group_id: string
+          id: string
+          machine_id: string | null
+          organization_id: string
+          program_enrollment_snapshot_id: string
+          program_version_id: string
+          revision: number
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          criteria_id: string
+          decision_id?: string | null
+          enrollment_id: string
+          group_id: string
+          id?: string
+          machine_id?: string | null
+          organization_id: string
+          program_enrollment_snapshot_id: string
+          program_version_id: string
+          revision?: number
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          criteria_id?: string
+          decision_id?: string | null
+          enrollment_id?: string
+          group_id?: string
+          id?: string
+          machine_id?: string | null
+          organization_id?: string
+          program_enrollment_snapshot_id?: string
+          program_version_id?: string
+          revision?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_session_document_drafts: {
+        Row: {
+          actor_id: string | null
+          content_hash: string
+          group_id: string
+          id: string
+          kind: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          recorded_at: string
+          redacted: boolean
+          revision: number
+          session_id: string
+          session_version_id: string
+          source_proof: Json
+          supersedes_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          content_hash: string
+          group_id: string
+          id?: string
+          kind: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          recorded_at?: string
+          redacted?: boolean
+          revision: number
+          session_id: string
+          session_version_id: string
+          source_proof: Json
+          supersedes_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          content_hash?: string
+          group_id?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          participant_ids?: string[]
+          reason?: string
+          recorded_at?: string
+          redacted?: boolean
+          revision?: number
+          session_id?: string
+          session_version_id?: string
+          source_proof?: Json
+          supersedes_id?: string | null
         }
         Relationships: []
       }
@@ -17509,12 +18263,39 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_conducted_session_action: {
+        Args: {
+          p_action: Json
+          p_expected_revision: number
+          p_group_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      apply_custom_journal_action: {
+        Args: {
+          p_action: Json
+          p_expected_revision: number
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       apply_group_education_facts_action: {
         Args: {
           p_action: Json
           p_expected_revision: number
           p_group_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      apply_learning_outcome_action: {
+        Args: {
+          p_command: Json
           p_organization_id: string
           p_request_id: string
         }
@@ -19476,16 +20257,24 @@ export type Database = {
         Returns: Json
       }
       purge_recycle_bin_30d: { Args: never; Returns: number }
+      read_conducted_sessions: {
+        Args: { p_group_id: string; p_organization_id: string; p_query: Json }
+        Returns: Json
+      }
+      read_custom_journals: {
+        Args: { p_organization_id: string; p_query: Json }
+        Returns: Json
+      }
       read_group_completion_decisions: {
         Args: { p_group_id: string; p_organization_id: string }
         Returns: Json
       }
       read_group_education_facts: {
-        Args: {
-          p_group_id: string
-          p_organization_id: string
-          p_query: Json
-        }
+        Args: { p_group_id: string; p_organization_id: string; p_query: Json }
+        Returns: Json
+      }
+      read_learning_outcome: {
+        Args: { p_organization_id: string; p_query: Json }
         Returns: Json
       }
       read_student_admission_case: {
@@ -20302,6 +21091,55 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_custom_journal_allowed: {
+        Args: { p_org: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_custom_journal_base: { Args: { p_org: string }; Returns: Json }
+      uc_custom_journal_detail: {
+        Args: { p_full?: boolean; p_id: string }
+        Returns: Json
+      }
+      uc_custom_journal_erase_user: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_custom_journal_error: { Args: { p_code: string }; Returns: undefined }
+      uc_custom_journal_fields: { Args: { p: Json }; Returns: boolean }
+      uc_custom_journal_identities: { Args: { p_fields: Json }; Returns: Json }
+      uc_custom_journal_legacy: { Args: { p: Json }; Returns: Json }
+      uc_custom_journal_person: { Args: { p_user: string }; Returns: boolean }
+      uc_custom_journal_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_custom_journal_preview: {
+        Args: { p_definition: Json; p_org: string }
+        Returns: Json
+      }
+      uc_custom_journal_record_json: { Args: { p_id: string }; Returns: Json }
+      uc_custom_journal_schema_json: { Args: { p_id: string }; Returns: Json }
+      uc_custom_journal_shape: {
+        Args: { p: Json; p_keys: string[] }
+        Returns: boolean
+      }
+      uc_custom_journal_subject: {
+        Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_custom_journal_text: {
+        Args: { p: Json; p_empty?: boolean; p_max: number }
+        Returns: boolean
+      }
+      uc_custom_journal_text_units: {
+        Args: { p_text: string }
+        Returns: number
+      }
+      uc_custom_journal_uuid: { Args: { p: Json }; Returns: boolean }
+      uc_custom_journal_values: {
+        Args: { p_fields: Json; p_values: Json }
+        Returns: boolean
+      }
       uc_document_action_allowed: {
         Args: {
           p_action: string
@@ -20431,6 +21269,10 @@ export type Database = {
         Returns: boolean
       }
       uc_erase_admission_cases: { Args: { p_user: string }; Returns: undefined }
+      uc_erase_group_education_facts: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
       uc_erase_identification_data: {
         Args: { p_user: string }
         Returns: undefined
@@ -20461,6 +21303,240 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: Json
+      }
+      uc_group_education_actor_allowed: {
+        Args: {
+          p_actor: string
+          p_group: string
+          p_org: string
+          p_write: boolean
+        }
+        Returns: boolean
+      }
+      uc_group_education_actor_facts: {
+        Args: {
+          p_actor: string
+          p_group: string
+          p_org: string
+          p_requested_write: boolean
+        }
+        Returns: {
+          can_read: boolean
+          can_write: boolean
+          snapshot: Json
+        }[]
+      }
+      uc_group_education_append: {
+        Args: {
+          p_action: string
+          p_actor?: string
+          p_authority?: Json
+          p_calendar?: string
+          p_effective: string
+          p_group: string
+          p_id: string
+          p_org: string
+          p_origin?: string
+          p_payload: Json
+          p_reason?: string
+          p_snapshot?: string
+          p_source_event?: string
+          p_source_receipt?: string
+          p_subject?: string
+        }
+        Returns: number
+      }
+      uc_group_education_authority: {
+        Args: { p_actor: string; p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_group_education_budget_counter: {
+        Args: { p_budget: string }
+        Returns: number
+      }
+      uc_group_education_calendar: { Args: { p_id: string }; Returns: Json }
+      uc_group_education_calendar_input: {
+        Args: { p_action: Json; p_group: string; p_org: string; p_ref: Json }
+        Returns: Json
+      }
+      uc_group_education_capabilities: {
+        Args: { p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_group_education_compact_budget_tickets: {
+        Args: never
+        Returns: undefined
+      }
+      uc_group_education_correct: {
+        Args: { p_action: Json; p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_group_education_count: {
+        Args: { p_complete?: boolean; p_n: number }
+        Returns: Json
+      }
+      uc_group_education_deletion_preview: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_group_education_envelope: {
+        Args: { p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_group_education_erasing: { Args: { p_user: string }; Returns: boolean }
+      uc_group_education_error: { Args: { p_code: string }; Returns: undefined }
+      uc_group_education_event: { Args: { p_id: string }; Returns: Json }
+      uc_group_education_event_complete: {
+        Args: { p_receipt: string }
+        Returns: boolean
+      }
+      uc_group_education_legacy: { Args: { p_group: string }; Returns: Json }
+      uc_group_education_lock: {
+        Args: {
+          p_accounts: string[]
+          p_barrier?: boolean
+          p_group: string
+          p_org: string
+          p_request: string
+        }
+        Returns: undefined
+      }
+      uc_group_education_offset: { Args: { p_text: string }; Returns: number }
+      uc_group_education_open_gap: {
+        Args: {
+          p_actor?: string
+          p_group: string
+          p_last_complete: number
+          p_org: string
+          p_origin?: string
+          p_reason: string
+          p_started: string
+        }
+        Returns: Json
+      }
+      uc_group_education_own_source: {
+        Args: { p_group: string }
+        Returns: boolean
+      }
+      uc_group_education_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_group_education_prerequisite: {
+        Args: { p_code: string; p_lesson?: string; p_target?: string }
+        Returns: Json
+      }
+      uc_group_education_program: {
+        Args: { p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_group_education_program_proof: {
+        Args: {
+          p_group: string
+          p_org: string
+          p_ref: Json
+          p_snapshot_ids: string[]
+        }
+        Returns: Json
+      }
+      uc_group_education_public_row: { Args: { p_row: Json }; Returns: Json }
+      uc_group_education_redact: {
+        Args: {
+          p_enrollment_ids?: string[]
+          p_force?: boolean
+          p_snapshot_ids?: string[]
+          p_subject_scope?: boolean
+          p_user: string
+          p_value: Json
+        }
+        Returns: Json
+      }
+      uc_group_education_retained_program_valid: {
+        Args: {
+          p_course: string
+          p_group: string
+          p_org: string
+          p_proof: Json
+        }
+        Returns: boolean
+      }
+      uc_group_education_roster_context: {
+        Args: {
+          p_after: string
+          p_as_of: Json
+          p_group: string
+          p_limit: number
+          p_org: string
+          p_revision: number
+        }
+        Returns: Json
+      }
+      uc_group_education_scan: {
+        Args: {
+          p_base?: Json
+          p_capture_all_labels?: boolean
+          p_event: string
+          p_group: string
+          p_label_subjects?: string[]
+          p_observed: string
+          p_org: string
+        }
+        Returns: Json
+      }
+      uc_group_education_scope: {
+        Args: { p_course: string; p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_group_education_short_name: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      uc_group_education_snapshot_page: {
+        Args: {
+          p_after: string
+          p_group: string
+          p_id: string
+          p_limit: number
+          p_org: string
+        }
+        Returns: Json
+      }
+      uc_group_education_source_fold: { Args: never; Returns: undefined }
+      uc_group_education_source_queue: {
+        Args: {
+          p_group: string
+          p_new: Json
+          p_old: Json
+          p_org: string
+          p_source: string
+          p_table: string
+          p_users: string[]
+        }
+        Returns: undefined
+      }
+      uc_group_education_source_relevant: {
+        Args: { p_new: Json; p_old: Json; p_table: string }
+        Returns: boolean
+      }
+      uc_group_education_source_scopes: {
+        Args: { p_new: Json; p_old: Json; p_table: string }
+        Returns: {
+          course_id: string
+          group_id: string
+          organization_id: string
+        }[]
+      }
+      uc_group_education_teacher_allowed: {
+        Args: { p_group: string; p_org: string; p_teacher: string }
+        Returns: boolean
+      }
+      uc_group_education_valid_zone: {
+        Args: { p_zone: string }
+        Returns: boolean
+      }
+      uc_group_education_validate_artifact: {
+        Args: { p_row: Json }
+        Returns: undefined
       }
       uc_identification_actor_allowed: {
         Args: { p_actor: string; p_write: boolean }
@@ -20561,6 +21637,81 @@ export type Database = {
         Args: { p_org: string; p_user: string; p_write: boolean }
         Returns: boolean
       }
+      uc_learning_access: {
+        Args: { p_org: string; p_scope: Json; p_write?: boolean }
+        Returns: string
+      }
+      uc_learning_criteria_ref: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_learning_criteria_versions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_learning_envelope: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: Json
+      }
+      uc_learning_erase_user: { Args: { p_user: string }; Returns: undefined }
+      uc_learning_error: { Args: { p_code: string }; Returns: undefined }
+      uc_learning_evaluate: {
+        Args: {
+          p_state: Database["public"]["Tables"]["uc_learning_outcome_states"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_learning_ids: {
+        Args: { p: Json; p_max: number; p_min: number }
+        Returns: boolean
+      }
+      uc_learning_options: {
+        Args: { p_org: string; p_query: Json }
+        Returns: Json
+      }
+      uc_learning_person: { Args: { p_actor: string }; Returns: boolean }
+      uc_learning_personal_counts: { Args: { p_user: string }; Returns: Json }
+      uc_learning_programme_proof: {
+        Args: { p_org: string; p_version: string }
+        Returns: Json
+      }
+      uc_learning_recognition_proof: {
+        Args: { p_file: string; p_org: string }
+        Returns: Json
+      }
+      uc_learning_scope: { Args: { p_snapshot: string }; Returns: Json }
+      uc_learning_scope_valid: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: boolean
+      }
+      uc_learning_shape: { Args: { keys: string[]; p: Json }; Returns: boolean }
+      uc_learning_staff: {
+        Args: {
+          p_actor: string
+          p_group: string
+          p_org: string
+          p_write: boolean
+        }
+        Returns: boolean
+      }
+      uc_learning_test_component: {
+        Args: {
+          p_component: Json
+          p_state: Database["public"]["Tables"]["uc_learning_outcome_states"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_learning_text: { Args: { maxlen: number; p: Json }; Returns: boolean }
+      uc_learning_try_people: { Args: { p_ids: string[] }; Returns: undefined }
+      uc_learning_uuid: { Args: { p: Json }; Returns: boolean }
+      uc_learning_validate_criteria: {
+        Args: {
+          p_complete: boolean
+          p_course: string
+          p_definition: Json
+          p_org: string
+        }
+        Returns: Json
+      }
+      uc_learning_validate_test: { Args: { p: Json }; Returns: boolean }
       uc_mutate_org_document_review: {
         Args: { p_body: Json; p_operation: string }
         Returns: Json
@@ -20668,6 +21819,34 @@ export type Database = {
         Args: { p_actor: string; p_org: string; p_user: string }
         Returns: string
       }
+      uc_session_access: {
+        Args: { p_group: string; p_org: string; p_write: boolean }
+        Returns: string
+      }
+      uc_session_erase_user: { Args: { p_user: string }; Returns: undefined }
+      uc_session_error: { Args: { p_code: string }; Returns: undefined }
+      uc_session_outcomes: {
+        Args: { p_group: string; p_org: string; p_rows: Json }
+        Returns: Json
+      }
+      uc_session_personal_counts: { Args: { p_user: string }; Returns: Json }
+      uc_session_personal_export: { Args: { p_user: string }; Returns: Json }
+      uc_session_redact: {
+        Args: { p_user: string; p_value: Json }
+        Returns: Json
+      }
+      uc_session_source: {
+        Args: {
+          p_calendar: string
+          p_group: string
+          p_hash: string
+          p_lesson: string
+          p_org: string
+          p_snapshot: string
+        }
+        Returns: Json
+      }
+      uc_session_version: { Args: { p_id: string }; Returns: Json }
       uc_signature_action_allowed: {
         Args: { p_action: string; p_signature: string }
         Returns: boolean
