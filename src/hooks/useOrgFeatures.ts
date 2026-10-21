@@ -4,6 +4,7 @@ import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlan
 import { useQuery } from "@tanstack/react-query";
 import { useOrganizationCore } from "@/hooks/useOrganizationCore";
 import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
+import { hasAllPlatformFeatureGrant } from "@/lib/postpaidAccess";
 
 interface FeatureAccess {
   categoryEnabled: boolean;
@@ -226,10 +227,11 @@ export function useOrgFeatures(organizationId: string | null) {
   const postpaid = usePostpaidAccessProfile(organizationId);
 
   // План и custom_enabled_categories — из общего кэша core (один SELECT на всю страницу)
-  const { data: orgCore } = useOrganizationCore(organizationId);
+  const core = useOrganizationCore(organizationId);
+  const orgCore = core.data;
 
   // Системные/орг настройки фич — кэшируются react-query на 60с
-  const { data: featureData, isLoading: featureLoading, refetch } = useQuery({
+  const { data: featureData, isLoading: featureLoading, error: featureError, refetch } = useQuery({
     queryKey: ["org-features", organizationId],
     enabled: !!organizationId,
     staleTime: 60 * 1000,
@@ -241,6 +243,9 @@ export function useOrgFeatures(organizationId: string | null) {
         supabase.from("organization_feature_categories").select("category_id, is_enabled").eq("organization_id", organizationId!),
         supabase.from("organization_features").select("feature_id, is_enabled").eq("organization_id", organizationId!),
       ]);
+      if ([globalCategoriesResult, globalFeaturesResult, orgCategoriesResult, orgFeaturesResult].some(result => result.error)) {
+        throw new Error("Не удалось проверить доступность функций. Повторите проверку.");
+      }
       return {
         globalCategories: globalCategoriesResult.data || [],
         globalFeatures: globalFeaturesResult.data || [],
@@ -250,10 +255,15 @@ export function useOrgFeatures(organizationId: string | null) {
     },
   });
 
-  const loading = !!organizationId && (featureLoading || !orgCore || postpaid.isLoading);
+  const loading = !!organizationId && (featureLoading || core.isLoading || postpaid.isLoading);
+  const error = !organizationId ? null : (featureError || core.error || postpaid.error)
+    ? "Не удалось проверить доступность функций. Повторите проверку."
+    : !loading && (!featureData || !orgCore || orgCore.id !== organizationId || !postpaid.data || postpaid.data.organization_id !== organizationId)
+    ? "Сервер не подтвердил доступность функций. Повторите проверку." : null;
+  const ready = !!organizationId && !loading && !error && !!featureData && !!orgCore && !!postpaid.data;
 
   const features = useMemo(() => {
-    if (!organizationId || !featureData || !orgCore || !postpaid.data || postpaid.error) {
+    if (!ready || !featureData || !orgCore || !postpaid.data) {
       return Object.fromEntries(Object.keys(defaultFeatures).map(key => [key, false])) as unknown as OrgFeaturesState;
     }
 
@@ -274,7 +284,8 @@ export function useOrgFeatures(organizationId: string | null) {
 
     const subscriptionPlan = (orgCore.subscription_plan || 'free') as SubscriptionPlan;
     const customEnabledCategories: string[] = orgCore.custom_enabled_categories || [];
-    const planInfo = getPlanInfo(postpaid.data.active ? 'start' : subscriptionPlan);
+    const allFeatures = hasAllPlatformFeatureGrant(postpaid.data);
+    const planInfo = getPlanInfo(postpaid.data.active ? (allFeatures ? 'professional' : 'start') : subscriptionPlan);
     const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'];
 
     for (const cat of allCategories) {
@@ -284,9 +295,9 @@ export function useOrgFeatures(organizationId: string | null) {
       if (cat in newFeatures) (newFeatures as any)[cat] = true;
     }
     if (!planInfo.limits.aiEnabled) newFeatures.courses_ai = false;
-    if (postpaid.data.active) newFeatures.webinars = postpaid.data.features.webinar;
+    if (postpaid.data.active) newFeatures.webinars = allFeatures || postpaid.data.features.webinar;
     return newFeatures;
-  }, [organizationId, featureData, orgCore, postpaid.data, postpaid.error]);
+  }, [ready, featureData, orgCore, postpaid.data]);
 
   const isEnabled = useCallback((featureId: keyof OrgFeaturesState): boolean => {
     return features[featureId] ?? true;
@@ -301,8 +312,10 @@ export function useOrgFeatures(organizationId: string | null) {
   return {
     features,
     loading,
+    ready,
+    error,
     isEnabled,
     isFeatureEnabled,
-    refetch: async () => { await Promise.all([refetch(), postpaid.refetch()]); },
+    refetch: async () => { await Promise.all([refetch(), core.refetch(), postpaid.refetch()]); },
   };
 }

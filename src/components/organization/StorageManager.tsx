@@ -59,11 +59,13 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         </div>
       </div>
 
+      {h.loadErrors.length > 0 && <p role="status" className="text-sm text-muted-foreground">Список загружен не полностью. Часть файлов временно недоступна; повторите обновление.</p>}
+
       {/* File list */}
       {h.loading ? (
         <div className="flex items-center justify-center py-16"><SigmaSpinner /><span className="ml-2 text-muted-foreground">Загрузка файлов...</span></div>
       ) : h.filtered.length === 0 ? (
-        h.files.length === 0 ? (
+        h.files.length === 0 && h.loadErrors.length === 0 ? (
           <Card className="overflow-hidden border-0 shadow-lg">
             <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8"><div className="flex items-center gap-3 mb-2"><div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center"><HardDrive className="w-6 h-6 text-primary" /></div><div><h2 className="text-2xl font-bold">Ваше облачное хранилище готово к работе</h2><p className="text-muted-foreground">Все файлы организации — в одном месте</p></div></div></div>
             <CardContent className="p-8 pt-6">
@@ -83,7 +85,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
             </CardContent>
           </Card>
         ) : (
-          <div className="text-center py-16 text-muted-foreground"><Search className="w-12 h-12 mx-auto mb-3 opacity-40" /><p className="font-medium">Нет файлов по фильтру</p><p className="text-sm mt-1">Попробуйте изменить параметры поиска</p></div>
+          <div className="text-center py-16 text-muted-foreground"><Search className="w-12 h-12 mx-auto mb-3 opacity-40" /><p className="font-medium">{h.files.length === 0 && h.loadErrors.length ? "Не удалось получить полный список файлов" : "Нет файлов по фильтру"}</p><p className="text-sm mt-1">{h.files.length === 0 && h.loadErrors.length ? "Повторите обновление хранилища" : "Попробуйте изменить параметры поиска"}</p></div>
         )
       ) : (
         <ScrollArea className="h-[calc(100vh-460px)] min-h-[300px]">

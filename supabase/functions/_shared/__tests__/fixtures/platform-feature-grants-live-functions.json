@@ -1,0 +1,260 @@
+{
+  "provenance": {
+    "path": "work/monthly-quota-production-release-v5-20261021/ACTUAL_POSTCOMMIT_BASELINE_20261021.json",
+    "sha256": "50ad5779efee7b3da15e6afd4391259b0830b7319a044cd3577412dd82b48d89",
+    "ledger_rows": 608,
+    "function_count": 702
+  },
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.can_access_course_as_learner(_course_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT auth.uid() IS NOT NULL AND EXISTS (\n    SELECT 1\n    FROM public.enrollments e\n    JOIN public.courses c ON c.id = e.course_id\n    JOIN public.profiles p\n      ON p.user_id = e.user_id\n     AND p.organization_id = c.organization_id\n    WHERE e.user_id = auth.uid()\n      AND e.course_id = _course_id\n      AND e.status IN ('active', 'completed')\n      -- Keep the existing SINTAGMA enrollment contract: completion preserves\n      -- course access even when the original access period has elapsed.\n      AND (\n        e.expires_at IS NULL\n        OR e.expires_at > now()\n        OR e.status = 'completed'\n      )\n  )\n$function$\n",
+      "definition_md5": "fff57f8e966305869e67d97b578fee4b",
+      "metadata": {
+        "oid": "222487",
+        "proacl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+        ],
+        "proallargtypes": null,
+        "proargdefaults": null,
+        "proargmodes": null,
+        "proargnames": [
+          "_course_id"
+        ],
+        "proargtypes": [
+          "2950"
+        ],
+        "probin": null,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "procost": 100,
+        "proisstrict": false,
+        "prokind": "f",
+        "prolang": "14",
+        "proleakproof": false,
+        "proname": "can_access_course_as_learner",
+        "pronamespace": "2200",
+        "pronargdefaults": 0,
+        "pronargs": 1,
+        "proowner": "16384",
+        "proparallel": "u",
+        "proretset": false,
+        "prorettype": "16",
+        "prorows": 0,
+        "prosecdef": true,
+        "prosqlbody": null,
+        "prosrc": "\n  SELECT auth.uid() IS NOT NULL AND EXISTS (\n    SELECT 1\n    FROM public.enrollments e\n    JOIN public.courses c ON c.id = e.course_id\n    JOIN public.profiles p\n      ON p.user_id = e.user_id\n     AND p.organization_id = c.organization_id\n    WHERE e.user_id = auth.uid()\n      AND e.course_id = _course_id\n      AND e.status IN ('active', 'completed')\n      -- Keep the existing SINTAGMA enrollment contract: completion preserves\n      -- course access even when the original access period has elapsed.\n      AND (\n        e.expires_at IS NULL\n        OR e.expires_at > now()\n        OR e.status = 'completed'\n      )\n  )\n",
+        "prosupport": "-",
+        "protrftypes": null,
+        "provariadic": "0",
+        "provolatile": "s"
+      },
+      "oid": "222487",
+      "signature": "can_access_course_as_learner(uuid)",
+      "source_md5": "ac874288fd237b9a70850c9108d7fbcf"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.postpaid_is_admin()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND public.has_role('admin'::public.app_role,auth.uid())\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "definition_md5": "bdae03e6592f7f2b40d03b662d5716ca",
+      "metadata": {
+        "oid": "257557",
+        "proacl": [
+          "postgres=X/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "proallargtypes": null,
+        "proargdefaults": null,
+        "proargmodes": null,
+        "proargnames": null,
+        "proargtypes": [],
+        "probin": null,
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "procost": 100,
+        "proisstrict": false,
+        "prokind": "f",
+        "prolang": "14",
+        "proleakproof": false,
+        "proname": "postpaid_is_admin",
+        "pronamespace": "2200",
+        "pronargdefaults": 0,
+        "pronargs": 0,
+        "proowner": "16384",
+        "proparallel": "u",
+        "proretset": false,
+        "prorettype": "16",
+        "prorows": 0,
+        "prosecdef": true,
+        "prosqlbody": null,
+        "prosrc": "\n SELECT auth.uid() IS NOT NULL AND public.has_role('admin'::public.app_role,auth.uid())\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n",
+        "prosupport": "-",
+        "protrftypes": null,
+        "provariadic": "0",
+        "provolatile": "s"
+      },
+      "oid": "257557",
+      "signature": "postpaid_is_admin()",
+      "source_md5": "534d4adb43f59db0ab92f28172835806"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.guard_organization_course_quota_config()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    IF auth.role() = 'service_role'\n       OR public.has_role('admin'::public.app_role, auth.uid())\n       OR session_user IN ('postgres', 'supabase_admin')\n    THEN\n      RETURN NEW;\n    END IF;\n\n    -- Public registration may provide ordinary profile/requisite fields, but\n    -- never billing, quota or feature entitlements. Normalize those fields to\n    -- the canonical free-plan baseline instead of trusting request columns.\n    NEW.subscription_plan := 'free';\n    NEW.custom_max_courses := NULL;\n    NEW.custom_max_students := NULL;\n    NEW.custom_max_trained_per_month := NULL;\n    NEW.custom_ai_generations_limit := NULL;\n    NEW.custom_storage_limit_bytes := NULL;\n    NEW.is_paid := false;\n    NEW.paid_until := NULL;\n    NEW.tariff_type := 'free';\n    NEW.monthly_price := 0;\n    NEW.tariff_custom_label := NULL;\n    NEW.custom_price := NULL;\n    NEW.custom_discount := NULL;\n    NEW.storage_limit_bytes := 104857600;\n    NEW.ai_tokens_limit := 100000;\n    NEW.enabled_features := '[]'::jsonb;\n    NEW.custom_enabled_categories := '{}'::text[];\n    NEW.ai_enabled := true;\n    NEW.frdo_enabled := true;\n    RETURN NEW;\n  END IF;\n\n  IF NEW.subscription_plan IS NOT DISTINCT FROM OLD.subscription_plan\n     AND NEW.custom_max_courses IS NOT DISTINCT FROM OLD.custom_max_courses\n     AND NEW.custom_max_students IS NOT DISTINCT FROM OLD.custom_max_students\n     AND NEW.custom_max_trained_per_month IS NOT DISTINCT FROM OLD.custom_max_trained_per_month\n     AND NEW.custom_ai_generations_limit IS NOT DISTINCT FROM OLD.custom_ai_generations_limit\n     AND NEW.custom_storage_limit_bytes IS NOT DISTINCT FROM OLD.custom_storage_limit_bytes\n     AND NEW.is_paid IS NOT DISTINCT FROM OLD.is_paid\n     AND NEW.paid_until IS NOT DISTINCT FROM OLD.paid_until\n     AND NEW.tariff_type IS NOT DISTINCT FROM OLD.tariff_type\n     AND NEW.monthly_price IS NOT DISTINCT FROM OLD.monthly_price\n     AND NEW.tariff_custom_label IS NOT DISTINCT FROM OLD.tariff_custom_label\n     AND NEW.custom_price IS NOT DISTINCT FROM OLD.custom_price\n     AND NEW.custom_discount IS NOT DISTINCT FROM OLD.custom_discount\n     AND NEW.storage_limit_bytes IS NOT DISTINCT FROM OLD.storage_limit_bytes\n     AND NEW.ai_tokens_limit IS NOT DISTINCT FROM OLD.ai_tokens_limit\n     AND NEW.enabled_features IS NOT DISTINCT FROM OLD.enabled_features\n     AND NEW.custom_enabled_categories IS NOT DISTINCT FROM OLD.custom_enabled_categories\n     AND NEW.ai_enabled IS NOT DISTINCT FROM OLD.ai_enabled\n     AND NEW.frdo_enabled IS NOT DISTINCT FROM OLD.frdo_enabled\n  THEN\n    RETURN NEW;\n  END IF;\n\n  IF auth.role() = 'service_role'\n     OR public.has_role('admin'::public.app_role, auth.uid())\n     OR session_user IN ('postgres', 'supabase_admin')\n  THEN\n    RETURN NEW;\n  END IF;\n\n  RAISE EXCEPTION 'Only platform billing administrators may change organization entitlements'\n    USING ERRCODE = '42501';\nEND\n$function$\n",
+      "definition_md5": "1563960d3d73b5cc7b2c9bdfa11b074e",
+      "metadata": {
+        "oid": "203938",
+        "proacl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+        ],
+        "proallargtypes": null,
+        "proargdefaults": null,
+        "proargmodes": null,
+        "proargnames": null,
+        "proargtypes": [],
+        "probin": null,
+        "proconfig": [
+          "search_path=public, pg_temp"
+        ],
+        "procost": 100,
+        "proisstrict": false,
+        "prokind": "f",
+        "prolang": "13573",
+        "proleakproof": false,
+        "proname": "guard_organization_course_quota_config",
+        "pronamespace": "2200",
+        "pronargdefaults": 0,
+        "pronargs": 0,
+        "proowner": "16384",
+        "proparallel": "u",
+        "proretset": false,
+        "prorettype": "2279",
+        "prorows": 0,
+        "prosecdef": false,
+        "prosqlbody": null,
+        "prosrc": "\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    IF auth.role() = 'service_role'\n       OR public.has_role('admin'::public.app_role, auth.uid())\n       OR session_user IN ('postgres', 'supabase_admin')\n    THEN\n      RETURN NEW;\n    END IF;\n\n    -- Public registration may provide ordinary profile/requisite fields, but\n    -- never billing, quota or feature entitlements. Normalize those fields to\n    -- the canonical free-plan baseline instead of trusting request columns.\n    NEW.subscription_plan := 'free';\n    NEW.custom_max_courses := NULL;\n    NEW.custom_max_students := NULL;\n    NEW.custom_max_trained_per_month := NULL;\n    NEW.custom_ai_generations_limit := NULL;\n    NEW.custom_storage_limit_bytes := NULL;\n    NEW.is_paid := false;\n    NEW.paid_until := NULL;\n    NEW.tariff_type := 'free';\n    NEW.monthly_price := 0;\n    NEW.tariff_custom_label := NULL;\n    NEW.custom_price := NULL;\n    NEW.custom_discount := NULL;\n    NEW.storage_limit_bytes := 104857600;\n    NEW.ai_tokens_limit := 100000;\n    NEW.enabled_features := '[]'::jsonb;\n    NEW.custom_enabled_categories := '{}'::text[];\n    NEW.ai_enabled := true;\n    NEW.frdo_enabled := true;\n    RETURN NEW;\n  END IF;\n\n  IF NEW.subscription_plan IS NOT DISTINCT FROM OLD.subscription_plan\n     AND NEW.custom_max_courses IS NOT DISTINCT FROM OLD.custom_max_courses\n     AND NEW.custom_max_students IS NOT DISTINCT FROM OLD.custom_max_students\n     AND NEW.custom_max_trained_per_month IS NOT DISTINCT FROM OLD.custom_max_trained_per_month\n     AND NEW.custom_ai_generations_limit IS NOT DISTINCT FROM OLD.custom_ai_generations_limit\n     AND NEW.custom_storage_limit_bytes IS NOT DISTINCT FROM OLD.custom_storage_limit_bytes\n     AND NEW.is_paid IS NOT DISTINCT FROM OLD.is_paid\n     AND NEW.paid_until IS NOT DISTINCT FROM OLD.paid_until\n     AND NEW.tariff_type IS NOT DISTINCT FROM OLD.tariff_type\n     AND NEW.monthly_price IS NOT DISTINCT FROM OLD.monthly_price\n     AND NEW.tariff_custom_label IS NOT DISTINCT FROM OLD.tariff_custom_label\n     AND NEW.custom_price IS NOT DISTINCT FROM OLD.custom_price\n     AND NEW.custom_discount IS NOT DISTINCT FROM OLD.custom_discount\n     AND NEW.storage_limit_bytes IS NOT DISTINCT FROM OLD.storage_limit_bytes\n     AND NEW.ai_tokens_limit IS NOT DISTINCT FROM OLD.ai_tokens_limit\n     AND NEW.enabled_features IS NOT DISTINCT FROM OLD.enabled_features\n     AND NEW.custom_enabled_categories IS NOT DISTINCT FROM OLD.custom_enabled_categories\n     AND NEW.ai_enabled IS NOT DISTINCT FROM OLD.ai_enabled\n     AND NEW.frdo_enabled IS NOT DISTINCT FROM OLD.frdo_enabled\n  THEN\n    RETURN NEW;\n  END IF;\n\n  IF auth.role() = 'service_role'\n     OR public.has_role('admin'::public.app_role, auth.uid())\n     OR session_user IN ('postgres', 'supabase_admin')\n  THEN\n    RETURN NEW;\n  END IF;\n\n  RAISE EXCEPTION 'Only platform billing administrators may change organization entitlements'\n    USING ERRCODE = '42501';\nEND\n",
+        "prosupport": "-",
+        "protrftypes": null,
+        "provariadic": "0",
+        "provolatile": "v"
+      },
+      "oid": "203938",
+      "signature": "guard_organization_course_quota_config()",
+      "source_md5": "6c23dce5cd36bb24b8282771c05d96a1"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.get_postpaid_access_profile(p_organization_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE active boolean; features jsonb;\nBEGIN\n IF auth.role() IS DISTINCT FROM 'service_role' AND NOT public.postpaid_is_admin() AND\n  (auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() OR NOT (\n   COALESCE(public.can_access_organization(p_organization_id,'settings.read'),false) OR COALESCE(public.can_access_organization(p_organization_id,'students.read'),false)\n   OR COALESCE(public.can_access_organization(p_organization_id,'students.write'),false) OR COALESCE(public.can_access_organization(p_organization_id,'courses.read'),false)\n   OR COALESCE(public.can_access_organization(p_organization_id,'courses.write'),false) OR COALESCE(public.can_access_organization(p_organization_id,'sales.read'),false)\n   OR EXISTS(SELECT 1 FROM public.profiles p JOIN public.enrollments e ON e.user_id=p.user_id JOIN public.courses c ON c.id=e.course_id\n     WHERE p.user_id=auth.uid() AND p.organization_id=p_organization_id AND c.organization_id=p_organization_id AND public.can_access_course_as_learner(c.id))))\n THEN RAISE EXCEPTION 'Organization access required' USING ERRCODE='42501'; END IF;\n SELECT EXISTS(SELECT 1 FROM public.organization_billing_agreements WHERE organization_id=p_organization_id\n AND effective_from<=(now() AT TIME ZONE 'Europe/Moscow')::date AND (effective_to IS NULL OR effective_to>(now() AT TIME ZONE 'Europe/Moscow')::date)) INTO active;\n SELECT jsonb_build_object('crm',COALESCE(bool_or(feature='crm'),false),'webinar',COALESCE(bool_or(feature='webinar'),false),\n 'videoserviceplus',COALESCE(bool_or(feature='videoserviceplus'),false),'frdoplus',COALESCE(bool_or(feature='frdoplus'),false)) INTO features\n FROM public.postpaid_feature_confirmations WHERE active AND organization_id=p_organization_id AND confirmed_at<=now() AND (effective_to IS NULL OR effective_to>now());\n RETURN jsonb_build_object('organization_id',p_organization_id,'active',active,'billing_mode',CASE WHEN active THEN 'postpaid' ELSE 'prepaid' END,\n 'limits',CASE WHEN active THEN jsonb_build_object('maxCourses',-1,'maxStudents',-1,'maxTrainedStudents',-1,'maxStorageBytes',-1,'maxAiGenerations',-1) ELSE NULL END,'features',features);\nEND $function$\n",
+      "definition_md5": "ae2eae367ee813eb3e43be06b2a046b5",
+      "metadata": {
+        "oid": "257720",
+        "proacl": [
+          "postgres=X/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "proallargtypes": null,
+        "proargdefaults": null,
+        "proargmodes": null,
+        "proargnames": [
+          "p_organization_id"
+        ],
+        "proargtypes": [
+          "2950"
+        ],
+        "probin": null,
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "procost": 100,
+        "proisstrict": false,
+        "prokind": "f",
+        "prolang": "13573",
+        "proleakproof": false,
+        "proname": "get_postpaid_access_profile",
+        "pronamespace": "2200",
+        "pronargdefaults": 0,
+        "pronargs": 1,
+        "proowner": "16384",
+        "proparallel": "u",
+        "proretset": false,
+        "prorettype": "3802",
+        "prorows": 0,
+        "prosecdef": true,
+        "prosqlbody": null,
+        "prosrc": "\nDECLARE active boolean; features jsonb;\nBEGIN\n IF auth.role() IS DISTINCT FROM 'service_role' AND NOT public.postpaid_is_admin() AND\n  (auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() OR NOT (\n   COALESCE(public.can_access_organization(p_organization_id,'settings.read'),false) OR COALESCE(public.can_access_organization(p_organization_id,'students.read'),false)\n   OR COALESCE(public.can_access_organization(p_organization_id,'students.write'),false) OR COALESCE(public.can_access_organization(p_organization_id,'courses.read'),false)\n   OR COALESCE(public.can_access_organization(p_organization_id,'courses.write'),false) OR COALESCE(public.can_access_organization(p_organization_id,'sales.read'),false)\n   OR EXISTS(SELECT 1 FROM public.profiles p JOIN public.enrollments e ON e.user_id=p.user_id JOIN public.courses c ON c.id=e.course_id\n     WHERE p.user_id=auth.uid() AND p.organization_id=p_organization_id AND c.organization_id=p_organization_id AND public.can_access_course_as_learner(c.id))))\n THEN RAISE EXCEPTION 'Organization access required' USING ERRCODE='42501'; END IF;\n SELECT EXISTS(SELECT 1 FROM public.organization_billing_agreements WHERE organization_id=p_organization_id\n AND effective_from<=(now() AT TIME ZONE 'Europe/Moscow')::date AND (effective_to IS NULL OR effective_to>(now() AT TIME ZONE 'Europe/Moscow')::date)) INTO active;\n SELECT jsonb_build_object('crm',COALESCE(bool_or(feature='crm'),false),'webinar',COALESCE(bool_or(feature='webinar'),false),\n 'videoserviceplus',COALESCE(bool_or(feature='videoserviceplus'),false),'frdoplus',COALESCE(bool_or(feature='frdoplus'),false)) INTO features\n FROM public.postpaid_feature_confirmations WHERE active AND organization_id=p_organization_id AND confirmed_at<=now() AND (effective_to IS NULL OR effective_to>now());\n RETURN jsonb_build_object('organization_id',p_organization_id,'active',active,'billing_mode',CASE WHEN active THEN 'postpaid' ELSE 'prepaid' END,\n 'limits',CASE WHEN active THEN jsonb_build_object('maxCourses',-1,'maxStudents',-1,'maxTrainedStudents',-1,'maxStorageBytes',-1,'maxAiGenerations',-1) ELSE NULL END,'features',features);\nEND ",
+        "prosupport": "-",
+        "protrftypes": null,
+        "provariadic": "0",
+        "provolatile": "s"
+      },
+      "oid": "257720",
+      "signature": "get_postpaid_access_profile(uuid)",
+      "source_md5": "4a87dc476576656ac0ac76b7f406b87e"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.org_crm_access_allowed(p_organization_id uuid, p_permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND p_permission IN('sales.read','sales.write')\n AND public.account_deletion_access_allowed()\n AND public.can_access_organization(p_organization_id,p_permission)\n AND EXISTS(SELECT 1 FROM public.organizations o WHERE o.id=p_organization_id\n   AND CASE WHEN EXISTS (\n     SELECT 1 FROM public.organization_billing_agreements agreement\n     WHERE agreement.organization_id=o.id\n       AND agreement.effective_from<=(now() AT TIME ZONE 'Europe/Moscow')::date\n       AND (agreement.effective_to IS NULL OR agreement.effective_to>(now() AT TIME ZONE 'Europe/Moscow')::date)\n   ) THEN EXISTS (\n     SELECT 1 FROM public.postpaid_feature_confirmations confirmation\n     WHERE confirmation.organization_id=o.id AND confirmation.feature='crm'\n       AND confirmation.notified_at<=confirmation.confirmed_at\n       AND confirmation.confirmed_at<=now()\n       AND (confirmation.effective_to IS NULL OR confirmation.effective_to>now())\n   ) ELSE o.subscription_plan::text IN('standard','professional','maximum') END)\n$function$\n",
+      "definition_md5": "2c27524366a4e0038ba40ac40e891761",
+      "metadata": {
+        "oid": "255068",
+        "proacl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+        ],
+        "proallargtypes": null,
+        "proargdefaults": null,
+        "proargmodes": null,
+        "proargnames": [
+          "p_organization_id",
+          "p_permission"
+        ],
+        "proargtypes": [
+          "2950",
+          "25"
+        ],
+        "probin": null,
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "procost": 100,
+        "proisstrict": false,
+        "prokind": "f",
+        "prolang": "14",
+        "proleakproof": false,
+        "proname": "org_crm_access_allowed",
+        "pronamespace": "2200",
+        "pronargdefaults": 0,
+        "pronargs": 2,
+        "proowner": "16384",
+        "proparallel": "u",
+        "proretset": false,
+        "prorettype": "16",
+        "prorows": 0,
+        "prosecdef": true,
+        "prosqlbody": null,
+        "prosrc": "\n SELECT auth.uid() IS NOT NULL AND p_permission IN('sales.read','sales.write')\n AND public.account_deletion_access_allowed()\n AND public.can_access_organization(p_organization_id,p_permission)\n AND EXISTS(SELECT 1 FROM public.organizations o WHERE o.id=p_organization_id\n   AND CASE WHEN EXISTS (\n     SELECT 1 FROM public.organization_billing_agreements agreement\n     WHERE agreement.organization_id=o.id\n       AND agreement.effective_from<=(now() AT TIME ZONE 'Europe/Moscow')::date\n       AND (agreement.effective_to IS NULL OR agreement.effective_to>(now() AT TIME ZONE 'Europe/Moscow')::date)\n   ) THEN EXISTS (\n     SELECT 1 FROM public.postpaid_feature_confirmations confirmation\n     WHERE confirmation.organization_id=o.id AND confirmation.feature='crm'\n       AND confirmation.notified_at<=confirmation.confirmed_at\n       AND confirmation.confirmed_at<=now()\n       AND (confirmation.effective_to IS NULL OR confirmation.effective_to>now())\n   ) ELSE o.subscription_plan::text IN('standard','professional','maximum') END)\n",
+        "prosupport": "-",
+        "protrftypes": null,
+        "provariadic": "0",
+        "provolatile": "s"
+      },
+      "oid": "255068",
+      "signature": "org_crm_access_allowed(uuid,text)",
+      "source_md5": "581c8acc857443da12d98579385b98f5"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "guard_organization_course_quota_config",
+      "definition": "CREATE TRIGGER guard_organization_course_quota_config BEFORE UPDATE OF subscription_plan, custom_max_courses, custom_max_students, custom_max_trained_per_month, custom_ai_generations_limit, custom_storage_limit_bytes, is_paid, paid_until, tariff_type, monthly_price, tariff_custom_label, custom_price, custom_discount, storage_limit_bytes, ai_tokens_limit, enabled_features, custom_enabled_categories, ai_enabled, frdo_enabled ON public.organizations FOR EACH ROW EXECUTE FUNCTION guard_organization_course_quota_config()"
+    }
+  ],
+  "confirmationDDL": "CREATE TABLE public.postpaid_feature_confirmations (\n id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid NOT NULL REFERENCES public.organizations(id),\n feature text NOT NULL CHECK(feature IN('crm','webinar','videoserviceplus','frdoplus')),\n notified_at timestamptz NOT NULL, confirmed_at timestamptz NOT NULL CHECK(confirmed_at>=notified_at),\n effective_to timestamptz CHECK(effective_to>confirmed_at), evidence text NOT NULL CHECK(length(btrim(evidence)) BETWEEN 10 AND 4000),\n recorded_by uuid NOT NULL, recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()\n);\nCREATE INDEX postpaid_feature_confirmation_lookup ON public.postpaid_feature_confirmations(organization_id,feature,confirmed_at);\n"
+}

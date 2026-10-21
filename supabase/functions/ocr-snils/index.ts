@@ -6,7 +6,7 @@ const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
-  "X-Sintagma-Function-Revision": "uc-ocr-scope-20261019-v1", "Cache-Control": "no-store", "Content-Type": "application/json",
+  "X-Sintagma-Function-Revision": "uc-ocr-scope-feature-grant-20261021-v2", "Cache-Control": "no-store", "Content-Type": "application/json",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
 function base64(bytes: Uint8Array): string {
@@ -36,7 +36,14 @@ Deno.serve(async req => {
     };
     const plan = await user.from("organizations").select("subscription_plan").eq("id", source.organizationId).maybeSingle();
     if (plan.error) throw new AccessError(503, "Не удалось проверить доступность распознавания");
-    if (!["professional", "maximum"].includes(plan.data?.subscription_plan)) return json({ error: "Распознавание доступно на тарифах «Профессиональный» и «Максимальный».", code: "plan_required" }, 403);
+    if (!["professional", "maximum"].includes(plan.data?.subscription_plan)) {
+      const access = await user.rpc("get_postpaid_access_profile", { p_organization_id: source.organizationId });
+      if (access.error) throw new AccessError(503, "Не удалось проверить доступность распознавания");
+      if (access.data?.organization_id !== source.organizationId || access.data?.active !== true
+        || access.data?.entitlements?.all_platform_features !== true) {
+        return json({ error: "Распознавание доступно на тарифах «Профессиональный» и «Максимальный» либо по индивидуальным условиям организации.", code: "plan_required" }, 403);
+      }
+    }
     const key = Deno.env.get("LOVABLE_API_KEY");
     if (!key) throw new AccessError(503, "Распознавание временно недоступно");
     const downloaded = await user.storage.from("student-documents").download(source.path);

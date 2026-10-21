@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 let activeTab = "journals";
 let permissionLoading = false;
+const retryFeatureAccess = vi.fn();
+let featureAccess: { ready: boolean; loading: boolean; error: string | null; refetch: typeof retryFeatureAccess } | undefined;
 let granted = new Set<string>();
 let organizationId: string | null = "org-1";
 let crmAccess = { enabled: true, loading: false, error: null as string | null, mailingEnabled: true, refresh: vi.fn() };
@@ -12,6 +14,8 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
     organizationId,
     crmAccess,
+    featureAccess,
+    isEnabled: () => true,
     tabNavigation: { activeTab, setActiveTab: vi.fn() },
   }),
 }));
@@ -64,7 +68,7 @@ function renderRenderer() {
 
 beforeEach(() => {
   activeTab = "journals";
-  permissionLoading = false;
+  permissionLoading = false; featureAccess = undefined; retryFeatureAccess.mockClear();
   granted = new Set();
   organizationId = "org-1";
   crmAccess = { enabled: true, loading: false, error: null, mailingEnabled: true, refresh: vi.fn() };
@@ -177,5 +181,27 @@ describe("TabContentRenderer document workspace permissions", () => {
 
     expect(screen.getByTestId("mailing-app")).toHaveAttribute("data-embedded", "true");
     expect(screen.queryByTestId("stats-cards")).not.toBeInTheDocument();
+  });
+});
+
+function FeatureLocationProbe() { const location = useLocation(); return <output data-testid="feature-current-location">{location.pathname + location.search}</output>; }
+describe("direct feature URL retains its location during verification", () => {
+  it("keeps the requested journals URL and blocks workspace data until verified, including an error with stale data", () => {
+    activeTab = "journals"; granted.add("journals.read");
+    featureAccess = { ready: false, loading: true, error: null, refetch: retryFeatureAccess };
+    const tree = () => <MemoryRouter initialEntries={["/organization?tab=journals&groupId=selected-group"]}><FeatureLocationProbe /><TabContentRenderer /></MemoryRouter>;
+    const view = render(tree());
+    const expectLocation = () => expect(screen.getByTestId("feature-current-location")).toHaveTextContent("/organization?tab=journals&groupId=selected-group");
+    expectLocation(); expect(screen.getByTestId("feature-workspace-checking")).toBeInTheDocument();
+    expect(screen.queryByTestId("journals-manager")).not.toBeInTheDocument();
+    featureAccess = { ...featureAccess, ready: true, loading: false }; view.rerender(tree());
+    expectLocation(); expect(screen.getByTestId("journals-manager")).toBeInTheDocument();
+    featureAccess = { ...featureAccess, ready: false, error: "Не удалось проверить доступность функций" }; view.rerender(tree());
+    expectLocation(); expect(screen.getByTestId("feature-workspace-access-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("journals-manager")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("feature-workspace-unavailable")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить проверку" })); expect(retryFeatureAccess).toHaveBeenCalledOnce();
+    featureAccess = { ...featureAccess, ready: true, error: null }; view.rerender(tree());
+    expectLocation(); expect(screen.getByTestId("journals-manager")).toBeInTheDocument();
   });
 });

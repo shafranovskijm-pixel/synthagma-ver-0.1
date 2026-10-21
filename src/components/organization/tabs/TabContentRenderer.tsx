@@ -128,6 +128,26 @@ export function TabContentRenderer() {
   }
 
 
+  const featureCategory = ({ courses: "courses", "course-details": "courses", students: "students",
+    "student-details": "students", organizations: "companies", library: "library", "labor-safety": "labor_safety",
+    services: "services", links: "links", documents: "documents", "org-documents": "documents", journals: "journals", frdo: "frdo",
+  } as Record<string, string>)[activeTab];
+  // Keep the requested URL and mounted shell while the current tenant is being
+  // verified. Unknown access is neither a tariff denial nor permission to load data.
+  if (featureCategory && d.featureAccess?.ready === false) {
+    if (d.featureAccess.error) return <div className="rounded-2xl border border-border bg-card p-8 text-center" role="alert" data-testid="feature-workspace-access-error">
+      <p>{d.featureAccess.error}</p>
+      <button type="button" className="mt-4 text-primary underline" onClick={() => void d.featureAccess.refetch()}>Повторить проверку</button>
+    </div>;
+    return <div className="py-12 text-center text-sm text-muted-foreground" role="status" data-testid="feature-workspace-checking">Проверяем доступность функций…</div>;
+  }
+  if (featureCategory && d.featureAccess?.ready === true && !d.isEnabled(featureCategory as Parameters<typeof d.isEnabled>[0])) {
+    return <div className="rounded-2xl border border-border bg-card p-8 text-center" role="alert" data-testid="feature-workspace-unavailable">
+      <p>Раздел недоступен по текущим условиям организации.</p>
+      {can("billing.read") && <a href="/organization?tab=subscription" className="mt-4 inline-block text-primary underline">Посмотреть условия</a>}
+    </div>;
+  }
+
   return (
     <>
       {activeTab === "home" && <OrganizationHomeTab />}

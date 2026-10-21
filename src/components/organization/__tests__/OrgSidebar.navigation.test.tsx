@@ -5,7 +5,8 @@ import { MemoryRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const infoToast = vi.hoisted(() => vi.fn());
-vi.mock("sonner", () => ({ toast: { info: infoToast, error: vi.fn(), success: vi.fn() } }));
+const errorToast = vi.hoisted(() => vi.fn());
+vi.mock("sonner", () => ({ toast: { info: infoToast, error: errorToast, success: vi.fn() } }));
 const setActiveTab = vi.fn();
 const setTheme = vi.fn();
 let pinnedIds: string[] = [];
@@ -24,6 +25,9 @@ let subscriptionError: string | null = null;
 let organizationId: string | null = "org-1";
 let organizationLoading = false;
 let subscriptionReady = true;
+const retryFeatureAccess = vi.fn();
+let featureAccess = { ready: true, loading: false, error: null as string | null, refetch: retryFeatureAccess };
+let featuresEnabled = true;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -51,7 +55,8 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     },
     crmAccess: { enabled: salesCrmEnabled, loading: false, error: null },
     dashboardSettings: { menuSettings },
-    isEnabled: () => true,
+    featureAccess,
+    isEnabled: () => featuresEnabled,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen: vi.fn(),
     handleLogout: vi.fn(),
@@ -106,7 +111,8 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem("org-sidebar-mode", "expanded");
   setActiveTab.mockClear();
-  infoToast.mockClear();
+  infoToast.mockClear(); errorToast.mockClear(); retryFeatureAccess.mockClear();
+  featureAccess = { ready: true, loading: false, error: null, refetch: retryFeatureAccess }; featuresEnabled = true;
   setTheme.mockClear();
   pinnedIds = [];
   plan = "standard";
@@ -664,5 +670,48 @@ describe("OrgSidebar navigation", () => {
       "aria-current",
       "page",
     );
+  });
+});
+
+describe("feature verification never masquerades as a tariff lock", () => {
+  it("keeps the selected category through checking, ready, error and retry without an upgrade redirect", () => {
+    activeTab = "courses";
+    featureAccess = { ready: false, loading: true, error: null, refetch: retryFeatureAccess };
+    featuresEnabled = false;
+    const view = renderSidebar();
+    const tree = () => <MemoryRouter initialEntries={["/organization"]}><TooltipProvider><OrgSidebar /></TooltipProvider></MemoryRouter>;
+    const entry = () => screen.getByLabelText("Все курсы");
+    expect(entry()).not.toHaveAttribute("href");
+    expect(entry()).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryAllByTestId("feature-plan-locked")).toHaveLength(0);
+    fireEvent.click(entry());
+    expect(infoToast).toHaveBeenLastCalledWith("Проверяем доступность функций…");
+    expect(setActiveTab).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    featureAccess = { ...featureAccess, ready: true, loading: false }; featuresEnabled = true;
+    view.rerender(tree());
+    expect(entry()).toHaveAttribute("href", "/organization?tab=courses");
+    expect(screen.queryAllByTestId("feature-access-checking")).toHaveLength(0);
+    featureAccess = { ...featureAccess, ready: false, error: "Не удалось проверить доступность функций" }; featuresEnabled = false;
+    view.rerender(tree());
+    expect(entry()).not.toHaveAttribute("href");
+    expect(screen.queryAllByTestId("feature-access-error").length).toBeGreaterThan(0);
+    expect(screen.queryAllByTestId("feature-plan-locked")).toHaveLength(0);
+    fireEvent.click(entry());
+    expect(errorToast).toHaveBeenCalledWith(featureAccess.error, expect.objectContaining({ action: expect.objectContaining({ label: "Повторить" }) }));
+    errorToast.mock.calls.at(-1)![1].action.onClick();
+    expect(retryFeatureAccess).toHaveBeenCalledOnce();
+    expect(setActiveTab).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    featureAccess = { ...featureAccess, ready: true, error: null }; featuresEnabled = true;
+    view.rerender(tree());
+    expect(entry()).toHaveAttribute("href", "/organization?tab=courses");
+  });
+  it("retains a real tariff exclusion after successful feature verification", () => {
+    activeTab = "courses"; featuresEnabled = false;
+    renderSidebar();
+    expect(screen.queryAllByTestId("feature-plan-locked").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByLabelText("Все курсы"));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 });
