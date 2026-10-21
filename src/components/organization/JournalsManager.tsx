@@ -20,6 +20,10 @@ import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { CustomJournalsPanel } from './CustomJournalsPanel';
 import { CustomJournalEditor } from './CustomJournalEditor';
 import { useCustomJournals } from '@/hooks/useCustomJournals';
+import { useScopedCustomJournals } from '@/hooks/useScopedCustomJournals';
+import { ScopedCustomJournalsPanel } from './ScopedCustomJournalsPanel';
+import { ScopedCustomJournalEditor } from './ScopedCustomJournalEditor';
+import type { ScopedContextInput } from '@/lib/customJournals/scopedContract';
 import { journalUuid } from '@/lib/customJournals/contract';
 import { IdentificationJournal } from "./IdentificationJournal";
 import { GroupContextBanner } from "./GroupContextBanner";
@@ -113,7 +117,10 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     ? journalType : hasEducationDocumentFocus ? "education_documents" : null;
 
   const customModel = useCustomJournals(organizationId, !isGroupJournalContextActive({groupId,returnToGroupId}));
-  const navigateJournal = useCallback((type: string | null, view?: "auto" | "manual" | "group-facts" | "custom") => {
+  const scopedGroupId = groupId ?? returnToGroupId ?? null;
+  const scopedContext:ScopedContextInput = scopedGroupId!==null ? {kind:'group',group_id:scopedGroupId} : {kind:'organization'};
+  const scopedModel = useScopedCustomJournals(organizationId,scopedContext);
+  const navigateJournal = useCallback((type: string | null, view?: "auto" | "manual" | "group-facts" | "custom" | "scoped-custom") => {
     setSearchParams(current => {
       const next = clearEducationDocumentsJournalFocusParams(current);
       if (type && view) {
@@ -161,8 +168,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
 
 
   const openCreateWizard = () => {
-    if (customGuard.blocked) { toast.error(customGuard.reason!); return; }
-    if (!customModel.canWrite || customModel.loading || customModel.pending) return;
+    if (!scopedModel.canWrite || scopedModel.loading || scopedModel.pending || scopedModel.saving) return;
     setShowCreateWizard(true);
   };
 
@@ -253,6 +259,9 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     return null;
   })();
 
+  if (journalView==='scoped-custom'&&journalUuid.safeParse(journalType).success) {
+    return <div className="space-y-6">{scopedGroupId&&<GroupContextBanner groupId={scopedGroupId} returnToGroupId={returnToGroupId}/>}<ScopedCustomJournalEditor key={scopedModel.contextKey+'|'+journalType} model={scopedModel} organizationId={organizationId} journalId={journalType!} onClose={()=>navigateJournal(null)}/></div>;
+  }
   if (journalView==='custom'&&journalUuid.safeParse(journalType).success) {
     return customGuard.blocked ? <div className="space-y-3"><Button variant="outline" className="rounded-xl" onClick={()=>navigateJournal(null)}>Назад к журналам</Button><p className="text-sm text-muted-foreground">{customGuard.reason}</p></div>
       : <CustomJournalEditor key={organizationId+'|'+journalType} model={customModel} journalId={journalType!} onClose={()=>navigateJournal(null)} />;
@@ -283,9 +292,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
             <div className="flex items-center gap-2 flex-shrink-0">
               {groupId && <Button variant="outline" onClick={()=>navigateJournal('group-facts','group-facts')} className="rounded-xl">Состав и календарь группы</Button>}
               <Button variant="outline" onClick={() => openAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
-              {!inGroupContext && (
-                <Button onClick={openCreateWizard} disabled={!customModel.canWrite||customModel.loading||customModel.pending||customModel.saving} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
-              )}
+              <Button onClick={openCreateWizard} disabled={!scopedModel.canWrite||scopedModel.loading||scopedModel.pending||scopedModel.saving} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />{inGroupContext?'Создать журнал группы':'Создать журнал'}</Button>
             </div>
 
           </div>
@@ -296,7 +303,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
               <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-muted-foreground">
                 Открыты журналы этой группы. Показаны только журналы, которые ограничиваются составом группы и её курсом.
-                Пользовательские и ручные журналы организации здесь недоступны — откройте раздел «Журналы» без контекста группы.
+                Новые журналы группы имеют отдельную серверную область. Прежние ручные журналы организации здесь недоступны.
               </p>
             </div>
           )}
@@ -353,7 +360,8 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       </div>
 
       {/* Server custom journals preserve the existing list/card shell. */}
-      {!inGroupContext&&<CustomJournalsPanel organizationId={organizationId} model={customModel} createOpen={showCreateWizard} onCreateOpenChange={setShowCreateWizard} onOpen={id=>navigateJournal(id,'custom')} />}
+      <ScopedCustomJournalsPanel model={scopedModel} createOpen={showCreateWizard} onCreateOpenChange={setShowCreateWizard} onOpen={id=>navigateJournal(id,'scoped-custom')}/>
+      {!inGroupContext&&<details className="space-y-4" open><summary className="font-semibold cursor-pointer">Прежние журналы и перенос определений</summary><p className="text-xs text-muted-foreground">Эти журналы сохраняют прежнюю область организации. Записи не привязываются к группе автоматически.</p><CustomJournalsPanel organizationId={organizationId} model={customModel} createOpen={false} onCreateOpenChange={()=>{}} onOpen={id=>navigateJournal(id,'custom')} /></details>}
 
       {/* Delete Dialog */}
       <AlertDialog open={!!deletingJournal && (deletingJournal.type !== "copies_duplicates" || deletingJournal.copyScope === copyScope)} onOpenChange={() => setDeletingJournal(null)}>

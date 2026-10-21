@@ -46,6 +46,8 @@ vi.mock("@/components/ui/alert-dialog", () => {
     } };
 });
 
+
+vi.mock('@/hooks/useScopedCustomJournals',()=>({useScopedCustomJournals:(_org:string,context:any)=>({contextKey:'SYN_SCOPED',context,scopeCurrent:()=>true,refresh:0,journals:[],next:null,loading:false,error:null,canRead:true,canWrite:true,saving:false,pending:false,mutationError:null,read:vi.fn(),reload:vi.fn(),loadMore:vi.fn(),mutate:vi.fn(),retry:vi.fn()})}));
 import { JournalsManager } from "../JournalsManager";
 
 const key = (org: string) => `copies_duplicates_${org}`;
