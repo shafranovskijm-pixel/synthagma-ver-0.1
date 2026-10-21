@@ -10541,6 +10541,102 @@ export type Database = {
           },
         ]
       }
+      organization_monthly_course_usage: {
+        Row: {
+          assigned_students: number
+          completed_trainings: number
+          month_start: string
+          organization_id: string
+        }
+        Insert: {
+          assigned_students?: number
+          completed_trainings?: number
+          month_start: string
+          organization_id: string
+        }
+        Update: {
+          assigned_students?: number
+          completed_trainings?: number
+          month_start?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_monthly_course_usage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_monthly_student_assignments: {
+        Row: {
+          first_assigned_at: string
+          month_start: string
+          organization_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          first_assigned_at: string
+          month_start: string
+          organization_id: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          first_assigned_at?: string
+          month_start?: string
+          organization_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_monthly_student_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_monthly_training_completions: {
+        Row: {
+          enrollment_id: string
+          first_completed_at: string
+          month_start: string
+          organization_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          enrollment_id: string
+          first_completed_at: string
+          month_start: string
+          organization_id: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          enrollment_id?: string
+          first_completed_at?: string
+          month_start?: string
+          organization_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_monthly_training_completions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_offer_acceptances: {
         Row: {
           accepted_at: string
@@ -16835,6 +16931,16 @@ export type Database = {
         Returns: string
       }
       _org_email_warmup_limit: { Args: { _day: number }; Returns: number }
+      _organization_monthly_course_limits: {
+        Args: { p_organization_id: string }
+        Returns: {
+          max_students: number
+          max_trainings: number
+          student_limit_source: string
+          subscription_plan: string
+          training_limit_source: string
+        }[]
+      }
       _paid_20260922_course_read: {
         Args: { p_allow_learner: boolean; p_course_id: string }
         Returns: boolean
@@ -18280,6 +18386,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_organization_training_capacity: {
+        Args: { p_organization_id: string; p_requested_count?: number }
+        Returns: {
+          can_complete: boolean
+          current_trainings: number
+          is_unlimited: boolean
+          limit_source: string
+          max_trainings: number
+          remaining_trainings: number
+          subscription_plan: string
+        }[]
+      }
       get_postpaid_access_profile: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -18572,6 +18690,10 @@ export type Database = {
         Args: { _org_id: string; _permission: string }
         Returns: boolean
       }
+      lesson_write_guard_allowed: {
+        Args: { p_course_id: string }
+        Returns: boolean
+      }
       list_goreltech_enrollment_orders: {
         Args: {
           p_actor_id: string
@@ -18688,6 +18810,10 @@ export type Database = {
           organization_id: string
           recipient_id: string
         }[]
+      }
+      module_write_guard_allowed: {
+        Args: { p_expected_course_id?: string; p_module_id: string }
+        Returns: boolean
       }
       next_reg_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
