@@ -155,7 +155,7 @@ DECLARE course uuid;actor uuid:=auth.uid();s public.uc_conducted_sessions;v publ
   IF s.id IS NULL THEN PERFORM public.uc_session_error('NOT_FOUND');END IF;
   proof:=public.uc_session_source(p_organization_id,p_group_id,s.calendar_version_id,s.lesson_id,s.roster_snapshot_id,s.calendar_hash);
  ELSE PERFORM public.uc_session_error('INVALID_INPUT');END IF;
- SELECT array_agg(DISTINCT x ORDER BY x) INTO ids FROM(SELECT (r->>'user_id')::uuid x FROM jsonb_array_elements(proof->'roster_rows')r UNION SELECT (proof->'lesson'->>'teacher_user_id')::uuid UNION SELECT actor)people;
+ SELECT array_agg(DISTINCT x ORDER BY x) INTO ids FROM(SELECT (roster_person->>'user_id')::uuid x FROM jsonb_array_elements(proof->'roster_rows')roster_person UNION SELECT (proof->'lesson'->>'teacher_user_id')::uuid UNION SELECT actor)people;
  PERFORM public.uc_group_education_lock(p_organization_id,p_group_id,ids,p_request_id,false);
  course:=public.uc_session_access(p_organization_id,p_group_id,true);
  -- Recheck after locking; membership, privacy and actor locks precede this ledger lock.
@@ -188,7 +188,7 @@ DECLARE course uuid;actor uuid:=auth.uid();s public.uc_conducted_sessions;v publ
    PERFORM public.uc_group_education_lock(p_organization_id,p_group_id,ids,p_request_id,false);
    IF outcomes IS DISTINCT FROM public.uc_session_outcomes(p_organization_id,p_group_id,attendance) THEN PERFORM public.uc_session_error('SOURCE_CHANGED');END IF;
    IF p_action->>'kind'<>'journal' AND EXISTS(SELECT 1 FROM jsonb_array_elements(outcomes)x WHERE x->'outcome'='null' OR x->'outcome'->>'decision_relation' IS DISTINCT FROM 'current_inputs' OR x->'outcome'->'last_decision'='null' OR (p_action->>'kind'='education_document' AND x->'outcome'->'last_decision'->>'outcome' IS DISTINCT FROM 'passed')) THEN PERFORM public.uc_session_error('PREREQUISITE_MISSING');END IF;
-   SELECT * INTO previous FROM public.uc_session_document_drafts WHERE session_id=s.id AND kind=p_action->>'kind' ORDER BY revision DESC LIMIT 1;
+   SELECT draft_row.* INTO previous FROM public.uc_session_document_drafts draft_row WHERE draft_row.session_id=s.id AND draft_row.kind=p_action->>'kind' ORDER BY draft_row.revision DESC LIMIT 1;
    IF coalesce(previous.revision,0)<>(p_action->>'expected_draft_revision')::bigint OR coalesce(previous.revision,0)>=9007199254740990 THEN PERFORM public.uc_session_error('REVISION_CONFLICT');END IF;
    source:=jsonb_build_object('schema_version',1,'kind',p_action->>'kind','status','draft_requires_human_review','officially_issued',false,'signature',NULL,'registry_number',NULL,'display_label_notice','display_labels_observed_separately_not_verified_legal_names','scope',public.uc_group_education_scope(p_organization_id,p_group_id,course),'session_id',s.id,'session_version_id',old.id,'session_revision',old.revision,'session_hash',old.content_hash,'session_source',proof-'roster_rows','starts_at',starts,'ends_at',ends,'academic_hours',hours::text,'teacher_user_id',teacher,'attendance',attendance,'outcomes',outcomes);
    IF octet_length(source::text)>1048576 THEN PERFORM public.uc_session_error('LIMIT_EXCEEDED');END IF;
