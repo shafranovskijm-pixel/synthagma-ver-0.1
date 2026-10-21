@@ -1,0 +1,2538 @@
+{
+  "enums": [
+    {
+      "labels": [
+        "individual",
+        "legal_entity"
+      ],
+      "name": "payer_type"
+    },
+    {
+      "labels": [
+        "admin",
+        "organization",
+        "student",
+        "sales_manager",
+        "company"
+      ],
+      "name": "app_role"
+    },
+    {
+      "labels": [
+        "charge",
+        "payment",
+        "exam",
+        "attempt"
+      ],
+      "name": "driving_entry_kind"
+    },
+    {
+      "labels": [
+        "student",
+        "instructor"
+      ],
+      "name": "driving_member_role"
+    },
+    {
+      "labels": [
+        "owner",
+        "manager",
+        "viewer"
+      ],
+      "name": "company_staff_role"
+    },
+    {
+      "labels": [
+        "MT",
+        "AT"
+      ],
+      "name": "driving_transmission"
+    },
+    {
+      "labels": [
+        "booked",
+        "completed",
+        "cancelled",
+        "no_show"
+      ],
+      "name": "driving_lesson_status"
+    }
+  ],
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_staff_permissions(_user_id uuid, _organization_id uuid)\n RETURNS text[]\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  staff_role text;\n  base_perms text[];\n  override_perms text[];\nBEGIN\n  SELECT role,\n         COALESCE(\n           ARRAY(SELECT jsonb_array_elements_text(sections_access)),\n           ARRAY[]::text[]\n         )\n    INTO staff_role, override_perms\n    FROM public.org_staff\n   WHERE user_id = _user_id AND organization_id = _organization_id\n   LIMIT 1;\n\n  IF staff_role IS NULL THEN\n    RETURN ARRAY[]::text[];\n  END IF;\n\n  base_perms := public.org_role_default_permissions(staff_role);\n\n  -- merge: union of base + overrides (overrides могут только добавлять права)\n  RETURN ARRAY(\n    SELECT DISTINCT unnest(base_perms || override_perms)\n  );\nEND;\n$function$\n",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3",
+      "signature": "get_org_staff_permissions(uuid,uuid)",
+      "source_md5": "f8d82709ae27730782dc4f455b35b7de"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_company_access(_user_id uuid, _company_id uuid, _min_role company_staff_role DEFAULT 'viewer'::company_staff_role)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  _company_owner UUID;\n  _company_org UUID;\n  _staff_role public.company_staff_role;\n  _role_rank INT;\n  _min_rank INT;\nBEGIN\n  IF _user_id IS NULL OR _company_id IS NULL THEN\n    RETURN FALSE;\n  END IF;\n\n  IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = 'admin') THEN\n    RETURN TRUE;\n  END IF;\n\n  SELECT user_id, organization_id INTO _company_owner, _company_org\n  FROM public.companies WHERE id = _company_id;\n\n  IF _company_owner IS NULL AND _company_org IS NULL THEN\n    RETURN FALSE;\n  END IF;\n\n  IF _company_owner = _user_id THEN\n    RETURN TRUE;\n  END IF;\n\n  IF EXISTS (\n    SELECT 1 FROM public.profiles p\n    WHERE p.user_id = _user_id\n      AND p.organization_id = _company_org\n      AND EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = _user_id AND ur.role = 'organization')\n  ) THEN\n    RETURN TRUE;\n  END IF;\n\n  IF public.has_org_staff_permission(_user_id, _company_org, 'companies_manage') THEN\n    RETURN TRUE;\n  END IF;\n\n  SELECT role INTO _staff_role FROM public.company_staff\n  WHERE company_id = _company_id AND user_id = _user_id\n    AND (expires_at IS NULL OR expires_at > now());\n\n  IF _staff_role IS NULL THEN\n    RETURN FALSE;\n  END IF;\n\n  _role_rank := CASE _staff_role\n    WHEN 'owner' THEN 3 WHEN 'manager' THEN 2 WHEN 'viewer' THEN 1 END;\n  _min_rank := CASE _min_role\n    WHEN 'owner' THEN 3 WHEN 'manager' THEN 2 WHEN 'viewer' THEN 1 END;\n\n  RETURN _role_rank >= _min_rank;\nEND;\n$function$\n",
+      "definition_md5": "96df489274bdb337ecf1b2e21c1cef66",
+      "signature": "has_company_access(uuid,uuid,company_staff_role)",
+      "source_md5": "fe3d1614b27dcfe7c264362bbf41e5ca"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782",
+      "signature": "has_org_staff_permission(uuid,uuid,text)",
+      "source_md5": "b9c87ca03c3e95a57baf9122753792e2"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "definition_md5": "82a7fa1cd06301bb83b010bc315aee0b",
+      "signature": "has_role(uuid,app_role)",
+      "source_md5": "4e852b30ef52ba5263c4e11d1aec8cf0"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "definition_md5": "20c46f708cc2e7fa51b640290151a59e",
+      "signature": "has_role(app_role,uuid)",
+      "source_md5": "5457df2171dee5cee3641e64285928f2"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_org_staff_permission(_permission text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN _permission IS NULL THEN NULL\n    WHEN _permission LIKE '%.view'   THEN regexp_replace(_permission, '\\.view$',   '.read')\n    WHEN _permission LIKE '%.manage' THEN regexp_replace(_permission, '\\.manage$', '.write')\n    ELSE _permission\n  END\n$function$\n",
+      "definition_md5": "bb385c2b288bb966297a8504df1696ea",
+      "signature": "normalize_org_staff_permission(text)",
+      "source_md5": "2d47924fe022372f2dc128a979d56a53"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.org_role_default_permissions(_role text)\n RETURNS text[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE _role\n    WHEN 'owner' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','documents.sign','documents.issue','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read','staff.write',\n      'billing.read','billing.write','settings.read','settings.write',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read','sales.write'\n    ]\n    WHEN 'admin' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','documents.sign','documents.issue','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read',\n      'billing.read','settings.read',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read'\n    ]\n    WHEN 'school_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','services.read','services.write',\n      'settings.read','webinars.read','webinars.write'\n    ]\n    WHEN 'course_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','webinars.read'\n    ]\n    WHEN 'teacher' THEN ARRAY[\n      'courses.read','students.read','library.read','chats.read','chats.write',\n      'homework.read','homework.write','documents.read','journals.read'\n    ]\n    WHEN 'sales_manager' THEN ARRAY[\n      'sales.read','sales.write','companies.read','companies.write',\n      'services.read','documents.read','chats.read','chats.write','students.read'\n    ]\n    ELSE ARRAY[]::text[]\n  END\n$function$\n",
+      "definition_md5": "7aeb1012822cfe0013409ce5b1df1771",
+      "signature": "org_role_default_permissions(text)",
+      "source_md5": "7288dd75edf8cd07e828912465d233a2"
+    }
+  ],
+  "relations": [
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'postpaid'::text",
+          "name": "billing_mode",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "effective_from",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "name": "effective_to",
+          "not_null": false,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "name": "contract_reference",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "customer_confirmation",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'59-09-26-v1'::text",
+          "name": "terms_version",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'2026-12-31'::date",
+          "name": "contract_through",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": "true",
+          "name": "annual_renewal",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "'Europe/Moscow'::text",
+          "name": "billing_timezone",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "recording_started_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK ((billing_mode = 'postpaid'::text))",
+          "name": "organization_billing_agreements_billing_mode_check",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK ((billing_timezone = 'Europe/Moscow'::text))",
+          "name": "organization_billing_agreements_billing_timezone_check",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK ((effective_to > effective_from))",
+          "name": "organization_billing_agreements_check",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (((length(btrim(contract_reference)) >= 3) AND (length(btrim(contract_reference)) <= 500)))",
+          "name": "organization_billing_agreements_contract_reference_check",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (((length(btrim(customer_confirmation)) >= 10) AND (length(btrim(customer_confirmation)) <= 4000)))",
+          "name": "organization_billing_agreements_customer_confirmation_check",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id)",
+          "name": "organization_billing_agreements_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id)",
+          "name": "organization_billing_agreements_organization_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "organization_billing_agreements_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK ((terms_version = '59-09-26-v1'::text))",
+          "name": "organization_billing_agreements_terms_version_check",
+          "type": "c"
+        }
+      ],
+      "name": "organization_billing_agreements"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "0",
+          "name": "storage_bytes",
+          "not_null": true,
+          "type": "bigint"
+        },
+        {
+          "default": "0",
+          "name": "ai_tokens_used",
+          "not_null": true,
+          "type": "bigint"
+        },
+        {
+          "default": "(date_trunc('month'::text, now()))::date",
+          "name": "month_start",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "0",
+          "name": "ai_generations_count",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "name": "students_added_count",
+          "not_null": true,
+          "type": "integer"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "organization_usage_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id, month_start)",
+          "name": "organization_usage_organization_id_month_start_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "organization_usage_pkey",
+          "type": "p"
+        }
+      ],
+      "name": "organization_usage"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'teacher'::text",
+          "name": "role",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "''::text",
+          "name": "display_name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bio",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'all'::text",
+          "name": "visibility",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "sections_access",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "custom_role_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "name": "can_receive_crm_tasks",
+          "not_null": true,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (custom_role_id) REFERENCES org_custom_roles(id) ON DELETE SET NULL",
+          "name": "org_staff_custom_role_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "org_staff_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id, user_id)",
+          "name": "org_staff_organization_id_user_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "org_staff_pkey",
+          "type": "p"
+        }
+      ],
+      "name": "org_staff"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'student'::app_role",
+          "name": "role",
+          "not_null": true,
+          "type": "app_role"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "user_roles_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "UNIQUE (user_id)",
+          "name": "user_roles_user_id_key",
+          "type": "u"
+        }
+      ],
+      "name": "user_roles"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "lesson_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "0",
+          "name": "score",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "name": "max_score",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "answers",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "now()",
+          "name": "completed_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "shown_question_ids",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "session_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "started_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "passing_score",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "passed",
+          "not_null": false,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE",
+          "name": "test_attempts_lesson_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "test_attempts_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "FOREIGN KEY (session_id) REFERENCES test_attempt_sessions(id)",
+          "name": "test_attempts_session_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (session_id)",
+          "name": "test_attempts_session_id_key",
+          "type": "u"
+        }
+      ],
+      "name": "test_attempts"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "enrollment_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "action",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "performed_by",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK ((action = ANY (ARRAY['enrolled'::text, 'unenrolled'::text])))",
+          "name": "enrollment_history_action_check",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+          "name": "enrollment_history_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (performed_by) REFERENCES auth.users(id)",
+          "name": "enrollment_history_performed_by_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "enrollment_history_pkey",
+          "type": "p"
+        }
+      ],
+      "name": "enrollment_history"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "inn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "contact_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "true",
+          "name": "ai_enabled",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "104857600",
+          "name": "storage_limit_bytes",
+          "not_null": true,
+          "type": "bigint"
+        },
+        {
+          "default": "100000",
+          "name": "ai_tokens_limit",
+          "not_null": true,
+          "type": "bigint"
+        },
+        {
+          "default": "true",
+          "name": "notify_on_limit_80",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "true",
+          "name": "notify_on_limit_exceeded",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "branding",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": "'{\"showAiChat\": true, \"showLibrary\": true, \"showAchievements\": true}'::jsonb",
+          "name": "student_dashboard_settings",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "kpp",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ogrn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "legal_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "actual_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "director_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "director_position",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_bik",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_account",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_corr_account",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "stamp_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signature_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "true",
+          "name": "frdo_enabled",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "is_paid",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "paid_until",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "'trial'::text",
+          "name": "tariff_type",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "0",
+          "name": "monthly_price",
+          "not_null": false,
+          "type": "numeric"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "enabled_features",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "login_branding",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "login_slug",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "website_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "telegram_chat_id",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'free'::text",
+          "name": "subscription_plan",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "promo_code",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "0",
+          "name": "balance",
+          "not_null": true,
+          "type": "numeric"
+        },
+        {
+          "default": "'male'::text",
+          "name": "director_gender",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'gigachat'::text",
+          "name": "ai_provider",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "menu_settings",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "description",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "tariff_custom_label",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "custom_max_courses",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "custom_max_students",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "custom_max_trained_per_month",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "custom_ai_generations_limit",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "custom_storage_limit_bytes",
+          "not_null": false,
+          "type": "bigint"
+        },
+        {
+          "default": "'{}'::text[]",
+          "name": "custom_enabled_categories",
+          "not_null": false,
+          "type": "text[]"
+        },
+        {
+          "default": null,
+          "name": "custom_price",
+          "not_null": false,
+          "type": "numeric"
+        },
+        {
+          "default": null,
+          "name": "custom_discount",
+          "not_null": false,
+          "type": "numeric"
+        },
+        {
+          "default": null,
+          "name": "public_slug",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "telegram_notify_chat_id",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "false",
+          "name": "telegram_notify_enabled",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "platform_kinescope_folder_id",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "referred_by_partner_id",
+          "not_null": false,
+          "type": "uuid"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK ((ai_provider = ANY (ARRAY['gigachat'::text, 'lovable_ai'::text])))",
+          "name": "organizations_ai_provider_check",
+          "type": "c"
+        },
+        {
+          "definition": "UNIQUE (login_slug)",
+          "name": "organizations_login_slug_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "organizations_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "FOREIGN KEY (referred_by_partner_id) REFERENCES referral_partners(id)",
+          "name": "organizations_referred_by_partner_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK ((tariff_type = ANY (ARRAY['free'::text, 'trial'::text, 'monthly'::text, 'yearly'::text])))",
+          "name": "organizations_tariff_type_check",
+          "type": "c"
+        }
+      ],
+      "name": "organizations"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "lesson_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "name": "completed",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "0",
+          "name": "time_spent",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "completed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "0",
+          "name": "video_position",
+          "not_null": false,
+          "type": "real"
+        },
+        {
+          "default": "0",
+          "name": "video_duration",
+          "not_null": false,
+          "type": "real"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE",
+          "name": "lesson_progress_lesson_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "lesson_progress_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "UNIQUE (user_id, lesson_id)",
+          "name": "lesson_progress_user_id_lesson_id_key",
+          "type": "u"
+        }
+      ],
+      "name": "lesson_progress"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "inn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "kpp",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ogrn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "director",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "stamp_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signature_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "login_email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "generated_password",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "postal_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_account",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_bik",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_corr_account",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signatory_position",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signatory_name_genitive",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signatory_authority_clause",
+          "not_null": false,
+          "type": "text"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "companies_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)",
+          "name": "companies_user_id_fkey",
+          "type": "f"
+        }
+      ],
+      "name": "companies"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "full_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "avatar_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "company_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "login",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "generated_password",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "last_visit_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "student_group_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "name": "onboarding_completed",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "city",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bio",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "vk_link",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "telegram_link",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "chat_privacy",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "lead_source",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "lead_utm",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "last_seen_announcement_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "archived_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "blocked_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "blocked_reason",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "blocked_by",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "region",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "contact_email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "job_position",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "department",
+          "not_null": false,
+          "type": "text"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id)",
+          "name": "profiles_company_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (student_group_id, organization_id) REFERENCES student_groups(id, organization_id) ON DELETE SET NULL (student_group_id) NOT VALID",
+          "name": "profiles_group_organization_registration_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (login)",
+          "name": "profiles_login_key",
+          "type": "u"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL",
+          "name": "profiles_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "profiles_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "FOREIGN KEY (student_group_id) REFERENCES student_groups(id) ON DELETE SET NULL",
+          "name": "profiles_student_group_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (user_id)",
+          "name": "profiles_user_id_key",
+          "type": "u"
+        }
+      ],
+      "name": "profiles"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "0",
+          "name": "progress",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "name": "time_spent",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "'active'::text",
+          "name": "status",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "started_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "completed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "access_days",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "0",
+          "name": "document_facts_revision",
+          "not_null": true,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+          "name": "enrollments_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK ((document_facts_revision >= 0))",
+          "name": "enrollments_document_facts_revision_check",
+          "type": "c"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "enrollments_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "UNIQUE (user_id, course_id)",
+          "name": "enrollments_user_id_course_id_key",
+          "type": "u"
+        }
+      ],
+      "name": "enrollments"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "company_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'viewer'::company_staff_role",
+          "name": "role",
+          "not_null": true,
+          "type": "company_staff_role"
+        },
+        {
+          "default": null,
+          "name": "invited_by",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE",
+          "name": "company_staff_company_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (company_id, user_id)",
+          "name": "company_staff_company_id_user_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "company_staff_pkey",
+          "type": "p"
+        }
+      ],
+      "name": "company_staff"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "group_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "enrollment_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "program_ref",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "program_title",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "program_type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "revision",
+          "not_null": true,
+          "type": "bigint"
+        },
+        {
+          "default": null,
+          "name": "responsible_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "rule_set_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "requirements",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "reviews",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "tasks",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "decision",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "UNIQUE (organization_id, group_id, enrollment_id)",
+          "name": "uc_admission_cases_organization_id_group_id_enrollment_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "uc_admission_cases_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK (((revision >= 1) AND (revision <= '9007199254740991'::bigint)))",
+          "name": "uc_admission_cases_revision_check",
+          "type": "c"
+        }
+      ],
+      "name": "uc_admission_cases"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'#6366f1'::text",
+          "name": "color",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "start_date",
+          "not_null": false,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "name": "end_date",
+          "not_null": false,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "name": "max_seats",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "curator_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "name": "strict_order",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "limit_access_time",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "schedule_access",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "block_resubmit",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "true",
+          "name": "show_locked_lessons",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "enable_channel",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "enable_group_chat",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "block_student_dialogs",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "group_number",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "program_title",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "program_hours",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "program_form",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "default_price",
+          "not_null": false,
+          "type": "numeric"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "training_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "schedule_text",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "instructor_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::date[]",
+          "name": "training_dates",
+          "not_null": true,
+          "type": "date[]"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL",
+          "name": "student_groups_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (course_id, organization_id) REFERENCES courses(id, organization_id) ON DELETE SET NULL (course_id) NOT VALID",
+          "name": "student_groups_course_organization_registration_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "student_groups_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "student_groups_pkey",
+          "type": "p"
+        }
+      ],
+      "name": "student_groups"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "plan_hash",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "receipt_hash",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "consent_version",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'planned'::text",
+          "name": "state",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "(clock_timestamp() + '00:10:00'::interval)",
+          "name": "expires_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "snapshot",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "files",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "false",
+          "name": "data_erased",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "completed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "account_deletion_jobs_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK ((length(plan_hash) = 64))",
+          "name": "account_deletion_jobs_plan_hash_check",
+          "type": "c"
+        },
+        {
+          "definition": "UNIQUE (plan_hash)",
+          "name": "account_deletion_jobs_plan_hash_key",
+          "type": "u"
+        },
+        {
+          "definition": "CHECK ((length(receipt_hash) = 64))",
+          "name": "account_deletion_jobs_receipt_hash_check",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK ((state = ANY (ARRAY['planned'::text, 'cleanup_pending'::text, 'deleted'::text, 'superseded'::text])))",
+          "name": "account_deletion_jobs_state_check",
+          "type": "c"
+        }
+      ],
+      "name": "account_deletion_jobs"
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "title",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'text'::text",
+          "name": "type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "content",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "0",
+          "name": "order_index",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "5",
+          "name": "test_questions_count",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "60",
+          "name": "test_passing_score",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "test_questions_to_show",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "false",
+          "name": "is_locked",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_image_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'Nec_24000'::text",
+          "name": "ai_avatar_voice_id",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_system_prompt",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_greeting",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_subject",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'friendly'::text",
+          "name": "ai_avatar_style",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "5",
+          "name": "ai_avatar_session_minutes",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "'google/gemini-3-flash-preview'::text",
+          "name": "ai_avatar_model",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'deepgram'::text",
+          "name": "ai_avatar_stt_provider",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'nova-2'::text",
+          "name": "ai_avatar_stt_model",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'openai'::text",
+          "name": "ai_avatar_llm_provider",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'gpt-4o-mini'::text",
+          "name": "ai_avatar_llm_model",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'elevenlabs'::text",
+          "name": "ai_avatar_tts_provider",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'EXAVITQu4vr4xnSDxMaL'::text",
+          "name": "ai_avatar_tts_voice",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'ru'::text",
+          "name": "ai_avatar_language",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "true",
+          "name": "ai_avatar_allow_interruptions",
+          "not_null": false,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "module_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "test_max_attempts",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "true",
+          "name": "test_show_answers",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "metadata",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "test_max_attempts_per_day",
+          "not_null": false,
+          "type": "integer"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+          "name": "lessons_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK ((jsonb_typeof(metadata) = 'object'::text))",
+          "name": "lessons_metadata_is_object",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (module_id) REFERENCES course_modules(id) ON DELETE SET NULL",
+          "name": "lessons_module_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "lessons_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK (((test_max_attempts_per_day IS NULL) OR (test_max_attempts_per_day > 0)))",
+          "name": "lessons_test_max_attempts_per_day_positive",
+          "type": "c"
+        }
+      ],
+      "name": "lessons"
+    },
+    {
+      "columns": [
+        {
+          "default": null,
+          "name": "instance_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "aud",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "role",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "encrypted_password",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email_confirmed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "invited_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "confirmation_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "confirmation_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "recovery_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "recovery_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "email_change_token_new",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email_change",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email_change_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "last_sign_in_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "raw_app_meta_data",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "raw_user_meta_data",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "is_super_admin",
+          "not_null": false,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "updated_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "NULL::character varying",
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "phone_confirmed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "name": "phone_change",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "''::character varying",
+          "name": "phone_change_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "phone_change_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "LEAST(email_confirmed_at, phone_confirmed_at)",
+          "name": "confirmed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "name": "email_change_token_current",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": "0",
+          "name": "email_change_confirm_status",
+          "not_null": false,
+          "type": "smallint"
+        },
+        {
+          "default": null,
+          "name": "banned_until",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "name": "reauthentication_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "reauthentication_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "name": "is_sso_user",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "deleted_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "name": "is_anonymous",
+          "not_null": true,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))",
+          "name": "users_email_change_confirm_status_check",
+          "type": "c"
+        },
+        {
+          "definition": "UNIQUE (phone)",
+          "name": "users_phone_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "users_pkey",
+          "type": "p"
+        }
+      ],
+      "name": "users"
+    }
+  ]
+}

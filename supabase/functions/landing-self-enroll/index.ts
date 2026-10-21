@@ -1,3 +1,4 @@
+import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from '../_shared/course-quota-error.ts';
 // Edge function: landing-self-enroll
 // Анонимная функция для самозаписи учеников через форму на лендинге курса.
 // Доступна без JWT, потому что лендинги публичные.
@@ -127,22 +128,7 @@ serve(async (req) => {
       }
       userId = existingProfile.user_id;
     } else {
-      // ── Server-canonical capacity preflight (read-only) ─────
-      const { data: capacityRow, error: capacityError } = await admin.rpc(
-        "get_organization_student_capacity",
-        { p_organization_id: course.organization_id, p_requested_count: 1 },
-      );
-      if (capacityError) {
-        console.error("capacity lookup err:", capacityError);
-        return json({ error: "Не удалось проверить вместимость организации." }, 500);
-      }
-      const capacity: any = Array.isArray(capacityRow) ? capacityRow[0] : capacityRow;
-      if (capacity && !capacity.is_unlimited && !capacity.can_add) {
-        return json({
-          error: "Достигнут лимит учеников у организации. Обратитесь к администратору школы.",
-          code: "STUDENT_LIMIT_EXCEEDED",
-        }, 409);
-      }
+      // Creating a personal file never consumes a monthly assignment slot.
 
       // Create auth-user
       login = await generateLogin(admin);
@@ -160,7 +146,7 @@ serve(async (req) => {
       }
       userId = authData.user.id;
 
-      // Atomic capacity claim + profile + role
+      // Persist the unlimited personal file before attempting a course assignment
       const { data: claimRes, error: claimErr } = await admin.rpc(
         "create_student_profile_with_capacity",
         {
@@ -176,48 +162,82 @@ serve(async (req) => {
         },
       );
 
-      const claim: any = claimRes;
+      let claim: any = claimRes;
       if (claimErr || !claim || !claim.success) {
-        // Rollback the auth-user we just created.
-        try { await admin.auth.admin.deleteUser(userId); } catch { /* Best-effort rollback. */ }
-        console.error("claim err:", claimErr, claim);
-        if (claim?.code === "STUDENT_LIMIT_EXCEEDED") {
-          return json({
-            error: "Достигнут лимит учеников у организации. Обратитесь к администратору школы.",
-            code: "STUDENT_LIMIT_EXCEEDED",
-          }, 409);
+        // An RPC transport error may follow a committed profile. Read it back
+        // before compensation; never delete a claimed or unverified account.
+        const { data: savedProfile, error: savedProfileError } = await admin.from('profiles')
+          .select('organization_id,archived_at').eq('user_id', userId).maybeSingle();
+        if (!savedProfileError && savedProfile?.organization_id === course.organization_id && !savedProfile.archived_at) {
+          claim = { success: true };
+        } else {
+          console.error('profile claim not confirmed:', claimErr, claim?.code);
+          return json({ ok: false, success: false, partial_success: true,
+            profile_persisted: null, enrollment_confirmed: false, recovery_required: true,
+            code: 'CLAIM_RESULT_UNKNOWN',
+            error: 'Не удалось подтвердить регистрацию. Обратитесь к администратору школы; повторное создание учётной записи не требуется.' }, 503);
         }
-        return json({ error: "Ошибка регистрации: " + (claim?.message || claimErr?.message || "unknown") }, 500);
+      }
+      if (claim.group_assignment_confirmed === false) {
+        return json({ ok: false, success: false, partial_success: true, created_new: true,
+          profile_persisted: true, enrollment_confirmed: false, enrolled: false,
+          code: studentAssignmentQuotaFailure.code, quota_code: studentAssignmentQuotaFailure.quota_code,
+          error: 'Личное дело сохранено. Курс не назначен: ' + studentAssignmentQuotaFailure.message });
       }
 
       createdNew = true;
     }
 
+    const enrollmentPartial = (code: string, message: string, quota = false) => json({
+      ok: false, success: false, partial_success: true, created_new: createdNew,
+      profile_persisted: true, enrollment_confirmed: false, enrolled: false,
+      code, quota_code: quota ? studentAssignmentQuotaFailure.quota_code : undefined, error: message, message,
+    });
+
     // ── Зачисление ─────────────────────────────────────────────
-    const { data: existingEnroll } = await admin
+    const { data: existingEnroll, error: existingEnrollError } = await admin
       .from("enrollments")
       .select("id")
       .eq("user_id", userId)
       .eq("course_id", course.id)
       .maybeSingle();
 
+    if (existingEnrollError) {
+      return enrollmentPartial('ENROLLMENT_PREFLIGHT_FAILED',
+        'Личное дело сохранено, но проверить зачисление на курс не удалось. Обратитесь к администратору школы.');
+    }
     let enrolled = false;
     if (!existingEnroll) {
       const accessDays = course.default_access_days ?? null;
       const expiresAt = accessDays ? new Date(Date.now() + accessDays * 86_400_000).toISOString() : null;
-      const { error: enrErr } = await admin.from("enrollments").insert({
+      const { data: insertedEnroll, error: enrErr } = await admin.from("enrollments").insert({
         user_id: userId,
         course_id: course.id,
         status: "active",
         progress: 0,
         access_days: accessDays,
         expires_at: expiresAt,
-      });
-      if (enrErr) {
-        console.error("enroll err:", enrErr);
-        return json({ error: "Ошибка зачисления: " + enrErr.message }, 500);
+      }).select("id,user_id,course_id").maybeSingle();
+      if (isStudentAssignmentQuotaError(enrErr)) {
+        return enrollmentPartial(studentAssignmentQuotaFailure.code,
+          'Личное дело сохранено. Курс не назначен: ' + studentAssignmentQuotaFailure.message, true);
       }
-      enrolled = true;
+      if (enrErr?.code === '23505') {
+        const { data: concurrentEnroll, error: concurrentError } = await admin.from('enrollments')
+          .select('id,user_id,course_id').eq('user_id',userId).eq('course_id',course.id).maybeSingle();
+        if (!concurrentError && concurrentEnroll?.id && concurrentEnroll.user_id === userId && concurrentEnroll.course_id === course.id) {
+          enrolled = false; // Another request assigned the exact pair.
+        } else {
+          return enrollmentPartial('ENROLLMENT_NOT_CONFIRMED',
+            'Личное дело сохранено, но зачисление на курс не подтверждено. Обратитесь к администратору школы.');
+        }
+      } else if (enrErr || !insertedEnroll?.id || insertedEnroll.user_id !== userId || insertedEnroll.course_id !== course.id) {
+        console.error('enrollment not confirmed:',enrErr);
+        return enrollmentPartial('ENROLLMENT_NOT_CONFIRMED',
+          'Личное дело сохранено, но зачисление на курс не подтверждено. Обратитесь к администратору школы.');
+      } else {
+        enrolled = true;
+      }
     }
 
     // ── Согласие на ПД ─────────────────────────────────────────

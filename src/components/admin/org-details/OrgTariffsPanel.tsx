@@ -92,7 +92,7 @@ export function OrgTariffsPanel({
         <CardContent className="space-y-4">
           {([
             { key: 'maxCourses' as const, label: 'Макс. курсов' },
-            { key: 'maxStudents' as const, label: 'Макс. учеников' },
+            { key: 'maxStudents' as const, label: 'Учеников в месяц (назначен курс)' },
             { key: 'maxTrainedPerMonth' as const, label: 'Обученных в месяц' },
             { key: 'aiGenerationsLimit' as const, label: 'ИИ-генераций' },
           ] as const).map(({ key, label }) => (

@@ -25,7 +25,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: (name: string, args: Record<string, string>) => {
       if (name === "get_postpaid_access_profile") return mocks.access(args.p_organization_id);
       if (name === "get_organization_student_capacity") return mocks.capacity(args.p_organization_id);
-      if (name === "count_org_completions_this_month") return mocks.trained(args.org_id);
+      if (name === "get_organization_training_capacity") return mocks.trained(args.p_organization_id);
       throw new Error(`Unexpected RPC: ${name}`);
     },
     channel: () => {
@@ -87,7 +87,7 @@ beforeEach(() => {
   mocks.organization.mockResolvedValue(org);
   mocks.courses.mockResolvedValue({ data: null, count: 2, error: null });
   mocks.capacity.mockResolvedValue(success({ current_students: 3 }));
-  mocks.trained.mockResolvedValue(success(4));
+  mocks.trained.mockResolvedValue(success({ current_trainings: 4 }));
   mocks.access.mockImplementation(async (id: string) => profile(id));
   mocks.storage.mockImplementation(() => { throw new Error("Generic access checks must not scan file storage"); });
 });
@@ -127,7 +127,7 @@ describe("generic subscription access does not scan file storage", () => {
     expectDenied(result.current, "checking");
     expect(mocks.storage).not.toHaveBeenCalled();
     await act(async () => {
-      core.resolve(prerequisite === "organization" ? org : prerequisite === "courses" ? { data: null, count: 2, error: null } : success(prerequisite === "capacity" ? { current_students: 3 } : 4));
+      core.resolve(prerequisite === "organization" ? org : prerequisite === "courses" ? { data: null, count: 2, error: null } : success(prerequisite === "capacity" ? { current_students: 3 } : { current_trainings: 4 }));
     });
     await waitFor(() => expect(result.current.canAddStudent).toBe(true));
   });
@@ -166,12 +166,38 @@ describe("generic subscription access does not scan file storage", () => {
     mocks.access.mockImplementation(async (id: string) => profile(id, false));
     mocks.courses.mockResolvedValue({ data: null, count: 15, error: null });
     mocks.capacity.mockResolvedValue(success({ current_students: 100 }));
-    mocks.trained.mockResolvedValue(success(100));
+    mocks.trained.mockResolvedValue(success({ current_trainings: 60 }));
     const { result } = setup();
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
-    expectDenied(result.current, "quota");
+    expect(result.current.accessReady).toBe(true);
+    expect(result.current.canCreateCourse).toBe(false);
+    expect(result.current.canCompleteCourse).toBe(false);
+    expect(result.current.checkLimit("trained")).toMatchObject({ allowed: false, reason: "quota" });
+    expect(result.current.canAddStudent).toBe(true);
+    expect(result.current.checkLimit("student")).toMatchObject({ allowed: true });
     expect(mocks.storage).not.toHaveBeenCalled();
+  });
+
+  it.each([null, {}, { current_trainings: -1 }, { current_trainings: "4" }])("keeps unconfirmed monthly training usage closed: %j", async data => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.trained.mockResolvedValue(success(data));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    expectDenied(result.current, "verification_error");
+  });
+
+  it("allows the 60th Start completion and stores unlimited personal files", async () => {
+    mocks.access.mockImplementation(async (id: string) => profile(id, false));
+    mocks.capacity.mockResolvedValue(success({ current_students: 100 }));
+    mocks.trained.mockResolvedValue(success({ current_trainings: 59 }));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.limits.maxTrainedPerMonth).toBe(60);
+    expect(result.current.canCompleteCourse).toBe(true);
+    expect(result.current.canAddStudent).toBe(true);
+    expect(result.current.usage.studentsCount).toBe(100);
+    expect(result.current.usage.trainedThisMonth).toBe(59);
   });
 
   it("keeps access closed until the latest organization is verified without scanning storage", async () => {

@@ -396,8 +396,8 @@ ${styleContent}
             <div><Label>Бонусные дни SkillSpace</Label><Input type="number" value={form.skillspace_bonus_days} onChange={e => setForm({ ...form, skillspace_bonus_days: Number(e.target.value) })} placeholder="0" /></div>
 
             <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Индивидуальные лимиты тарифа</h4></div>
-            <div><Label>Кол-во учеников</Label><Input value={form.maxStudents} onChange={e => setForm({ ...form, maxStudents: e.target.value })} placeholder="200 или Безлимит" /></div>
-            <div><Label>Новых учеников в месяц</Label><Input value={form.maxNewStudentsPerMonth} onChange={e => setForm({ ...form, maxNewStudentsPerMonth: e.target.value })} placeholder="50 или Безлимит" /></div>
+            <div><Label>Учеников в месяц (назначен курс)</Label><Input value={form.maxStudents} onChange={e => setForm({ ...form, maxStudents: e.target.value })} placeholder="200 или Безлимит" /></div>
+            <p className="text-sm text-muted-foreground">Хранение личных дел — без ограничений по количеству.</p>
             <div><Label>Свободное место</Label><Input value={form.storageLimit} onChange={e => setForm({ ...form, storageLimit: e.target.value })} placeholder="Безлимит" /></div>
 
             <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Оплата</h4></div>

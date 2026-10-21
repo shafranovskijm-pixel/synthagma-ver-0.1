@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 // Скрипт холодного звонка для менеджеров Синтагмы (v2.0).
 // Все сокращения раскрыты. Ключевая реплика — единый монолог.
 
@@ -100,6 +101,10 @@ export const coldCallScript: ScriptTab[] = [
       {
         title: 'Нет времени',
         text: 'Понимаю. Тогда совсем коротко: мы помогаем учебным центрам запускать дистанционное обучение и вести все учебные документы в одной системе. Если тема в принципе актуальна, я отправлю короткое сообщение, а вы посмотрите, когда будет удобно. WhatsApp или Telegram?',
+      },
+      {
+        title: 'Как считается лимит учеников?',
+        text: STUDENT_MONTHLY_QUOTA_DESCRIPTION + ' ' + STUDENT_RECORDS_STORAGE_DESCRIPTION,
       },
       {
         title: 'Дорого',

@@ -1,3 +1,4 @@
+import { STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import { Check, X } from "lucide-react";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER, pricingFeatureRows, formatPriceRu } from "@/lib/pricingFeatureRows";
@@ -66,6 +67,7 @@ export function PlatformProposalPricingTable() {
           ))}
         </tbody>
       </table>
+      <p className="p-3 text-xs text-muted-foreground">{STUDENT_MONTHLY_QUOTA_DESCRIPTION} {STUDENT_RECORDS_STORAGE_DESCRIPTION}</p>
     </div>
   );
 }

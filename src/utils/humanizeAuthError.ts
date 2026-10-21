@@ -20,8 +20,8 @@ export function humanizeAuthError(raw: unknown): string {
   if (lower.includes("registration link") || lower.includes("link not found") || lower.includes("link expired")) {
     return "Ссылка регистрации не найдена или срок её действия истёк.";
   }
-  if (lower.includes("student_limit_exceeded") || lower.includes("лимит тарифа")) {
-    return "Организация достигла лимита учеников. Обратитесь к администратору.";
+  if (lower.includes("student_limit_exceeded") || lower.includes("student_assignment_limit_exceeded")) {
+    return "Организация достигла месячного лимита учеников с назначенными курсами. Количество личных дел не ограничено. Обратитесь к администратору.";
   }
 
   // Общие ошибки Supabase Auth
