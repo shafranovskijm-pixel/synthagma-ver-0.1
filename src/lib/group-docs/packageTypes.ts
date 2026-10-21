@@ -70,7 +70,7 @@ export const GENERIC_DOC_REQUIRED_KEYS: Record<string, string[]> = {
   enrollment_order: ["org_name", "org_director_name", "group_number", "program_title", "program_hours", "start_date"],
   expulsion_order: ["org_name", "org_director_name", "group_number", "program_title", "end_date"],
   student_list: ["org_name", "group_number", "program_title", "students"],
-  class_journal: ["org_name", "org_director_name", "group_number", "program_title", "program_hours", "instructor_name", "training_dates_4", "students"],
+  class_journal: ["org_name", "org_director_name", "group_number", "program_title", "program_hours", "instructor_name", "training_dates", "students"],
   schedule: ["group_number", "program_title", "start_date", "end_date"],
   attestation_sheet: ["org_name", "group_number", "program_title", "students"],
   registration_book: ["org_name", "program_title", "students"],
@@ -105,6 +105,7 @@ export const REQUIRED_KEY_LABELS: Record<string, string> = {
   students: "ученики в группе",
   instructor_name: "преподаватель",
   training_dates_4: "4 даты занятий",
+  training_dates: "занятия в календаре (от 1 до 250)",
 };
 
 export interface DocRequirementSource {
@@ -131,17 +132,19 @@ export function missingDocRequirements(
     ? GORELTECH_DOC_REQUIRED_KEYS
     : GENERIC_DOC_REQUIRED_KEYS;
   const keys = (requirements[docType] || []).filter(
-    (key) => !(mode === "blank" && key === "training_dates_4"),
+    (key) => !(mode === "blank" && (key === "training_dates_4" || key === "training_dates")),
   );
   const out: string[] = [];
   for (const key of keys) {
     const value = key === "students"
       ? (src.students_count || 0)
-      : key === "training_dates_4"
+      : key === "training_dates_4" || key === "training_dates"
         ? (src.training_dates_count || 0)
         : (src as Record<string, unknown>)[key];
     const blank = key === "training_dates_4"
       ? value !== 4
+      : key === "training_dates"
+      ? !Number.isInteger(value) || Number(value) < 1 || Number(value) > 250
       : key === "students"
       ? !value
       : value === null || value === undefined || String(value).trim() === "" || String(value) === "0";

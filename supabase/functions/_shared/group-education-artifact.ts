@@ -3,6 +3,8 @@
 import type { ProgramGeneration, ProgramGroupFields, ProgramFields } from './program-facts.ts';
 
 export const EDUCATION_ARTIFACT_NOTICE = 'Word-бланк отображает четыре даты и общие поля; полный поурочный план сохранён в источнике. Имена — отдельно наблюдённые отображаемые подписи, не подтверждённые юридические имена.';
+export const EDUCATION_GENERIC_ARTIFACT_NOTICE = 'Подтверждённый состав и полный поурочный план сохранены в источнике. Отметки посещаемости и результаты не подставляются из прохождения курса. Имена — отдельно наблюдённые отображаемые подписи, не подтверждённые юридические имена.';
+export type EducationArtifactLayout='generic_html'|'four_date_word';
 export class GroupEducationArtifactError extends Error {
   constructor(readonly code:'INVALID_INPUT'|'ACCESS_DENIED'|'SOURCE_CHANGED'|'SOURCE_UNAVAILABLE'|'TEMPLATE_INCOMPATIBLE'|'DEPENDENCY_UNAVAILABLE', readonly status=409) { super(code); this.name='GroupEducationArtifactError'; }
 }
@@ -82,14 +84,14 @@ function localParts(instantValue:string,timeZone:string){
  const get=(key:string)=>parts.find(p=>p.type===key)!.value;
  return {date:get('year')+'-'+get('month')+'-'+get('day'),clock:get('hour')+':'+get('minute')+(get('second')==='00'?'':':'+get('second'))};
 }
-export function educationArtifactGroupFields(snapshot:EducationArtifactSnapshot):ProgramGroupFields {
+export function educationArtifactGroupFields(snapshot:EducationArtifactSnapshot,layout:EducationArtifactLayout='four_date_word'):ProgramGroupFields {
+ if(layout!=='generic_html'&&layout!=='four_date_word')fail('INVALID_INPUT');
  const {calendar:c,program_facts:p}=snapshot.projection;
- if(c.state==='draft'||!c.published_at||c.coverage!=='whole_program'||c.partial_reason!==null||c.lessons.length!==4||c.lessons.some(l=>l.status!=='planned'||!l.academic_hours||!l.teacher_user_id||l.teacher_label_state!=='available'||!l.teacher_label||!l.teacher_label_observed_at||!l.teacher_label_source||!l.teacher_source_hash)||c.prerequisites.some(x=>x.code!=='LEGAL_NAME_EVIDENCE_REQUIRED'))fail('TEMPLATE_INCOMPATIBLE');
- const teacher=c.lessons[0];if(c.lessons.some(l=>l.teacher_user_id!==teacher.teacher_user_id||l.teacher_label!==teacher.teacher_label||l.teacher_label_source?.kind==='authorized_current_profile'&&l.teacher_label_source.subject_user_id!==l.teacher_user_id))fail('TEMPLATE_INCOMPATIBLE');
- if(new Set(c.lessons.map(l=>l.lesson_id)).size!==4||c.planned_start_date>c.planned_end_date||c.lessons.some(l=>l.local_date<c.planned_start_date||l.local_date>c.planned_end_date))fail('TEMPLATE_INCOMPATIBLE');
+ if(c.state==='draft'||!c.published_at||c.coverage!=='whole_program'||c.partial_reason!==null||c.lessons.length<1||c.lessons.length>250||c.lessons.some(l=>l.status!=='planned'||!l.academic_hours||!l.teacher_user_id||l.teacher_label_state!=='available'||!l.teacher_label||!l.teacher_label_observed_at||!l.teacher_label_source||!l.teacher_source_hash||l.teacher_label_source.kind==='authorized_current_profile'&&l.teacher_label_source.subject_user_id!==l.teacher_user_id)||c.prerequisites.some(x=>x.code!=='LEGAL_NAME_EVIDENCE_REQUIRED'))fail('TEMPLATE_INCOMPATIBLE');
+ if(new Set(c.lessons.map(l=>l.lesson_id)).size!==c.lessons.length||c.planned_start_date>c.planned_end_date||c.lessons.some(l=>l.local_date<c.planned_start_date||l.local_date>c.planned_end_date))fail('TEMPLATE_INCOMPATIBLE');
  const hundredths=c.lessons.reduce((sum,l)=>sum+Math.round(Number(l.academic_hours)*100),0);
  if(c.missing_hours_count!==0||c.academic_hours_total===null||Math.round(Number(c.known_academic_hours_total)*100)!==hundredths||Math.round(Number(c.academic_hours_total)*100)!==hundredths||hundredths!==p.facts_snapshot.academic_hours*100)fail('TEMPLATE_INCOMPATIBLE');
- let clock:string|null=null,previousKey='';
+ const teachers=new Map<string,string>(),clocks:string[]=[];let previousKey='';
  for(const l of c.lessons){
   const key=l.local_date+'|'+(l.starts_at??'~')+'|'+l.lesson_id;if(previousKey&&key<=previousKey)fail('TEMPLATE_INCOMPATIBLE');previousKey=key;
   if((l.starts_at===null)!==(l.ends_at===null))fail('TEMPLATE_INCOMPATIBLE');
@@ -98,15 +100,21 @@ export function educationArtifactGroupFields(snapshot:EducationArtifactSnapshot)
    const a=localParts(l.starts_at,c.timezone),b=localParts(l.ends_at,c.timezone);if(a.date!==l.local_date)fail('TEMPLATE_INCOMPATIBLE');
    const offset=(Date.parse(b.date)-Date.parse(a.date))/86400000;if(offset!==0&&offset!==1)fail('TEMPLATE_INCOMPATIBLE');value=a.clock+'–'+b.clock+(offset?' (+1 день)':'');
   }
-  if(clock!==null&&value!==clock)fail('TEMPLATE_INCOMPATIBLE');clock=value;
+  clocks.push(value);
+  if(teachers.has(l.teacher_user_id!)&&teachers.get(l.teacher_user_id!)!==l.teacher_label)fail('TEMPLATE_INCOMPATIBLE');
+  teachers.set(l.teacher_user_id!,l.teacher_label!);
  }
- return {name:p.group_snapshot.name??'',start_date:c.planned_start_date,end_date:c.planned_end_date,training_dates:c.lessons.map(l=>l.local_date),schedule_text:clock??'',instructor_name:teacher.teacher_label!};
+ const uniformClock=clocks.every(v=>v===clocks[0])?clocks[0]:'';
+ if(layout==='four_date_word'&&(c.lessons.length!==4||teachers.size!==1||!clocks.every(v=>v===clocks[0])))fail('TEMPLATE_INCOMPATIBLE');
+ // Generic renderers retain every lesson in education_calendar. A global clock
+ // is shown only when actually uniform; teacher labels are never invented.
+ return {name:p.group_snapshot.name??'',start_date:c.planned_start_date,end_date:c.planned_end_date,training_dates:c.lessons.map(l=>l.local_date),schedule_text:uniformClock,instructor_name:[...teachers.values()].join('; ')};
 }
-export function parseEducationArtifactSnapshot(raw:unknown,organizationId:string,groupId:string):GroupEducationArtifact {
+export function parseEducationArtifactSnapshot(raw:unknown,organizationId:string,groupId:string,layout:EducationArtifactLayout='four_date_word'):GroupEducationArtifact {
  if(!exact({header:headerRule,rows:array(rowRule,1000),projection:projectionRule,source:sourceRule})(raw))fail();
  const snapshot=structuredClone(raw) as EducationArtifactSnapshot;validateSnapshot(snapshot,organizationId,groupId);
  const proof=snapshot.projection.program_facts,forms={full_time:'Очная',part_time:'Заочная',mixed:'Очно-заочная'};
- const programme:ProgramGeneration={state:'confirmed',reason:null,fields:{program_title:proof.facts_snapshot.full_title,program_hours:proof.facts_snapshot.academic_hours,program_form:forms[proof.facts_snapshot.training_form]},groupFields:educationArtifactGroupFields(snapshot),facts:{...proof.facts_snapshot},provenance:proof};
+ const programme:ProgramGeneration={state:'confirmed',reason:null,fields:{program_title:proof.facts_snapshot.full_title,program_hours:proof.facts_snapshot.academic_hours,program_form:forms[proof.facts_snapshot.training_form]},groupFields:educationArtifactGroupFields(snapshot,layout),facts:{...proof.facts_snapshot},provenance:proof};
  return {...snapshot,programme};
 }
 type RpcRequest=PromiseLike<{data:unknown;error:unknown}>&{setHeader?:(name:string,value:string)=>PromiseLike<{data:unknown;error:unknown}>};
@@ -129,16 +137,16 @@ export async function resolveGroupEducationArtifact(db:RpcClient,organizationId:
  return fail('SOURCE_UNAVAILABLE');
 }
 const snapshotOnly=(raw:EducationArtifactSnapshot)=>({header:raw.header,rows:raw.rows,projection:raw.projection,source:raw.source});
-export function withEducationArtifact<T extends {organization:{id?:string|null};group:{id:string};students:unknown[];extras?:unknown}>(context:T,raw:EducationArtifactSnapshot){
- const source=parseEducationArtifactSnapshot(snapshotOnly(raw),context.organization.id??'',context.group.id);
+export function withEducationArtifact<T extends {organization:{id?:string|null};group:{id:string};students:unknown[];extras?:unknown}>(context:T,raw:EducationArtifactSnapshot,layout:EducationArtifactLayout='four_date_word'){
+ const source=parseEducationArtifactSnapshot(snapshotOnly(raw),context.organization.id??'',context.group.id,layout);
  const {students:_students,extras:_extras,...rest}=context;
  return {...rest,group:{...context.group,...source.programme.groupFields,...source.programme.fields},students:source.rows.map(row=>({user_id:row.user_id,full_name:row.subject_label!})),extras:{}} as Omit<T,'students'|'group'|'extras'>&{group:T['group']&ProgramGroupFields&ProgramFields;students:{user_id:string;full_name:string}[];extras:Record<string,never>};
 }
-export function educationArtifactDocumentSnapshot(raw:EducationArtifactSnapshot){
- const source=parseEducationArtifactSnapshot(snapshotOnly(raw),raw.header.scope.organization_id,raw.header.scope.group_id);
- return {education_source:source.source,education_calendar:source.projection.calendar,education_source_notice:EDUCATION_ARTIFACT_NOTICE,education_lesson_ids:source.projection.calendar.lessons.map(l=>l.lesson_id),program_facts:source.projection.program_facts,student_user_ids:source.rows.map(r=>r.user_id),students:source.rows.map((r,i)=>({row_number:i+1,user_id:r.user_id,full_name:r.subject_label!,label_observed_at:r.label_observed_at,label_source:r.label_source}))};
+export function educationArtifactDocumentSnapshot(raw:EducationArtifactSnapshot,layout:EducationArtifactLayout='four_date_word'){
+ const source=parseEducationArtifactSnapshot(snapshotOnly(raw),raw.header.scope.organization_id,raw.header.scope.group_id,layout);
+ return {education_source:source.source,education_calendar:source.projection.calendar,education_source_notice:layout==='generic_html'?EDUCATION_GENERIC_ARTIFACT_NOTICE:EDUCATION_ARTIFACT_NOTICE,education_lesson_ids:source.projection.calendar.lessons.map(l=>l.lesson_id),program_facts:source.projection.program_facts,student_user_ids:source.rows.map(r=>r.user_id),students:source.rows.map((r,i)=>({row_number:i+1,user_id:r.user_id,full_name:r.subject_label!,label_observed_at:r.label_observed_at,label_source:r.label_source}))};
 }
-export function educationArtifactRows(source:EducationArtifactSnapshot,tokens:string[]):Record<string,string>[] {
- const result=parseEducationArtifactSnapshot(snapshotOnly(source),source.header.scope.organization_id,source.header.scope.group_id),p=result.programme,period=[p.groupFields!.start_date,p.groupFields!.end_date].map(d=>d.slice(8,10)+'.'+d.slice(5,7)+'.'+d.slice(0,4)).join(' — ');
+export function educationArtifactRows(source:EducationArtifactSnapshot,tokens:string[],layout:EducationArtifactLayout='four_date_word'):Record<string,string>[] {
+ const result=parseEducationArtifactSnapshot(snapshotOnly(source),source.header.scope.organization_id,source.header.scope.group_id,layout),p=result.programme,period=[p.groupFields!.start_date,p.groupFields!.end_date].map(d=>d.slice(8,10)+'.'+d.slice(5,7)+'.'+d.slice(0,4)).join(' — ');
  return result.rows.map((row,i)=>Object.fromEntries(tokens.map(token=>[token,({N:String(i+1),STUDENT_NAME:row.subject_label!,STUDENT_PROGRAM:p.fields!.program_title,STUDENT_HOURS:String(p.fields!.program_hours),STUDENT_PERIOD:period,PROGRAM_GROUP:p.groupFields!.name} as Record<string,string>)[token]??''])));
 }
