@@ -175,7 +175,7 @@ serve(async (req) => {
         const confirmed = await confirmStudentCapacityClaim(async () => {
           const { data: claimed, error: readError } = await admin.from("profiles")
             .select("user_id, organization_id, archived_at").eq("user_id", userId).maybeSingle();
-          return !readError && claimed !== null && claimed.organization_id === course.organization_id && !claimed.archived_at;
+          return !readError && claimed?.organization_id === course.organization_id && !claimed.archived_at;
         });
         if (confirmed) {
           claim = { success: true, is_existing: false };

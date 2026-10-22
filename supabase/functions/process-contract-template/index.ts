@@ -100,7 +100,7 @@ ${placeholdersList}
 
     let processedText = "";
     try {
-      const { text: processed } = await callAI(
+      const { text } = await callAI(
         [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Обработай следующий текст договора. Замени ТОЛЬКО конкретные данные на переменные, сохранив весь остальной текст без изменений:\n\n${text}` },
@@ -110,7 +110,7 @@ ${placeholdersList}
         "GigaChat-Max",
         "google/gemini-2.5-flash",
       );
-      processedText = processed || "";
+      processedText = text || "";
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("AI error:", msg);

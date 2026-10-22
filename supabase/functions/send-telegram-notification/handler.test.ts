@@ -5,7 +5,7 @@ import {
   createTelegramRelayHandler,
   TELEGRAM_OUTBOUND_TIMEOUT_MS,
   type TelegramRelayDependencies,
-} from "./handler.ts";
+} from "./handler";
 
 const SERVICE_ROLE_KEY = `service-role-${"s".repeat(64)}`;
 const AUTHENTICATED_USER_JWT = `user-jwt-${"u".repeat(64)}`;
@@ -24,7 +24,7 @@ function dependencies(
     ...overrides,
   };
   return {
-    env: (name: string) => values[name],
+    env: (name) => values[name],
     fetch: fetchImpl,
     subtle,
   };

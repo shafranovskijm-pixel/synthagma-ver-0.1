@@ -3,7 +3,7 @@ import {
   runWithRegistrationCleanup,
   type RegistrationCleanupAdapter,
   type RegistrationCreationTracker,
-} from "./registrationFlow.ts";
+} from "./registrationFlow";
 
 type FailureStage = "create-user" | "organization" | "free-plan" | "profile" | "role" | "after-role";
 
@@ -76,7 +76,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "create-user", originalError),
+      (tracker) => simulateProvisioning(tracker, "create-user", originalError),
     ));
 
     expect(caught).toBe(originalError);
@@ -90,7 +90,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "organization", originalError),
+      (tracker) => simulateProvisioning(tracker, "organization", originalError),
     ));
 
     expect(caught).toBe(originalError);
@@ -107,7 +107,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "free-plan", originalError),
+      (tracker) => simulateProvisioning(tracker, "free-plan", originalError),
     ));
 
     expect(caught).toBe(originalError);
@@ -123,7 +123,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "profile", originalError),
+      (tracker) => simulateProvisioning(tracker, "profile", originalError),
     ));
 
     expect(caught).toBe(originalError);
@@ -139,7 +139,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "role", originalError),
+      (tracker) => simulateProvisioning(tracker, "role", originalError),
     ));
 
     expect(caught).toBe(originalError);
@@ -156,7 +156,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "after-role", originalError),
+      (tracker) => simulateProvisioning(tracker, "after-role", originalError),
     ));
 
     expect(caught).toBe(originalError);
@@ -168,7 +168,7 @@ describe("register-organization compensating cleanup", () => {
 
     const result = await runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, null, new Error("unused")),
+      (tracker) => simulateProvisioning(tracker, null, new Error("unused")),
     );
 
     expect(result).toBe("success");
@@ -191,7 +191,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "after-role", originalError),
+      (tracker) => simulateProvisioning(tracker, "after-role", originalError),
       reportCleanupError,
     ));
 
@@ -208,7 +208,7 @@ describe("register-organization compensating cleanup", () => {
 
     const caught = await captureFailure(runWithRegistrationCleanup(
       adapter,
-      (tracker: RegistrationCreationTracker) => simulateProvisioning(tracker, "after-role", originalError),
+      (tracker) => simulateProvisioning(tracker, "after-role", originalError),
       () => { throw new Error("logger failed"); },
     ));
 
