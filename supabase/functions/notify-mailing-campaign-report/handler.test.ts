@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMailingReportHandler } from "./handler.ts";
+import { createMailingReportHandler } from "./handler";
 
 const campaignId = "11111111-1111-4111-8111-111111111111";
 const eventId = "22222222-2222-4222-8222-222222222222";
@@ -81,7 +81,7 @@ function fixture(options: Record<string, any> = {}) {
     },
   };
   const createAdmin = vi.fn(() => admin);
-  const handler = createMailingReportHandler({ env: (key: string) => env[key], createAdmin, newToken: () => `fixture-token-${++nextToken}` });
+  const handler = createMailingReportHandler({ env: (key) => env[key], createAdmin, newToken: () => `fixture-token-${++nextToken}` });
   const run = async (body: unknown = {}, settings: { headers?: Record<string, string>; method?: string; raw?: string } = {}) => {
     const method = settings.method ?? "POST";
     const response = await handler(new Request("https://example.invalid/local-fixture", {
@@ -98,7 +98,7 @@ describe("mailing report handler factory, no real HTTP or Telegram calls", () =>
     {}, { Authorization: "Bearer wrong" }, { "X-Cron-Secret": "wrong" },
     { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.fixture-signature" },
     { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.fixture-signature" },
-  ] as Record<string, string>[])("rejects unauthorized request before creating DB client", async (headers) => {
+  ])("rejects unauthorized request before creating DB client", async (headers) => {
     const f = fixture();
     expect((await f.run({}, { headers })).status).toBe(401);
     expect(f.createAdmin).not.toHaveBeenCalled();
