@@ -15,9 +15,10 @@ export const SCOPED_CASES=[
  ['SJ07','record schema and archive changes preserve prior frozen exports and current replay authority'],
  ['SJ08','full trusted subject and author erasure removes copied artifacts preserves unrelated rows and never refunds usage'],
  ['SJ09','oversized complete export refuses without truncation partial rows or privilege changes'],
+ ['SJ10','ordinary groups without a course or approved programme keep notes and exact retained contexts'],
 ]as const;
 const output=process.env.UC116_NATIVE_OUTPUT;if(!output)throw Error('Explicit isolated native output required');
-const recorded:any[]=[];const persist=()=>writeFileSync(join(output,'scoped-journals-cases.json'),JSON.stringify({status:recorded.length===9&&recorded.every(c=>c.status==='PASS')?'PASS':'INCOMPLETE_OR_FAILED',expectedCases:9,scope:'Actual isolated PostgreSQL17 and synthetic SQL role/claims. Not real Auth/browser/customer acceptance.',cases:recorded},null,2)+'\n');
+const recorded:any[]=[];const persist=()=>writeFileSync(join(output,'scoped-journals-cases.json'),JSON.stringify({status:recorded.length===10&&recorded.every(c=>c.status==='PASS')?'PASS':'INCOMPLETE_OR_FAILED',expectedCases:10,scope:'Actual isolated PostgreSQL17 and synthetic SQL role/claims. Not real Auth/browser/customer acceptance.',cases:recorded},null,2)+'\n');
 type Fixture=Awaited<ReturnType<typeof createScopedFixture>>;
 type Ctx=Fixture&{note(x:any):void};
 function register(index:number,run:(c:Ctx)=>Promise<void>){const[id,title]=SCOPED_CASES[index];it(id+' '+title,async()=>{
@@ -155,4 +156,43 @@ register(8,async c=>{
  await c.db.exec('RESET ROLE');expect(Number((await one(c.db,'SELECT count(*)n FROM uc_scoped_journal_records WHERE journal_id=$1',[many.journal.id])).n)).toBe(1001);await caller(c.db,lo.owner);
  const countFailure=await denied(()=>capture(c,many.journal,organization),'CUSTOM_JOURNAL_LIMIT_EXCEEDED');await c.db.exec('RESET ROLE');expect(Number((await one(c.db,'SELECT count(*)n FROM uc_scoped_journal_exports WHERE journal_id=$1',[many.journal.id])).n)).toBe(0);
  c.note({kind:'complete_export_size_refusal',actualRows:140,eachValuesBytes:Buffer.byteLength(JSON.stringify(values)),actualRPC:true,code:failed.code,recordStorageAllows1001:true,completeExportOver1000Refused:countFailure.code,noTruncation:true,noPartialExportOrRequest:true});
+});
+
+register(9,async c=>{
+ // Both are real ordinary group rows. A current member can have a personal note
+ // without inventing an enrollment, programme, session or teacher decision.
+ const courseLessGroup=randomUUID();await caller(c.db,lo.owner);await c.db.exec('RESET ROLE');
+ await c.db.query("INSERT INTO student_groups(id,organization_id,course_id,name)VALUES($1,$2,NULL,'Synthetic ordinary group without a course')",[courseLessGroup,lo.org]);
+ await c.db.query('INSERT INTO student_group_memberships(organization_id,group_id,user_id)VALUES($1,$2,$3),($1,$4,$3)',[lo.org,courseLessGroup,lo.student,lo.otherGroup]);
+ await caller(c.db,lo.owner);const facts:any[]=[];
+ for(const [groupId,courseId]of[[courseLessGroup,null],[lo.otherGroup,lo.course]]){
+  const context={kind:'group',group_id:groupId}as const;
+  const listed=await c.read(context,{kind:'list',after_id:null,limit:50,include_archived:false});
+  expect(listed.context).toEqual({kind:'group',group_id:groupId,course_id:courseId,program_ref:null});expect(listed.capabilities.can_write).toBe(true);
+  const made=await c.create(context,notes,'Synthetic ordinary group notes');expect(made.journal.context).toEqual(listed.context);expect(made.journal.source_current).toBe(true);
+  const unbound=await c.save(made.journal,{notes:'Ordinary nonpersonal group note'},none,none,null,context);
+  const personal=await c.save(made.journal,{notes:'Ordinary member note without programme inference'},{kind:'person',user_id:lo.student},none,null,context);
+  expect(unbound.record.subject).toEqual(none);expect(personal.record.subject).toEqual({kind:'person',user_id:lo.student});expect(personal.record.source).toEqual(none);
+  const subjects=await c.read(context,{kind:'subjects',journal_id:made.journal.id,after_id:null,limit:50});expect(subjects.subjects.map((p:any)=>p.user_id)).toEqual([lo.student]);
+  for(const sourceKind of['session','outcome']){const sources=await c.read(context,{kind:'sources',journal_id:made.journal.id,source_kind:sourceKind,subject_user_id:lo.student,after_id:null,limit:25});expect(sources.sources).toEqual([]);}
+  const inventedSession={kind:'session',session_id:randomUUID(),session_version_id:randomUUID(),content_hash:'a'.repeat(64)};
+  const inventedOutcome={kind:'outcome',program_enrollment_snapshot_id:randomUUID(),state_id:randomUUID(),revision:1,machine_id:randomUUID(),machine_input_hash:'b'.repeat(64),decision_id:randomUUID()};
+  for(const source of[inventedSession,inventedOutcome])await noPartial(c,()=>c.save(made.journal,{notes:'Refuse educational authority without confirmed programme'},{kind:'person',user_id:lo.student},source,null,context),'CUSTOM_JOURNAL_SOURCE_UNAVAILABLE');
+  const exported=await capture(c,made.journal,context);const checked=await verified(c,exported,context);expect(checked.manifest.context).toEqual(listed.context);expect(checked.manifest.records).toHaveLength(2);
+  const beforeHistory=await allHistory(c,made.journal.id,personal.record.id,context);const beforeRows=await journalRows(c.db,made.journal.id);await caller(c.db,lo.owner);
+  if(courseId===null){await c.db.exec('RESET ROLE');await c.db.query('UPDATE student_groups SET course_id=$1 WHERE id=$2 AND organization_id=$3',[lo.course,groupId,lo.org]);await caller(c.db,lo.owner);}
+  else await c.db.query('SELECT bind_group_program_version($1,$2,$3,$4,0,$5)d',[lo.org,groupId,lo.course,c.s.learning.program.id,randomUUID()]);
+  const old=await c.read(context,{kind:'journal',journal_id:made.journal.id});expect(old.journal.context).toEqual(listed.context);expect(old.journal.source_current).toBe(false);expect(old.capabilities.can_write).toBe(false);
+  await noPartial(c,()=>c.save(made.journal,{notes:'Do not reinterpret retained note under a new programme'},{kind:'person',user_id:lo.student},none,personal.record,context),'CUSTOM_JOURNAL_SOURCE_UNAVAILABLE');
+  for(const action of[
+   {action:'save_schema',journal_id:made.journal.id,title:made.journal.title,description:made.journal.description,fields:notes,reason:'Refuse retained-context schema rewrite'},
+   {action:'archive_journal',journal_id:made.journal.id,archived:true,reason:'Refuse retained-context archive rewrite'},
+  ])await noPartial(c,()=>c.act(context,action,made.journal.revision),'CUSTOM_JOURNAL_SOURCE_UNAVAILABLE');
+  await noPartial(c,()=>c.act(context,{action:'archive_record',journal_id:made.journal.id,record_id:personal.record.id,archived:true,reason:'Refuse retained-context row archive rewrite'},personal.record.revision),'CUSTOM_JOURNAL_SOURCE_UNAVAILABLE');
+  expect(await allHistory(c,made.journal.id,personal.record.id,context)).toEqual(beforeHistory);expect(await journalRows(c.db,made.journal.id)).toEqual(beforeRows);await caller(c.db,lo.owner);
+  const downloaded=await verified(c,exported,context);expect(downloaded.htmlText).toBe(checked.htmlText);expect(downloaded.manifestText).toBe(checked.manifestText);
+  const fresh=await c.create(context,notes,'Synthetic explicit journal for changed group context');expect(fresh.journal.id).not.toBe(made.journal.id);expect(fresh.journal.context.course_id).toBe(lo.course);expect(fresh.journal.context.program_ref===null).toBe(courseId===null);expect(fresh.journal.source_current).toBe(true);expect((await allRecords(c,fresh.journal.id,context)).rows).toEqual([]);
+  facts.push({priorCourseId:courseId,priorProgramRef:null,ordinaryNonpersonalAndPersonalRows:2,sessionAndOutcomeSourceQueriesEmpty:true,sessionAndOutcomeWritesRefusedWithoutPartialRows:true,transition:courseId===null?'course_added':'approved_programme_bound',retainedContextReadOnly:true,allFourWriteKindsRefused:true,oldHistoryAndExportBytesRetained:true,newJournalExplicitEmpty:true});
+ }
+ c.note({kind:'ordinary_group_notes_nullable_context',variants:facts,oldNineCasesUnchanged:true,noProgrammeEnrollmentInvented:true});
 });

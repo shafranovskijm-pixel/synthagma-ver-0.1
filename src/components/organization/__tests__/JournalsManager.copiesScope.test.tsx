@@ -131,3 +131,7 @@ describe("parent copy journal clear confirmation is bound to its original contex
     log.mockRestore();
   });
 });
+
+describe("ordinary group journal availability",()=>{
+ it("allows journal creation with server write permission even when the group has no course",async()=>{render(<JournalsManager organizationId="org-a" groupId="00000000-0000-4000-8000-000000000002" courseId={null}/>);await act(async()=>{});expect(screen.getByRole("button",{name:"Создать журнал группы"})).toBeEnabled();expect(screen.getByTestId("group-journals-scope-notice")).toHaveTextContent("Заметки можно вести и без закреплённой программы");expect(screen.getByTestId("group-journals-scope-notice")).toHaveTextContent("Для связи с подтверждёнными занятиями и результатами закрепите программу группы");});
+});

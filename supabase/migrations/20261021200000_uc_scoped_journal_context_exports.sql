@@ -30,7 +30,7 @@ CREATE TABLE public.uc_scoped_journal_contexts(
  UNIQUE(journal_id,organization_id),
  CONSTRAINT uc_scoped_context_journal_fk FOREIGN KEY(journal_id,organization_id) REFERENCES public.uc_custom_journals(id,organization_id) DEFERRABLE INITIALLY DEFERRED,
  CHECK((kind='organization' AND group_id IS NULL AND course_id IS NULL AND program_ref IS NULL)
-  OR(kind='group' AND group_id IS NOT NULL AND course_id IS NOT NULL AND program_ref IS NOT NULL AND jsonb_typeof(program_ref)='object'))
+  OR(kind='group' AND group_id IS NOT NULL AND(program_ref IS NULL OR(course_id IS NOT NULL AND jsonb_typeof(program_ref)='object'))))
 );
 CREATE INDEX uc_scoped_context_scope ON public.uc_scoped_journal_contexts(organization_id,group_id,journal_id);
 CREATE TABLE public.uc_scoped_journal_records(
@@ -262,7 +262,7 @@ END;$fn$;
 CREATE FUNCTION public.uc_scoped_journal_base(p_org uuid,p_context jsonb,p_write boolean DEFAULT true) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
  SELECT jsonb_build_object('schema_version',2,'organization_id',p_org,'context',p_context,'capabilities',jsonb_build_object('can_read',public.uc_scoped_journal_permission(p_org,(p_context->>'group_id')::uuid,false),'can_write',
-  p_write AND public.uc_scoped_journal_permission(p_org,(p_context->>'group_id')::uuid,true) AND(p_context->>'kind'='organization' OR(p_context->'program_ref'<>'null'::jsonb AND p_context IS NOT DISTINCT FROM public.uc_scoped_journal_context(p_org,jsonb_build_object('kind','group','group_id',p_context->'group_id'))))))
+  p_write AND public.uc_scoped_journal_permission(p_org,(p_context->>'group_id')::uuid,true) AND(p_context->>'kind'='organization' OR(p_context IS NOT DISTINCT FROM public.uc_scoped_journal_context(p_org,jsonb_build_object('kind','group','group_id',p_context->'group_id'))))))
 $fn$;
 CREATE FUNCTION public.uc_scoped_journal_detail(p_journal uuid,p_full boolean DEFAULT true) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
@@ -281,6 +281,7 @@ DECLARE v_session public.uc_conducted_sessions;v_version public.uc_conducted_ses
 BEGIN
  IF public.uc_custom_journal_shape(p_source,ARRAY['kind']) AND p_source->>'kind'='none' THEN RETURN '{}'::uuid[];END IF;
  IF p_context->>'kind'<>'group' THEN PERFORM public.uc_custom_journal_error('INVALID_INPUT');END IF;
+ IF NOT public.uc_custom_journal_uuid(p_context->'course_id') OR jsonb_typeof(p_context->'program_ref') IS DISTINCT FROM 'object' THEN PERFORM public.uc_custom_journal_error('SOURCE_UNAVAILABLE');END IF;
  IF p_source->>'kind'='session' THEN
   IF NOT public.uc_custom_journal_shape(p_source,ARRAY['kind','session_id','session_version_id','content_hash']) OR NOT public.uc_custom_journal_uuid(p_source->'session_id') OR NOT public.uc_custom_journal_uuid(p_source->'session_version_id') OR coalesce(p_source->>'content_hash','')!~'^[a-f0-9]{64}$' THEN PERFORM public.uc_custom_journal_error('INVALID_INPUT');END IF;
   IF NOT public.uc_group_education_actor_allowed(auth.uid(),p_org,(p_context->>'group_id')::uuid,false) THEN PERFORM public.uc_custom_journal_error('ACCESS_DENIED');END IF;
@@ -508,7 +509,6 @@ BEGIN
  IF v_op='create' THEN
   IF p_expected_revision<>0 THEN PERFORM public.uc_custom_journal_error('REVISION_CONFLICT');END IF;
   v_context:=public.uc_scoped_journal_context(p_organization_id,p_context);
-  IF v_context->>'kind'='group' AND(v_context->'program_ref'='null'::jsonb OR v_context->'course_id'='null'::jsonb) THEN PERFORM public.uc_custom_journal_error('SOURCE_UNAVAILABLE');END IF;
   v_journal:=gen_random_uuid();v_schema_id:=gen_random_uuid();v_revision:=1;
   INSERT INTO public.uc_custom_journals(id,organization_id,title,description,revision,current_schema_id,created_by,updated_by)
    VALUES(v_journal,p_organization_id,p_action->>'title',p_action->>'description',1,v_schema_id,v_actor,v_actor) RETURNING * INTO v_j;

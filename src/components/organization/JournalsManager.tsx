@@ -302,8 +302,8 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
             <div className="mb-3 flex items-start gap-3 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10" data-testid="group-journals-scope-notice">
               <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-muted-foreground">
-                Открыты журналы этой группы. Показаны только журналы, которые ограничиваются составом группы и её курсом.
-                Новые журналы группы имеют отдельную серверную область. Прежние ручные журналы организации здесь недоступны.
+                Открыты журналы этой группы. Заметки можно вести и без закреплённой программы.
+                Для связи с подтверждёнными занятиями и результатами закрепите программу группы. Прежние журналы организации доступны в общем разделе журналов.
               </p>
             </div>
           )}
