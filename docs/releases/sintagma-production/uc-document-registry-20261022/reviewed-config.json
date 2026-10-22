@@ -1,0 +1,2318 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_CONFIG_ACTUAL_NATIVE_COVERAGE_PASS_PENDING_PRODUCTION_REHEARSAL",
+  "rawSHA256": "2e3603eca31643753a75ca04777895ee2c1883e249f8aadc3d7f0a8d03f002da",
+  "expectedLedger": 619,
+  "expectedPublicTables": 339,
+  "expectedAllTableSets": 374,
+  "newTables": [
+    "uc_document_registry_heads",
+    "uc_document_registry_records",
+    "uc_document_registry_events",
+    "uc_document_registry_requests",
+    "uc_document_registry_incoming_sources"
+  ],
+  "newFunctions": [
+    "public.uc_document_registry_error(text)",
+    "public.uc_document_registry_hash(text)",
+    "public.uc_document_registry_text(jsonb,integer,boolean)",
+    "public.uc_document_registry_scope(uuid,jsonb)",
+    "public.uc_document_registry_caps(uuid,uuid)",
+    "public.uc_document_registry_base(uuid,jsonb)",
+    "public.uc_document_registry_fence(uuid,uuid,uuid[],boolean,uuid)",
+    "public.uc_document_registry_source(uuid,jsonb,boolean,boolean)",
+    "public.uc_document_registry_student(uuid,uuid,uuid)",
+    "public.uc_document_registry_company(uuid,uuid,uuid)",
+    "public.uc_document_registry_party(uuid,uuid,jsonb)",
+    "public.uc_document_registry_context(uuid,uuid,jsonb,jsonb,boolean)",
+    "public.uc_document_registry_legacy_visible(uuid,uuid)",
+    "public.uc_document_registry_legacy(uuid,uuid,uuid)",
+    "public.uc_document_registry_data(uuid,uuid,jsonb,boolean)",
+    "public.uc_document_registry_party_label(uuid,jsonb)",
+    "public.uc_document_registry_record_json(uc_document_registry_records,jsonb)",
+    "public.uc_document_registry_event_json(uc_document_registry_events)",
+    "public.uc_document_registry_filters(jsonb)",
+    "public.uc_document_registry_matches(uc_document_registry_records,uuid,jsonb)",
+    "public.uc_document_registry_incoming_json(incoming_documents,uuid,jsonb)",
+    "public.uc_document_registry_context_try(uuid,uuid,jsonb,jsonb)",
+    "public.uc_document_registry_source_choice(uuid,uuid,uuid,boolean)",
+    "public.uc_document_registry_incoming_plan(uuid,uuid,jsonb,jsonb)",
+    "public.uc_document_registry_file(uuid,jsonb)",
+    "public.read_document_registry(uuid,jsonb,jsonb)",
+    "public.uc_document_registry_source_lock(uuid,jsonb,boolean)",
+    "public.uc_document_registry_write_proof(uuid,uuid,jsonb)",
+    "public.uc_document_registry_capture_data(uuid,jsonb)",
+    "public.uc_document_registry_replay(uuid,jsonb,uc_document_registry_requests,jsonb)",
+    "public.apply_document_registry_action(uuid,jsonb,bigint,uuid,jsonb)",
+    "public.uc_document_registry_privacy_targets(uuid)",
+    "public.uc_document_registry_personal_counts(uuid)",
+    "public.uc_document_registry_erase_user(uuid)"
+  ],
+  "newBodyMD5": {
+    "public.uc_scoped_journal_personal_counts(uuid)": "63476fea68407b8f0a09a0ace1e2030a",
+    "public.uc_scoped_journal_erase_user(uuid)": "eeab1ccbbf78c67ad8035420aa9e2ff7"
+  },
+  "nativeParentFKTriggers": [],
+  "nativeMetadata": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T130105Z-56819db4/uc018-post-append-native-metadata.json",
+  "nativeMetadataSHA256": "b500439325d63ce07a7991598f1f9c510875bed8894a8b71badced3d9c69608d",
+  "nativePortableCatalog": {
+    "tables": [
+      {
+        "acl": "{postgres=arwdDxtm/postgres}",
+        "rls": true,
+        "kind": "r",
+        "name": "uc_document_registry_events",
+        "owner": "postgres",
+        "columns": [
+          {
+            "acl": null,
+            "name": "id",
+            "type": "uuid",
+            "number": 1,
+            "default": "gen_random_uuid()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "organization_id",
+            "type": "uuid",
+            "number": 2,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "record_id",
+            "type": "uuid",
+            "number": 3,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "revision",
+            "type": "bigint",
+            "number": 4,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "action",
+            "type": "text",
+            "number": 5,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": "pg_catalog.default",
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "reason",
+            "type": "text",
+            "number": 6,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": "pg_catalog.default",
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "snapshot",
+            "type": "jsonb",
+            "number": 7,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "participant_ids",
+            "type": "uuid[]",
+            "number": 8,
+            "default": "'{}'::uuid[]",
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "recorded_by",
+            "type": "uuid",
+            "number": 9,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "recorded_at",
+            "type": "timestamp with time zone",
+            "number": 10,
+            "default": "clock_timestamp()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "redacted",
+            "type": "boolean",
+            "number": 11,
+            "default": "false",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          }
+        ],
+        "indexes": [
+          {
+            "live": true,
+            "name": "uc_document_registry_events_org",
+            "ready": true,
+            "valid": true,
+            "unique": false,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE INDEX uc_document_registry_events_org ON public.uc_document_registry_events USING btree (organization_id, record_id, revision)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_events_pkey",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": true,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_events_pkey ON public.uc_document_registry_events USING btree (id)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_events_record_id_revision_key",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_events_record_id_revision_key ON public.uc_document_registry_events USING btree (record_id, revision)"
+          }
+        ],
+        "options": null,
+        "policies": [],
+        "triggers": [],
+        "force_rls": false,
+        "partition": false,
+        "constraints": [
+          {
+            "name": "uc_document_registry_events_action_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (action = ANY (ARRAY['register'::text, 'correct'::text, 'archive'::text, 'attach_legacy'::text]))",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_events_pkey",
+            "type": "p",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "PRIMARY KEY (id)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_events_record_id_revision_key",
+            "type": "u",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "UNIQUE (record_id, revision)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_events_revision_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (revision > 0)",
+            "inherit_count": 0
+          }
+        ],
+        "persistence": "p",
+        "replica_identity": "d",
+        "direct_client_privilege": false
+      },
+      {
+        "acl": "{postgres=arwdDxtm/postgres}",
+        "rls": true,
+        "kind": "r",
+        "name": "uc_document_registry_heads",
+        "owner": "postgres",
+        "columns": [
+          {
+            "acl": null,
+            "name": "organization_id",
+            "type": "uuid",
+            "number": 1,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "revision",
+            "type": "bigint",
+            "number": 2,
+            "default": "0",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          }
+        ],
+        "indexes": [
+          {
+            "live": true,
+            "name": "uc_document_registry_heads_pkey",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": true,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_heads_pkey ON public.uc_document_registry_heads USING btree (organization_id)"
+          }
+        ],
+        "options": null,
+        "policies": [],
+        "triggers": [],
+        "force_rls": false,
+        "partition": false,
+        "constraints": [
+          {
+            "name": "uc_document_registry_heads_pkey",
+            "type": "p",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "PRIMARY KEY (organization_id)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_heads_revision_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (revision >= 0 AND revision <= '9007199254740991'::bigint)",
+            "inherit_count": 0
+          }
+        ],
+        "persistence": "p",
+        "replica_identity": "d",
+        "direct_client_privilege": false
+      },
+      {
+        "acl": "{postgres=arwdDxtm/postgres}",
+        "rls": true,
+        "kind": "r",
+        "name": "uc_document_registry_incoming_sources",
+        "owner": "postgres",
+        "columns": [
+          {
+            "acl": null,
+            "name": "incoming_document_id",
+            "type": "uuid",
+            "number": 1,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "organization_id",
+            "type": "uuid",
+            "number": 2,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "source",
+            "type": "jsonb",
+            "number": 3,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "binding_hash",
+            "type": "text",
+            "number": 4,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": "pg_catalog.default",
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "record_id",
+            "type": "uuid",
+            "number": 5,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "revision",
+            "type": "bigint",
+            "number": 6,
+            "default": "1",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "participant_ids",
+            "type": "uuid[]",
+            "number": 7,
+            "default": "'{}'::uuid[]",
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "linked_by",
+            "type": "uuid",
+            "number": 8,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "linked_at",
+            "type": "timestamp with time zone",
+            "number": 9,
+            "default": "clock_timestamp()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "updated_by",
+            "type": "uuid",
+            "number": 10,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "number": 11,
+            "default": "clock_timestamp()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          }
+        ],
+        "indexes": [
+          {
+            "live": true,
+            "name": "uc_document_registry_incoming_org",
+            "ready": true,
+            "valid": true,
+            "unique": false,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE INDEX uc_document_registry_incoming_org ON public.uc_document_registry_incoming_sources USING btree (organization_id, incoming_document_id)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_incoming_record",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_incoming_record ON public.uc_document_registry_incoming_sources USING btree (record_id) WHERE (record_id IS NOT NULL)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_incoming_sources_pkey",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": true,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_incoming_sources_pkey ON public.uc_document_registry_incoming_sources USING btree (incoming_document_id)"
+          }
+        ],
+        "options": null,
+        "policies": [],
+        "triggers": [],
+        "force_rls": false,
+        "partition": false,
+        "constraints": [
+          {
+            "name": "uc_document_registry_incoming_sources_binding_hash_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (binding_hash ~ '^[a-f0-9]{64}$'::text)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_incoming_sources_pkey",
+            "type": "p",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "PRIMARY KEY (incoming_document_id)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_incoming_sources_revision_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (revision > 0)",
+            "inherit_count": 0
+          }
+        ],
+        "persistence": "p",
+        "replica_identity": "d",
+        "direct_client_privilege": false
+      },
+      {
+        "acl": "{postgres=arwdDxtm/postgres}",
+        "rls": true,
+        "kind": "r",
+        "name": "uc_document_registry_records",
+        "owner": "postgres",
+        "columns": [
+          {
+            "acl": null,
+            "name": "id",
+            "type": "uuid",
+            "number": 1,
+            "default": "gen_random_uuid()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "organization_id",
+            "type": "uuid",
+            "number": 2,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "group_id",
+            "type": "uuid",
+            "number": 3,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "scope_group_ids",
+            "type": "uuid[]",
+            "number": 4,
+            "default": "'{}'::uuid[]",
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "registration_id",
+            "type": "text",
+            "number": 5,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": "pg_catalog.default",
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "sequence_year",
+            "type": "integer",
+            "number": 6,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "sequence_number",
+            "type": "integer",
+            "number": 7,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "revision",
+            "type": "bigint",
+            "number": 8,
+            "default": "1",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "status",
+            "type": "text",
+            "number": 9,
+            "default": "'registered'::text",
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": "pg_catalog.default",
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "data",
+            "type": "jsonb",
+            "number": 10,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "context_binding",
+            "type": "jsonb",
+            "number": 11,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "legacy_claim",
+            "type": "jsonb",
+            "number": 12,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "participant_ids",
+            "type": "uuid[]",
+            "number": 13,
+            "default": "'{}'::uuid[]",
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "registered_by",
+            "type": "uuid",
+            "number": 14,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "updated_by",
+            "type": "uuid",
+            "number": 15,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": false,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "registered_at",
+            "type": "timestamp with time zone",
+            "number": 16,
+            "default": "clock_timestamp()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "number": 17,
+            "default": "clock_timestamp()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "redacted",
+            "type": "boolean",
+            "number": 18,
+            "default": "false",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          }
+        ],
+        "indexes": [
+          {
+            "live": true,
+            "name": "uc_document_registry_records_groups",
+            "ready": true,
+            "valid": true,
+            "unique": false,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE INDEX uc_document_registry_records_groups ON public.uc_document_registry_records USING gin (scope_group_ids)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_records_organization_id_registration_i_key",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_records_organization_id_registration_i_key ON public.uc_document_registry_records USING btree (organization_id, registration_id)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_records_organization_id_sequence_year__key",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_records_organization_id_sequence_year__key ON public.uc_document_registry_records USING btree (organization_id, sequence_year, sequence_number)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_records_page",
+            "ready": true,
+            "valid": true,
+            "unique": false,
+            "primary": false,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE INDEX uc_document_registry_records_page ON public.uc_document_registry_records USING btree (organization_id, registered_at DESC, id DESC)"
+          },
+          {
+            "live": true,
+            "name": "uc_document_registry_records_pkey",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": true,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_records_pkey ON public.uc_document_registry_records USING btree (id)"
+          }
+        ],
+        "options": null,
+        "policies": [],
+        "triggers": [],
+        "force_rls": false,
+        "partition": false,
+        "constraints": [
+          {
+            "name": "uc_document_registry_records_organization_id_registration_i_key",
+            "type": "u",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "UNIQUE (organization_id, registration_id)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_records_organization_id_sequence_year__key",
+            "type": "u",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "UNIQUE (organization_id, sequence_year, sequence_number)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_records_pkey",
+            "type": "p",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "PRIMARY KEY (id)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_records_revision_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (revision >= 1 AND revision <= '9007199254740991'::bigint)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_records_sequence_number_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (sequence_number > 0)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_records_status_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (status = ANY (ARRAY['registered'::text, 'archived'::text]))",
+            "inherit_count": 0
+          }
+        ],
+        "persistence": "p",
+        "replica_identity": "d",
+        "direct_client_privilege": false
+      },
+      {
+        "acl": "{postgres=arwdDxtm/postgres}",
+        "rls": true,
+        "kind": "r",
+        "name": "uc_document_registry_requests",
+        "owner": "postgres",
+        "columns": [
+          {
+            "acl": null,
+            "name": "actor_id",
+            "type": "uuid",
+            "number": 1,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "request_id",
+            "type": "uuid",
+            "number": 2,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "organization_id",
+            "type": "uuid",
+            "number": 3,
+            "default": null,
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "scope",
+            "type": "jsonb",
+            "number": 4,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "payload_hash",
+            "type": "text",
+            "number": 5,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": "pg_catalog.default",
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "result",
+            "type": "jsonb",
+            "number": 6,
+            "default": null,
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "participant_ids",
+            "type": "uuid[]",
+            "number": 7,
+            "default": "'{}'::uuid[]",
+            "options": null,
+            "storage": "x",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          },
+          {
+            "acl": null,
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "number": 8,
+            "default": "clock_timestamp()",
+            "options": null,
+            "storage": "p",
+            "identity": "",
+            "not_null": true,
+            "collation": null,
+            "generated": "",
+            "compression": ""
+          }
+        ],
+        "indexes": [
+          {
+            "live": true,
+            "name": "uc_document_registry_requests_pkey",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "primary": true,
+            "clustered": false,
+            "exclusion": false,
+            "immediate": true,
+            "replident": false,
+            "definition": "CREATE UNIQUE INDEX uc_document_registry_requests_pkey ON public.uc_document_registry_requests USING btree (actor_id, request_id)"
+          }
+        ],
+        "options": null,
+        "policies": [],
+        "triggers": [],
+        "force_rls": false,
+        "partition": false,
+        "constraints": [
+          {
+            "name": "uc_document_registry_requests_payload_hash_check",
+            "type": "c",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": false,
+            "validated": true,
+            "deferrable": false,
+            "definition": "CHECK (payload_hash ~ '^[a-f0-9]{64}$'::text)",
+            "inherit_count": 0
+          },
+          {
+            "name": "uc_document_registry_requests_pkey",
+            "type": "p",
+            "local": true,
+            "match": " ",
+            "delete": " ",
+            "update": " ",
+            "deferred": false,
+            "noinherit": true,
+            "validated": true,
+            "deferrable": false,
+            "definition": "PRIMARY KEY (actor_id, request_id)",
+            "inherit_count": 0
+          }
+        ],
+        "persistence": "p",
+        "replica_identity": "d",
+        "direct_client_privilege": false
+      }
+    ],
+    "functions": [
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_scope",
+            "p_expected_revision",
+            "p_request_id",
+            "p_action"
+          ],
+          "full_args": "p_org uuid, p_scope jsonb, p_expected_revision bigint, p_request_id uuid, p_action jsonb",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_org uuid, p_scope jsonb, p_expected_revision bigint, p_request_id uuid, p_action jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.apply_document_registry_action(uuid,jsonb,bigint,uuid,jsonb)",
+        "source_md5": "68bc4bd9af97c467fe367ba355ba4364"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_scope",
+            "p_query"
+          ],
+          "full_args": "p_org uuid, p_scope jsonb, p_query jsonb",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_org uuid, p_scope jsonb, p_query jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.read_document_registry(uuid,jsonb,jsonb)",
+        "source_md5": "ca2eb179d3a741d3916db4b28ab98240"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_scope"
+          ],
+          "full_args": "p_org uuid, p_scope jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_scope jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_base(uuid,jsonb)",
+        "source_md5": "a5839498b82dc0b843f54873f2eab9c2"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group"
+          ],
+          "full_args": "p_org uuid, p_group uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_caps(uuid,uuid)",
+        "source_md5": "74a005d357bfda3b543ebb702ffcb211"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_data"
+          ],
+          "full_args": "p_org uuid, p_data jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_data jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_capture_data(uuid,jsonb)",
+        "source_md5": "8d3f04e1e40492f2ede4eadfa8d202f0"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "boolean",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_company"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_company uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_company uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_company(uuid,uuid,uuid)",
+        "source_md5": "629b02ff923eb2057e031dabf74aaf3b"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_subject",
+            "p_context",
+            "p_check"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_subject jsonb, p_context jsonb, p_check boolean DEFAULT true",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_subject jsonb, p_context jsonb, p_check boolean",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_context(uuid,uuid,jsonb,jsonb,boolean)",
+        "source_md5": "07688ef87c1d1144c8151a4f5a6be76d"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_subject",
+            "p_context"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_subject jsonb, p_context jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_subject jsonb, p_context jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_context_try(uuid,uuid,jsonb,jsonb)",
+        "source_md5": "65ff2ef6829f991c49cc854b32a75171"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_data",
+            "p_check_context"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_data jsonb, p_check_context boolean DEFAULT true",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_data jsonb, p_check_context boolean",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_data(uuid,uuid,jsonb,boolean)",
+        "source_md5": "85e1d76d9ffb0460f7da7003e17b1cd4"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "void",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_user"
+          ],
+          "full_args": "p_user uuid",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_user uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_erase_user(uuid)",
+        "source_md5": "959e7ccc4b5abe7f6f018c0054a96d05"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog"
+          ],
+          "result": "void",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_code"
+          ],
+          "full_args": "p_code text",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_code text",
+          "set_returning": false,
+          "security_definer": false
+        },
+        "signature": "public.uc_document_registry_error(text)",
+        "source_md5": "7847e9de400344a820caff181455e81a"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p"
+          ],
+          "full_args": "p uc_document_registry_events",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p uc_document_registry_events",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_event_json(uc_document_registry_events)",
+        "source_md5": "a1968feff359697481043d6b42e9cbba"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "void",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_people",
+            "p_write",
+            "p_request"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_people uuid[], p_write boolean DEFAULT false, p_request uuid DEFAULT NULL::uuid",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_org uuid, p_group uuid, p_people uuid[], p_write boolean, p_request uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_fence(uuid,uuid,uuid[],boolean,uuid)",
+        "source_md5": "513fe676fc7693345737d198717d3e19"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_source"
+          ],
+          "full_args": "p_org uuid, p_source jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_source jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_file(uuid,jsonb)",
+        "source_md5": "78c2664114641676c37074ba550dd898"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "boolean",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p"
+          ],
+          "full_args": "p jsonb",
+          "leakproof": false,
+          "volatility": "i",
+          "identity_args": "p jsonb",
+          "set_returning": false,
+          "security_definer": false
+        },
+        "signature": "public.uc_document_registry_filters(jsonb)",
+        "source_md5": "9ff5956a3af737ae4435a0a417f8db22"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog"
+          ],
+          "result": "text",
+          "schema": "public",
+          "strict": true,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p_text"
+          ],
+          "full_args": "p_text text",
+          "leakproof": false,
+          "volatility": "i",
+          "identity_args": "p_text text",
+          "set_returning": false,
+          "security_definer": false
+        },
+        "signature": "public.uc_document_registry_hash(text)",
+        "source_md5": "2904c88a489f5af8c7c711be00780d27"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p",
+            "p_group",
+            "p_caps"
+          ],
+          "full_args": "p incoming_documents, p_group uuid, p_caps jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p incoming_documents, p_group uuid, p_caps jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_incoming_json(incoming_documents,uuid,jsonb)",
+        "source_md5": "0f729b1b16228aa762296e744bdba8ec"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_incoming",
+            "p_data"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_incoming jsonb, p_data jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_incoming jsonb, p_data jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_incoming_plan(uuid,uuid,jsonb,jsonb)",
+        "source_md5": "2c231b8ccf4ffcb7a0af3dfd9471a494"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_id"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_id uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_id uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_legacy(uuid,uuid,uuid)",
+        "source_md5": "f165e9f591f0d3a1972c18ac8c4d16b0"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "boolean",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_enrollment"
+          ],
+          "full_args": "p_org uuid, p_enrollment uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_enrollment uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_legacy_visible(uuid,uuid)",
+        "source_md5": "9f7849ae724229b374f118df6ba3e9f1"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "boolean",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p",
+            "p_group",
+            "p_filters"
+          ],
+          "full_args": "p uc_document_registry_records, p_group uuid, p_filters jsonb",
+          "leakproof": false,
+          "volatility": "i",
+          "identity_args": "p uc_document_registry_records, p_group uuid, p_filters jsonb",
+          "set_returning": false,
+          "security_definer": false
+        },
+        "signature": "public.uc_document_registry_matches(uc_document_registry_records,uuid,jsonb)",
+        "source_md5": "877e5cc90fa1dbe48386cae8fcf55076"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_party"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_party jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_party jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_party(uuid,uuid,jsonb)",
+        "source_md5": "6944f426982281907f44a484de7fcaba"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "text",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_party"
+          ],
+          "full_args": "p_org uuid, p_party jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_party jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_party_label(uuid,jsonb)",
+        "source_md5": "76080304c8bb33f6d8679f545dca04ef"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p_user"
+          ],
+          "full_args": "p_user uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_user uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_personal_counts(uuid)",
+        "source_md5": "8c2a93b5b8c6c269f1d91cafab27fb63"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p_user"
+          ],
+          "full_args": "p_user uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_user uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_privacy_targets(uuid)",
+        "source_md5": "6e4c8a0a67d5fd579e0919ca7a9ad179"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public",
+            "TimeZone=UTC"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p",
+            "p_caps"
+          ],
+          "full_args": "p uc_document_registry_records, p_caps jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p uc_document_registry_records, p_caps jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_record_json(uc_document_registry_records,jsonb)",
+        "source_md5": "805e69ceb96cee4412a7593493fa5899"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_scope",
+            "p_req",
+            "p_caps"
+          ],
+          "full_args": "p_org uuid, p_scope jsonb, p_req uc_document_registry_requests, p_caps jsonb",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_org uuid, p_scope jsonb, p_req uc_document_registry_requests, p_caps jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_replay(uuid,jsonb,uc_document_registry_requests,jsonb)",
+        "source_md5": "68f66f2ed56f3ea1769069a807f21c62"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "uuid",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_scope"
+          ],
+          "full_args": "p_org uuid, p_scope jsonb",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_scope jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_scope(uuid,jsonb)",
+        "source_md5": "8e5c5196b2b073af60238cc12f527661"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_ref",
+            "p_required",
+            "p_own_write"
+          ],
+          "full_args": "p_org uuid, p_ref jsonb, p_required boolean DEFAULT true, p_own_write boolean DEFAULT false",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_ref jsonb, p_required boolean, p_own_write boolean",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_source(uuid,jsonb,boolean,boolean)",
+        "source_md5": "8faab0a76f1866052e82414547b60436"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_document",
+            "p_version",
+            "p_own_write"
+          ],
+          "full_args": "p_org uuid, p_document uuid, p_version uuid, p_own_write boolean DEFAULT false",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_document uuid, p_version uuid, p_own_write boolean",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_source_choice(uuid,uuid,uuid,boolean)",
+        "source_md5": "3b7c99c0ae26f63b8ccfd1d0ac7be998"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_ref",
+            "p_own"
+          ],
+          "full_args": "p_org uuid, p_ref jsonb, p_own boolean DEFAULT false",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_org uuid, p_ref jsonb, p_own boolean",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_source_lock(uuid,jsonb,boolean)",
+        "source_md5": "251813f619d573f3812d2e044ac9db75"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "boolean",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_user"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_user uuid",
+          "leakproof": false,
+          "volatility": "s",
+          "identity_args": "p_org uuid, p_group uuid, p_user uuid",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_student(uuid,uuid,uuid)",
+        "source_md5": "9fc6d77dc8cff0018a9e6d9c17a6da27"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog"
+          ],
+          "result": "boolean",
+          "schema": "public",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "arg_names": [
+            "p",
+            "p_max",
+            "p_empty"
+          ],
+          "full_args": "p jsonb, p_max integer, p_empty boolean DEFAULT false",
+          "leakproof": false,
+          "volatility": "i",
+          "identity_args": "p jsonb, p_max integer, p_empty boolean",
+          "set_returning": false,
+          "security_definer": false
+        },
+        "signature": "public.uc_document_registry_text(jsonb,integer,boolean)",
+        "source_md5": "be3dc787389641e6f5072512c07316b9"
+      },
+      {
+        "portable": {
+          "acl": "{postgres=X/postgres}",
+          "cost": 100,
+          "kind": "f",
+          "rows": 0,
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_catalog, public"
+          ],
+          "result": "jsonb",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arg_names": [
+            "p_org",
+            "p_group",
+            "p_data"
+          ],
+          "full_args": "p_org uuid, p_group uuid, p_data jsonb",
+          "leakproof": false,
+          "volatility": "v",
+          "identity_args": "p_org uuid, p_group uuid, p_data jsonb",
+          "set_returning": false,
+          "security_definer": true
+        },
+        "signature": "public.uc_document_registry_write_proof(uuid,uuid,jsonb)",
+        "source_md5": "1e142aa8a49bcd977180895fcfc259a4"
+      }
+    ]
+  },
+  "portableCatalogSQLSHA256": "5d8bddba45199bf986f2116aa865a3f8b9fe469a24bd1c73bd6cc687c2891144",
+  "productionPolicyPreImage": {
+    "metadata": {
+      "oid": "258189",
+      "polcmd": "r",
+      "polname": "uc_document_assigned_read",
+      "polpermissive": false,
+      "polqual": "{BOOLEXPR :boolop or :args ({OPEXPR :opno 2972 :opfuncid 2956 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 0 :args ({VAR :varno 1 :varattno 4 :vartype 2950 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 4 :location -1} {FUNCEXPR :funcid 16538 :funcresulttype 2950 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location -1}) :location -1} {FUNCEXPR :funcid 257951 :funcresulttype 16 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args ({VAR :varno 1 :varattno 3 :vartype 2950 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 3 :location -1} {VAR :varno 1 :varattno 2 :vartype 2950 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 2 :location -1}) :location -1} {FUNCEXPR :funcid 258170 :funcresulttype 16 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args ({VAR :varno 1 :varattno 2 :vartype 2950 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 2 :location -1} {CONST :consttype 2950 :consttypmod -1 :constcollid 0 :constlen 16 :constbyval false :constisnull true :location -1 :constvalue <>} {VAR :varno 1 :varattno 3 :vartype 2950 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 3 :location -1} {VAR :varno 1 :varattno 4 :vartype 2950 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 4 :location -1} {CONST :consttype 2950 :consttypmod -1 :constcollid 0 :constlen 16 :constbyval false :constisnull true :location -1 :constvalue <>}) :location -1}) :location -1}",
+      "polrelid": "20451",
+      "polroles": [
+        "16481"
+      ],
+      "polwithcheck": null
+    },
+    "qual": "((user_id = auth.uid()) OR uc_document_owns_enrollment(enrollment_id, organization_id) OR uc_document_record_scope(organization_id, NULL::uuid, enrollment_id, user_id, NULL::uuid))",
+    "qual_md5": "5fdd3fc60911993f9f665aa7e6ed2bc4"
+  },
+  "productionPolicyPreImageSHA256": "ac94c2266d98895dee73adff95995787a559a55f5aba44025b1104baa2afc829",
+  "newPolicyQualMD5": "c0d8fe4238846f228fcb285c97cb13b2",
+  "note": "ExactSQL E: five actual cases PASS in immutableV11overallFAIL, two entire corrected cases PASS focusedV13; actual portablecatalog from V13. No production execution by backend agent.",
+  "nativeAcceptance": {
+    "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc018-document-registry-evidence-20261022/BACKEND_NATIVE_CONSOLIDATED_ACCEPTANCE.json",
+    "bytes": 21854,
+    "sha256": "6f395fc55f4cb6af9871bdc8bd66de643395c8d79dc05aedf899fec6a12dfbd5"
+  }
+}

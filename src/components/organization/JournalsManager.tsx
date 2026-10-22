@@ -13,7 +13,7 @@ import { JournalEditor } from "./JournalEditor";
 import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
-import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
+import { ServerDocumentRegistrationJournal } from "./ServerDocumentRegistrationJournal";
 import { ServerCopiesDuplicatesJournal } from "./ServerCopiesDuplicatesJournal";
 import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { CustomJournalsPanel } from './CustomJournalsPanel';
@@ -109,9 +109,9 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const journalView = searchParams.get("journalView");
   const knownManualJournal = JOURNAL_CATEGORIES.flatMap(category => category.journals).find(journal => journal.id === journalType)
 ;
-  const activeJournal = journalView === "manual" && knownManualJournal && knownManualJournal.id !== "copies_duplicates"
+  const activeJournal = journalView === "manual" && knownManualJournal && !["copies_duplicates", "document_registration"].includes(knownManualJournal.id)
     ? { type: knownManualJournal.id, title: knownManualJournal.title } : null;
-  const activeAutoJournal = journalType === "copies_duplicates" && (journalView === "auto" || journalView === "manual") ? "copies_duplicates" : journalView === "auto" && journalType
+  const activeAutoJournal = ["copies_duplicates", "document_registration"].includes(journalType ?? "") && (journalView === "auto" || journalView === "manual") ? journalType : journalView === "auto" && journalType
     && (AUTO_JOURNALS[journalType] || SPECIAL_JOURNALS.has(journalType) || journalType === "identification")
     ? journalType : hasEducationDocumentFocus ? "education_documents" : null;
 
@@ -230,7 +230,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     if (activeAutoJournal === "attendance") return gate("attendance", <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "current_control") return gate("current_control", <AutoGradesJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "final_attestation") return gate("final_attestation", <AutoFinalAttestationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
-    if (activeAutoJournal === "document_registration") return gate("document_registration", <AutoDocumentRegistrationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "document_registration") return <ServerDocumentRegistrationJournal organizationId={organizationId} registryScope={scopedGroupId !== null ? { kind: 'group', group_id: scopedGroupId } : { kind: 'organization' }} onClose={closeAuto} />;
     if (activeAutoJournal === "copies_duplicates") return <ServerCopiesDuplicatesJournal organizationId={organizationId} registryScope={scopedGroupId !== null ? { kind: 'group', group_id: scopedGroupId } : { kind: 'organization' }} onClose={closeAuto} />;
     if (activeAutoJournal === "education_documents") return gate("education_documents", (
       <EducationDocumentsJournal
@@ -382,7 +382,7 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
       <div className="flex items-center gap-2 flex-shrink-0 ml-4">
         {hasAutoMode ? (
           <>
-            <Button variant="default" size="sm" className="rounded-lg" onClick={onAutoClick}><BarChart3 className="w-4 h-4 mr-2" />{inGroupContext ? "Открыть по группе" : "Автоматический"}</Button>
+            <Button variant="default" size="sm" className="rounded-lg" onClick={onAutoClick}><BarChart3 className="w-4 h-4 mr-2" />{inGroupContext ? "Открыть по группе" : journal.id === "document_registration" ? "Открыть реестр" : "Автоматический"}</Button>
             {!inGroupContext && (
               <Button variant="outline" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Ручной</Button>
             )}

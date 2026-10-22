@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
+import { captureCustomJournalScope, customJournalScopeCurrent } from "@/lib/customJournals/client";
 import { Student, Course } from "@/types/shared";
 import { deleteStudent, fetchStudentsByUserIds } from "@/api/students";
 import { qk } from "@/lib/queryKeys";
@@ -14,7 +14,9 @@ import {
 
 /**
  * Phase 4A.2 — hard cap on bulk mutations that hit `.in(...)` directly.
- * Enrollment and unenrollment go through single-statement INSERT/DELETE
+ * Enrollment uses one verified INSERT. Withdrawal preparation is read-only;
+ * the retained lifecycle transition is handled by the controlled group workflow.
+ * Bulk population mutations use
  * with `.in()` filters, so we cap the selection to keep the request small
  * and avoid partial-success scenarios that chunked mutations would create.
  * Point-fetch helpers (profiles, passwords, FRDO) already batch internally
@@ -42,11 +44,17 @@ export function useEnrollmentActions(
   onPopulationChanged: () => void,
 ) {
   const qc = useQueryClient();
+  const currentOrganization = useRef(organizationId); currentOrganization.current = organizationId;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const [withdrawalPreparation, setWithdrawalPreparation] = useState<{ actorId: string; accessRevision: number; organizationId: string; rows: { enrollment_id: string; user_id: string; course_id: string; student_name: string; course_title: string; status: string | null; progress: number | null }[] } | null>(null);
+  useEffect(() => { setWithdrawalPreparation(null); }, [organizationId]);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   /** Enrollment IDs staged for unenrollment. Set by the confirmation callback. */
-  const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<string[]>([]);
+  const [selectedEnrollmentIds, setSelectedEnrollmentIdsState] = useState<string[]>([]);
+  const setSelectedEnrollmentIds = useCallback((next: React.SetStateAction<string[]>) => { setWithdrawalPreparation(null); setSelectedEnrollmentIdsState(next); }, []);
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
   const [showBulkFRDOExport, setShowBulkFRDOExport] = useState(false);
@@ -185,31 +193,8 @@ export function useEnrollmentActions(
         })),
       );
 
-      // ---------- Enrollment order (post-mutation, separate error) --------
-      try {
-        const enrolledNames = newUserIds
-          .map(uid => nameByUser.get(uid))
-          .filter((v): v is string => !!v);
-        const course = courses.find(c => c.id === courseId);
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("name, director_name, director_position")
-          .eq("id", organizationId)
-          .single();
-        const orderName = await generateEnrollmentOrder({
-          organizationId,
-          organizationName: orgData?.name || organizationName,
-          directorName: orgData?.director_name,
-          directorPosition: orgData?.director_position,
-          studentNames: enrolledNames,
-          courseName: course?.title || "Курс",
-          orderType: "enrollment",
-        });
-        if (orderName) toast.success(`Приказ о зачислении создан: ${orderName}`);
-      } catch (orderErr) {
-        console.error("[bulkEnroll] enrollment order failed:", orderErr);
-        toast.warning("Ученики зачислены, но приказ создать не удалось");
-      }
+      if (options?.canContinue && !options.canContinue()) return false;
+      toast.info("Приказ автоматически не оформлен. Подготовьте документ в рабочем процессе группы и зарегистрируйте точный файл.");
 
       toast.success(`Зачислено ${newUserIds.length} учеников`);
       setShowEnrollDialog(false);
@@ -241,126 +226,27 @@ export function useEnrollmentActions(
    */
   const bulkUnenroll = useCallback(async (enrollmentIds: string[]) => {
     const ids = Array.from(new Set(enrollmentIds)).filter(Boolean);
-    if (ids.length === 0) {
-      toast.error("Нет выбранных зачислений для отчисления");
-      setShowUnenrollConfirm(false);
-      return false;
-    }
-    if (ids.length > MAX_BULK_MUTATION_SIZE) {
-      toast.error("За одну операцию можно обработать не более 100 учеников. Разделите выбор на несколько операций");
-      return false;
-    }
-    if (!organizationId) return false;
-
-    setIsUnenrolling(true);
+    if (!organizationId || !ids.length || ids.length > MAX_BULK_MUTATION_SIZE) { toast.error('Выберите от 1 до 100 зачислений для подготовки.'); return false; }
+    let scope: ReturnType<typeof captureCustomJournalScope>;
+    try { scope = captureCustomJournalScope(organizationId, () => mounted.current && currentOrganization.current === organizationId); } catch { toast.error('Текущий доступ не подтверждён.'); return false; }
+    const current = () => customJournalScopeCurrent(scope);
+    setIsUnenrolling(true); setWithdrawalPreparation(null);
     try {
-      // ---------- Phase 4A.1 preflight (no mutation yet) -----------------
-      // 1. Load all enrollment rows. Abort if any id is missing.
-      const { data: enrollmentRows, error: enrErr } = await supabase
-        .from("enrollments")
-        .select("id, user_id, course_id, courses(title)")
-        .in("id", ids);
-      if (enrErr) throw enrErr;
-
-      const rows = (enrollmentRows ?? []) as Array<{
-        id: string;
-        user_id: string;
-        course_id: string;
-        courses: { title: string } | null;
-      }>;
-      if (rows.length !== ids.length) {
-        toast.error(
-          `Найдено только ${rows.length} из ${ids.length} зачислений. Отчисление отменено.`,
-        );
-        return false;
-      }
-
-      // 2. Point-fetch profiles for real names. Any missing => abort.
-      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
-      let nameByUser = new Map<string, string>();
-      try {
-        const { students: fetched } = await fetchStudentsByUserIds(
-          organizationId,
-          userIds,
-          { includeEnrollments: false },
-        );
-        nameByUser = new Map(fetched.map(s => [s.user_id, s.name]));
-      } catch (nameErr) {
-        console.error("[bulkUnenroll] preflight profiles failed:", nameErr);
-        toast.error("Не удалось загрузить профили учеников. Отчисление отменено.");
-        return false;
-      }
-      const missingNames = userIds.filter(uid => {
-        const n = nameByUser.get(uid);
-        return !n || !n.trim() || n === "Без имени";
-      });
-      if (missingNames.length > 0) {
-        toast.error(`Нет ФИО у ${missingNames.length} учеников. Отчисление отменено.`);
-        return false;
-      }
-
-      // ---------- Mutation ------------------------------------------------
-      const { error: delError } = await supabase
-        .from("enrollments")
-        .delete()
-        .in("id", ids);
-      if (delError) throw delError;
-
-      // ---------- Expulsion orders (post-mutation, separate error) --------
-      try {
-        const byCourse = new Map<string, { courseName: string; names: string[]; courseId: string }>();
-        for (const r of rows) {
-          const name = nameByUser.get(r.user_id)!;
-          const entry = byCourse.get(r.course_id) ?? {
-            courseName: r.courses?.title || "Курс",
-            names: [],
-            courseId: r.course_id,
-          };
-          entry.names.push(name);
-          byCourse.set(r.course_id, entry);
-        }
-        if (byCourse.size > 0) {
-          const { data: orgData } = await supabase
-            .from("organizations")
-            .select("name, director_name, director_position")
-            .eq("id", organizationId)
-            .single();
-          for (const entry of byCourse.values()) {
-            const orderName = await generateEnrollmentOrder({
-              organizationId,
-              organizationName: orgData?.name || organizationName,
-              directorName: orgData?.director_name,
-              directorPosition: orgData?.director_position,
-              studentNames: entry.names,
-              courseName: entry.courseName,
-              orderType: "expulsion",
-            });
-            if (orderName) toast.success(`Приказ об отчислении создан: ${orderName}`);
-          }
-        }
-      } catch (orderErr) {
-        console.error("[bulkUnenroll] expulsion order failed:", orderErr);
-        toast.warning("Ученики отчислены, но приказ создать не удалось");
-      }
-
-      toast.success(`Отчислено ${ids.length} зачислений`);
-      setShowUnenrollConfirm(false);
-      setSelectedStudentIds(new Set());
-      setSelectedEnrollmentIds([]);
-      // onEnrollmentChanged (refreshEnrollmentData) covers studentsPage + summary + overview.
-      for (const courseId of new Set(rows.map(r => r.course_id))) {
-        invalidateCourse(courseId);
-      }
-      onEnrollmentChanged();
+      const { data, error } = await supabase.from('enrollments').select('id, user_id, course_id, status, progress, courses(title, organization_id)').in('id', ids);
+      if (!current()) return false; if (error) throw error;
+      const rows = (data ?? []) as { id: string; user_id: string; course_id: string; status: string | null; progress: number | null; courses: { title: string; organization_id: string } | null }[];
+      if (rows.length !== ids.length || new Set(rows.map(row => row.id)).size !== ids.length || rows.some(row => !ids.includes(row.id) || row.courses?.organization_id !== organizationId)) throw new Error('Набор зачислений изменился или относится к другой организации.');
+      const { students } = await fetchStudentsByUserIds(organizationId, [...new Set(rows.map(row => row.user_id))], { includeEnrollments: false });
+      if (!current()) return false;
+      const names = new Map(students.map(student => [student.user_id, student.name]));
+      if (rows.some(row => !names.get(row.user_id)?.trim() || names.get(row.user_id) === 'Без имени')) throw new Error('Не удалось подтвердить сведения выбранных учеников.');
+      // Preparation is a factual, unnumbered selection. Never delete enrollments before a durable lifecycle event.
+      setWithdrawalPreparation({ actorId: scope.actorId, accessRevision: scope.accessRevision, organizationId, rows: rows.map(row => ({ enrollment_id: row.id, user_id: row.user_id, course_id: row.course_id, student_name: names.get(row.user_id)!, course_title: row.courses!.title, status: row.status, progress: row.progress })) });
+      toast.info('Выбор для подготовки отчисления проверен. Зачисления и результаты сохранены; приказ и событие отчисления не создавались.');
       return true;
-    } catch (error) {
-      console.error("Error unenrolling:", error);
-      toast.error("Ошибка отчисления");
-      return false;
-    } finally {
-      setIsUnenrolling(false);
-    }
-  }, [organizationId, organizationName, invalidateCourse, onEnrollmentChanged]);
+    } catch (error) { if (current()) toast.error(error instanceof Error ? error.message : 'Не удалось проверить выбранные зачисления. Данные не изменены.'); return false; }
+    finally { if (current()) setIsUnenrolling(false); }
+  }, [organizationId]);
 
   const getSelectedEnrollmentsCount = useCallback(
     () => selectedEnrollmentIds.length,
@@ -448,6 +334,7 @@ export function useEnrollmentActions(
     getSelectedUserIds,
     bulkEnroll,
     bulkUnenroll,
+    withdrawalPreparation: withdrawalPreparation && withdrawalPreparation.organizationId === organizationId && customJournalScopeCurrent(withdrawalPreparation) ? withdrawalPreparation : null,
     bulkDelete,
     getSelectedEnrollmentsCount,
     deleteEnrollment,

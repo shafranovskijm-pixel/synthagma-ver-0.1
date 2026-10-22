@@ -1,0 +1,909 @@
+{
+  "schema_version": 1,
+  "scope": "Schema-only captured dependencies; no customer rows or authority stubs",
+  "sources": [
+    {
+      "path": "work/uc-continuous-roadmap-20261022/uc018-preparation/ACTUAL_SEQUENCES_INCOMING_COMPANIES_METADATA.json",
+      "sha256": "fb90e5a1c2af52595d5da291996cb4746314f2997b01332a483f08a41253311a"
+    },
+    {
+      "path": "work/uc-continuous-roadmap-20261022/uc018-preparation/ACTUAL_COLUMNS_PRE_UC018.json",
+      "sha256": "14f38fdbfed11d95a79875e1e2180f043ff69f7e73369b9383aefe7a85b63312"
+    },
+    {
+      "path": "work/uc-continuous-roadmap-20261022/uc018-preparation/ACTUAL_REGISTRATION_CATALOG_PRE_UC018.json",
+      "sha256": "74190ff924928b550cd097f94053a99f971ed549f17a678c340da2b45a48aab4"
+    }
+  ],
+  "relations": [
+    {
+      "class": {
+        "oid": "18970",
+        "relacl": [
+          "postgres=arwdDxtm/postgres",
+          "anon=arwdDxtm/postgres",
+          "authenticated=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+          "sandbox_exec=ar/postgres"
+        ],
+        "relallvisible": 0,
+        "relam": "2",
+        "relchecks": 0,
+        "relfilenode": "18970",
+        "relforcerowsecurity": false,
+        "relfrozenxid": "1346",
+        "relhasindex": true,
+        "relhasrules": false,
+        "relhassubclass": false,
+        "relhastriggers": true,
+        "relispartition": false,
+        "relispopulated": true,
+        "relisshared": false,
+        "relkind": "r",
+        "relminmxid": "1",
+        "relname": "companies",
+        "relnamespace": "2200",
+        "relnatts": 25,
+        "reloftype": "0",
+        "reloptions": null,
+        "relowner": "16384",
+        "relpages": 0,
+        "relpartbound": null,
+        "relpersistence": "p",
+        "relreplident": "d",
+        "relrewrite": "0",
+        "relrowsecurity": true,
+        "reltablespace": "0",
+        "reltoastrelid": "18976",
+        "reltuples": -1,
+        "reltype": "18972"
+      },
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "inn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "kpp",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ogrn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "director",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "stamp_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signature_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "login_email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "generated_password",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "postal_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_account",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_bik",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bank_corr_account",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signatory_position",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signatory_name_genitive",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "signatory_authority_clause",
+          "not_null": false,
+          "type": "text"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "companies_pkey"
+        },
+        {
+          "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)",
+          "name": "companies_user_id_fkey"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)",
+        "CREATE INDEX idx_companies_organization ON public.companies USING btree (organization_id)"
+      ],
+      "name": "companies",
+      "policies": [
+        {
+          "cmd": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "policyname": "Companies can update own record",
+          "qual": "(id = current_company_id())",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": null
+        },
+        {
+          "cmd": "SELECT",
+          "permissive": "PERMISSIVE",
+          "policyname": "Companies can view own record",
+          "qual": "(id = current_company_id())",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": null
+        },
+        {
+          "cmd": "DELETE",
+          "permissive": "PERMISSIVE",
+          "policyname": "Org staff can delete companies",
+          "qual": "can_access_organization(organization_id, 'companies.write'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": null
+        },
+        {
+          "cmd": "INSERT",
+          "permissive": "PERMISSIVE",
+          "policyname": "Org staff can insert companies",
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": "can_access_organization(organization_id, 'companies.write'::text)"
+        },
+        {
+          "cmd": "SELECT",
+          "permissive": "PERMISSIVE",
+          "policyname": "Org staff can read companies",
+          "qual": "can_access_organization(organization_id, 'companies.read'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": null
+        },
+        {
+          "cmd": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "policyname": "Org staff can update companies",
+          "qual": "can_access_organization(organization_id, 'companies.write'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": "can_access_organization(organization_id, 'companies.write'::text)"
+        },
+        {
+          "cmd": "ALL",
+          "permissive": "RESTRICTIVE",
+          "policyname": "account_deletion_no_revoked_access",
+          "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "companies",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER audit_companies AFTER INSERT OR DELETE OR UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+          "name": "audit_companies"
+        },
+        {
+          "definition": "CREATE TRIGGER trigger_encrypt_company_password BEFORE INSERT OR UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION trigger_encrypt_profile_password()",
+          "name": "trigger_encrypt_company_password"
+        },
+        {
+          "definition": "CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "name": "update_companies_updated_at"
+        }
+      ]
+    },
+    {
+      "class": {
+        "oid": "136338",
+        "relacl": [
+          "postgres=arwdDxtm/postgres",
+          "anon=arwdDxtm/postgres",
+          "authenticated=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+          "sandbox_exec=ar/postgres"
+        ],
+        "relallvisible": 0,
+        "relam": "2",
+        "relchecks": 0,
+        "relfilenode": "136338",
+        "relforcerowsecurity": false,
+        "relfrozenxid": "183782",
+        "relhasindex": true,
+        "relhasrules": false,
+        "relhassubclass": false,
+        "relhastriggers": false,
+        "relispartition": false,
+        "relispopulated": true,
+        "relisshared": false,
+        "relkind": "r",
+        "relminmxid": "139",
+        "relname": "document_number_sequences",
+        "relnamespace": "2200",
+        "relnatts": 5,
+        "reloftype": "0",
+        "reloptions": null,
+        "relowner": "16384",
+        "relpages": 0,
+        "relpartbound": null,
+        "relpersistence": "p",
+        "relreplident": "d",
+        "relrewrite": "0",
+        "relrowsecurity": true,
+        "reltablespace": "0",
+        "reltoastrelid": "136343",
+        "reltuples": -1,
+        "reltype": "136340"
+      },
+      "columns": [
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "doc_type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "year",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "name": "last_number",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (organization_id, doc_type, year)",
+          "name": "document_number_sequences_pkey"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX document_number_sequences_pkey ON public.document_number_sequences USING btree (organization_id, doc_type, year)"
+      ],
+      "name": "document_number_sequences",
+      "policies": [
+        {
+          "cmd": "ALL",
+          "permissive": "RESTRICTIVE",
+          "policyname": "account_deletion_no_revoked_access",
+          "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "document_number_sequences",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "cmd": "ALL",
+          "permissive": "PERMISSIVE",
+          "policyname": "no_direct_access_seq",
+          "qual": "false",
+          "roles": [
+            "public"
+          ],
+          "schemaname": "public",
+          "tablename": "document_number_sequences",
+          "with_check": "false"
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "class": {
+        "oid": "136452",
+        "relacl": [
+          "postgres=arwdDxtm/postgres",
+          "anon=arwdDxtm/postgres",
+          "authenticated=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+          "sandbox_exec=ar/postgres"
+        ],
+        "relallvisible": 0,
+        "relam": "2",
+        "relchecks": 1,
+        "relfilenode": "136452",
+        "relforcerowsecurity": false,
+        "relfrozenxid": "184038",
+        "relhasindex": true,
+        "relhasrules": false,
+        "relhassubclass": false,
+        "relhastriggers": true,
+        "relispartition": false,
+        "relispopulated": true,
+        "relisshared": false,
+        "relkind": "r",
+        "relminmxid": "139",
+        "relname": "incoming_documents",
+        "relnamespace": "2200",
+        "relnatts": 20,
+        "reloftype": "0",
+        "reloptions": null,
+        "relowner": "16384",
+        "relpages": 0,
+        "relpartbound": null,
+        "relpersistence": "p",
+        "relreplident": "d",
+        "relrewrite": "0",
+        "relrowsecurity": true,
+        "reltablespace": "0",
+        "reltoastrelid": "136460",
+        "reltuples": -1,
+        "reltype": "136454"
+      },
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'contract'::text",
+          "name": "doc_type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "title",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "counterparty_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "counterparty_inn",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "doc_number",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "doc_date",
+          "not_null": false,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "name": "file_url",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "file_path",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "file_size",
+          "not_null": false,
+          "type": "bigint"
+        },
+        {
+          "default": null,
+          "name": "notes",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "related_signature_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "related_billing_doc_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "related_company_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "uploaded_by",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "deleted_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "deleted_by",
+          "not_null": false,
+          "type": "uuid"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK ((doc_type = ANY (ARRAY['contract'::text, 'act'::text, 'invoice'::text, 'other'::text])))",
+          "name": "incoming_documents_doc_type_check"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "incoming_documents_organization_id_fkey"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "incoming_documents_pkey"
+        },
+        {
+          "definition": "FOREIGN KEY (related_billing_doc_id) REFERENCES org_billing_documents(id) ON DELETE SET NULL",
+          "name": "incoming_documents_related_billing_doc_id_fkey"
+        },
+        {
+          "definition": "FOREIGN KEY (related_company_id) REFERENCES companies(id) ON DELETE SET NULL",
+          "name": "incoming_documents_related_company_id_fkey"
+        },
+        {
+          "definition": "FOREIGN KEY (related_signature_id) REFERENCES document_signatures(id) ON DELETE SET NULL",
+          "name": "incoming_documents_related_signature_id_fkey"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX incoming_documents_pkey ON public.incoming_documents USING btree (id)",
+        "CREATE INDEX idx_incoming_docs_org ON public.incoming_documents USING btree (organization_id, created_at DESC)",
+        "CREATE INDEX idx_incoming_docs_inn ON public.incoming_documents USING btree (counterparty_inn)",
+        "CREATE INDEX idx_incoming_docs_signature ON public.incoming_documents USING btree (related_signature_id)",
+        "CREATE INDEX idx_incoming_deleted_at ON public.incoming_documents USING btree (deleted_at) WHERE (deleted_at IS NOT NULL)"
+      ],
+      "name": "incoming_documents",
+      "policies": [
+        {
+          "cmd": "ALL",
+          "permissive": "RESTRICTIVE",
+          "policyname": "account_deletion_no_revoked_access",
+          "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "incoming_documents",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "cmd": "SELECT",
+          "permissive": "RESTRICTIVE",
+          "policyname": "uc_document_assigned_read",
+          "qual": "(NOT uc_document_teacher_limited(organization_id))",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "incoming_documents",
+          "with_check": null
+        },
+        {
+          "cmd": "DELETE",
+          "permissive": "PERMISSIVE",
+          "policyname": "uc_documents_delete",
+          "qual": "uc_document_org_access(organization_id, true)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "incoming_documents",
+          "with_check": null
+        },
+        {
+          "cmd": "INSERT",
+          "permissive": "PERMISSIVE",
+          "policyname": "uc_documents_insert",
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "incoming_documents",
+          "with_check": "uc_document_org_access(organization_id, true)"
+        },
+        {
+          "cmd": "SELECT",
+          "permissive": "PERMISSIVE",
+          "policyname": "uc_documents_select",
+          "qual": "uc_document_org_access(organization_id, false)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "incoming_documents",
+          "with_check": null
+        },
+        {
+          "cmd": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "policyname": "uc_documents_update",
+          "qual": "uc_document_org_access(organization_id, true)",
+          "roles": [
+            "authenticated"
+          ],
+          "schemaname": "public",
+          "tablename": "incoming_documents",
+          "with_check": "uc_document_org_access(organization_id, true)"
+        }
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER trg_incoming_docs_updated_at BEFORE UPDATE ON public.incoming_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "name": "trg_incoming_docs_updated_at"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.incoming_documents FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+          "name": "uc_document_action_guard"
+        }
+      ]
+    }
+  ],
+  "legacyColumns": [
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "organization_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "enrollment_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "document_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "document_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "reg_number",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "issued_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "send_method",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "send_number",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "file_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "deleted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    },
+    {
+      "column_default": null,
+      "column_name": "deleted_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "document_issuance_log"
+    }
+  ],
+  "legacyPolicies": [
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_read",
+      "qual": "((user_id = auth.uid()) OR uc_document_owns_enrollment(enrollment_id, organization_id) OR uc_document_record_scope(organization_id, NULL::uuid, enrollment_id, user_id, NULL::uuid))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_delete",
+      "qual": "uc_document_row_action_allowed('document_issuance_log'::text, to_jsonb(document_issuance_log.*))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": "uc_document_row_action_allowed('document_issuance_log'::text, to_jsonb(document_issuance_log.*))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_select",
+      "qual": "(uc_document_org_access(organization_id, false) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid())) OR uc_document_owns_enrollment(enrollment_id, organization_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_update",
+      "qual": "uc_document_row_action_allowed('document_issuance_log'::text, to_jsonb(document_issuance_log.*))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": "uc_document_row_action_allowed('document_issuance_log'::text, to_jsonb(document_issuance_log.*))"
+    }
+  ]
+}

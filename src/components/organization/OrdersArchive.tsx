@@ -126,7 +126,7 @@ export function OrdersArchive({ documents, onDelete, onView }: OrdersArchiveProp
       <div className="text-center py-12 text-muted-foreground">
         <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
         <p>Приказов пока нет</p>
-        <p className="text-sm mt-1">Приказы создаются автоматически при зачислении/отчислении студентов</p>
+        <p className="text-sm mt-1">Подготовьте приказ в документах группы и зарегистрируйте сохранённую версию. Зачисление само по себе не создаёт приказ.</p>
       </div>
     );
   }

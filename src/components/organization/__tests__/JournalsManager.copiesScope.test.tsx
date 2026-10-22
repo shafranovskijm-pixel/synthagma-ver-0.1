@@ -25,7 +25,7 @@ vi.mock("@/components/organization/JournalEditor", () => ({ JournalEditor: () =>
 vi.mock("@/components/organization/AutoAttendanceJournal", () => ({ AutoAttendanceJournal: () => null }));
 vi.mock("@/components/organization/AutoGradesJournal", () => ({ AutoGradesJournal: () => null }));
 vi.mock("@/components/organization/AutoFinalAttestationJournal", () => ({ AutoFinalAttestationJournal: () => null }));
-vi.mock("@/components/organization/AutoDocumentRegistrationJournal", () => ({ AutoDocumentRegistrationJournal: () => null }));
+vi.mock("@/components/organization/ServerDocumentRegistrationJournal", () => ({ ServerDocumentRegistrationJournal: ({ organizationId, registryScope }: any) => <div data-testid="server-document-registry">{JSON.stringify({ organizationId, registryScope })}</div> }));
 vi.mock("@/components/organization/EducationDocumentsJournal", () => ({ EducationDocumentsJournal: () => null }));
 vi.mock("@/components/organization/JournalCreationWizard", () => ({ JournalCreationWizard: () => null }));
 vi.mock("@/components/organization/IdentificationJournal", () => ({ IdentificationJournal: () => null }));
@@ -88,4 +88,17 @@ describe("copy journal production routing preserves historical browser bytes", (
 
 describe("ordinary group journal availability",()=>{
  it("allows journal creation with server write permission even when the group has no course",async()=>{render(<JournalsManager organizationId="org-a" groupId="00000000-0000-4000-8000-000000000002" courseId={null}/>);await act(async()=>{});expect(screen.getByRole("button",{name:"Создать журнал группы"})).toBeEnabled();expect(screen.getByTestId("group-journals-scope-notice")).toHaveTextContent("Заметки можно вести и без закреплённой программы");expect(screen.getByTestId("group-journals-scope-notice")).toHaveTextContent("Для связи с подтверждёнными занятиями и результатами закрепите программу группы");});
+});
+
+describe('document registration production routing', () => {
+  it.each(['auto', 'manual'])('routes %s document links to the authoritative registry, bypassing old aggregate writers', async view => {
+    mocks.params = new URLSearchParams({ journalType: 'document_registration', journalView: view });
+    render(<JournalsManager organizationId="org-a" />); await act(async () => {});
+    expect(screen.getByTestId('server-document-registry')).toHaveTextContent(JSON.stringify({ organizationId: 'org-a', registryScope: { kind: 'organization' } }));
+  });
+  it('passes the exact group even without a program and never silently falls back to organization scope for an invalid group input', async () => {
+    mocks.params = new URLSearchParams({ journalType: 'document_registration', journalView: 'auto' });
+    render(<JournalsManager organizationId="org-a" groupId="invalid-group" courseId={null} />); await act(async () => {});
+    expect(screen.getByTestId('server-document-registry')).toHaveTextContent(JSON.stringify({ organizationId: 'org-a', registryScope: { kind: 'group', group_id: 'invalid-group' } }));
+  });
 });

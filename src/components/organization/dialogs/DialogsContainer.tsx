@@ -1,3 +1,5 @@
+import { useUrlNavigation } from '@/hooks/useUrlNavigation';
+import { resolveTabParams } from '@/lib/groups/groupContext';
 import { 
   ImportStudentsDialog,
   UnenrollConfirmDialog,
@@ -23,6 +25,7 @@ import { qk } from "@/lib/queryKeys";
 
 export function DialogsContainer() {
   const d = useOrgDashboard();
+  const { updateParams } = useUrlNavigation();
   const studentGroupsQuery = useQuery({
     queryKey: qk.org.studentGroups(d.organizationId ?? "none"),
     queryFn: async () => {
@@ -55,6 +58,8 @@ export function DialogsContainer() {
         selectedCount={d.getSelectedEnrollmentsCount()}
         isUnenrolling={d.enrollmentActions.isUnenrolling}
         onConfirm={d.handleBulkUnenroll}
+        preparation={d.enrollmentActions.withdrawalPreparation}
+        onOpenGroups={() => { d.enrollmentActions.setShowUnenrollConfirm(false); updateParams(previous => { const next = resolveTabParams(previous, 'students'); next.set('studentsView', 'groups'); return next; }); }}
       />
 
       <AddStudentDialog

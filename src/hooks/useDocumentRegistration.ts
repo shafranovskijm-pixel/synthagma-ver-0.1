@@ -1,3 +1,4 @@
+/** @deprecated Historical compatibility only. Production registry uses server-backed documentRegistry; do not add callers or count these old paths as UC018 verification. */
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
