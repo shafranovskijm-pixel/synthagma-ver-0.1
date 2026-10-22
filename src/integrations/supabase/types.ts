@@ -16560,6 +16560,201 @@ export type Database = {
           },
         ]
       }
+      uc_document_registry_events: {
+        Row: {
+          action: string
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          record_id: string
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          snapshot: Json
+        }
+        Insert: {
+          action: string
+          id?: string
+          organization_id: string
+          participant_ids?: string[]
+          reason: string
+          record_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          snapshot: Json
+        }
+        Update: {
+          action?: string
+          id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          reason?: string
+          record_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          snapshot?: Json
+        }
+        Relationships: []
+      }
+      uc_document_registry_heads: {
+        Row: {
+          organization_id: string
+          revision: number
+        }
+        Insert: {
+          organization_id: string
+          revision?: number
+        }
+        Update: {
+          organization_id?: string
+          revision?: number
+        }
+        Relationships: []
+      }
+      uc_document_registry_incoming_sources: {
+        Row: {
+          binding_hash: string
+          incoming_document_id: string
+          linked_at: string
+          linked_by: string | null
+          organization_id: string
+          participant_ids: string[]
+          record_id: string | null
+          revision: number
+          source: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          binding_hash: string
+          incoming_document_id: string
+          linked_at?: string
+          linked_by?: string | null
+          organization_id: string
+          participant_ids?: string[]
+          record_id?: string | null
+          revision?: number
+          source: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          binding_hash?: string
+          incoming_document_id?: string
+          linked_at?: string
+          linked_by?: string | null
+          organization_id?: string
+          participant_ids?: string[]
+          record_id?: string | null
+          revision?: number
+          source?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      uc_document_registry_records: {
+        Row: {
+          context_binding: Json
+          data: Json
+          group_id: string | null
+          id: string
+          legacy_claim: Json | null
+          organization_id: string
+          participant_ids: string[]
+          redacted: boolean
+          registered_at: string
+          registered_by: string | null
+          registration_id: string
+          revision: number
+          scope_group_ids: string[]
+          sequence_number: number
+          sequence_year: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          context_binding: Json
+          data: Json
+          group_id?: string | null
+          id?: string
+          legacy_claim?: Json | null
+          organization_id: string
+          participant_ids?: string[]
+          redacted?: boolean
+          registered_at?: string
+          registered_by?: string | null
+          registration_id: string
+          revision?: number
+          scope_group_ids?: string[]
+          sequence_number: number
+          sequence_year: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          context_binding?: Json
+          data?: Json
+          group_id?: string | null
+          id?: string
+          legacy_claim?: Json | null
+          organization_id?: string
+          participant_ids?: string[]
+          redacted?: boolean
+          registered_at?: string
+          registered_by?: string | null
+          registration_id?: string
+          revision?: number
+          scope_group_ids?: string[]
+          sequence_number?: number
+          sequence_year?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      uc_document_registry_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          request_id: string
+          result: Json
+          scope: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          organization_id: string
+          participant_ids?: string[]
+          payload_hash: string
+          request_id: string
+          result: Json
+          scope: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload_hash?: string
+          request_id?: string
+          result?: Json
+          scope?: Json
+        }
+        Relationships: []
+      }
       uc_enrollment_delete_witnesses: {
         Row: {
           actor_id: string
@@ -18894,6 +19089,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_document_registry_action: {
+        Args: {
+          p_action: Json
+          p_expected_revision: number
+          p_org: string
+          p_request_id: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       apply_group_education_facts_action: {
         Args: {
@@ -20891,6 +21096,10 @@ export type Database = {
         Args: { p_organization_id: string; p_query: Json }
         Returns: Json
       }
+      read_document_registry: {
+        Args: { p_org: string; p_query: Json; p_scope: Json }
+        Returns: Json
+      }
       read_group_completion_decisions: {
         Args: { p_group_id: string; p_organization_id: string }
         Returns: Json
@@ -21986,6 +22195,178 @@ export type Database = {
           p_user: string
         }
         Returns: boolean
+      }
+      uc_document_registry_base: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: Json
+      }
+      uc_document_registry_caps: {
+        Args: { p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_document_registry_capture_data: {
+        Args: { p_data: Json; p_org: string }
+        Returns: Json
+      }
+      uc_document_registry_company: {
+        Args: { p_company: string; p_group: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_registry_context: {
+        Args: {
+          p_check?: boolean
+          p_context: Json
+          p_group: string
+          p_org: string
+          p_subject: Json
+        }
+        Returns: Json
+      }
+      uc_document_registry_context_try: {
+        Args: {
+          p_context: Json
+          p_group: string
+          p_org: string
+          p_subject: Json
+        }
+        Returns: Json
+      }
+      uc_document_registry_data: {
+        Args: {
+          p_check_context?: boolean
+          p_data: Json
+          p_group: string
+          p_org: string
+        }
+        Returns: Json
+      }
+      uc_document_registry_erase_user: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_document_registry_error: {
+        Args: { p_code: string }
+        Returns: undefined
+      }
+      uc_document_registry_event_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_document_registry_events"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_document_registry_fence: {
+        Args: {
+          p_group: string
+          p_org: string
+          p_people: string[]
+          p_request?: string
+          p_write?: boolean
+        }
+        Returns: undefined
+      }
+      uc_document_registry_file: {
+        Args: { p_org: string; p_source: Json }
+        Returns: Json
+      }
+      uc_document_registry_filters: { Args: { p: Json }; Returns: boolean }
+      uc_document_registry_hash: { Args: { p_text: string }; Returns: string }
+      uc_document_registry_incoming_json: {
+        Args: {
+          p: Database["public"]["Tables"]["incoming_documents"]["Row"]
+          p_caps: Json
+          p_group: string
+        }
+        Returns: Json
+      }
+      uc_document_registry_incoming_plan: {
+        Args: { p_data: Json; p_group: string; p_incoming: Json; p_org: string }
+        Returns: Json
+      }
+      uc_document_registry_legacy: {
+        Args: { p_group: string; p_id: string; p_org: string }
+        Returns: Json
+      }
+      uc_document_registry_legacy_visible: {
+        Args: { p_enrollment: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_registry_matches: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_document_registry_records"]["Row"]
+          p_filters: Json
+          p_group: string
+        }
+        Returns: boolean
+      }
+      uc_document_registry_party: {
+        Args: { p_group: string; p_org: string; p_party: Json }
+        Returns: Json
+      }
+      uc_document_registry_party_label: {
+        Args: { p_org: string; p_party: Json }
+        Returns: string
+      }
+      uc_document_registry_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_document_registry_privacy_targets: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_document_registry_record_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_document_registry_records"]["Row"]
+          p_caps: Json
+        }
+        Returns: Json
+      }
+      uc_document_registry_replay: {
+        Args: {
+          p_caps: Json
+          p_org: string
+          p_req: Database["public"]["Tables"]["uc_document_registry_requests"]["Row"]
+          p_scope: Json
+        }
+        Returns: Json
+      }
+      uc_document_registry_scope: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: string
+      }
+      uc_document_registry_source: {
+        Args: {
+          p_org: string
+          p_own_write?: boolean
+          p_ref: Json
+          p_required?: boolean
+        }
+        Returns: Json
+      }
+      uc_document_registry_source_choice: {
+        Args: {
+          p_document: string
+          p_org: string
+          p_own_write?: boolean
+          p_version: string
+        }
+        Returns: Json
+      }
+      uc_document_registry_source_lock: {
+        Args: { p_org: string; p_own?: boolean; p_ref: Json }
+        Returns: Json
+      }
+      uc_document_registry_student: {
+        Args: { p_group: string; p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_document_registry_text: {
+        Args: { p: Json; p_empty?: boolean; p_max: number }
+        Returns: boolean
+      }
+      uc_document_registry_write_proof: {
+        Args: { p_data: Json; p_group: string; p_org: string }
+        Returns: Json
       }
       uc_document_row_action_allowed: {
         Args: { p_row: Json; p_table: string }
