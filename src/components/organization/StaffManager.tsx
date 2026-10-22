@@ -22,6 +22,7 @@ import { generateStrongPassword } from "@/utils/credentials";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { isCurrentOrganizationAccess, useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
 import { StaffDocumentGroupsDialog } from "@/components/staff/StaffDocumentGroupsDialog";
+import { captureOfflineActor, isOfflineActorCurrent } from "@/utils/courseCache";
 
 interface StaffMember {
   id: string;
@@ -91,6 +92,48 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   const [visibility, setVisibility] = useState("all");
   const [createPassword, setCreatePassword] = useState(generateStrongPassword());
   const [saving, setSaving] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addDisplayName, setAddDisplayName] = useState("");
+  const [addRole, setAddRole] = useState("teacher");
+  const [addVisibility, setAddVisibility] = useState("all");
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addDialogOwner, setAddDialogOwner] = useState<string | null>(null);
+  const addOperation = useRef<symbol | null>(null);
+  const addContextKey = JSON.stringify([
+    organizationId, user?.id ?? null, user?.email?.trim().toLowerCase() ?? null,
+    canWriteStaff, permissions.organizationId, permissions.orgRole, permissions.adminRole,
+    permissions.loading, permissions.error, [...permissions.orgPermissions].sort(), [...permissions.adminSections].sort(),
+  ]);
+  const addContext = useRef({ key: addContextKey, revision: 0, mounted: true, open: false });
+  if (addContext.current.key !== addContextKey) {
+    addContext.current.key = addContextKey;
+    addContext.current.revision += 1;
+    addContext.current.open = false;
+  }
+  const addOwner = `${addContext.current.key}:${addContext.current.revision}`;
+  const addDialogVisible = dialogOpen && canWriteStaff && addDialogOwner === addOwner;
+  const changeAddDialog = (open: boolean) => {
+    const context = addContext.current;
+    context.revision += 1;
+    context.open = open && canWriteStaff;
+    addOperation.current = null;
+    setDialogOpen(context.open);
+    setAddDialogOwner(context.open ? `${context.key}:${context.revision}` : null);
+    setAddError(null);
+    setAddSaving(false);
+    setAddEmail(""); setAddDisplayName(""); setAddRole("teacher"); setAddVisibility("all");
+  };
+
+  useLayoutEffect(() => {
+    addContext.current.mounted = true;
+    return () => {
+      addContext.current.mounted = false;
+      addContext.current.open = false;
+      addContext.current.revision += 1;
+      addOperation.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,63 +167,94 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
 
   useEffect(() => { void loadStaff(); }, [organizationId]);
 
-  const loadStaff = async () => {
-    if (activeOrganization.current !== organizationId) return;
+  const loadStaff = async (scope?: { authorization: string; isCurrent: () => boolean }) => {
+    if (activeOrganization.current !== organizationId || (scope && !scope.isCurrent())) return;
     const generation = ++loadGeneration.current;
     setLoading(true);
     setLoadError(false);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("org_staff")
         .select("*")
         .eq("organization_id", organizationId)
         .order("created_at");
-      if (generation !== loadGeneration.current) return;
+      if (scope) query = query.setHeader("Authorization", scope.authorization);
+      const { data, error } = await query;
+      if (generation !== loadGeneration.current || (scope && !scope.isCurrent())) return;
       if (error) throw error;
       setStaff((data as StaffMember[]) || []);
     } catch {
-      if (generation !== loadGeneration.current) return;
+      if (generation !== loadGeneration.current || (scope && !scope.isCurrent())) return;
       setStaff([]);
       setLoadError(true);
     } finally {
-      if (generation === loadGeneration.current) setLoading(false);
+      if (generation === loadGeneration.current && (!scope || scope.isCurrent())) setLoading(false);
     }
   };
 
   const handleAdd = async () => {
-    if (!email.trim()) { toast.error("Введите email"); return; }
-    setSaving(true);
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("email", email.trim().toLowerCase())
-      .single();
-
-    if (!profile) {
-      toast.error("Пользователь с таким email не найден. Используйте «Пригласить» — мы пришлём ссылку на регистрацию.");
-      setSaving(false);
-      return;
-    }
-
-    const { error } = await supabase.from("org_staff").insert({
-      organization_id: organizationId,
-      user_id: profile.user_id,
-      role,
-      display_name: displayName.trim() || email.trim(),
-      visibility,
-    } as any);
-
-    if (error) {
-      if (error.code === "23505") toast.error("Этот сотрудник уже добавлен");
-      else toast.error("Ошибка: " + error.message);
-    } else {
+    if (!addEmail.trim()) { toast.error("Введите email"); return; }
+    if (!user || !canWriteStaff || !addDialogVisible || addOperation.current) return;
+    const actorId = user.id;
+    const authRevision = captureOfflineActor(actorId);
+    const key = addContext.current.key;
+    const revision = addContext.current.revision;
+    const operation = Symbol("add-existing-staff");
+    const draft = { email: addEmail.trim().toLowerCase(), displayName: addDisplayName.trim() || addEmail.trim(), role: addRole, visibility: addVisibility, organizationId };
+    const stale = new Error("staff_add_context_changed");
+    const isCurrent = () => addContext.current.mounted && addContext.current.open &&
+      addContext.current.key === key && addContext.current.revision === revision &&
+      addOperation.current === operation && isOfflineActorCurrent(actorId, authRevision);
+    const requireCurrent = () => { if (!isCurrent()) throw stale; };
+    addOperation.current = operation;
+    setAddSaving(true);
+    setAddError(null);
+    try {
+      requireCurrent();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      requireCurrent();
+      const session = sessionData.session;
+      if (sessionError || session?.user.id !== actorId || !session.access_token) throw new Error("Войдите заново и повторите добавление сотрудника.");
+      const { data: identity, error: identityError } = await supabase.auth.getUser(session.access_token);
+      requireCurrent();
+      if (identityError || identity.user?.id !== actorId) throw new Error("Не удалось подтвердить текущую учётную запись. Повторите попытку.");
+      const authorization = `Bearer ${session.access_token}`;
+      let targetUserId: string;
+      // The authenticated account exists independently of its optional profile.
+      // This fallback applies only to the exact account verified with its original JWT.
+      if (draft.email === user.email?.trim().toLowerCase() && draft.email === identity.user.email?.trim().toLowerCase()) {
+        targetUserId = actorId;
+      } else {
+        const { data: profile, error: profileError } = await supabase.from("profiles")
+          .select("user_id").eq("email", draft.email).single().setHeader("Authorization", authorization);
+        requireCurrent();
+        if (profileError && profileError.code !== "PGRST116") throw new Error("Не удалось найти пользователя. Повторите попытку.");
+        if (!profile?.user_id) throw new Error("Пользователь с таким email не найден. Используйте «Пригласить» — мы пришлём ссылку на регистрацию.");
+        targetUserId = profile.user_id;
+      }
+      requireCurrent();
+      const { error } = await supabase.from("org_staff").insert({
+        organization_id: draft.organizationId, user_id: targetUserId, role: draft.role,
+        display_name: draft.displayName, visibility: draft.visibility,
+      }).setHeader("Authorization", authorization);
+      requireCurrent();
+      if (error) throw new Error(error.code === "23505" ? "Этот сотрудник уже добавлен" : "Ошибка: " + error.message);
+      await loadStaff({ authorization, isCurrent });
+      requireCurrent();
       toast.success("Сотрудник добавлен");
-      setDialogOpen(false);
-      setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all");
-      await loadStaff();
+      changeAddDialog(false);
+    } catch (error) {
+      if (error !== stale && isCurrent()) {
+        const message = error instanceof Error ? error.message : "Не удалось добавить сотрудника. Повторите попытку.";
+        setAddError(message);
+        toast.error(message);
+      }
+    } finally {
+      if (addOperation.current === operation) {
+        addOperation.current = null;
+        if (addContext.current.mounted && addContext.current.key === key && addContext.current.revision === revision) setAddSaving(false);
+      }
     }
-    setSaving(false);
   };
 
   const handleCreateStaff = async () => {
@@ -249,7 +323,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
               <Button variant="outline" className="rounded-xl gap-2" onClick={() => { setCreatePassword(generateStrongPassword()); setCreateOpen(true); }}>
                 <KeyRound className="w-4 h-4" />Создать с паролем
               </Button>
-              <Button variant="ghost" className="rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
+              <Button variant="ghost" className="rounded-xl gap-2" disabled={!canWriteStaff} onClick={() => changeAddDialog(true)}>
                 <Plus className="w-4 h-4" />Добавить существующего
               </Button>
             </div>
@@ -380,7 +454,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
         />
 
         {/* Add staff dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={addDialogVisible} onOpenChange={changeAddDialog}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Добавить существующего пользователя</DialogTitle>
@@ -388,18 +462,18 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Email пользователя</Label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+                <Input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="email@example.com" disabled={addSaving} />
                 <p className="text-xs text-muted-foreground">
                   Пользователь должен быть уже зарегистрирован. Иначе используйте «Пригласить сотрудника».
                 </p>
               </div>
               <div className="space-y-2">
                 <Label>Отображаемое имя</Label>
-                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Иван Иванов" />
+                <Input value={addDisplayName} onChange={e => setAddDisplayName(e.target.value)} placeholder="Иван Иванов" disabled={addSaving} />
               </div>
               <div className="space-y-2">
                 <Label>Роль</Label>
-                <Select value={role} onValueChange={setRole}>
+                <Select value={addRole} onValueChange={setAddRole} disabled={addSaving}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {ASSIGNABLE_ROLES.map(r => (
@@ -408,12 +482,12 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {selectedRoleConfig.description}
+                  {getRoleConfig(addRole).description}
                 </p>
               </div>
               <div className="space-y-2">
                 <Label>Видимость для учеников</Label>
-                <Select value={visibility} onValueChange={setVisibility}>
+                <Select value={addVisibility} onValueChange={setAddVisibility} disabled={addSaving}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {VISIBILITY.map(v => (
@@ -423,10 +497,11 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                 </Select>
               </div>
             </div>
+            {addError && <p role="alert" className="text-sm text-destructive">{addError}</p>}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
-              <Button onClick={handleAdd} disabled={saving} className="btn-gradient gap-2">
-                {saving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
+              <Button variant="outline" onClick={() => changeAddDialog(false)}>Отмена</Button>
+              <Button onClick={handleAdd} disabled={addSaving} className="btn-gradient gap-2">
+                {addSaving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
                 Добавить
               </Button>
             </DialogFooter>
