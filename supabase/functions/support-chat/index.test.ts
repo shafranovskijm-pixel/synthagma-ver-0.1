@@ -2,7 +2,9 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import * as contacts from "../_shared/platform-support-contacts";
+import * as contacts from "../_shared/platform-support-contacts.ts";
+import { DSR_SUPPORT_CONTEXT } from "../_shared/data-subject-deadline-rules.ts";
+import { STUDENT_QUOTA_SUPPORT_CONTEXT } from "../_shared/student-quota-rules.ts";
 
 function actualHandler(options: { aiText?: string; omitCurrent?: boolean; human?: boolean } = {}) {
   const inserted: any[] = [], delivered: any[] = [], orders: any[] = [];
@@ -34,7 +36,7 @@ function actualHandler(options: { aiText?: string; omitCurrent?: boolean; human?
   const ast = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true);
   const stripped = [...ast.statements.filter(ts.isImportDeclaration)].reverse().reduce((text, statement) => text.slice(0, statement.getFullStart()) + text.slice(statement.end), source);
   const executable = ts.transpileModule(stripped, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  const dependencies = { ...contacts, serve: (fn: typeof handler) => { handler = fn; }, createClient: () => client, callAI, fetch,
+  const dependencies = { ...contacts, DSR_SUPPORT_CONTEXT, STUDENT_QUOTA_SUPPORT_CONTEXT, serve: (fn: typeof handler) => { handler = fn; }, createClient: () => client, callAI, fetch,
     Deno: { env: { get: (key: string) => ({ SUPABASE_URL: "https://synthetic.invalid", SUPABASE_SERVICE_ROLE_KEY: "SYNTHETIC", TELEGRAM_BOT_TOKEN: "SYNTHETIC", TELEGRAM_SUPPORT_CHAT_ID: "55" } as Record<string, string>)[key] } },
     console: { log() {}, warn() {}, error() {} },
   };
