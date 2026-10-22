@@ -1,15 +1,8 @@
-import { supabase } from "@/integrations/supabase/client";
 import { localDateIso } from "@/lib/date/localDate";
 
-/**
- * Выдача документов об образовании (ФИС ФРДО).
- *
- * Номера документа и регистрационного номера выдаёт ТОЛЬКО транзакционный RPC
- * `issue_education_document_batch`: он проверяет права организации, состав
- * группы и точный курс, берёт advisory-lock и атомарно резервирует оба номера.
- * Клиентские подсчёты (`records.length + 1`) и любые fallback-номера запрещены —
- * при ошибке ничего не вставляется.
- */
+/** Historical input compatibility only. The old issuance entry point is closed.
+ * New issuance requires the controlled eligibility, artifact and explicit confirmation workflow.
+ * Exports never call this compatibility adapter. */
 
 export interface EducationDocumentItemInput {
   user_id: string;
@@ -87,15 +80,10 @@ export function buildIssueBatchPayload({
  */
 export async function issueEducationDocumentBatch(
   args: IssueEducationDocumentsArgs,
-  client: { rpc: (fn: string, params: unknown) => Promise<{ data: unknown; error: unknown }> } = supabase as any,
+  _client?: { rpc: (fn: string, params: unknown) => Promise<{ data: unknown; error: unknown }> },
 ): Promise<any[]> {
-  const payload = buildIssueBatchPayload(args);
-  const { data, error } = await client.rpc("issue_education_document_batch", payload);
-  if (error) {
-    const message = (error as { message?: string })?.message || "Не удалось выдать номера документов";
-    throw new Error(message);
-  }
-  return (data as any[]) || [];
+  void args;
+  throw new Error('Откройте журнал выдачи: требуется проверка основания, итогового файла и отдельное подтверждение. Выгрузка ФРДО документы не выдаёт.');
 }
 
 /**

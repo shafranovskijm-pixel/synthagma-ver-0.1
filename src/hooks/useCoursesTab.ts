@@ -1,3 +1,4 @@
+import { deleteUnusedCourses } from "@/api/courseDeletion";
 import { useState, useCallback, useMemo } from "react";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -202,14 +203,10 @@ export function useCoursesTab(opts: UseCoursesTabOptions) {
     setIsDeletingCourses(true);
     try {
       const courseIds = Array.from(selectedCourseIds);
-      await supabase.from("enrollments").delete().in("course_id", courseIds);
-      await supabase.from("lessons").delete().in("course_id", courseIds);
-      await supabase.from("course_documents").delete().in("course_id", courseIds);
-      const { error } = await supabase.from("courses").delete().in("id", courseIds);
-      if (error) throw error;
+      await deleteUnusedCourses(courseIds);
       toast.success(`Удалено курсов: ${courseIds.length}`);
       setSelectedCourseIds(new Set()); setShowBulkDeleteConfirm(false); courses.refresh(); onCoursesDeleted?.();
-    } catch { toast.error("Ошибка удаления курсов"); }
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Ошибка удаления курсов"); }
     finally { setIsDeletingCourses(false); }
   };
 

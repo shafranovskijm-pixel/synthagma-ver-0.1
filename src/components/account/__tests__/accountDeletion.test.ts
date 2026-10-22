@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke } } }));
-import { confirmAccountDeletion, getDeletionPreview, getDeletionStatus, resumeAccountDeletion } from "../accountDeletion";
+import { confirmAccountDeletion, educationArtifactRetentionReviewCode, getDeletionPreview, getDeletionStatus, resumeAccountDeletion } from "../accountDeletion";
 
 const capability = { requestId: "request-1", statusToken: "opaque-capability" };
 const consentVersion = "full-personal-data-v1" as const;
@@ -51,6 +51,14 @@ describe("self-account deletion response boundary", () => {
   it("treats the server's pre-mutation consent refusal as rejected without a recovery request", async () => {
     invoke.mockResolvedValueOnce({ error: { context: new Response(JSON.stringify({ code: "CONSENT_REQUIRED", message: "Подтвердите новые условия удаления" }), { status: 409 }) }, data: null });
     await expect(confirmAccountDeletion("plan", "password", capability, consentVersion)).rejects.toMatchObject({ code: "CONSENT_REQUIRED", outcome: "rejected" });
+    expect(invoke.mock.calls.map(call => call[1].body.action)).toEqual(["confirm"]);
+  });
+
+  it("treats education artifact retention review as a known pre-mutation refusal without status recovery or a false deletion", async () => {
+    invoke.mockResolvedValueOnce({error: {context: new Response(JSON.stringify({code: educationArtifactRetentionReviewCode,
+      message: "Сначала требуется решение по сохранённому документу об обучении"}), {status: 409})}, data: null});
+    await expect(confirmAccountDeletion("plan", "password", capability, consentVersion)).rejects.toMatchObject({
+      code: educationArtifactRetentionReviewCode, outcome: "rejected"});
     expect(invoke.mock.calls.map(call => call[1].body.action)).toEqual(["confirm"]);
   });
 

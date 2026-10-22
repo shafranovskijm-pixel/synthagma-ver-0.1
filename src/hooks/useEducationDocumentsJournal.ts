@@ -1,619 +1,106 @@
-import { useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { parseISO, startOfYear, endOfYear, isWithinInterval, format } from "date-fns";
-import { ru } from "date-fns/locale";
-import { supabase } from "@/integrations/supabase/client";
-import { getXLSX } from "@/utils/xlsxHelper";
-import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
-import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
-import { issueEducationDocumentsByCourse } from "@/lib/education-docs/issueBatch";
-import { localDateIso } from "@/lib/date/localDate";
-import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
-import {
-  type EducationDocumentRecord,
-  type CompletedStudent,
-  PROGRAM_TYPE_TO_DOC_TYPE,
-  DOCUMENT_TYPES,
-  DELIVERY_METHODS,
-  mapDbRecord,
-  getDefaultFormData,
-  getJournalTitle,
-  getJournalSubtitle,
-  buildExportData,
-  buildInsertRecord,
-  EXCEL_COL_WIDTHS,
-} from "./educationDocumentsHelpers";
-
-export type { EducationDocumentRecord, CompletedStudent };
-export { DOCUMENT_TYPES, DELIVERY_METHODS };
-
-interface UseEducationDocumentsJournalProps {
-  organizationId: string;
-  documentTypeFilter?: "certificate" | "diploma" | "qualification";
-  /** Контекст группы: строго ограничивает записи участниками группы и её курсом. */
-  groupContext?: GroupJournalContext | null;
-}
-
-export function useEducationDocumentsJournal({
-  organizationId,
-  documentTypeFilter,
-  groupContext,
-}: UseEducationDocumentsJournalProps) {
-  const qc = useQueryClient();
-  const { canIssue } = useDocumentActionPermissions(organizationId);
-  const [saving, setSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDocType, setSelectedDocType] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
-    from: startOfYear(new Date()),
-    to: endOfYear(new Date()),
-  });
-
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showSelectStudentsDialog, setShowSelectStudentsDialog] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<EducationDocumentRecord | null>(null);
-  const [deletingRecord, setDeletingRecord] = useState<EducationDocumentRecord | null>(null);
-
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
-  const [studentSearchQuery, setStudentSearchQuery] = useState("");
-
-
-  const [formData, setFormData] = useState(getDefaultFormData(documentTypeFilter));
-
-  // Records + org settings — single React Query
-  const recordsAndOrgKey = useMemo(
-    () => ["education-documents-journal", organizationId] as const,
-    [organizationId]
-  );
-
-  const { data: recordsAndOrg, isLoading: loading } = useQuery({
-    queryKey: recordsAndOrgKey,
+import { downloadIssuedPdf } from "@/lib/educationIssuance/artifactDownload";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useStaffPermissions } from '@/hooks/useStaffPermissions';
+import { useDocumentActionPermissions, isCurrentOrganizationAccess } from '@/hooks/useDocumentActionPermissions';
+import { useEducationIssuanceScope } from '@/hooks/useEducationIssuance';
+import { captureOfflineContext } from '@/utils/courseCache';
+import { getXLSX } from '@/utils/xlsxHelper';
+import { issuanceScopeCurrent, normalizeIssuanceError, readEducationIssuance, requireIssuanceScope } from '@/lib/educationIssuance/client';
+import { downloadIssuanceExport, loadIssuanceExport } from '@/lib/educationIssuance/export';
+import { handoverStatus, proofStatus, recordStatus } from '@/lib/educationIssuance/presentation';
+import type { IssuanceRecord } from '@/lib/educationIssuance/types';
+import { resolveGroupGateState, type GroupJournalContext } from '@/lib/journals/groupJournalContext';
+import { buildExportData, getJournalSubtitle, getJournalTitle, mapDbRecord } from './educationDocumentsHelpers';
+export { DOCUMENT_TYPES, DELIVERY_METHODS } from './educationDocumentsHelpers';
+export type { EducationDocumentRecord, CompletedStudent } from './educationDocumentsHelpers';
+interface Props { organizationId: string; documentTypeFilter?: 'certificate' | 'diploma' | 'qualification'; groupContext?: GroupJournalContext | null }
+export function useEducationDocumentsJournal({ organizationId, documentTypeFilter, groupContext }: Props) {
+  const queryClient = useQueryClient(), permissions = useStaffPermissions(), ui = useDocumentActionPermissions(organizationId);
+  const actor = captureOfflineContext();
+  const groupGate = groupContext && !groupContext.groupId ? 'error' : resolveGroupGateState('education_documents', groupContext);
+  const [after, setAfter] = useState<string | null>(null), [pages, setPages] = useState<IssuanceRecord[]>([]);
+  const [searchQuery, setSearchQuery] = useState(''), [selectedDocType, setSelectedDocType] = useState('all'), [selectedStatus, setSelectedStatus] = useState('all');
+  const [serverFilter, setServerFilter] = useState<'all' | 'active' | 'annulled' | 'legacy_unverified'>('all');
+  const [showIssueDialog, setShowIssueDialog] = useState(false), [focusedEnrollmentId, setFocusedEnrollmentId] = useState<string | null>(null), [recordId, setRecordId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const ready = (groupGate === 'none' || groupGate === 'ready') && isCurrentOrganizationAccess(permissions, organizationId) && permissions.can('documents.read') && !!actor;
+  const key = useMemo(() => ['controlled-education-issuance', organizationId, groupContext?.groupId ?? null, groupContext?.courseId ?? null, groupGate, (groupContext?.memberUserIds ?? []).join(','), actor?.actorId, actor?.revision, serverFilter], [organizationId, groupContext?.groupId, groupContext?.courseId, groupGate, groupContext?.memberUserIds, actor?.actorId, actor?.revision, serverFilter]);
+  const loadedKey = JSON.stringify(key);
+  const capture = useEducationIssuanceScope(organizationId, groupContext?.groupId, loadedKey);
+  const moreFlight = useRef(false), [loadingMore, setLoadingMore] = useState(false);
+  useEffect(() => { moreFlight.current = false; setLoadingMore(false); setExporting(false); }, [loadedKey]);
+  const [pageKey, setPageKey] = useState(loadedKey);
+  const { data, isLoading, isFetching, error, refetch } = useQuery({ queryKey: key, enabled: ready, retry: false, staleTime: 0,
     queryFn: async () => {
-      const [recordsRes, orgRes] = await Promise.all([
-        supabase
-          .from("education_document_records")
-          .select("*")
-          .eq("organization_id", organizationId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("organizations")
-          .select("name, branding, license_number, stamp_url, signature_url, director_name, director_position")
-          .eq("id", organizationId)
-          .single(),
-      ]);
-      if (recordsRes.error) throw recordsRes.error;
-
-      const records = (recordsRes.data || []).map(mapDbRecord);
-
-      let orgData: {
-        name: string;
-        license_number?: string | null;
-        city?: string | null;
-        stamp_url?: string | null;
-        signature_url?: string | null;
-        director_name?: string | null;
-        director_position?: string | null;
-      } = { name: "" };
-      let docSettings: {
-        certificateSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
-        diplomaSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
-      } = {};
-
-      if (orgRes.data) {
-        const o = orgRes.data as any;
-        const branding = o.branding as Record<string, unknown> | null;
-        orgData = {
-          name: o.name || "",
-          license_number: o.license_number,
-          city: (branding?.city as string) || null,
-          stamp_url: o.stamp_url,
-          signature_url: o.signature_url,
-          director_name: o.director_name,
-          director_position: o.director_position,
-        };
-        if (branding) {
-          docSettings = {
-            certificateSettings: branding.certificateSettings as any,
-            diplomaSettings: branding.diplomaSettings as any,
-          };
-        }
+      const scope = capture();
+      const value = await readEducationIssuance(scope, { kind: 'records', course_id: groupContext?.courseId ?? null, after_id: null, limit: 100, filter: serverFilter });
+      if (value.kind !== 'records') throw normalizeIssuanceError(null);
+      requireIssuanceScope(scope); setPages([]); setAfter(value.next_after_id); setPageKey(loadedKey); return { scope, value };
+    },
+  });
+  const metadata = useQuery({ queryKey: ['controlled-issuance-options', ...key], enabled: ready, retry: false, staleTime: 0,
+    queryFn: async () => {
+      const scope = capture(); const session = await supabase.auth.getSession(); requireIssuanceScope(scope);
+      if (session.error || session.data.session?.user.id !== scope.actorId || !session.data.session.access_token) throw normalizeIssuanceError({ code: '42501' });
+      const token = 'Bearer ' + session.data.session.access_token;
+      const rows:{id:string;title:string}[]=[];
+      for(let page=0;;page++){
+        let request=supabase.from('courses').select('id,title').eq('organization_id',organizationId).order('id').range(page*100,page*100+99);
+        if(groupContext?.courseId)request=request.eq('id',groupContext.courseId);
+        const courses=await request.setHeader('Authorization',token);requireIssuanceScope(scope);if(courses.error)throw courses.error;
+        rows.push(...courses.data??[]);if((courses.data??[]).length<100)break;
       }
-
-      return { records, orgData, docSettings };
-    },
-    enabled: !!organizationId,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    meta: {
-      onError: () => toast.error("Ошибка загрузки записей журнала"),
+      return {scope,courses:rows.sort((a,b)=>a.title.localeCompare(b.title,'ru')),orgData:{name:''}};
     },
   });
-
-  const records = recordsAndOrg?.records ?? [];
-  const orgData = recordsAndOrg?.orgData ?? { name: "" };
-  const docSettings = recordsAndOrg?.docSettings ?? {};
-
-  // ── Приватность: контекст группы ──
-  const groupGate = resolveGroupGateState("education_documents", groupContext);
-  const groupMemberKey = (groupContext?.memberUserIds ?? []).slice().sort().join(",");
-
-  const { data: allowedEnrollmentIds = null } = useQuery({
-    queryKey: ["education-documents-group-enrollments", organizationId, groupContext?.groupId, groupContext?.courseId, groupMemberKey],
-    queryFn: async () => {
-      const memberIds = groupContext?.memberUserIds ?? [];
-      if (memberIds.length === 0) return [] as string[];
-      let q = supabase.from("enrollments").select("id").in("user_id", memberIds);
-      if (groupContext?.courseId) q = q.eq("course_id", groupContext.courseId);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []).map((e) => e.id);
-    },
-    enabled: groupGate === "ready",
-    staleTime: 60_000,
+  const current = ready && !!data && issuanceScopeCurrent(data.scope), currentMetadata = ready && metadata.data && issuanceScopeCurrent(metadata.data.scope) ? metadata.data : null;
+  const records = current ? [...data.value.items, ...(pageKey === loadedKey ? pages : [])] : [];
+  const filteredRecords = records.filter(record => {
+    const row = record.official, text = searchQuery.toLowerCase();
+    return (!documentTypeFilter || row.document_type === documentTypeFilter) && (selectedDocType === 'all' || row.document_type === selectedDocType)
+      && (selectedStatus === 'all' || row.document_status === selectedStatus)
+      && (!text || [row.full_name, row.reg_number, row.document_number, row.specialty_name].some(value => value.toLowerCase().includes(text)));
   });
-
-  const groupScopeReady = groupGate === "none" || (groupGate === "ready" && allowedEnrollmentIds !== null);
-
-  const scopedRecords = useMemo(() => {
-    if (groupGate === "none") return records;
-    if (!groupScopeReady) return [];
-    const allowed = new Set(allowedEnrollmentIds || []);
-    return records.filter((r) => r.enrollment_id && allowed.has(r.enrollment_id));
-  }, [records, groupGate, groupScopeReady, allowedEnrollmentIds]);
-
-  const setRecords = useCallback(
-    (updater: EducationDocumentRecord[] | ((prev: EducationDocumentRecord[]) => EducationDocumentRecord[])) => {
-      qc.setQueryData(recordsAndOrgKey, (old: any) => {
-        if (!old) return old;
-        const next = typeof updater === "function" ? (updater as any)(old.records) : updater;
-        return { ...old, records: next };
-      });
-    },
-    [qc, recordsAndOrgKey]
-  );
-
-  // Completed students — derived query, depends on records (for already_added)
-  const addedEnrollmentIdsKey = useMemo(
-    () => records.filter((r) => r.enrollment_id).map((r) => r.enrollment_id).sort().join(","),
-    [records]
-  );
-
-  const completedStudentsKey = useMemo(
-    () => ["education-documents-completed-students", organizationId, addedEnrollmentIdsKey] as const,
-    [organizationId, addedEnrollmentIdsKey]
-  );
-
-  const { data: completedStudents = [], isFetching: loadingStudents } = useQuery({
-    queryKey: completedStudentsKey,
-    queryFn: async () => {
-      const { data: courses, error: coursesError } = await supabase
-        .from("courses")
-        .select("id, title, frdo_program_type")
-        .eq("organization_id", organizationId);
-      if (coursesError) throw coursesError;
-      if (!courses || courses.length === 0) return [] as CompletedStudent[];
-
-      const courseIds = courses.map((c) => c.id);
-      const courseMap = new Map(courses.map((c) => [c.id, c.title]));
-      const courseProgramMap = new Map(courses.map((c) => [c.id, c.frdo_program_type]));
-
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from("enrollments")
-        .select("id, user_id, course_id, completed_at")
-        .in("course_id", courseIds)
-        .eq("status", "completed")
-        .not("completed_at", "is", null);
-      if (enrollmentsError) throw enrollmentsError;
-      if (!enrollments || enrollments.length === 0) return [] as CompletedStudent[];
-
-      const userIds = [...new Set(enrollments.map((e) => e.user_id))];
-
-      const [{ data: profiles, error: profilesError }, { data: frdoData, error: frdoError }] = await Promise.all([
-        supabase.from("profiles").select("user_id, full_name, email").in("user_id", userIds),
-        supabase.from("student_frdo_data").select("user_id, birth_date").in("user_id", userIds),
-      ]);
-      if (profilesError) throw profilesError;
-      if (frdoError) throw frdoError;
-
-      const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
-      const frdoMap = new Map(frdoData?.map((f) => [f.user_id, f.birth_date]) || []);
-      const addedEnrollmentIds = new Set(records.filter((r) => r.enrollment_id).map((r) => r.enrollment_id));
-
-      const students: CompletedStudent[] = enrollments.map((enrollment) => {
-        const profile = profileMap.get(enrollment.user_id);
-        const birthDate = frdoMap.get(enrollment.user_id);
-        return {
-          enrollment_id: enrollment.id,
-          course_id: enrollment.course_id,
-          user_id: enrollment.user_id,
-          full_name: profile?.full_name || profile?.email || "Неизвестный студент",
-          birth_date: birthDate || null,
-          course_title: courseMap.get(enrollment.course_id) || "Неизвестный курс",
-          completed_at: enrollment.completed_at!,
-          already_added: addedEnrollmentIds.has(enrollment.id),
-          frdo_program_type: courseProgramMap.get(enrollment.course_id) || null,
-        };
-      });
-      students.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
-      return students;
-    },
-    enabled: !!organizationId && !loading,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    meta: {
-      onError: () => toast.error("Ошибка загрузки списка выпускников"),
-    },
-  });
-
-  // Выпускники: в контексте группы — только участники группы (и её курс).
-  const scopedCompletedStudents = useMemo(() => {
-    if (groupGate === "none") return completedStudents;
-    if (groupGate !== "ready") return [];
-    const members = new Set(groupContext?.memberUserIds ?? []);
-    const allowed = allowedEnrollmentIds ? new Set(allowedEnrollmentIds) : null;
-    if (!allowed) return [];
-    return completedStudents.filter((s) => members.has(s.user_id) && allowed.has(s.enrollment_id));
-  }, [completedStudents, groupGate, groupContext?.memberUserIds, allowedEnrollmentIds]);
-
-  const loadCompletedStudents = useCallback(async () => {
-    await qc.invalidateQueries({ queryKey: ["education-documents-completed-students", organizationId] });
-  }, [qc, organizationId]);
-
-
-  const newGraduatesCount = useMemo(() => {
-    let students = scopedCompletedStudents;
-    if (documentTypeFilter) {
-      students = students.filter((s) => {
-        if (!s.frdo_program_type) return true;
-        return PROGRAM_TYPE_TO_DOC_TYPE[s.frdo_program_type] === documentTypeFilter;
-      });
-    }
-    return students.filter((s) => !s.already_added).length;
-  }, [scopedCompletedStudents, documentTypeFilter]);
-
-  const filteredRecords = useMemo(() => {
-    return scopedRecords.filter((record) => {
-      if (documentTypeFilter && record.document_type !== documentTypeFilter) return false;
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = !searchQuery ||
-        record.full_name.toLowerCase().includes(searchLower) ||
-        record.reg_number.toLowerCase().includes(searchLower) ||
-        record.document_number.toLowerCase().includes(searchLower) ||
-        record.specialty_name.toLowerCase().includes(searchLower);
-      const matchesDocType = selectedDocType === "all" || record.document_type === selectedDocType;
-      const matchesStatus = selectedStatus === "all" || record.document_status === selectedStatus;
-      const recordDate = parseISO(record.issue_date);
-      const matchesDate = isWithinInterval(recordDate, { start: dateRange.from, end: dateRange.to });
-      return matchesSearch && matchesDocType && matchesStatus && matchesDate;
-    });
-  }, [scopedRecords, searchQuery, selectedDocType, selectedStatus, dateRange, documentTypeFilter]);
-
-  const stats = useMemo(() => {
-    const certificates = filteredRecords.filter((r) => r.document_type === "certificate").length;
-    const diplomas = filteredRecords.filter((r) => r.document_type === "diploma").length;
-    const originals = filteredRecords.filter((r) => r.document_status === "original").length;
-    const duplicates = filteredRecords.filter((r) => r.document_status === "duplicate").length;
-    return { total: filteredRecords.length, certificates, diplomas, originals, duplicates };
-  }, [filteredRecords]);
-
-  const filteredStudents = useMemo(() => {
-    let filtered = scopedCompletedStudents;
-    // Filter by document type tab: only show students whose course program type matches
-    if (documentTypeFilter) {
-      filtered = filtered.filter((s) => {
-        if (!s.frdo_program_type) return true; // courses without program type show in all tabs
-        return PROGRAM_TYPE_TO_DOC_TYPE[s.frdo_program_type] === documentTypeFilter;
-      });
-    }
-    if (studentSearchQuery) {
-      const query = studentSearchQuery.toLowerCase();
-      filtered = filtered.filter((s) => s.full_name.toLowerCase().includes(query) || s.course_title.toLowerCase().includes(query));
-    }
-    return filtered;
-  }, [scopedCompletedStudents, studentSearchQuery, documentTypeFilter]);
-
-  const journalTitle = getJournalTitle(documentTypeFilter);
-  const journalSubtitle = getJournalSubtitle(documentTypeFilter);
-
-  const resetForm = () => {
-    setFormData(getDefaultFormData(documentTypeFilter));
+  const loadMore = async () => {
+    if (!current || !after || isFetching || moreFlight.current) return;
+    const scope = data.scope; moreFlight.current = true; setLoadingMore(true);
+    try { const value = await readEducationIssuance(scope, { kind: 'records', course_id: groupContext?.courseId ?? null, after_id: after, limit: 100, filter: serverFilter }); if (value.kind === 'records' && issuanceScopeCurrent(scope)) { setPages(previous => [...previous, ...value.items]); setAfter(value.next_after_id); } }
+    catch (error) { if (issuanceScopeCurrent(scope)) toast.error(normalizeIssuanceError(error).message); }
+    finally { if (issuanceScopeCurrent(scope)) { moreFlight.current = false; setLoadingMore(false); } }
   };
-
-  const generateRegNumber = async () => {
-    if (!canIssue) return;
-    const year = formData.issue_date.getFullYear();
-    const docType = formData.document_type || "doc";
-    let nextNumber = 0;
+  const refresh = useCallback(() => { setPages([]); setAfter(null); void queryClient.invalidateQueries({ queryKey: ['controlled-education-issuance', organizationId] }); }, [queryClient, organizationId]);
+  const exportCurrent = async (format: 'xlsx' | 'json' | 'html') => {
+    if (!current || !data.value.capabilities.can_export || !filteredRecords.length || exporting) return;
+    setExporting(true); const scope = data.scope;
     try {
-      const { data, error } = await (supabase.rpc as any)("reserve_education_registration_number", {
-        p_org: organizationId,
-        p_group: groupContext?.groupId ?? null,
-        p_doc_type: docType,
-        p_year: year,
-      });
-      if (error) throw error;
-      nextNumber = Number(data) || 0;
-      if (nextNumber <= 0) throw new Error("Сервер вернул некорректный номер");
-    } catch (err: any) {
-      // Никакого fallback на клиентский подсчёт: дубликаты номеров недопустимы.
-      console.error("next_reg_number RPC failed:", err);
-      toast.error("Не удалось получить регистрационный номер", {
-        description: err?.message || "Автонумерация недоступна, повторите позже",
-      });
-      return;
-    }
-
-
-    // Try to use settings from branding
-    const settings = formData.document_type === "diploma" ? docSettings.diplomaSettings : docSettings.certificateSettings;
-    if (settings?.regNumberFormat) {
-      const regNum = settings.regNumberFormat
-        .replace("{{year}}", year.toString())
-        .replace("{{number}}", ((settings.startNumber || 0) + nextNumber - 1).toString().padStart(4, "0"));
-      setFormData((prev) => ({
-        ...prev,
-        reg_number: regNum,
-        document_series: prev.document_series || settings.series || "",
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, reg_number: `ДОК-${year}/${nextNumber.toString().padStart(4, "0")}` }));
-    }
+      const query = { kind: 'export' as const, selection: { kind: 'records' as const, record_ids: filteredRecords.map(row => row.official.id) }, format: 'canonical_snapshot' as const };
+      if (format !== 'xlsx') { await downloadIssuanceExport(scope, query, format); return; }
+      const XLSX = await getXLSX(); requireIssuanceScope(scope);
+      const { snapshot } = await loadIssuanceExport(scope, query);
+      const rows = buildExportData(snapshot.records.map(row => mapDbRecord(row.official))).map((row, index) => ({ ...row, 'Состояние': recordStatus(snapshot.records[index]), 'Основание': proofStatus(snapshot.records[index]), 'Способ получения': snapshot.records[index].provenance==='legacy_unverified'?'Прежняя отметка: '+row['Способ получения']:handoverStatus(snapshot.records[index]), 'Передача по истории': handoverStatus(snapshot.records[index]) }));
+      const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Документы');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(snapshot.history.map(event => ({ 'Запись': event.record_id, 'Версия': event.revision, 'Действие': event.kind, 'Время': event.recorded_at, 'Причина': event.reason }))), 'История');
+      requireIssuanceScope(scope); XLSX.writeFile(workbook, 'Журнал_выдачи_документов.xlsx');
+    } catch (error) { if (issuanceScopeCurrent(scope)) toast.error(normalizeIssuanceError(error).message); }
+    finally { if (issuanceScopeCurrent(scope)) setExporting(false); }
   };
-
-  /** Ручное «Добавить» в контексте группы создало бы произвольного человека — запрещаем. */
-  const manualAddGuard = resolveManualWriteGuard("education_documents", groupContext);
-
-  const handleOpenAdd = () => {
-    if (!canIssue) return;
-    if (manualAddGuard.blocked) {
-      toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
-      return;
-    }
-    resetForm();
-    setShowAddDialog(true);
+  const pdfFlight=useRef(false);
+  const downloadPdf=async(recordId:string)=>{
+    if(!current||pdfFlight.current)return; const scope=capture();pdfFlight.current=true;
+    try{await downloadIssuedPdf(scope,recordId);}catch(cause){if(issuanceScopeCurrent(scope))toast.error(normalizeIssuanceError(cause).message);}
+    finally{pdfFlight.current=false;}
   };
-
-  const handleOpenEdit = (record: EducationDocumentRecord) => {
-    if (!canIssue) return;
-    if (!isRowWriteAllowed(record.id, scopedRecords, groupContext)) {
-      toast.error("Запись не относится к этой группе — редактирование недоступно");
-      return;
-    }
-    setFormData({
-      reg_number: record.reg_number,
-      full_name: record.full_name,
-      birth_date: record.birth_date ? parseISO(record.birth_date) : null,
-      document_type: record.document_type,
-      document_series: record.document_series,
-      document_number: record.document_number,
-      issue_date: parseISO(record.issue_date),
-      specialty_name: record.specialty_name,
-      qualification_name: record.qualification_name,
-      protocol_number: record.protocol_number,
-      protocol_date: record.protocol_date ? parseISO(record.protocol_date) : null,
-      order_number: record.order_number,
-      order_date: record.order_date ? parseISO(record.order_date) : null,
-      document_status: record.document_status,
-      original_document_data: record.original_document_data || "",
-      delivery_method: record.delivery_method,
-      delivery_details: record.delivery_details || "",
-      notes: record.notes || "",
-      enrollment_id: record.enrollment_id || "",
-    });
-    setEditingRecord(record);
-  };
-
-  const handleOpenSelectStudents = async () => {
-    if (!canIssue) return;
-    setSelectedStudents(new Set());
-    setStudentSearchQuery("");
-    setShowSelectStudentsDialog(true);
-    await loadCompletedStudents();
-  };
-
-  /**
-   * Opens one exact enrollment for operator review. Selection alone never
-   * writes a journal row; creation still requires the explicit submit action
-   * in SelectStudentsDialog.
-   */
-  const handleOpenEnrollment = async (enrollmentId: string) => {
-    if (!canIssue) return;
-    const student = scopedCompletedStudents.find((item) => item.enrollment_id === enrollmentId);
-    setSelectedStudents(new Set([enrollmentId]));
-    setStudentSearchQuery(student?.full_name ?? "");
-    setShowSelectStudentsDialog(true);
-    await loadCompletedStudents();
-  };
-
-  /** Общая транзакционная выдача: номера только с сервера, всё или ничего. */
-  const issueForStudents = async (list: CompletedStudent[], successLabel: string) => {
-    if (!canIssue) return false;
-    setSaving(true);
-    try {
-      const inserted = await issueEducationDocumentsByCourse({
-        organizationId,
-        groupId: groupContext?.groupId || null,
-        items: list.map((student) => ({
-          user_id: student.user_id,
-          enrollment_id: student.enrollment_id,
-          course_id: student.course_id,
-          document_type: student.frdo_program_type
-            ? PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate"
-            : documentTypeFilter || "certificate",
-          full_name: student.full_name,
-          birth_date: student.birth_date || null,
-          specialty_name: student.course_title,
-          issue_date: localDateIso(),
-        })),
-      });
-      const mapped = inserted.map(mapDbRecord);
-      setRecords([...mapped, ...records]);
-      loadCompletedStudents();
-      toast.success(`${successLabel}: ${mapped.length}`);
-      return true;
-    } catch (error: any) {
-      console.error("Error issuing education documents:", error);
-      toast.error("Документы не выданы", {
-        description: error?.message || "Не удалось получить номера — записи не созданы",
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAutoAddAllGraduates = async () => {
-    if (!canIssue) return;
-    let newStudents = scopedCompletedStudents.filter((s) => !s.already_added);
-    if (documentTypeFilter) {
-      newStudents = newStudents.filter((s) => {
-        if (!s.frdo_program_type) return true;
-        return PROGRAM_TYPE_TO_DOC_TYPE[s.frdo_program_type] === documentTypeFilter;
-      });
-    }
-    if (newStudents.length === 0) { toast.info("Все выпускники уже добавлены в журнал"); return; }
-    await issueForStudents(newStudents, "Автоматически добавлено записей");
-  };
-
-  const handleCreateFromStudents = async () => {
-    if (!canIssue) return;
-    const selectedList = scopedCompletedStudents.filter((s) => selectedStudents.has(s.enrollment_id) && !s.already_added);
-    if (selectedList.length === 0) { toast.error("Выберите хотя бы одного выпускника"); return; }
-    const ok = await issueForStudents(selectedList, "Создано записей");
-    if (ok) setShowSelectStudentsDialog(false);
-  };
-
-
-  const toggleStudentSelection = (enrollmentId: string) => {
-    const newSet = new Set(selectedStudents);
-    if (newSet.has(enrollmentId)) newSet.delete(enrollmentId); else newSet.add(enrollmentId);
-    setSelectedStudents(newSet);
-  };
-
-  const selectAllStudents = () => {
-    const available = filteredStudents.filter((s) => !s.already_added);
-    if (selectedStudents.size === available.length) setSelectedStudents(new Set());
-    else setSelectedStudents(new Set(available.map((s) => s.enrollment_id)));
-  };
-
-  const handleSave = async () => {
-    if (!canIssue) return;
-    // Создание новой записи разрешено только через scoped-сценарий «по выпускникам группы».
-    if (!editingRecord && manualAddGuard.blocked) {
-      toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
-      setShowAddDialog(false);
-      return;
-    }
-    if (editingRecord && !isRowWriteAllowed(editingRecord.id, scopedRecords, groupContext)) {
-      toast.error("Запись не относится к этой группе — сохранение отменено");
-      return;
-    }
-    if (!formData.full_name.trim()) { toast.error("Введите ФИО выпускника"); return; }
-    if (!formData.reg_number.trim()) { toast.error("Введите регистрационный номер"); return; }
-    if (!formData.document_number.trim()) { toast.error("Введите номер документа"); return; }
-    if (!formData.specialty_name.trim()) { toast.error("Введите наименование специальности"); return; }
-
-    setSaving(true);
-    try {
-      const dbRecord = {
-        organization_id: organizationId,
-        reg_number: formData.reg_number.trim(),
-        full_name: formData.full_name.trim(),
-        birth_date: formData.birth_date?.toISOString().split("T")[0] || null,
-        document_type: formData.document_type,
-        document_series: formData.document_series.trim() || null,
-        document_number: formData.document_number.trim(),
-        issue_date: formData.issue_date.toISOString().split("T")[0],
-        specialty_name: formData.specialty_name.trim(),
-        qualification_name: formData.qualification_name.trim() || null,
-        protocol_number: formData.protocol_number.trim() || null,
-        protocol_date: formData.protocol_date?.toISOString().split("T")[0] || null,
-        order_number: formData.order_number.trim() || null,
-        order_date: formData.order_date?.toISOString().split("T")[0] || null,
-        document_status: formData.document_status,
-        original_document_data: formData.document_status === "duplicate" ? formData.original_document_data.trim() : null,
-        delivery_method: formData.delivery_method,
-        delivery_details: formData.delivery_method !== "personal" ? formData.delivery_details.trim() : null,
-        notes: formData.notes.trim() || null,
-        enrollment_id: formData.enrollment_id || null,
-      };
-
-      if (editingRecord) {
-        const { data, error } = await supabase.from("education_document_records").update(dbRecord).eq("id", editingRecord.id).select().single();
-        if (error) throw error;
-        setRecords(records.map((r) => r.id === editingRecord.id ? mapDbRecord(data) : r));
-        toast.success("Запись обновлена");
-      } else {
-        const { data, error } = await supabase.from("education_document_records").insert(dbRecord).select().single();
-        if (error) throw error;
-        setRecords([mapDbRecord(data), ...records]);
-        toast.success("Запись добавлена");
-      }
-      setShowAddDialog(false);
-      setEditingRecord(null);
-      resetForm();
-    } catch (error) {
-      console.error("Error saving record:", error);
-      toast.error("Ошибка при сохранении");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!canIssue) return;
-    if (!deletingRecord) return;
-    if (!isRowWriteAllowed(deletingRecord.id, scopedRecords, groupContext)) {
-      toast.error("Запись не относится к этой группе — удаление отменено");
-      setDeletingRecord(null);
-      return;
-    }
-    try {
-      const { error } = await supabase.from("education_document_records").delete().eq("id", deletingRecord.id);
-      if (error) throw error;
-      setRecords(records.filter((r) => r.id !== deletingRecord.id));
-      toast.success("Запись удалена");
-      setDeletingRecord(null);
-    } catch (error) {
-      console.error("Error deleting record:", error);
-      toast.error("Ошибка при удалении");
-    }
-  };
-
-  const exportToExcel = async () => {
-    if (filteredRecords.length === 0) { toast.error("Нет данных для экспорта"); return; }
-    const XLSX = await getXLSX();
-    const exportData = buildExportData(filteredRecords);
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Документы об образовании");
-    worksheet["!cols"] = EXCEL_COL_WIDTHS;
-    XLSX.writeFile(workbook, `Журнал_документов_об_образовании_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
-    toast.success("Журнал экспортирован в Excel");
-  };
-
-  return {
-    canIssue,
-    // State
-    loading, saving, records: scopedRecords, searchQuery, setSearchQuery,
-    selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
-    dateRange, setDateRange, orgData,
-    showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
-    editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
-    completedStudents: scopedCompletedStudents, loadingStudents, selectedStudents,
-    studentSearchQuery, setStudentSearchQuery,
-    formData, setFormData,
-    // Computed
-    filteredRecords, stats, filteredStudents, newGraduatesCount,
-    // Helpers
-    journalTitle, journalSubtitle, manualAddGuard,
-    // Actions
-    resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
-    handleOpenEnrollment,
-    handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
-    toggleStudentSelection, selectAllStudents,
-    handleSave, handleDelete, exportToExcel,
+  const openIssue = (enrollmentId: string | null = null) => { if(!current || !ui.canIssue || !data.value.capabilities.can_issue)return; setFocusedEnrollmentId(enrollmentId); setShowIssueDialog(true); };
+  return { loading: isLoading || groupGate === 'loading', loadingMore, groupGate, saving: exporting, error: groupGate === 'error' ? 'Состав или связь группы не подтверждены. Обновите папку группы.' : error ? normalizeIssuanceError(error).message : null,
+    canIssue: current && ui.canIssue && data.value.capabilities.can_issue, canExport: current && data.value.capabilities.can_export,
+    records, filteredRecords, searchQuery, setSearchQuery, selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
+    serverFilter, setServerFilter, stats: { total: filteredRecords.length, certificates: filteredRecords.filter(row => row.official.document_type === 'certificate').length, diplomas: filteredRecords.filter(row => row.official.document_type === 'diploma').length, originals: filteredRecords.filter(row => row.official.document_status === 'original').length, duplicates: filteredRecords.filter(row => row.official.document_status === 'duplicate').length },
+    orgData: currentMetadata?.orgData ?? { name: '' }, courses: currentMetadata?.courses ?? [], optionsError: metadata.error ? normalizeIssuanceError(metadata.error).message : null,
+    journalTitle: getJournalTitle(documentTypeFilter), journalSubtitle: getJournalSubtitle(documentTypeFilter),
+    showIssueDialog, setShowIssueDialog, focusedEnrollmentId, openIssue, recordId, setRecordId, refresh, refetch, loadMore,
+    hasMore: current && after !== null, exportCurrent, downloadPdf,
   };
 }

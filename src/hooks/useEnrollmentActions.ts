@@ -253,25 +253,11 @@ export function useEnrollmentActions(
     [selectedEnrollmentIds],
   );
 
-  const deleteEnrollment = useCallback(async (
-    enrollmentId: string | null,
-    setStudents: React.Dispatch<React.SetStateAction<Student[]>>,
-  ) => {
-    if (!enrollmentId) {
-      toast.error("Нельзя удалить — нет зачисления");
-      return;
-    }
-    try {
-      const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
-      if (error) throw error;
-      setStudents(prev => prev.filter(s => s.enrollment_id !== enrollmentId));
-      invalidateEnrollment();
-      toast.success("Ученик удалён из курса");
-    } catch (error) {
-      console.error("Error deleting enrollment:", error);
-      toast.error("Ошибка удаления");
-    }
-  }, [invalidateEnrollment]);
+  const deleteEnrollment = useCallback(async (enrollmentId: string | null, _setStudents: React.Dispatch<React.SetStateAction<Student[]>>) => {
+    if (!enrollmentId) { toast.error('Не выбрано точное зачисление.'); return; }
+    setSelectedEnrollmentIds([enrollmentId]);
+    setShowUnenrollConfirm(true);
+  }, [setSelectedEnrollmentIds]);
 
   /**
    * Bulk delete — takes explicit user_ids from the selection. Never converts

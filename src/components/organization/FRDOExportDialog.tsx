@@ -1,3 +1,7 @@
+import { ExistingIssuanceExportDialog } from "./education-issuance/ExistingExportDialog";
+import { useEducationIssuanceScope } from "@/hooks/useEducationIssuance";
+import { issuanceScopeCurrent, requireIssuanceScope, type EducationIssuanceScope } from "@/lib/educationIssuance/client";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useState, useEffect, useRef } from "react";
 import { formatSnils } from "@/utils/formatSnils";
 import {
@@ -19,7 +23,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Download, Save, FileSpreadsheet, User, GraduationCap, Briefcase } from "lucide-react";
-import { format } from "date-fns";
 import {
   detectGenderFromMiddleName,
   FRDO_TRAINING_FORMS,
@@ -27,18 +30,9 @@ import {
   FRDO_EDUCATION_FORMS,
   FRDO_EDUCATION_LEVELS } from "@/constants/frdo";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import {
-  buildDPORow,
-  buildPORow,
-  exportFRDOExcel,
-  formatDateForFRDO } from "@/utils/frdoExcelExport";
-import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { CitizenshipCombobox } from "./CitizenshipCombobox";
 import { normalizeRuPhone } from "@/utils/phoneParser";
-import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
-import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
-import { resolveEducationDocumentType } from "@/lib/education-docs/documentType";
-import { localDateIso } from "@/lib/date/localDate";
+import { isCurrentOrganizationAccess } from "@/hooks/useDocumentActionPermissions";
 import { normalizeIsoDate } from "@/lib/groups/groupSettings";
 
 interface FRDOExportDialogProps {
@@ -51,6 +45,7 @@ interface FRDOExportDialogProps {
     email: string;
   } | null;
   organizationId: string;
+  groupId?: string | null;
   onSaved?: () => void | Promise<void>;
   enrollment?: {
     id: string;
@@ -96,12 +91,18 @@ const defaultFRDOData: FRDOData = {
   qualification_name: "", profession_name: "", qualification_rank: "" };
 
 export function FRDOExportDialog({
-  isOpen, onOpenChange, student, organizationId, enrollment, onSaved }: FRDOExportDialogProps) {
-  const { canIssue } = useDocumentActionPermissions(organizationId);
+  isOpen, onOpenChange, student, organizationId, groupId, enrollment, onSaved }: FRDOExportDialogProps) {
+  const permissions = useStaffPermissions();
+  const canExport = isCurrentOrganizationAccess(permissions, organizationId) && permissions.can("documents.read");
+  const canSave = isCurrentOrganizationAccess(permissions, organizationId) && permissions.can("students.write");
+  const capture = useEducationIssuanceScope(organizationId, groupId, JSON.stringify([isOpen,student?.user_id,enrollment?.id]));
+  const [formScope,setFormScope] = useState<EducationIssuanceScope|null>(null);
+  const formCurrent = !!formScope && issuanceScopeCurrent(formScope);
   const [activeTab, setActiveTab] = useState("personal");
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [formError,setFormError]=useState<string|null>(null);
   const [phone, setPhone] = useState("");
   const birthDateRef = useRef<HTMLInputElement | null>(null);
   const [courseData, setCourseData] = useState<{
@@ -115,14 +116,16 @@ export function FRDOExportDialog({
   } | null>(null);
 
   useEffect(() => {
-    if (isOpen && student) {
+    setFormError(null); setExistingExport(null); setFormScope(null); setFrdoData(defaultFRDOData); setCourseData(null); setPhone("");
+    if (isOpen && student && canExport) {
       loadFRDOData();
       if (enrollment?.course_id) loadCourseData(enrollment.course_id);
     }
-  }, [isOpen, student]);
+  }, [isOpen, student?.user_id, enrollment?.id, organizationId, groupId, capture, canExport]);
 
   const loadFRDOData = async () => {
-    if (!student) return;
+    if (!student || !canExport) return;
+    const scope=capture();
     setIsLoading(true);
     try {
       const [{ data, error }, profileRes] = await Promise.all([
@@ -131,7 +134,8 @@ export function FRDOExportDialog({
           .eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
         supabase.from("profiles").select("phone").eq("user_id", student.user_id).maybeSingle(),
       ]);
-      if (error) throw error;
+      requireIssuanceScope(scope); if (error) throw error; if (profileRes.error) throw profileRes.error;
+      setFormScope(scope);
       setPhone(profileRes.data?.phone || "");
 
       if (data) {
@@ -154,27 +158,22 @@ export function FRDOExportDialog({
           profession_name: data.profession_name || "",
           qualification_rank: data.qualification_rank || "" });
       } else {
-        const nameParts = student.name.split(" ");
-        const middleName = nameParts[2] || "";
-        setFrdoData({
-          ...defaultFRDOData,
-          last_name: nameParts[0] || "", first_name: nameParts[1] || "",
-          middle_name: middleName, gender: detectGenderFromMiddleName(middleName) || "" });
+        setFrdoData(defaultFRDOData); // Structured identity is entered and reviewed explicitly; never split a display name.
       }
     } catch (error) {
-      console.error("Error loading FRDO data:", error);
-      toast.error("Ошибка загрузки данных");
+      if(issuanceScopeCurrent(scope))setFormError("Не удалось подтвердить сведения ученика. Обновите данные.");
     } finally {
-      setIsLoading(false);
+      if(issuanceScopeCurrent(scope))setIsLoading(false);
     }
   };
 
   const loadCourseData = async (courseId: string) => {
     try {
+      const scope=capture();
       const { data, error } = await supabase.from("courses")
         .select("title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form")
-        .eq("id", courseId).single();
-      if (error) throw error;
+        .eq("id", courseId).eq("organization_id",organizationId).single();
+      requireIssuanceScope(scope); if (error) throw error;
       setCourseData(data);
       if (data) {
         setFrdoData((prev) => ({
@@ -194,9 +193,13 @@ export function FRDOExportDialog({
   };
 
   const handleSave = async () => {
-    if (!student) return;
+    if (!student || !canSave || !formCurrent || isSaving) return;
+    const scope=capture();
     setIsSaving(true);
     try {
+      const session=await supabase.auth.getSession(); requireIssuanceScope(scope);
+      if(session.error || session.data.session?.user.id!==scope.actorId || !session.data.session.access_token) throw Error("Текущий доступ не подтверждён.");
+      const authorization="Bearer "+session.data.session.access_token;
       const visibleBirthDate = normalizeIsoDate(birthDateRef.current?.value);
       const birthDate = visibleBirthDate || normalizeIsoDate(frдоData.birth_date);
       const dataToSave = {
@@ -221,10 +224,10 @@ export function FRDOExportDialog({
         p_organization_id: organizationId,
         p_user_id: student.user_id,
         p_data: dataToSave,
-      });
-      if (saveError) throw saveError;
+      }).setHeader("Authorization",authorization);
+      requireIssuanceScope(scope); if (saveError) throw saveError;
       const saved = Array.isArray(savedResult) ? savedResult[0] : savedResult;
-      if (!saved?.id) throw new Error("Сервер не подтвердил сохранение данных ФРДО");
+      if (!saved?.id || saved.user_id!==student.user_id || saved.organization_id!==organizationId) throw new Error("Сервер не подтвердил сохранение данных ФРДО");
       const savedBirthDate = normalizeIsoDate(saved.birth_date);
       if (birthDate && savedBirthDate !== birthDate) {
         throw new Error("Дата рождения не сохранилась. Обновите страницу и повторите.");
@@ -237,8 +240,9 @@ export function FRDOExportDialog({
 
       const normalizedPhone = phone.trim() ? (normalizeRuPhone(phone) || phone.trim()) : null;
       const { error: phoneErr } = await supabase
-        .from("profiles").update({ phone: normalizedPhone }).eq("user_id", student.user_id);
-      if (phoneErr) console.error("phone update error", phoneErr);
+        .from("profiles").update({ phone: normalizedPhone }).eq("user_id", student.user_id).eq("organization_id",organizationId).setHeader("Authorization",authorization);
+      requireIssuanceScope(scope);
+      if (phoneErr) { toast.error("Сведения ФРДО сохранены, но телефон не обновился. Проверьте телефон отдельно."); return; }
 
       await onSaved?.();
       toast.success("Данные сохранены и проверены");
@@ -250,163 +254,9 @@ export function FRDOExportDialog({
     }
   };
 
-  const handleExportDPO = async () => {
-    if (!canIssue) return;
-    if (!student || !enrollment) { toast.error("Выберите курс для экспорта"); return; }
-
-    const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
-    const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-    const durationHours = courseData?.frdo_duration_hours
-      || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
-      || Math.round(enrollment.time_spent / 3600);
-
-    const resolved = resolveFRDOFields(
-      {
-        last_name: frдоData.last_name, first_name: frдоData.first_name, middle_name: frдоData.middle_name,
-        birth_date: frдоData.birth_date, gender: frдоData.gender, snils: frдоData.snils,
-        citizenship_code: frдоData.citizenship_code, training_form: frдоData.training_form,
-        financing_source: frдоData.financing_source, education_form: frдоData.education_form,
-        professional_area: frдоData.professional_area, specialty_group: frдоData.specialty_group,
-        qualification_name: frдоData.qualification_name, profession_name: frдоData.profession_name,
-        qualification_rank: frдоData.qualification_rank,
-      },
-      courseData ? { ...courseData, title: courseData.title || enrollment.course_title } : { title: enrollment.course_title },
-    );
-    const professionalArea = resolved.professionalArea;
-    const specialtyGroup = resolved.specialtyGroup;
-    const qualificationName = resolved.qualificationName;
-    const documentType = resolveEducationDocumentType({
-      rawType: courseData?.frdo_document_type,
-      exportType: "dpo",
-      programType: courseData?.frdo_program_type,
-    });
-    const programType = courseData?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации";
-
-    // Номера и запись журнала — только транзакционный серверный RPC.
-    let docNumber = "";
-    let regNumber = "";
-    try {
-      const issued = await issueEducationDocumentBatch({
-        organizationId,
-        courseId: enrollment.course_id || null,
-        items: [{
-          user_id: student.user_id,
-          enrollment_id: enrollment.id,
-          document_type: documentType.recordType,
-          full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
-          birth_date: frдоData.birth_date || null,
-          specialty_name: courseData?.title || enrollment.course_title,
-          qualification_name: qualificationName,
-          issue_date: (enrollment.completed_at || localDateIso()).slice(0, 10),
-          document_status: "original",
-        }],
-      });
-      docNumber = issued[0]?.document_number || "";
-      regNumber = issued[0]?.reg_number || "";
-      if (!docNumber || !regNumber) throw new Error("Сервер не вернул номера документа");
-    } catch (e: any) {
-      toast.error("Документ не выдан", { description: e?.message || "Не удалось получить номера" });
-      return;
-    }
-
-
-    const row = buildDPORow({
-      documentType: documentType.frdoLabel, docNumber, regNumber,
-      issueDate: formatDateForFRDO(enrollment.completed_at || ""),
-      programType, programName: courseData?.title || enrollment.course_title,
-      professionalArea, specialtyGroup, qualificationName,
-      educationLevel: frдоData.education_level,
-      educationDocLastName: frдоData.education_doc_last_name,
-      educationDocSeries: frдоData.education_doc_series,
-      educationDocNumber: frдоData.education_doc_number,
-      startYear, endYear, durationHours,
-      lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
-      birthDate: formatDateForFRDO(frдоData.birth_date),
-      gender: resolved.gender, snils: frдоData.snils,
-      trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
-      educationForm: resolved.educationForm, citizenshipCode: frдоData.citizenship_code });
-
-    await exportFRDOExcel([row], "dpo", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
-    toast.success("Документ зарегистрирован в журнале");
-  };
-
-  const handleExportPO = async () => {
-    if (!canIssue) return;
-    if (!student || !enrollment) { toast.error("Выберите курс для экспорта"); return; }
-
-    const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
-    const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-    const durationHours = courseData?.frdo_duration_hours
-      || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
-      || Math.round(enrollment.time_spent / 3600);
-
-    const resolved = resolveFRDOFields(
-      {
-        last_name: frдоData.last_name, first_name: frдоData.first_name, middle_name: frдоData.middle_name,
-        birth_date: frдоData.birth_date, gender: frдоData.gender, snils: frдоData.snils,
-        citizenship_code: frдоData.citizenship_code, training_form: frдоData.training_form,
-        financing_source: frдоData.financing_source, education_form: frдоData.education_form,
-        professional_area: frдоData.professional_area, specialty_group: frдоData.specialty_group,
-        qualification_name: frдоData.qualification_name, profession_name: frдоData.profession_name,
-        qualification_rank: frдоData.qualification_rank,
-      },
-      courseData ? { ...courseData, title: courseData.title || enrollment.course_title } : { title: enrollment.course_title },
-    );
-    const professionName = resolved.professionName;
-    const qualificationRank = resolved.qualificationRank;
-    const documentType = resolveEducationDocumentType({
-      rawType: courseData?.frdo_document_type,
-      exportType: "po",
-      programType: courseData?.frdo_program_type,
-    });
-
-    if (!professionName) {
-      toast.error('Не заполнено "Наименование профессии". Укажите его в карточке курса (раздел ФРДО) или у ученика.');
-      return;
-    }
-
-    let docNumber = "";
-    let regNumber = "";
-    try {
-      const issued = await issueEducationDocumentBatch({
-        organizationId,
-        courseId: enrollment.course_id || null,
-        items: [{
-          user_id: student.user_id,
-          enrollment_id: enrollment.id,
-          document_type: documentType.recordType,
-          full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
-          birth_date: frдоData.birth_date || null,
-          specialty_name: courseData?.title || enrollment.course_title,
-          qualification_name: professionName,
-          issue_date: (enrollment.completed_at || localDateIso()).slice(0, 10),
-          document_status: "original",
-        }],
-      });
-      docNumber = issued[0]?.document_number || "";
-      regNumber = issued[0]?.reg_number || "";
-      if (!docNumber || !regNumber) throw new Error("Сервер не вернул номера документа");
-    } catch (e: any) {
-      toast.error("Документ не выдан", { description: e?.message || "Не удалось получить номера" });
-      return;
-    }
-
-    const row = buildPORow({
-      documentType: documentType.frdoLabel, docNumber, regNumber,
-      issueDate: formatDateForFRDO(enrollment.completed_at || ""),
-      programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
-      programName: courseData?.title || enrollment.course_title,
-      professionName, qualificationRank,
-      startYear, endYear, durationHours,
-      lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
-      birthDate: formatDateForFRDO(frдоData.birth_date),
-      gender: resolved.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
-      trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
-      educationForm: resolved.educationForm });
-
-    await exportFRDOExcel([row], "po", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
-    toast.success("Документ зарегистрирован в журнале");
-  };
+  const [existingExport, setExistingExport] = useState<"dpo" | "po" | null>(null);
+  const handleExportDPO = () => { if (canExport && student && enrollment) setExistingExport("dpo"); };
+  const handleExportPO = () => { if (canExport && student && enrollment) setExistingExport("po"); };
 
   const updateField = (field: keyof FRDOData, value: string) => {
     setFrdoData((prev) => ({ ...prev, [field]: value }));
@@ -415,7 +265,7 @@ export function FRDOExportDialog({
   if (!student) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <><Dialog open={isOpen} onOpenChange={open=>{if(!isSaving)onOpenChange(open);}}>
       <DialogContent className="max-w-3xl max-h-[90vh] rounded-2xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="font-display flex items-center gap-3">
@@ -429,7 +279,7 @@ export function FRDOExportDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {isLoading ? (
+        {!canExport ? <p role="alert" className="p-6 text-sm text-muted-foreground">Текущий доступ к сведениям не подтверждён.</p> : formError ? <div role="alert" className="p-6 space-y-3 text-sm"><p>{formError}</p><Button variant="outline" onClick={()=>{setFormError(null);void loadFRDOData();}}>Повторить загрузку</Button></div> : !isLoading && !formCurrent ? <p role="alert" className="p-6 text-sm">Доступ изменился. Закройте окно и откройте его заново для проверки текущих данных.</p> : isLoading ? (
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner size="lg" />
           </div>
@@ -595,18 +445,18 @@ export function FRDOExportDialog({
             </ScrollArea>
 
             <div className="p-6 border-t border-border flex items-center justify-between gap-4">
-              <Button variant="outline" className="rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
+              <Button variant="outline" className="rounded-xl gap-2" onClick={handleSave} disabled={isSaving || !canSave || !formCurrent}>
                 {isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
                 Сохранить данные
               </Button>
               <div className="flex gap-2">
-                <Button className="rounded-xl gap-2" onClick={handleExportDPO} disabled={!canIssue || !enrollment}>
+                <Button className="rounded-xl gap-2" onClick={handleExportDPO} disabled={!canExport || !enrollment}>
                   <Download className="w-4 h-4" />
-                  Экспорт ДПО
+                  Факты для ДПО
                 </Button>
-                <Button variant="secondary" className="rounded-xl gap-2" onClick={handleExportPO} disabled={!canIssue || !enrollment}>
+                <Button variant="secondary" className="rounded-xl gap-2" onClick={handleExportPO} disabled={!canExport || !enrollment}>
                   <Download className="w-4 h-4" />
-                  Экспорт ПО
+                  Факты для ПО
                 </Button>
               </div>
             </div>
@@ -614,5 +464,7 @@ export function FRDOExportDialog({
         )}
       </DialogContent>
     </Dialog>
+    {existingExport && enrollment && <ExistingIssuanceExportDialog open onOpenChange={open => { if (!open) setExistingExport(null); }} organizationId={organizationId} groupId={groupId} assignments={[{enrollmentId:enrollment.id,courseId:enrollment.course_id}]} documentType={existingExport} />}
+    </>
   );
 }

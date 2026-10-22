@@ -12,7 +12,6 @@ import {
   createStudent,
   enrollStudent,
   bulkEnrollStudents,
-  bulkUnenrollStudents,
   updateStudentCompany,
   deleteStudent,
   setStudentArchived,
@@ -20,7 +19,6 @@ import {
 } from "@/api/students";
 import { toast } from "sonner";
 import { setArchivedStudentRemoved } from "@/api/studentArchiveRemoval";
-import { cancelCourseAssignment, courseAssignmentCancellationError } from "@/api/courseAssignmentCancellation";
 import { qk } from "@/lib/queryKeys";
 import {
   invalidateOrganizationStudentRows,
@@ -77,6 +75,8 @@ export interface UseStudentsReturn {
     noLogin?: boolean;
   }) => Promise<boolean>;
   enrollToCourse: (userId: string, courseId: string) => Promise<boolean>;
+  withdrawalEnrollmentIds: string[];
+  setWithdrawalEnrollmentIds: (ids: string[]) => void;
   unenrollFromCourse: (enrollmentId: string) => Promise<boolean>;
   bulkEnroll: (courseId: string) => Promise<{ success: number; failed: number }>;
   bulkUnenroll: () => Promise<{ success: number; failed: number }>;
@@ -141,6 +141,8 @@ export function useStudents(
 ): UseStudentsReturn {
   const { enabled = true, viewMode: controlledViewMode } = options;
   const qc = useQueryClient();
+  const [withdrawalEnrollmentIds, setWithdrawalEnrollmentIds] = useState<string[]>([]);
+  useEffect(() => { setWithdrawalEnrollmentIds([]); }, [organizationId]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
   // Filters
@@ -399,16 +401,9 @@ export function useStudents(
   }, [invalidateEnrollment]);
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
-    try {
-      await cancelCourseAssignment({ enrollmentId, organizationId });
-    } catch (error) {
-      toast.error(courseAssignmentCancellationError(error));
-      return false;
-    }
-    toast.success("Назначение курса отменено");
-    invalidateEnrollment();
-    return true;
-  }, [organizationId, invalidateEnrollment]);
+    setWithdrawalEnrollmentIds([enrollmentId]);
+    return false; // Staged for explicit confirmation; no mutation or success claim.
+  }, []);
 
   const bulkEnroll = useCallback(async (courseId: string) => {
     const userIds = getSelectedUserIds();
@@ -427,15 +422,12 @@ export function useStudents(
         (student?.course_id === courseFilter ? student.enrollment_id : null);
       return student?.enrollment_id;
     });
+    const ids = [...new Set(selectedEnrollments.filter(Boolean) as string[])];
     const unresolved = selectedEnrollments.filter(id => !id).length;
-    const result = await bulkUnenrollStudents(selectedEnrollments.filter(Boolean) as string[], organizationId);
-    result.failed += unresolved;
-    if (result.success > 0) toast.success(`Назначений отменено: ${result.success}`);
-    if (unresolved > 0) toast.error("Для учеников с несколькими курсами выберите курс в фильтре или отмените назначение в карточке ученика.");
-    if (result.errors.length > 0) toast.error(result.errors[0]);
-    setSelectedStudentIds(new Set());
-    if (result.success > 0) invalidateEnrollment();
-    return result;
+    if (unresolved) toast.error("Выберите точный курс: часть учеников имеет несколько назначений.");
+    if (ids.length > 100) { toast.error("За одну операцию можно обработать до 100 зачислений."); return { success: 0, failed: ids.length + unresolved }; }
+    setWithdrawalEnrollmentIds(ids);
+    return { success: 0, failed: unresolved };
   }, [selectedStudentIds, students, courseFilter, organizationId, invalidateEnrollment]);
 
   const bulkDelete = useCallback(async () => {
@@ -601,6 +593,7 @@ export function useStudents(
     setSelectedStudentIds,
     createNewStudent,
     enrollToCourse,
+    withdrawalEnrollmentIds, setWithdrawalEnrollmentIds,
     unenrollFromCourse,
     bulkEnroll,
     bulkUnenroll,

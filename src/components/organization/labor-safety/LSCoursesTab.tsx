@@ -1,4 +1,5 @@
 import React from "react";
+import { CancelCourseAssignmentButton } from "../CancelCourseAssignmentButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,14 +28,15 @@ interface LSCoursesTabProps {
   setSelectedCourseIds: React.Dispatch<React.SetStateAction<string[]>>;
   isEnrolling: boolean;
   handleEnrollToCourse: () => void;
-  handleRemoveEnrollment: (id: string) => void;
+  organizationId: string;
+  onEnrollmentChanged: () => void;
   handleResetProgress: (enrollmentId: string, courseId: string) => void;
 }
 
 export function LSCoursesTab({
   hasProfile, enrollments, coursesToEnroll, isAddingCourse, setIsAddingCourse,
   selectedCourseIds, setSelectedCourseIds, isEnrolling,
-  handleEnrollToCourse, handleRemoveEnrollment, handleResetProgress,
+  handleEnrollToCourse, organizationId, onEnrollmentChanged, handleResetProgress,
 }: LSCoursesTabProps) {
   if (!hasProfile) {
     return <div className="text-center py-12 text-muted-foreground"><GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Сначала создайте учётную запись</p></div>;
@@ -82,7 +84,8 @@ export function LSCoursesTab({
                 <div className="flex items-center gap-2">
                   {getStatusBadge(e.status)}
                   {e.progress > 0 && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleResetProgress(e.id, e.course_id)} title="Сбросить прогресс"><RotateCcw className="w-4 h-4" /></Button>}
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemoveEnrollment(e.id)} title="Отчислить"><Trash2 className="w-4 h-4" /></Button>
+                  <CancelCourseAssignmentButton enrollmentId={e.id} organizationId={organizationId} courseTitle={e.course_title}
+                    progress={e.progress} status={e.status} completedAt={e.completed_at} onCancelled={onEnrollmentChanged} />
                 </div>
               </div>
               <div className="flex items-center gap-3"><Progress value={e.progress} className="flex-1 h-2" /><span className="text-sm text-muted-foreground">{Math.min(e.progress, 100)}%</span></div>

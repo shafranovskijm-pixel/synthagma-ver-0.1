@@ -1,3 +1,4 @@
+import { ExistingIssuanceExportDialog } from "./education-issuance/ExistingExportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,7 +23,7 @@ export function FRDOManager({
   returnToGroupId?: string | null;
 }) {
   const {
-    canIssue, isLoading, students, courses, searchQuery, setSearchQuery,
+    canExport, existingExport, setExistingExport, isLoading, students, courses, searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,
     selectedStudentForExport, selectedEnrollmentForExport,
@@ -63,8 +64,8 @@ export function FRDOManager({
           <Button variant="outline" onClick={handleSendToAdmin} className="rounded-xl gap-2">
             <Send className="w-4 h-4" />Отправить в ФРДО
           </Button>
-          <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={!canIssue || isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ДПО</Button>
-          {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={!canIssue || isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ПО</Button>}
+          <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={!canExport || isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Факты для ДПО</Button>
+          {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={!canExport || isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Факты для ПО</Button>}
         </div>
       </div>
 
@@ -94,7 +95,7 @@ export function FRDOManager({
           <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}><SelectTrigger className="w-44 rounded-xl"><Filter className="w-4 h-4 mr-2" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все статусы</SelectItem><SelectItem value="complete">Заполнено</SelectItem><SelectItem value="incomplete">Частично</SelectItem><SelectItem value="empty">Не заполнено</SelectItem></SelectContent></Select>
           <Select value={courseFilter} onValueChange={setCourseFilter}><SelectTrigger className="w-48 rounded-xl"><SelectValue placeholder="Все курсы" /></SelectTrigger><SelectContent><SelectItem value="all">Все курсы</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
         </div>
-        {selectedStudents.size > 0 && <div className="flex items-center gap-2"><Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={!canIssue || isExporting}>Экспорт ДПО ({selectedStudents.size})</Button>{hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={!canIssue || isExporting}>Экспорт ПО ({selectedStudents.size})</Button>}</div>}
+        {selectedStudents.size > 0 && <div className="flex items-center gap-2"><Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={!canExport || isExporting}>Факты ДПО ({selectedStudents.size})</Button>{hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={!canExport || isExporting}>Факты ПО ({selectedStudents.size})</Button>}</div>}
       </div>
 
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -152,7 +153,8 @@ export function FRDOManager({
         )}
       </div>
 
-      <FRDOExportDialog isOpen={showExportDialog} onOpenChange={setShowExportDialog} student={selectedStudentForExport ? { id: selectedStudentForExport.user_id, user_id: selectedStudentForExport.user_id, name: selectedStudentForExport.name, email: selectedStudentForExport.email } : null} organizationId={organizationId} enrollment={selectedEnrollmentForExport as any} onSaved={refresh} />
+      <FRDOExportDialog isOpen={showExportDialog} onOpenChange={setShowExportDialog} student={selectedStudentForExport ? { id: selectedStudentForExport.user_id, user_id: selectedStudentForExport.user_id, name: selectedStudentForExport.name, email: selectedStudentForExport.email } : null} organizationId={organizationId} groupId={groupId} enrollment={selectedEnrollmentForExport as any} onSaved={refresh} />
+      {existingExport && <ExistingIssuanceExportDialog open onOpenChange={open => { if (!open) setExistingExport(null); }} organizationId={organizationId} groupId={groupId} assignments={existingExport.assignments} documentType={existingExport.documentType} />}
       <FrdoFileSanitizerDialog open={showSanitizer} onOpenChange={setShowSanitizer} />
     </div>
   );

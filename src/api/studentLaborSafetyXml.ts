@@ -1,3 +1,5 @@
+import {captureIssuanceScope,issuanceScopeCurrent} from '@/lib/educationIssuance/client';
+import {readActiveIssuanceSources,activeSourceMessages} from '@/lib/educationIssuance/activeSources';
 import { supabase } from "@/integrations/supabase/client";
 import type { StudentEnrollment } from "@/types/student";
 import {
@@ -32,6 +34,7 @@ export async function fetchStudentLaborSafetyXmlContext(
     throw new Error("Не указан контекст организации или ученика");
   }
 
+  const scope=captureIssuanceScope(input.organizationId,{kind:'organization'},()=>true);
   const completedEnrollments = input.enrollments.filter(enrollment => (
     enrollment.status === "completed" && Boolean(enrollment.completed_at)
   ));
@@ -48,7 +51,7 @@ export async function fetchStudentLaborSafetyXmlContext(
     company = data ? { name: data.name, inn: data.inn ?? null } : null;
   }
 
-  if (completedEnrollments.length === 0) return { company, courses: [] };
+  if (completedEnrollments.length === 0) {if(!issuanceScopeCurrent(scope))throw new Error('Доступ изменился. Повторите проверку.');return { company, courses: [] };}
 
   const courseIds = Array.from(new Set(completedEnrollments.map(enrollment => enrollment.course_id)));
   const { data: courseRows, error: coursesError } = await client
@@ -93,25 +96,14 @@ export async function fetchStudentLaborSafetyXmlContext(
     protocolNumber: string | null;
   }>();
   if (eligibleEnrollments.length > 0) {
-    const enrollmentIds = eligibleEnrollments.map(enrollment => enrollment.id);
-    const { data: protocolRows, error: protocolsError } = await client
-      .from("education_document_records")
-      .select("id, enrollment_id, protocol_number, created_at")
-      .eq("organization_id", input.organizationId)
-      .is("deleted_at", null)
-      .in("enrollment_id", enrollmentIds)
-      .order("created_at", { ascending: false });
-    if (protocolsError) throw protocolsError;
-    for (const row of protocolRows ?? []) {
-      if (row.id && row.enrollment_id && !documentsByEnrollmentId.has(row.enrollment_id)) {
-        documentsByEnrollmentId.set(row.enrollment_id, {
-          recordId: row.id,
-          protocolNumber: row.protocol_number?.trim() || null,
-        });
-      }
+    const sources=await readActiveIssuanceSources(scope,eligibleEnrollments.map(row=>({enrollmentId:row.id,courseId:row.course_id,userId:input.userId})));
+    for(const enrollment of eligibleEnrollments){
+      const source=sources.get(enrollment.id);
+      if(!source||source.kind!=='confirmed')throw new Error('Источник протокола не подтверждён: '+(source?.kind==='unavailable'?activeSourceMessages[source.reason]:'нет доступной записи')+'. Проверьте журнал документов; XML не подготовлен.');
+      documentsByEnrollmentId.set(enrollment.id,{recordId:source.record.official.id,protocolNumber:source.record.official.protocol_number?.trim()||null});
     }
   }
-
+  if(!issuanceScopeCurrent(scope))throw new Error('Доступ изменился. Повторите проверку.');
   return {
     company,
     courses: eligibleEnrollments.map(enrollment => {

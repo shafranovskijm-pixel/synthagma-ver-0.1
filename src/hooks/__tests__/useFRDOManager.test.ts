@@ -1,106 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          in: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-        in: vi.fn().mockReturnValue({
-          in: vi.fn().mockResolvedValue({ data: [], error: null }),
-          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-      }),
-      insert: vi.fn().mockResolvedValue({ data: null, error: null }),
-    }),
-  },
-}));
-
-vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
-}));
-
-vi.mock("@/constants/frdo", () => ({
-  detectGenderFromMiddleName: vi.fn().mockReturnValue(""),
-  generateDocumentNumber: vi.fn().mockReturnValue("DOC-001"),
-  generateRegNumber: vi.fn().mockReturnValue("REG-001"),
-  REQUIRED_FIELDS: [],
-}));
-
-vi.mock("@/utils/frdoExcelExport", () => ({
-  buildDPORow: vi.fn().mockReturnValue([]),
-  buildPORow: vi.fn().mockReturnValue([]),
-  exportFRDOExcel: vi.fn().mockResolvedValue(undefined),
-  formatDateForFRDO: vi.fn().mockReturnValue(""),
-}));
-
-import { useFRDOManager } from "@/hooks/useFRDOManager";
-
-describe("useFRDOManager", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("initializes with default state", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.students).toEqual([]);
-    expect(result.current.courses).toEqual([]);
-    expect(result.current.searchQuery).toBe("");
-    expect(result.current.statusFilter).toBe("all");
-    expect(result.current.courseFilter).toBe("all");
-    expect(result.current.selectedStudents).toEqual(new Set());
-    expect(result.current.isExporting).toBe(false);
-    expect(result.current.showExportDialog).toBe(false);
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { org,pupil,enrollment,course,uid } from "@/lib/educationIssuance/__tests__/fixtures";
+const mock=vi.hoisted(()=>({current:true,allowed:true,queryError:false,from:vi.fn(),rpc:vi.fn(),error:vi.fn()}));
+vi.mock("@/utils/courseCache",()=>({captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
+vi.mock("@/hooks/useStaffPermissions",()=>({useStaffPermissions:()=>({organizationId:"00000000-0000-4000-8000-000000000002",loading:false,error:null,can:(permission:string)=>mock.allowed&&permission!=="documents.issue"})}));
+vi.mock("@/utils/fetchUserRolesBatched",()=>({fetchUserRolesBatched:async()=>[]}));
+vi.mock("@/integrations/supabase/client",()=>({supabase:{from:mock.from,rpc:mock.rpc}}));
+vi.mock("sonner",()=>({toast:{error:mock.error,success:vi.fn(),info:vi.fn()}}));
+import { useFRDOManager } from "../useFRDOManager";
+beforeEach(()=>{vi.clearAllMocks();mock.current=true;mock.allowed=true;mock.queryError=false;
+  mock.from.mockImplementation((table:string)=>{
+    const data=table==="profiles"?[{user_id:pupil,full_name:"Фактический ученик",email:"",student_group_id:null}]:table==="enrollments"?[{id:enrollment,user_id:pupil,course_id:course,started_at:"2026-10-01",completed_at:null,time_spent:0,courses:{id:course,title:"Текущий заголовок курса",duration:"999 часов"}}]:[];
+    const chain:any=new Proxy({},{get:(_,key)=>key==="then"?(resolve:any)=>Promise.resolve({data,error:mock.queryError&&table==="enrollments"?{message:"unavailable"}:null}).then(resolve):()=>chain});return chain;
   });
-
-  it("can update search query", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    act(() => { result.current.setSearchQuery("Иванов"); });
-    expect(result.current.searchQuery).toBe("Иванов");
+});
+afterEach(cleanup);
+describe("FRDO preparation uses existing issuance facts only",()=>{
+  it("does not read personal rows or export without current organization rights",async()=>{
+    mock.allowed=false;const {result}=renderHook(()=>useFRDOManager(org));await act(async()=>{await result.current.handleBulkExport("dpo");});
+    expect(result.current.canExport).toBe(false);expect(result.current.existingExport).toBeNull();expect(mock.from).not.toHaveBeenCalled();expect(mock.rpc).not.toHaveBeenCalled();
   });
-
-  it("can update status filter", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    act(() => { result.current.setStatusFilter("complete"); });
-    expect(result.current.statusFilter).toBe("complete");
+  it("opens exact assignment selection without issuing from mutable current names, hours or a completion percentage",async()=>{
+    const {result}=renderHook(()=>useFRDOManager(org));await waitFor(()=>expect(result.current.students).toHaveLength(1));
+    await act(async()=>{await result.current.handleBulkExport("dpo");});
+    expect(result.current.existingExport).toEqual({assignments:[{enrollmentId:enrollment,courseId:course}],documentType:"dpo"});
+    expect(mock.rpc).not.toHaveBeenCalled();
   });
-
-  it("can update course filter", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    act(() => { result.current.setCourseFilter("course-1"); });
-    expect(result.current.courseFilter).toBe("course-1");
+  it("does not expose partially loaded personal rows after a dependency error",async()=>{
+    mock.queryError=true;const {result}=renderHook(()=>useFRDOManager(org));await waitFor(()=>expect(result.current.isLoading).toBe(false));
+    expect(result.current.students).toEqual([]);expect(result.current.filteredStudents).toEqual([]);expect(result.current.courses).toEqual([]);
+    await act(async()=>{await result.current.handleBulkExport("dpo");});expect(result.current.existingExport).toBeNull();expect(mock.error).toHaveBeenCalled();expect(mock.rpc).not.toHaveBeenCalled();
   });
-
-  it("can toggle export dialog", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    act(() => { result.current.setShowExportDialog(true); });
-    expect(result.current.showExportDialog).toBe(true);
-  });
-
-  it("stats show all zeros initially", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    expect(result.current.stats).toEqual({
-      total: 0,
-      complete: 0,
-      incomplete: 0,
-      empty: 0,
-    });
-  });
-
-  it("filteredStudents is empty initially", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    expect(result.current.filteredStudents).toEqual([]);
-  });
-
-  it("hasPOCourses is false when no courses", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    expect(result.current.hasPOCourses).toBe(false);
-  });
-
-  it("missingFieldsStats is empty initially", () => {
-    const { result } = renderHook(() => useFRDOManager("org-1"));
-    expect(result.current.missingFieldsStats).toEqual([]);
+  it("hides a previously loaded selection after actor access changed",async()=>{
+    const hook=renderHook(()=>useFRDOManager(org));await waitFor(()=>expect(hook.result.current.students).toHaveLength(1));
+    mock.current=false;hook.rerender();expect(hook.result.current.students).toEqual([]);expect(hook.result.current.enrollmentsMap.size).toBe(0);
+    await act(async()=>{await hook.result.current.handleBulkExport("po");});expect(hook.result.current.existingExport).toBeNull();
   });
 });

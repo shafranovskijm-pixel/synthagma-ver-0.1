@@ -1,0 +1,266 @@
+{
+  "rows": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "plan_hash",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "receipt_hash",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "consent_version",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'planned'::text",
+          "name": "state",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "(clock_timestamp() + '00:10:00'::interval)",
+          "name": "expires_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "snapshot",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "files",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": "false",
+          "name": "data_erased",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "completed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "account_deletion_jobs_pkey"
+        },
+        {
+          "definition": "CHECK (length(plan_hash) = 64)",
+          "name": "account_deletion_jobs_plan_hash_check"
+        },
+        {
+          "definition": "UNIQUE (plan_hash)",
+          "name": "account_deletion_jobs_plan_hash_key"
+        },
+        {
+          "definition": "CHECK (length(receipt_hash) = 64)",
+          "name": "account_deletion_jobs_receipt_hash_check"
+        },
+        {
+          "definition": "CHECK (state = ANY (ARRAY['planned'::text, 'cleanup_pending'::text, 'deleted'::text, 'superseded'::text]))",
+          "name": "account_deletion_jobs_state_check"
+        }
+      ],
+      "force_rls": false,
+      "indexes": [
+        {
+          "definition": "CREATE UNIQUE INDEX account_deletion_jobs_pkey ON public.account_deletion_jobs USING btree (id)",
+          "name": "account_deletion_jobs_pkey",
+          "primary": true,
+          "unique": true,
+          "valid": true
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX account_deletion_jobs_plan_hash_key ON public.account_deletion_jobs USING btree (plan_hash)",
+          "name": "account_deletion_jobs_plan_hash_key",
+          "primary": false,
+          "unique": true,
+          "valid": true
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX account_deletion_one_active ON public.account_deletion_jobs USING btree (user_id) WHERE (state = 'cleanup_pending'::text)",
+          "name": "account_deletion_one_active",
+          "primary": false,
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "owner": "postgres",
+      "policies": [],
+      "rls": true,
+      "schema_name": "public",
+      "table_name": "account_deletion_jobs",
+      "triggers": []
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "revoked_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (user_id)",
+          "name": "account_deletion_revocations_pkey"
+        }
+      ],
+      "force_rls": false,
+      "indexes": [
+        {
+          "definition": "CREATE UNIQUE INDEX account_deletion_revocations_pkey ON public.account_deletion_revocations USING btree (user_id)",
+          "name": "account_deletion_revocations_pkey",
+          "primary": true,
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "owner": "postgres",
+      "policies": [],
+      "rls": true,
+      "schema_name": "public",
+      "table_name": "account_deletion_revocations",
+      "triggers": []
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "doc_type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "year",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "name": "last_number",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (organization_id, doc_type, year)",
+          "name": "document_number_sequences_pkey"
+        }
+      ],
+      "force_rls": false,
+      "indexes": [
+        {
+          "definition": "CREATE UNIQUE INDEX document_number_sequences_pkey ON public.document_number_sequences USING btree (organization_id, doc_type, year)",
+          "name": "document_number_sequences_pkey",
+          "primary": true,
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "owner": "postgres",
+      "policies": [
+        {
+          "check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": "{16481}",
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "check": "false",
+          "command": "*",
+          "name": "no_direct_access_seq",
+          "permissive": true,
+          "roles": "{0}",
+          "using": "false"
+        }
+      ],
+      "rls": true,
+      "schema_name": "public",
+      "table_name": "document_number_sequences",
+      "triggers": []
+    }
+  ],
+  "policyRoles": [
+    {
+      "polname": "account_deletion_no_revoked_access",
+      "role_names": [
+        "authenticated"
+      ]
+    },
+    {
+      "polname": "no_direct_access_seq",
+      "role_names": [
+        "PUBLIC"
+      ]
+    }
+  ],
+  "sourceRelationCapture": {
+    "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc019-issuance-lifecycle-evidence-20261022/ACTUAL621_PRIVACY_SEED_RELATIONS_METADATA.json",
+    "bytes": 7404,
+    "sha256": "437e5f8ac7c74e147357f2bfce1afbd2deff670293cebaae853d6b875b5ca27b"
+  },
+  "scope": "Actual621 exact three seed schemas plus role-name projection for sequence policies. No production row data."
+}

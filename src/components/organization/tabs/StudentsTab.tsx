@@ -1,3 +1,4 @@
+import { WithdrawalDialog } from "../education-issuance/WithdrawalDialog";
 import React, { useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     countsLoading, countsErrorKind, countsInconsistent, retryCounts,
     groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
+    withdrawalEnrollmentIds, setWithdrawalEnrollmentIds,
     removeStudent, bulkDelete, activeStudentsCount, archivedCount, archiveByMonth,
     archiveStudent, unarchiveStudent, refresh, refreshRows,
     loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
@@ -222,7 +224,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       return next;
     }, { replace: true });
   }, [searchParams, setSearchParams]);
-  
+
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   React.useEffect(() => {
     if (panelMode === "archive" && archiveByMonth.length > 0) {
@@ -828,6 +830,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       )}
 
       {/* Dialogs */}
+      {organizationId && <WithdrawalDialog open={withdrawalEnrollmentIds.length > 0} onOpenChange={open => { if (!open) setWithdrawalEnrollmentIds([]); }}
+        organizationId={organizationId} enrollmentIds={withdrawalEnrollmentIds} onWithdrawn={() => { setWithdrawalEnrollmentIds([]); setSelectedStudentIds(new Set()); refresh(); }} />}
       <Dialog open={showArchiveRemoval} onOpenChange={value => { if (!isRemovingArchive) setShowArchiveRemoval(value); }}>
         <DialogContent><DialogHeader><DialogTitle>Удалить выбранных учеников из архива?</DialogTitle>
           <DialogDescription>Выбрано: {selectedStudentIds.size}. Они исчезнут из архива и текущих счётчиков. История обучения, результаты тестов и выданные документы сохранятся.</DialogDescription>

@@ -1,17 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useEducationIssuanceScope } from "@/hooks/useEducationIssuance";
+import { issuanceScopeCurrent, requireIssuanceScope, type EducationIssuanceScope } from "@/lib/educationIssuance/client";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
-import { detectGenderFromMiddleName, generateDocumentNumber, generateRegNumber } from "@/constants/frdo";
-import { buildDPORow, buildPORow, exportFRDOExcel, formatDateForFRDO } from "@/utils/frdoExcelExport";
-import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
+import { detectGenderFromMiddleName } from "@/constants/frdo";
 import { filterByGroupMembers } from "@/lib/groups/groupContext";
 import { FRDO_REQUIRED_FIELDS, resolveFrdoReadiness } from "@/lib/frdo/readiness";
-import { issueEducationDocumentsByCourse, issuedRowKey, type CourseScopedItem } from "@/lib/education-docs/issueBatch";
-import { resolveEducationDocumentType } from "@/lib/education-docs/documentType";
-import { localDateIso } from "@/lib/date/localDate";
-import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
+import { isCurrentOrganizationAccess } from "@/hooks/useDocumentActionPermissions";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
 interface Student { user_id: string; name: string; email: string; course?: string | null; course_id?: string | null; }
 interface FRDOData {
@@ -35,20 +33,6 @@ type FRDOStatus = "all" | "complete" | "incomplete" | "empty";
 /** Единый список обязательных полей — общий с рабочим пространством группы. */
 const REQUIRED_FIELDS = FRDO_REQUIRED_FIELDS;
 
-const EXPORT_TIMEOUT_MS = 20_000;
-
-function withExportTimeout<T>(promise: Promise<T>): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      window.setTimeout(
-        () => reject(new Error("Файл не удалось подготовить за 20 секунд. Повторите выгрузку или выгрузите меньше записей.")),
-        EXPORT_TIMEOUT_MS,
-      );
-    }),
-  ]);
-}
-
 export interface FRDOGroupContext {
   /** Ограничить список фактическими участниками основной или дополнительной группы. */
   groupId?: string | null;
@@ -57,9 +41,16 @@ export interface FRDOGroupContext {
 }
 
 export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {}) {
-  const { canIssue } = useDocumentActionPermissions(organizationId);
+  const permissions = useStaffPermissions();
+  const canExport = isCurrentOrganizationAccess(permissions, organizationId) && permissions.can("documents.read");
+  const [existingExport, setExistingExport] = useState<{assignments:{enrollmentId:string;courseId:string}[];documentType:"dpo"|"po"}|null>(null);
+  useEffect(() => { setExistingExport(null); }, [organizationId, ctx.groupId, ctx.courseId]);
   const groupId = ctx.groupId || null;
   const contextCourseId = ctx.courseId || null;
+  const capture=useEducationIssuanceScope(organizationId,groupId,contextCourseId??"");
+  const [dataScope,setDataScope]=useState<EducationIssuanceScope|null>(null);
+  const currentData=canExport&&!!dataScope&&issuanceScopeCurrent(dataScope);
+  const loadEpoch=useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
@@ -77,27 +68,30 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   const [isUploading, setIsUploading] = useState(false);
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
 
-  useEffect(() => { loadData(); }, [organizationId, groupId]);
+  useEffect(() => { setSelectedStudents(new Set()); setShowExportDialog(false); setExistingExport(null); setDataScope(null); setStudents([]); setCourses([]); setFrdoDataMap(new Map()); setEnrollmentsMap(new Map()); if(canExport)void loadData(); else setIsLoading(false); return()=>{++loadEpoch.current;}; }, [organizationId, groupId, contextCourseId, capture, canExport]);
   useEffect(() => { setCourseFilter(contextCourseId || "all"); }, [contextCourseId]);
 
   const loadData = async () => {
+    if(!canExport)return; const scope=capture(),run=++loadEpoch.current; setDataScope(null);
     setIsLoading(true);
     try {
       const { data: profilesData, error: profilesError } = groupId
         ? { data: await fetchEffectiveGroupProfiles(supabase, organizationId, groupId, { select: "user_id, full_name, email, student_group_id" }), error: null }
         : await supabase.from("profiles").select("user_id, full_name, email, student_group_id").eq("organization_id", organizationId);
-      if (profilesError) throw profilesError;
+      requireIssuanceScope(scope); if(run!==loadEpoch.current)return; if (profilesError) throw profilesError;
       const userIds = profilesData?.map(p => p.user_id) || [];
       setGroupMemberIds(userIds);
       if (userIds.length === 0) { setStudents([]); setIsLoading(false); return; }
 
       const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
+      requireIssuanceScope(scope); if(run!==loadEpoch.current)return;
       const orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
       const studentUserIds = userIds.filter(id => !orgAdminUserIds.has(id));
       const studentProfiles = (profilesData || []).filter(p => !orgAdminUserIds.has(p.user_id));
       if (studentUserIds.length === 0) { setStudents([]); setIsLoading(false); return; }
 
-      const { data: enrollmentsData } = await supabase.from("enrollments").select("id, user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)").in("user_id", studentUserIds);
+      const { data: enrollmentsData, error: enrollmentError } = await supabase.from("enrollments").select("id, user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)").in("user_id", studentUserIds);
+      requireIssuanceScope(scope); if(run!==loadEpoch.current)return; if(enrollmentError)throw enrollmentError;
       const enrollMap = new Map<string, EnrollmentData[]>();
       const courseSet = new Map<string, Course>();
       for (const e of enrollmentsData || []) {
@@ -111,7 +105,8 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
       setCourses(Array.from(courseSet.values()));
       setStudents(studentProfiles.map(p => ({ user_id: p.user_id, name: p.full_name || "Без имени", email: p.email || "", course: enrollMap.get(p.user_id)?.[0]?.course_title || null, course_id: enrollMap.get(p.user_id)?.[0]?.course_id || null })));
 
-      const { data: frdoData } = await supabase.from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", studentUserIds);
+      const { data: frdoData, error: frdoError } = await supabase.from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", studentUserIds);
+      requireIssuanceScope(scope); if(run!==loadEpoch.current)return; if(frdoError)throw frdoError;
       const dataMap = new Map<string, FRDOData>();
       for (const data of frdoData || []) {
         dataMap.set(data.user_id, {
@@ -128,9 +123,9 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
           qualification_rank: data.qualification_rank || "",
         });
       }
-      setFrdoDataMap(dataMap);
-    } catch (error) { console.error("Error:", error); toast.error("Ошибка загрузки данных"); }
-    finally { setIsLoading(false); }
+      setFrdoDataMap(dataMap); setDataScope(scope);
+    } catch (error) { if(run===loadEpoch.current&&issuanceScopeCurrent(scope)){setDataScope(null);toast.error("Не удалось подтвердить сведения ФРДО. Обновите данные.");} }
+    finally { if(run===loadEpoch.current)setIsLoading(false); }
   };
 
   const getFrdoStatus = (userId: string): { status: FRDOStatus; missingFields: string[] } => {
@@ -139,7 +134,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   };
 
   // Фильтрация по фактическим участникам группы (не по совпадению курса).
-  const scopedStudents = filterByGroupMembers(students, groupId ? groupMemberIds : null);
+  const scopedStudents = currentData ? filterByGroupMembers(students, groupId ? groupMemberIds : null) : [];
 
   const filteredStudents = scopedStudents.filter(student => {
     if (searchQuery) { const q = searchQuery.toLowerCase(); if (!student.name.toLowerCase().includes(q) && !student.email.toLowerCase().includes(q)) return false; }
@@ -158,146 +153,13 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   };
 
   const handleBulkExport = async (exportType: "dpo" | "po") => {
-    if (!canIssue) return;
-    const exportUserIds = selectedStudents.size > 0 ? selectedStudents : new Set(filteredStudents.map(s => s.user_id));
-    if (exportUserIds.size === 0) { toast.error("Нет студентов для экспорта"); return; }
-    setIsExporting(true);
-    try {
-      const blocked: string[] = [];
-      for (const userId of exportUserIds) {
-        const student = students.find(s => s.user_id === userId);
-        if (!student) continue;
-        const missing = [...getFrdoStatus(userId).missingFields];
-        const enrollments = enrollmentsMap.get(userId) || [];
-        if (enrollments.length === 0) missing.push("Курс");
-        if (missing.length > 0) blocked.push(`${student.name}: ${missing.join(", ")}`);
-      }
-      if (blocked.length > 0) {
-        const preview = blocked.slice(0, 3).join("; ");
-        const remainder = blocked.length > 3 ? ` Ещё записей: ${blocked.length - 3}.` : "";
-        toast.error("Выгрузка заблокирована: заполните обязательные поля", {
-          description: `${preview}.${remainder}`,
-          duration: 12_000,
-        });
-        return;
-      }
-
-      // Сначала собираем строки без номеров, затем номера выдаёт сервер
-      // (issue_education_document_batch) одной транзакцией на курс.
-      interface Pending {
-        key: string;
-        item: CourseScopedItem;
-        build: (docNum: string, regNum: string) => (string | number)[];
-      }
-      const pending: Pending[] = [];
-      let skippedEmpty = 0;
-
-      for (const userId of exportUserIds) {
-        const student = students.find(s => s.user_id === userId);
-        const frdoData = frdoDataMap.get(userId);
-        if (!student) continue;
-        const data: FRDOData = frdoData || { user_id: userId, last_name: student.name.split(" ")[0] || "", first_name: student.name.split(" ")[1] || "", middle_name: student.name.split(" ")[2] || "", birth_date: "", gender: "", snils: "", citizenship_code: "643", education_level: "", education_doc_last_name: "", education_doc_series: "", education_doc_number: "", training_form: "Очная", financing_source: "Платное обучение", education_form: "в образовательной организации", professional_area: "", specialty_group: "", qualification_name: "", profession_name: "", qualification_rank: "" };
-        const enrollments = enrollmentsMap.get(userId) || [];
-        const filteredEnrollments = courseFilter === "all" ? enrollments : enrollments.filter(e => e.course_id === courseFilter);
-        const processEnrollment = (enrollment: EnrollmentData | null) => {
-          // Пропускаем «строки-призраки»: нет ни ФИО, ни даты рождения, ни СНИЛС,
-          // ни программы — записывать в ФРДО нечего, иначе ФИС вернёт ошибку
-          // «обязательные ячейки не заполнены».
-          const hasIdentity = Boolean(
-            (data.last_name && data.last_name.trim()) ||
-            (data.first_name && data.first_name.trim()) ||
-            (data.snils && data.snils.trim()) ||
-            (data.birth_date && data.birth_date.trim()),
-          );
-          const hasProgram = Boolean(enrollment?.course_title && enrollment.course_title.trim());
-          if (!hasIdentity || !hasProgram) {
-            skippedEmpty++;
-            return;
-          }
-
-          const courseSettings = enrollment ? courses.find(c => c.id === enrollment.course_id) || null : null;
-          const courseLike = courseSettings ? { ...courseSettings, title: enrollment?.course_title || courseSettings.title } : (enrollment ? { title: enrollment.course_title } : null);
-          const resolved = resolveFRDOFields(data, courseLike);
-          const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
-          const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-          const durationHours = courseSettings?.frdo_duration_hours || getDuration(enrollment, courseSettings);
-          const documentType = resolveEducationDocumentType({
-            rawType: courseSettings?.frdo_document_type,
-            exportType,
-            programType: courseSettings?.frdo_program_type,
-          });
-
-          // Hard guard: PO requires non-empty profession name (column L)
-          if (exportType === "po" && !resolved.professionName) {
-            const studentLabel = `${data.last_name} ${data.first_name}`.trim() || student.name;
-            throw new Error(`Не заполнено "Наименование профессии" для ${studentLabel} (курс «${enrollment?.course_title || "—"}»). Укажите его в карточке курса (frdo_profession_name) или у ученика (profession_name).`);
-          }
-
-          const enrollmentId = enrollment?.id || null;
-          const issueDate = enrollment?.completed_at
-            ? String(enrollment.completed_at).slice(0, 10)
-            : localDateIso();
-
-          pending.push({
-            key: issuedRowKey({ user_id: userId, enrollment_id: enrollmentId }),
-            item: {
-              user_id: userId,
-              enrollment_id: enrollmentId,
-              course_id: enrollment?.course_id || null,
-              document_type: documentType.recordType,
-              full_name: `${data.last_name} ${data.first_name} ${data.middle_name}`.trim(),
-              birth_date: data.birth_date || null,
-              specialty_name: enrollment?.course_title || "",
-              qualification_name: resolved.qualificationName || null,
-              issue_date: issueDate,
-              document_status: "original",
-            },
-            build: (docNum, regNum) => exportType === "dpo"
-              ? buildDPORow({ documentType: documentType.frdoLabel, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: courseSettings?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации", programName: enrollment?.course_title || "", professionalArea: resolved.professionalArea, specialtyGroup: resolved.specialtyGroup, qualificationName: resolved.qualificationName, educationLevel: data.education_level, educationDocLastName: data.education_doc_last_name, educationDocSeries: data.education_doc_series, educationDocNumber: data.education_doc_number, startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: resolved.gender, snils: data.snils, trainingForm: resolved.trainingForm, financingSource: resolved.financingSource, educationForm: resolved.educationForm, citizenshipCode: data.citizenship_code })
-              : buildPORow({ documentType: documentType.frdoLabel, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего", programName: enrollment?.course_title || "", professionName: resolved.professionName, qualificationRank: resolved.qualificationRank, startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: resolved.gender, snils: data.snils, citizenshipCode: data.citizenship_code, trainingForm: resolved.trainingForm, financingSource: resolved.financingSource, educationForm: resolved.educationForm }),
-          });
-        };
-        // Официальный документ нельзя выпускать без точного зачисления и курса.
-        // Такая строка остаётся в readiness как неполная, но в журнал не пишется.
-        if (filteredEnrollments.length === 0) {
-          skippedEmpty += 1;
-          continue;
-        }
-        filteredEnrollments.forEach(e => processEnrollment(e));
-      }
-
-      if (pending.length === 0) { toast.error("Нет данных для экспорта — все строки пустые"); setIsExporting(false); return; }
-
-      // Номера только с сервера: при ошибке не вставляем и не выгружаем ничего.
-      const issuedRows = await issueEducationDocumentsByCourse({
-        organizationId,
-        groupId,
-        items: pending.map(p => p.item),
-      });
-      const numbers = new Map<string, { doc: string; reg: string }>();
-      for (const row of issuedRows) {
-        numbers.set(issuedRowKey(row), { doc: row.document_number, reg: row.reg_number });
-      }
-
-      const rows: (string | number)[][] = [];
-      for (const p of pending) {
-        const n = numbers.get(p.key);
-        if (!n) throw new Error("Сервер не вернул номер для части записей — выгрузка отменена");
-        rows.push(p.build(n.doc, n.reg));
-      }
-
-      await withExportTimeout(exportFRDOExcel(rows, exportType));
-
-      toast.success(
-        skippedEmpty > 0
-          ? `Экспортировано ${rows.length} записей. Пропущено пустых: ${skippedEmpty}`
-          : `Экспортировано ${rows.length} записей`,
-      );
-    } catch (error: any) {
-      console.error("Export error:", error);
-      toast.error(error?.message || "Ошибка экспорта");
-    }
-    finally { setIsExporting(false); }
+    if (!canExport || !currentData) return;
+    const users = selectedStudents.size ? selectedStudents : new Set(filteredStudents.map(row => row.user_id));
+    const assignments = scopedStudents.filter(row => users.has(row.user_id)).flatMap(row =>
+      (enrollmentsMap.get(row.user_id) ?? []).filter(enrollment => courseFilter === "all" || enrollment.course_id === courseFilter)
+        .map(enrollment => ({ enrollmentId: enrollment.id, courseId: enrollment.course_id })));
+    if (!assignments.length || assignments.length > 1000) { toast.error("Выберите от 1 до 1000 точных назначений курса."); return; }
+    setExistingExport({ assignments, documentType: exportType });
   };
 
   const openStudentExport = (student: Student) => {
@@ -371,14 +233,14 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   };
 
   return {
-    canIssue, groupId,
-    isLoading, students, courses, searchQuery, setSearchQuery,
+    canExport, existingExport, setExistingExport, groupId,
+    isLoading, students:scopedStudents, courses:currentData?courses:[], searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,
     selectedStudentForExport, selectedEnrollmentForExport,
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
-    enrollmentsMap, organizationId,
+    enrollmentsMap:currentData?enrollmentsMap:new Map<string,EnrollmentData[]>(), organizationId,
     visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
     refresh: loadData,
   };

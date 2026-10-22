@@ -168,6 +168,18 @@ describe("private storage file actions", () => {
     expect(click).not.toHaveBeenCalled();
   });
 
+  it("denies a deferred HTML handoff after the captured context changes and returns to the same key", async () => {
+    let epoch=0;const captured=epoch;let finishBody!:(blob:Blob)=>void;
+    mocks.createSignedUrl.mockResolvedValue({data:{signedUrl:"https://storage.example/template.html"},error:null});
+    const body=vi.fn(()=>new Promise<Blob>(resolve=>{finishBody=resolve;}));
+    vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,headers:new Headers({"content-type":"text/html"}),blob:body}));
+    const click=vi.spyOn(HTMLAnchorElement.prototype,"click").mockImplementation(()=>undefined);
+    const assertCurrent=vi.fn(()=>{if(epoch!==captured)throw new Error("Context changed");});
+    const pending=downloadPrivateFile("org-documents","org/template.html","Template.html",{assertCurrent});
+    await vi.advanceTimersByTimeAsync(0);expect(body).toHaveBeenCalledOnce();epoch++;epoch++;
+    finishBody(new Blob(["<p>Private template</p>"],{type:"text/html"}));
+    await expect(pending).resolves.toBe(false);expect(click).not.toHaveBeenCalled();expect(assertCurrent).toHaveBeenCalled();
+  });
   it("reports a transport failure without navigating to an unverified download", async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Synthetic network failure")));

@@ -172,6 +172,7 @@ function GroupDocumentsFolderView({
     organizationId,
     courseId,
     useMemo(() => students.map(s => s.user_id), [students]),
+    groupId,
   );
 
   /** Документы группируются по партии: версия, дата, автор, Текущая/Предыдущая. */

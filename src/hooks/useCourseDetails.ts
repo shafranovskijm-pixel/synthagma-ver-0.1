@@ -1,3 +1,4 @@
+import { deleteUnusedCourses } from "@/api/courseDeletion";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -510,13 +511,9 @@ export function useCourseDetails(
   const handleDeleteCourse = async () => {
     setIsDeleting(true);
     try {
-      await supabase.from("enrollments").delete().eq("course_id", course.id);
-      await supabase.from("lessons").delete().eq("course_id", course.id);
-      await supabase.from("course_documents").delete().eq("course_id", course.id);
-      const { error } = await supabase.from("courses").delete().eq("id", course.id);
-      if (error) throw error;
+      await deleteUnusedCourses([course.id]);
       toast.success("Курс удалён"); setShowDeleteConfirm(false); onCourseDeleted?.(); navigate("/organization?tab=courses");
-    } catch (error) { console.error("Error deleting:", error); toast.error("Ошибка удаления курса"); }
+    } catch (error) { console.error("Error deleting:", error); toast.error(error instanceof Error ? error.message : "Ошибка удаления курса"); }
     finally { setIsDeleting(false); }
   };
 

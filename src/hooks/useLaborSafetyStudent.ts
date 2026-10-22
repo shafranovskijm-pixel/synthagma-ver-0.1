@@ -1,3 +1,5 @@
+import { useEducationIssuanceScope } from "@/hooks/useEducationIssuance";
+import { issuanceScopeCurrent, requireIssuanceScope } from "@/lib/educationIssuance/client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
@@ -83,6 +85,7 @@ export function useLaborSafetyStudent(
   const identification = useIdentificationState(organizationId,profile?.user_id,null,isOpen && !!record && profile?.record_id === record.id && profile.organization_id === organizationId);
   const verifications = identificationRecords(identification.state).map(identificationView);
   const [identityDocs, setIdentityDocs] = useState<LSIdentityDocument[]>([]);
+  const captureLifecycle=useEducationIssuanceScope(organizationId,null,JSON.stringify([isOpen,record?.id]));
   const [availableCourses, setAvailableCourses] = useState<LSCourse[]>([]);
 
   const [isEditingCredentials, setIsEditingCredentials] = useState(false);
@@ -265,18 +268,22 @@ export function useLaborSafetyStudent(
     finally { setIsEnrolling(false); }
   };
 
-  const handleRemoveEnrollment = async (enrollmentId: string) => {
-    try { await supabase.from("enrollments").delete().eq("id", enrollmentId); toast.success("Отчислен с курса"); loadData(); } catch { toast.error("Ошибка отчисления"); }
-  };
+  // Removal is implemented by the explicit retained-withdrawal dialog in LSCoursesTab.
+  const refreshEnrollments = () => { void loadData(); };
 
-  const handleResetProgress = async (enrollmentId: string, courseId: string) => {
+  const handleResetProgress = async (enrollmentId: string, _courseId: string) => {
     if (!profile) return;
+    const scope=captureLifecycle();
     try {
-      await supabase.from("enrollments").update({ progress: 0, status: "active", completed_at: null }).eq("id", enrollmentId);
-      const { data: lessons } = await supabase.from("lessons").select("id").eq("course_id", courseId);
-      if (lessons && lessons.length > 0) await supabase.from("lesson_progress").delete().eq("user_id", profile.user_id).in("lesson_id", lessons.map(l => l.id));
-      toast.success("Прогресс сброшен"); loadData();
-    } catch { toast.error("Ошибка сброса прогресса"); }
+      const session=await supabase.auth.getSession(); requireIssuanceScope(scope);
+      if(session.error||session.data.session?.user.id!==scope.actorId||!session.data.session.access_token)throw Error("Текущий доступ не подтверждён.");
+      const {data,error}=await supabase.rpc("reset_course_learning_progress" as never,{p_enrollment_id:enrollmentId,p_organization_id:organizationId} as never)
+        .setHeader("Authorization","Bearer "+session.data.session.access_token);
+      requireIssuanceScope(scope);if(error)throw error;
+      const result=data as {reset?:boolean;enrollmentId?:string}|null;
+      if(result?.reset!==true||result.enrollmentId!==enrollmentId)throw Error("Сброс не подтверждён сервером.");
+      toast.success("Учебный прогресс сброшен. История тестов и использованные попытки сохранены.");void loadData();
+    } catch {if(issuanceScopeCurrent(scope))toast.error("Не удалось сбросить прогресс. Проверьте состояние обучения и права; прежняя история сохраняется.");}
   };
 
   const handleSendDocReminder = async () => {
@@ -311,6 +318,6 @@ export function useLaborSafetyStudent(
     createProfileForRecord, sendCredentialsToUser, copyToClipboard,
     handleUpdateCredentials, handleManualVerification, handleUploadClick,
     handleFileChange, handleDeleteDoc, handleEnrollToCourse,
-    handleRemoveEnrollment, handleResetProgress, handleSendDocReminder,
+    refreshEnrollments, handleResetProgress, handleSendDocReminder,
   };
 }

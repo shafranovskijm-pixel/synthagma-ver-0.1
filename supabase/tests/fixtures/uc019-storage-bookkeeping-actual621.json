@@ -1,0 +1,74 @@
+{
+  "status": "ACTUAL_BOUNDED_READ_ONLY_METADATA",
+  "timestampFunction": {
+    "acl": "{=X/supabase_storage_admin,supabase_storage_admin=X/supabase_storage_admin}",
+    "body_md5": "7596e66a7698d5a6b5129c5ce9b24c5f",
+    "definition": "CREATE OR REPLACE FUNCTION storage.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    NEW.updated_at = now();\n    RETURN NEW; \nEND;\n$function$\n",
+    "oid": "17211",
+    "owner": "supabase_storage_admin",
+    "proconfig": null,
+    "proname": "update_updated_at_column",
+    "prosecdef": false,
+    "schema_name": "storage"
+  },
+  "metadata": {
+    "at": "2026-10-22T17:54:26.932065+00:00",
+    "generated_column": {
+      "expression": "string_to_array(name, '/'::text)",
+      "generated": "s",
+      "identity": "",
+      "name": "path_tokens",
+      "not_null": false,
+      "type": "text[]"
+    },
+    "timestamp_trigger_function": {
+      "acl": "{=X/supabase_storage_admin,supabase_storage_admin=X/supabase_storage_admin}",
+      "body_md5": "7596e66a7698d5a6b5129c5ce9b24c5f",
+      "config": null,
+      "definition": "CREATE OR REPLACE FUNCTION storage.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    NEW.updated_at = now();\n    RETURN NEW; \nEND;\n$function$\n",
+      "owner": "supabase_storage_admin",
+      "security_definer": false
+    },
+    "triggers": [
+      {
+        "definition": "CREATE TRIGGER account_deletion_reject_revoked_upload BEFORE INSERT OR UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION account_deletion_storage_write_guard()",
+        "enabled": "O",
+        "function": "account_deletion_storage_write_guard()",
+        "function_oid": "253390",
+        "name": "account_deletion_reject_revoked_upload",
+        "oid": "253391",
+        "type": 23
+      },
+      {
+        "definition": "CREATE TRIGGER protect_objects_delete BEFORE DELETE ON storage.objects FOR EACH STATEMENT EXECUTE FUNCTION storage.protect_delete()",
+        "enabled": "O",
+        "function": "storage.protect_delete()",
+        "function_oid": "54238",
+        "name": "protect_objects_delete",
+        "oid": "54240",
+        "type": 10
+      },
+      {
+        "definition": "CREATE TRIGGER uc_admission_storage_boundary BEFORE INSERT OR DELETE OR UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION uc_guard_admission_storage()",
+        "enabled": "O",
+        "function": "uc_guard_admission_storage()",
+        "function_oid": "260181",
+        "name": "uc_admission_storage_boundary",
+        "oid": "260182",
+        "type": 31
+      },
+      {
+        "definition": "CREATE TRIGGER update_objects_updated_at BEFORE UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.update_updated_at_column()",
+        "enabled": "O",
+        "function": "storage.update_updated_at_column()",
+        "function_oid": "17211",
+        "name": "update_objects_updated_at",
+        "oid": "17212",
+        "type": 19
+      }
+    ]
+  },
+  "customerRows": 0,
+  "secrets": 0,
+  "mutations": 0
+}

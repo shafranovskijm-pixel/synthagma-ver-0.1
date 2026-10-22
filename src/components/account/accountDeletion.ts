@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type DeletionAction = "delete" | "anonymize" | "retain" | "block";
 export const deletionConsentVersion = "full-personal-data-v1" as const;
+export const educationArtifactRetentionReviewCode = "EDUCATION_ARTIFACT_RETENTION_REVIEW_REQUIRED" as const;
 export interface DeletionPreview {
   revision: "account-deletion-v2";
   consentVersion: typeof deletionConsentVersion;
@@ -30,6 +31,7 @@ export class AccountDeletionError extends Error {
 const rejectionCodes = new Set([
   "AUTH_REQUIRED", "REAUTH_FAILED", "MFA_REAUTH_REQUIRED", "PLAN_EXPIRED", "PLAN_CHANGED",
   "OWNERSHIP_TRANSFER_REQUIRED", "RETENTION_POLICY_REQUIRED", "CONSENT_REQUIRED", "DELETION_UNAVAILABLE",
+  educationArtifactRetentionReviewCode,
 ]);
 const isObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object";
 const nonempty = (value: unknown): value is string => typeof value === "string" && value.length > 0;

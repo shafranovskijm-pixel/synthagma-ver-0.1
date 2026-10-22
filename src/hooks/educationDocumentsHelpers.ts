@@ -18,7 +18,7 @@ export interface EducationDocumentRecord {
   order_date: string;
   document_status: "original" | "duplicate";
   original_document_data: string | null;
-  delivery_method: "personal" | "representative" | "postal";
+  delivery_method: "not_recorded" | "personal" | "representative" | "postal";
   delivery_details: string | null;
   notes: string | null;
   enrollment_id?: string;
@@ -49,6 +49,7 @@ export const DOCUMENT_TYPES = [
 ];
 
 export const DELIVERY_METHODS = [
+  { value: "not_recorded", label: "Передача не зафиксирована" },
   { value: "personal", label: "Лично" },
   { value: "representative", label: "Через представителя" },
   { value: "postal", label: "Почтовое отправление" },
@@ -72,7 +73,7 @@ export function mapDbRecord(r: any): EducationDocumentRecord {
     order_date: r.order_date || "",
     document_status: r.document_status as "original" | "duplicate",
     original_document_data: r.original_document_data,
-    delivery_method: r.delivery_method as "personal" | "representative" | "postal",
+    delivery_method: r.delivery_method as "not_recorded" | "personal" | "representative" | "postal",
     delivery_details: r.delivery_details,
     notes: r.notes,
     enrollment_id: r.enrollment_id || undefined,
@@ -96,7 +97,7 @@ export function getDefaultFormData(documentTypeFilter?: string) {
     order_date: null as Date | null,
     document_status: "original" as "original" | "duplicate",
     original_document_data: "",
-    delivery_method: "personal" as "personal" | "representative" | "postal",
+    delivery_method: "personal" as "not_recorded" | "personal" | "representative" | "postal",
     delivery_details: "",
     notes: "",
     enrollment_id: "",

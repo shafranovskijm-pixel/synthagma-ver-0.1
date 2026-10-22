@@ -1,3 +1,4 @@
+import { RetainedResultsButton } from "@/components/student/RetainedResultsButton";
 import { useState, useEffect } from "react";
 import { Capacitor } from '@capacitor/core';
 import { Navigate, useNavigate } from "react-router-dom";
@@ -504,6 +505,8 @@ function LearnerDashboard() {
                 formatTime={formatTime}
               />
 
+              {currentTab === "catalog" && !!user?.id && !isAdminView && !isPreviewMode && !isAdminViewFromStorage && effectiveStudentId === user?.id && profile?.organization_id && <RetainedResultsButton
+                organizationId={profile.organization_id} userId={user.id} courseLabels={Object.fromEntries(courses.map(course => [course.id, course.title]))} />}
               {currentTab === "catalog" && (
                 <CatalogContent
                   catalogCourses={isNativeLearner || dashboardSettings.catalogMode === "assigned" ? [] : catalogCourses}

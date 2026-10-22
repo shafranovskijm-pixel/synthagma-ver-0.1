@@ -24,6 +24,9 @@ interface OrgDocumentVersionsDialogProps {
   canWrite?: boolean;
   transport?: ScopedOrgDocumentTransport;
   accept?: string;
+  sourceOpenMode?: "default" | "download";
+  sourceDownloadSignal?: AbortSignal;
+  sourceDownloadAssertCurrent?: () => void;
 }
 
 export function OrgDocumentVersionsDialog({
@@ -36,6 +39,9 @@ export function OrgDocumentVersionsDialog({
   canWrite = false,
   transport,
   accept,
+  sourceOpenMode = "default",
+  sourceDownloadSignal,
+  sourceDownloadAssertCurrent,
 }: OrgDocumentVersionsDialogProps) {
   const { versions, loading, loadError, hasLoaded, refresh, uploadVersion, restoreVersion, currentVersionId, canChange } = useOrgDocumentVersions(open ? documentId : null, canWrite, transport);
   const [uploading, setUploading] = useState(false);
@@ -54,19 +60,25 @@ export function OrgDocumentVersionsDialog({
       pending?.controller.abort();
     };
   }, [documentId, open, transport?.key]);
+  const assertDownloadCurrent = sourceDownloadAssertCurrent && transport
+    ? () => { sourceDownloadAssertCurrent(); transport.assertCurrent(); }
+    : sourceDownloadAssertCurrent || transport?.assertCurrent;
+  const scopeCurrent = () => { try { assertDownloadCurrent?.(); return true; } catch { return false; } };
   const downloading = download?.progress === "preparing" || download?.progress === "downloading";
-  const scopeCurrent = () => { try { transport?.assertCurrent(); return true; } catch { return false; } };
   const handleDownload = async (version: OrgDocumentVersion) => {
     if (downloadTask.current || !version.file_url || !open) return;
     const task = { controller: new AbortController() };
     downloadTask.current = task;
+    const cancelScopedDownload = () => task.controller.abort();
+    sourceDownloadSignal?.addEventListener("abort", cancelScopedDownload, { once: true });
+    if (sourceDownloadSignal?.aborted) task.controller.abort();
     const latestProgress: { value: PrivateDownloadProgress } = { value: "failed" };
     setDownload({ versionId: version.id, progress: "preparing" });
     try {
-      transport?.assertCurrent();
+      assertDownloadCurrent?.();
       const ok = await downloadPrivateFile("org-documents", version.file_path || version.file_url, version.file_name || documentName, {
         signal: task.controller.signal,
-        assertCurrent: transport?.assertCurrent,
+        assertCurrent: assertDownloadCurrent,
         signUrl: transport?.signUrl,
         onProgress: progress => {
           if (!scopeCurrent()) return;
@@ -81,15 +93,16 @@ export function OrgDocumentVersionsDialog({
       if (!scopeCurrent()) return;
       if (downloadTask.current === task) setDownload({ versionId: version.id, progress: "failed" });
     } finally {
+      sourceDownloadSignal?.removeEventListener("abort", cancelScopedDownload);
       if (downloadTask.current === task) downloadTask.current = null;
     }
   };
 
   const handleFile = async (file: File) => {
-    try { transport?.assertCurrent(); } catch { return; }
+    if (!scopeCurrent()) return;
     setUploading(true);
     const ok = await uploadVersion({ organizationId, file, changeSummary: summary });
-    try { transport?.assertCurrent(); } catch { return; }
+    if (!scopeCurrent()) return;
     setUploading(false);
     if (ok) {
       setSummary("");
@@ -229,7 +242,7 @@ export function OrgDocumentVersionsDialog({
         </ScrollArea>
           </TabsContent>
           <TabsContent value="review" className="max-h-[65vh] overflow-auto">
-            {documentId && <OrgDocumentWorkflowPanel organizationId={organizationId} documentId={documentId} currentVersionId={currentVersionId} versions={versions} transport={transport} onOpenFiles={() => setActiveTab("files")} />}
+            {documentId && <OrgDocumentWorkflowPanel transport={transport} sourceOpenMode={sourceOpenMode} sourceDownloadSignal={sourceDownloadSignal} sourceDownloadAssertCurrent={sourceDownloadAssertCurrent} organizationId={organizationId} documentId={documentId} currentVersionId={currentVersionId} versions={versions} onOpenFiles={() => setActiveTab("files")} />}
           </TabsContent>
         </Tabs>
       </DialogContent>

@@ -1,124 +1,19 @@
-import { describe, expect, it } from "vitest";
-import { fetchStudentLaborSafetyXmlContext } from "@/api/studentLaborSafetyXml";
-import type { StudentEnrollment } from "@/types/student";
-
-interface QueryLog {
-  table: string;
-  eq: Array<[string, unknown]>;
-  in: Array<[string, unknown[]]>;
-  is: Array<[string, unknown]>;
-}
-
-function createClient(responses: Record<string, { data: any; error: any }>) {
-  const logs: QueryLog[] = [];
-  return {
-    logs,
-    from(table: string) {
-      const log: QueryLog = { table, eq: [], in: [], is: [] };
-      logs.push(log);
-      const response = responses[table] ?? { data: [], error: null };
-      const query: any = {
-        select: () => query,
-        eq: (column: string, value: unknown) => { log.eq.push([column, value]); return query; },
-        in: (column: string, value: unknown[]) => { log.in.push([column, value]); return query; },
-        is: (column: string, value: unknown) => { log.is.push([column, value]); return query; },
-        order: () => Promise.resolve(response),
-        maybeSingle: () => Promise.resolve(response),
-        then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) => (
-          Promise.resolve(response).then(resolve, reject)
-        ),
-      };
-      return query;
-    },
-  };
-}
-
-const enrollment = (overrides: Partial<StudentEnrollment> = {}): StudentEnrollment => ({
-  id: "enr-1",
-  course_id: "course-1",
-  course_title: "Untrusted display title",
-  progress: 100,
-  status: "completed",
-  started_at: "2026-08-01T00:00:00Z",
-  completed_at: "2026-08-30T00:00:00Z",
-  time_spent: 120,
-  ...overrides,
-});
-
-describe("fetchStudentLaborSafetyXmlContext", () => {
-  it("scopes company, courses, categories and protocols to the active organization", async () => {
-    const client = createClient({
-      companies: { data: { id: "company-1", name: "Компания", inn: "123" }, error: null },
-      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
-      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
-      education_document_records: {
-        data: [{ id: "record-1", enrollment_id: "enr-1", protocol_number: "П-7", created_at: "2026-08-31" }],
-        error: null,
-      },
-    });
-
-    const result = await fetchStudentLaborSafetyXmlContext({
-      organizationId: "org-1",
-      userId: "student-1",
-      companyId: "company-1",
-      enrollments: [enrollment()],
-    }, client as never);
-
-    for (const table of ["companies", "courses", "course_categories", "education_document_records"]) {
-      expect(client.logs.find(log => log.table === table)?.eq).toContainEqual(["organization_id", "org-1"]);
-    }
-    expect(client.logs.find(log => log.table === "companies")?.eq).toContainEqual(["id", "company-1"]);
-    expect(client.logs.find(log => log.table === "education_document_records")?.in).toContainEqual([
-      "enrollment_id",
-      ["enr-1"],
-    ]);
-    expect(result.courses).toEqual([expect.objectContaining({
-      enrollmentId: "enr-1",
-      educationDocumentRecordId: "record-1",
-      courseTitle: "Курс ОТ",
-      categoryName: "Охрана труда",
-      protocolNumber: "П-7",
-    })]);
-  });
-
-  it("does not query protocols for incomplete or non-occupational-safety courses", async () => {
-    const client = createClient({
-      courses: { data: [{ id: "course-1", title: "Охрана труда", category_id: "cat-1" }], error: null },
-      course_categories: { data: [{ id: "cat-1", name: "Пожарная безопасность" }], error: null },
-    });
-
-    const result = await fetchStudentLaborSafetyXmlContext({
-      organizationId: "org-1",
-      userId: "student-1",
-      enrollments: [enrollment()],
-    }, client as never);
-
-    expect(result.courses).toEqual([]);
-    expect(client.logs.some(log => log.table === "education_document_records")).toBe(false);
-  });
-
-  it("returns the newest education-document record even before its protocol number is filled", async () => {
-    const client = createClient({
-      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
-      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
-      education_document_records: {
-        data: [
-          { id: "record-new", enrollment_id: "enr-1", protocol_number: null, created_at: "2026-09-01" },
-          { id: "record-old", enrollment_id: "enr-1", protocol_number: "П-1", created_at: "2026-08-31" },
-        ],
-        error: null,
-      },
-    });
-
-    const result = await fetchStudentLaborSafetyXmlContext({
-      organizationId: "org-1",
-      userId: "student-1",
-      enrollments: [enrollment()],
-    }, client as never);
-
-    expect(result.courses[0]).toEqual(expect.objectContaining({
-      educationDocumentRecordId: "record-new",
-      protocolNumber: null,
-    }));
-  });
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+import {org,group,course,pupil,enrollment,issuedRecord,uid} from '@/lib/educationIssuance/__tests__/fixtures';
+import type {StudentEnrollment} from '@/types/student';
+const mock=vi.hoisted(()=>({current:true,sources:vi.fn()}));
+vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:'00000000-0000-4000-8000-000000000001',revision:1}),isOfflineActorCurrent:()=>mock.current}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{}}));
+vi.mock('@/lib/educationIssuance/activeSources',async original=>({...await original<typeof import('@/lib/educationIssuance/activeSources')>(),readActiveIssuanceSources:mock.sources}));
+import {fetchStudentLaborSafetyXmlContext} from './studentLaborSafetyXml';
+function client(category='Охрана труда'){const logs:any[]=[];const rows:any={companies:{id:uid(80),name:'Компания',inn:'123'},courses:[{id:course,title:'Курс ОТ',category_id:uid(81)}],course_categories:[{id:uid(81),name:category}]};return {logs,from(table:string){const q:any={};logs.push([table]);for(const method of ['select','eq','in'])q[method]=(...args:any[])=>{logs.push([table,method,...args]);return q;};q.maybeSingle=async()=>({data:rows[table],error:null});q.then=(resolve:any,reject:any)=>Promise.resolve({data:rows[table],error:null}).then(resolve,reject);return q;}};}
+const assignment:StudentEnrollment={id:enrollment,course_id:course,course_title:'Непроверенное отображаемое название',progress:100,status:'completed',started_at:'2026-10-01T00:00:00Z',completed_at:'2026-10-22T00:00:00Z',time_spent:3600};
+const input={organizationId:org,userId:pupil,companyId:uid(80),enrollments:[assignment]};
+beforeEach(()=>{vi.clearAllMocks();mock.current=true;const record=issuedRecord();record.official.protocol_number='П-7';mock.sources.mockResolvedValue(new Map([[enrollment,{kind:'confirmed',record}]]));});
+describe('occupational safety XML exact official protocol source',()=>{
+ it('uses canonical current-authorized source and never reads raw documents or chooses the newest',async()=>{const c=client();const result=await fetchStudentLaborSafetyXmlContext(input,c as never);expect(result.courses).toEqual([expect.objectContaining({enrollmentId:enrollment,educationDocumentRecordId:issuedRecord().official.id,protocolNumber:'П-7'})]);expect(mock.sources).toHaveBeenCalledWith(expect.objectContaining({organizationId:org,issuanceScope:{kind:'organization'}}),[{enrollmentId:enrollment,courseId:course,userId:pupil}]);expect(c.logs.some(row=>row[0]==='education_document_records')).toBe(false);for(const table of ['companies','courses','course_categories'])expect(c.logs).toContainEqual([table,'eq','organization_id',org]);});
+ it('does not claim an official source when original/duplicate choice is ambiguous, annulled or legacy-unconfirmed',async()=>{for(const reason of ['AMBIGUOUS','ANNULLED_ONLY','LEGACY_UNVERIFIED']){mock.sources.mockResolvedValueOnce(new Map([[enrollment,{kind:'unavailable',reason}]]));await expect(fetchStudentLaborSafetyXmlContext(input,client() as never)).rejects.toThrow(/Источник протокола не подтверждён/);}});
+ it('does not infer protocol from technical completion or an unrelated category title',async()=>{const result=await fetchStudentLaborSafetyXmlContext(input,client('Пожарная безопасность') as never);expect(result.courses).toEqual([]);expect(mock.sources).not.toHaveBeenCalled();});
+ it('keeps a missing real protocol explicit instead of making up a number',async()=>{mock.sources.mockResolvedValue(new Map([[enrollment,{kind:'confirmed',record:issuedRecord()}]]));const result=await fetchStudentLaborSafetyXmlContext(input,client() as never);expect(result.courses[0].protocolNumber).toBeNull();});
+ it('does not return stale metadata after actor rights changed',async()=>{mock.sources.mockImplementationOnce(async()=>{mock.current=false;return new Map([[enrollment,{kind:'confirmed',record:issuedRecord()}]]);});await expect(fetchStudentLaborSafetyXmlContext(input,client() as never)).rejects.toThrow(/Доступ изменился/);});
 });

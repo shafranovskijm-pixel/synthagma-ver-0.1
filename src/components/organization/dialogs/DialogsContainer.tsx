@@ -55,11 +55,9 @@ export function DialogsContainer() {
       <UnenrollConfirmDialog
         open={d.enrollmentActions.showUnenrollConfirm}
         onOpenChange={d.enrollmentActions.setShowUnenrollConfirm}
-        selectedCount={d.getSelectedEnrollmentsCount()}
-        isUnenrolling={d.enrollmentActions.isUnenrolling}
-        onConfirm={d.handleBulkUnenroll}
-        preparation={d.enrollmentActions.withdrawalPreparation}
-        onOpenGroups={() => { d.enrollmentActions.setShowUnenrollConfirm(false); updateParams(previous => { const next = resolveTabParams(previous, 'students'); next.set('studentsView', 'groups'); return next; }); }}
+        organizationId={d.organizationId}
+        enrollmentIds={d.enrollmentActions.selectedEnrollmentIds}
+        onWithdrawn={() => { d.enrollmentActions.setSelectedEnrollmentIds([]); d.refreshEnrollmentData(); }}
       />
 
       <AddStudentDialog

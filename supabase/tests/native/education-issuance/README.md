@@ -1,0 +1,31 @@
+# UC019 native PostgreSQL acceptance
+
+The main nine cases use genuine accepted615/617/618/619/620 sources and restore captured actual621 public dependency bodies, relation metadata and enums before the raw622 append. There are 215 original captured public functions plus four exact account-plan APIs. No customer rows, passwords, private encryption key, JWTs, installed runtime or fabricated ledger are included. The621 purge body is metadata only and is never executed.
+
+Main acceptance is the separately frozen V21 profile under work/uc019-issuance-native-v21-20261023/profile. It actually passed IR01–IR09, all23 mandatory checks, nine fresh databases and both owned cleanups on unchanged raw622J SHA95e10a5b52f8bc2d300751292bd9fad6ebe6b7f1d94120af7d5815b7092dc13c. Exact result SHA91652cbb71b4399c6f7dbd121e53a9ad2752777c93cbbc63e43bfdd5c6ba7d3d. This is native proof, not production release acceptance.
+
+PO01 actually passed in the separately preserved V4 two-case run (overall FAIL because COR expected a later error message). COR01 and exact actual provider DEFAULT ACL closure then passed in the dedicated V5 one-case run, all15 mandatory checks and both owned cleanups. The original failed suite remains FAIL. This is not a combined eleven-case run. PO uses actual approved professional_training facts, a real theory test, an unknown human-machine result and an explicitly authorized current UC014 recognition based on an exact reviewed private exam-protocol version. It does not certify real exam legality or employer compliance. COR uses the same pupil's current typed identity, rejects an obsolete prepared identity without numbering, then requires a fresh private PDF/current approval and an explicitly linked correction duplicate while preserving the original.
+
+Run only the exact reviewed invocation in the relevant profile/SOURCE_HOLD.json. The existing owned harness supplies UC116_NATIVE_PROFILE, UC116_NATIVE_CHECKOUT and UC116_NATIVE_OUTPUT. It uses measured Linux Node20.20.2 and owned PostgreSQL17.11, one Vitest worker, a fresh database for each exact case, strict title/result/count validators, bail1 and owned pidfd cleanup. No installation, authority stub, SQL rewrite, production connection or automatic retry is allowed. Every failed result and hold remains immutable. A focused pass never reclassifies a failed full run.
+
+The fixture restores real provider update_updated_at_column source and trigger before append and tests the protected object's bookkeeping behavior. This is a precisely disclosed invoker-owner mapping to fixture postgres, not provider-admin or StorageHTTP emulation. Generated column expressions are verified. Three legacy seed tables restore semantic columns/defaults/nullability/constraints/indexes/policies/known-role ACLs without dropping data or changing their inherited physical order; production column ordinal parity is explicitly not claimed.
+
+IR06/07/09 privacy checks first call the genuine account-plan API and respect actual blockers/no-job behavior. Only an explicitly labelled private new-copy helper component proof may use a synthetic trusted revocation fixture; no fake deletion job is inserted and no completed account deletion is claimed. Structured copy redaction is distinct from retained original/private output files and explicit review-required references.
+
+Native byte attestations use known synthetic PDF witnesses and actual service-only boundary functions. They do not invoke Browserless, prove actual renderer output or emulate HTTP upload/download. Production requires an independently reviewed all379-old-row/catalog/ACL/role guard, actual worker render/stage/UC006 save/reread, explicit UC011 approval, final registry operation and physical downloads. Never run against production or with application secrets.
+
+## Exact accepted component provenance
+
+- Main nine: J raw95e10a5b52f8bc2d300751292bd9fad6ebe6b7f1d94120af7d5815b7092dc13c; V21 manifest d5df0703a97dde2a72c258b02e129cf31e954c319cde30613344709c23d3bdd0; result91652cbb71b4399c6f7dbd121e53a9ad2752777c93cbbc63e43bfdd5c6ba7d3d.
+- PO01: V4 manifest e762e39bf1e42bbb4fbe610351bcffe8ba5b3d5eb0027a1218cbac0038580e32; result7e3b8b3fd04e867b48e5a3079f9ace94110965b13a98161f1ba409c718cc241c is overall FAIL and contains exact PO01 PASS. The dedicated programme file is type education_program and has its own actual version/approval; the old DPO catalogue entry is not reused or replaced.
+- COR01 plus provider ACL: K raw73a44f8fb32c51682962c02211f24439e574132e06cb9f325e2407082fc48bc6; V5 manifest9301dcc2fb34db63ec0b292d939b570b80e88a9c08acc75504b330f60901b77e; actual result07b3410fe3457772d3b000afc3cd3d9844a2961372e6d35828ede0035130b87a PASS1/1+15checks. K portable catalog77/8/11 matches J; all100function bodies are byte-exact J.
+
+Current shared fixture restores the two captured public/postgres DEFAULT ACLs, with five initially absent roles including two isolated NOLOGIN sandbox-role names. It proves both roles cannot execute any of the77newfunctions or directly access any of the8newtables/columns, while global defaults and the captured old batch provider EXECUTE stay unchanged. This is ACL semantics, not provider login/role-attribute/membership parity. The native contract must contain providerNewFunctions with the exact77signatures and setup/cleanup must include both exact sandbox roles.
+
+The prior exact V13 fixture used by the accepted J main9 is retained as education-issuance.pre-provider.fixture.ts (SHA3abac620c3940fe2f5e975af8f3f2b94dc40434dfb33ec847bed6b2834ff8c9c). Immutable V21's mirror maps its own pinned prior variant to the canonical fixture path; do not substitute the new K fixture into that old hold. The repository's combined supplemental file has PO body byte-exact V4 and COR body byte-exact the corrected focused V5; no combined-run PASS is claimed.
+
+On this measured workstation, the exact one-shot commands are recorded in the two immutable profile SOURCE_HOLD files. Their structure is:
+
+    C:/Python314/python.exe -B -X utf8 <workspace>/work/<reviewed-profile>/profile/run-scoped-journals-linux.py --run-reviewed-linux-scoped-journals --manifest-sha256=<exact-reviewed-manifest-SHA-above>
+
+Use the harness's captured source mirror and lifecycle. Do not copy machine runtime binaries, profile dumps, all inherited mirrors or application secrets into the repository.
