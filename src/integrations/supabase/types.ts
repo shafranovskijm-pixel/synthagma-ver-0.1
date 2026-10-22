@@ -2861,11 +2861,57 @@ export type Database = {
           },
         ]
       }
+      data_subject_request_deadline_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after_state: Json
+          before_state: Json | null
+          created_at: string
+          id: string
+          reason: string
+          request_id: string
+          revision: number
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after_state: Json
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          reason: string
+          request_id: string
+          revision: number
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after_state?: Json
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          reason?: string
+          request_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_subject_request_deadline_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "data_subject_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_subject_requests: {
         Row: {
           attachment_urls: string[] | null
           contact_email: string | null
           created_at: string
+          deadline_details: Json | null
+          deadline_revision: number
           deleted_at: string | null
           deleted_by: string | null
           description: string | null
@@ -2884,6 +2930,8 @@ export type Database = {
           attachment_urls?: string[] | null
           contact_email?: string | null
           created_at?: string
+          deadline_details?: Json | null
+          deadline_revision?: number
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
@@ -2902,6 +2950,8 @@ export type Database = {
           attachment_urls?: string[] | null
           contact_email?: string | null
           created_at?: string
+          deadline_details?: Json | null
+          deadline_revision?: number
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
@@ -15952,6 +16002,287 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_copy_registry_counters: {
+        Row: {
+          copy_type: string
+          last_number: number
+          organization_id: string
+          sequence_year: number
+        }
+        Insert: {
+          copy_type: string
+          last_number: number
+          organization_id: string
+          sequence_year: number
+        }
+        Update: {
+          copy_type?: string
+          last_number?: number
+          organization_id?: string
+          sequence_year?: number
+        }
+        Relationships: []
+      }
+      uc_copy_registry_exports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          history_count: number
+          html: string
+          html_bytes: number
+          html_sha256: string
+          id: string
+          manifest_bytes: number
+          manifest_json: string
+          manifest_sha256: string
+          organization_id: string
+          participant_ids: string[]
+          record_count: number
+          registry_revision: number
+          scope: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          history_count: number
+          html: string
+          html_bytes: number
+          html_sha256: string
+          id?: string
+          manifest_bytes: number
+          manifest_json: string
+          manifest_sha256: string
+          organization_id: string
+          participant_ids: string[]
+          record_count: number
+          registry_revision: number
+          scope: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          history_count?: number
+          html?: string
+          html_bytes?: number
+          html_sha256?: string
+          id?: string
+          manifest_bytes?: number
+          manifest_json?: string
+          manifest_sha256?: string
+          organization_id?: string
+          participant_ids?: string[]
+          record_count?: number
+          registry_revision?: number
+          scope?: Json
+        }
+        Relationships: []
+      }
+      uc_copy_registry_heads: {
+        Row: {
+          organization_id: string
+          revision: number
+        }
+        Insert: {
+          organization_id: string
+          revision?: number
+        }
+        Update: {
+          organization_id?: string
+          revision?: number
+        }
+        Relationships: []
+      }
+      uc_copy_registry_history: {
+        Row: {
+          action: string
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          record_id: string
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          snapshot: Json
+        }
+        Insert: {
+          action: string
+          id?: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          record_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          snapshot: Json
+        }
+        Update: {
+          action?: string
+          id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          reason?: string
+          record_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_copy_registry_history_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "uc_copy_registry_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_copy_registry_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          preview_hash: string
+          registry_revision: number
+          report: Json | null
+          rows: Json
+          source_raw: string
+          source_sha256: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          participant_ids: string[]
+          preview_hash: string
+          registry_revision: number
+          report?: Json | null
+          rows: Json
+          source_raw: string
+          source_sha256: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          preview_hash?: string
+          registry_revision?: number
+          report?: Json | null
+          rows?: Json
+          source_raw?: string
+          source_sha256?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      uc_copy_registry_records: {
+        Row: {
+          archived: boolean
+          copy_type: string
+          data: Json
+          group_id: string | null
+          id: string
+          import_source_digest: string | null
+          latest_transfer: Json | null
+          organization_id: string
+          participant_ids: string[]
+          redacted: boolean
+          registered_at: string
+          registered_by: string | null
+          registration_id: string
+          revision: number
+          sequence_number: number
+          sequence_year: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived?: boolean
+          copy_type: string
+          data: Json
+          group_id?: string | null
+          id?: string
+          import_source_digest?: string | null
+          latest_transfer?: Json | null
+          organization_id: string
+          participant_ids: string[]
+          redacted?: boolean
+          registered_at?: string
+          registered_by?: string | null
+          registration_id: string
+          revision?: number
+          sequence_number: number
+          sequence_year: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived?: boolean
+          copy_type?: string
+          data?: Json
+          group_id?: string | null
+          id?: string
+          import_source_digest?: string | null
+          latest_transfer?: Json | null
+          organization_id?: string
+          participant_ids?: string[]
+          redacted?: boolean
+          registered_at?: string
+          registered_by?: string | null
+          registration_id?: string
+          revision?: number
+          sequence_number?: number
+          sequence_year?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      uc_copy_registry_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          request_id: string
+          result: Json
+          scope: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          request_id: string
+          result: Json
+          scope: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload_hash?: string
+          request_id?: string
+          result?: Json
+          scope?: Json
+        }
+        Relationships: []
+      }
       uc_custom_journal_history: {
         Row: {
           action: string
@@ -17217,6 +17548,277 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_scoped_journal_contexts: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          group_id: string | null
+          journal_id: string
+          kind: string
+          organization_id: string
+          program_ref: Json | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          group_id?: string | null
+          journal_id: string
+          kind: string
+          organization_id: string
+          program_ref?: Json | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          group_id?: string | null
+          journal_id?: string
+          kind?: string
+          organization_id?: string
+          program_ref?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_scoped_context_journal_fk"
+            columns: ["journal_id", "organization_id"]
+            isOneToOne: true
+            referencedRelation: "uc_custom_journals"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_scoped_journal_exports: {
+        Row: {
+          html_hash: string
+          html_text: string
+          id: string
+          journal_id: string
+          manifest_hash: string
+          manifest_text: string
+          organization_id: string
+          participant_ids: string[]
+          record_count: number
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+        }
+        Insert: {
+          html_hash: string
+          html_text: string
+          id?: string
+          journal_id: string
+          manifest_hash: string
+          manifest_text: string
+          organization_id: string
+          participant_ids: string[]
+          record_count: number
+          recorded_at: string
+          recorded_by?: string | null
+          redacted?: boolean
+        }
+        Update: {
+          html_hash?: string
+          html_text?: string
+          id?: string
+          journal_id?: string
+          manifest_hash?: string
+          manifest_text?: string
+          organization_id?: string
+          participant_ids?: string[]
+          record_count?: number
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_scoped_export_context_fk"
+            columns: ["journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_scoped_journal_contexts"
+            referencedColumns: ["journal_id", "organization_id"]
+          },
+        ]
+      }
+      uc_scoped_journal_history: {
+        Row: {
+          action: string
+          archived: boolean
+          field_values: Json
+          id: string
+          journal_id: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          record_id: string
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          schema_version_id: string
+          source: Json
+          subject_label: string | null
+          subject_user_id: string | null
+        }
+        Insert: {
+          action: string
+          archived: boolean
+          field_values: Json
+          id?: string
+          journal_id: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          record_id: string
+          recorded_at: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          schema_version_id: string
+          source: Json
+          subject_label?: string | null
+          subject_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          archived?: boolean
+          field_values?: Json
+          id?: string
+          journal_id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          reason?: string
+          record_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          schema_version_id?: string
+          source?: Json
+          subject_label?: string | null
+          subject_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_scoped_history_record_fk"
+            columns: ["record_id", "journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_scoped_journal_records"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_scoped_history_schema_fk"
+            columns: ["schema_version_id", "journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journal_schemas"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+        ]
+      }
+      uc_scoped_journal_records: {
+        Row: {
+          archived: boolean
+          created_by: string | null
+          field_values: Json
+          id: string
+          journal_id: string
+          organization_id: string
+          participant_ids: string[]
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          schema_version_id: string
+          source: Json
+          subject_label: string | null
+          subject_user_id: string | null
+        }
+        Insert: {
+          archived?: boolean
+          created_by?: string | null
+          field_values: Json
+          id?: string
+          journal_id: string
+          organization_id: string
+          participant_ids: string[]
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          schema_version_id: string
+          source: Json
+          subject_label?: string | null
+          subject_user_id?: string | null
+        }
+        Update: {
+          archived?: boolean
+          created_by?: string | null
+          field_values?: Json
+          id?: string
+          journal_id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          schema_version_id?: string
+          source?: Json
+          subject_label?: string | null
+          subject_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_scoped_record_context_fk"
+            columns: ["journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_scoped_journal_contexts"
+            referencedColumns: ["journal_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_scoped_record_schema_fk"
+            columns: ["schema_version_id", "journal_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_custom_journal_schemas"
+            referencedColumns: ["id", "journal_id", "organization_id"]
+          },
+        ]
+      }
+      uc_scoped_journal_requests: {
+        Row: {
+          actor_id: string
+          journal_id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          receipt: Json
+          recorded_at: string
+          request_id: string
+        }
+        Insert: {
+          actor_id: string
+          journal_id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          receipt: Json
+          recorded_at?: string
+          request_id: string
+        }
+        Update: {
+          actor_id?: string
+          journal_id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload_hash?: string
+          receipt?: Json
+          recorded_at?: string
+          request_id?: string
+        }
+        Relationships: []
+      }
       uc_session_document_drafts: {
         Row: {
           actor_id: string | null
@@ -18273,6 +18875,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_copy_registry_action: {
+        Args: {
+          p_action: Json
+          p_expected_revision: number
+          p_org: string
+          p_request_id: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
       apply_custom_journal_action: {
         Args: {
           p_action: Json
@@ -18296,6 +18908,16 @@ export type Database = {
       apply_learning_outcome_action: {
         Args: {
           p_command: Json
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      apply_scoped_custom_journal_action: {
+        Args: {
+          p_action: Json
+          p_context: Json
+          p_expected_revision: number
           p_organization_id: string
           p_request_id: string
         }
@@ -20261,6 +20883,10 @@ export type Database = {
         Args: { p_group_id: string; p_organization_id: string; p_query: Json }
         Returns: Json
       }
+      read_copy_registry: {
+        Args: { p_org: string; p_query: Json; p_scope: Json }
+        Returns: Json
+      }
       read_custom_journals: {
         Args: { p_organization_id: string; p_query: Json }
         Returns: Json
@@ -20275,6 +20901,10 @@ export type Database = {
       }
       read_learning_outcome: {
         Args: { p_organization_id: string; p_query: Json }
+        Returns: Json
+      }
+      read_scoped_custom_journals: {
+        Args: { p_context: Json; p_organization_id: string; p_query: Json }
         Returns: Json
       }
       read_student_admission_case: {
@@ -21091,6 +21721,150 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_copy_registry_base: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: Json
+      }
+      uc_copy_registry_data: {
+        Args: {
+          p_data: Json
+          p_group: string
+          p_historical?: boolean
+          p_org: string
+        }
+        Returns: string[]
+      }
+      uc_copy_registry_date: { Args: { p: Json }; Returns: boolean }
+      uc_copy_registry_erase_user: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_copy_registry_error: { Args: { p_code: string }; Returns: undefined }
+      uc_copy_registry_escape: { Args: { p: string }; Returns: string }
+      uc_copy_registry_export_summary: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_copy_registry_exports"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_copy_registry_fence: {
+        Args: {
+          p_group: string
+          p_org: string
+          p_people: string[]
+          p_request?: string
+          p_write?: boolean
+        }
+        Returns: undefined
+      }
+      uc_copy_registry_file_permission: {
+        Args: { p_org: string }
+        Returns: boolean
+      }
+      uc_copy_registry_hash: { Args: { p: string }; Returns: string }
+      uc_copy_registry_history_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_copy_registry_history"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_copy_registry_html: { Args: { p_manifest: Json }; Returns: string }
+      uc_copy_registry_html_data: {
+        Args: { p_data: Json; p_transfer: Json }
+        Returns: string
+      }
+      uc_copy_registry_import_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_copy_registry_imports"]["Row"]
+          p_full?: boolean
+        }
+        Returns: Json
+      }
+      uc_copy_registry_label: { Args: { p_user: string }; Returns: string }
+      uc_copy_registry_new: {
+        Args: {
+          p_data: Json
+          p_group: string
+          p_import_digest?: string
+          p_kind: string
+          p_org: string
+          p_people: string[]
+          p_reason: string
+        }
+        Returns: {
+          archived: boolean
+          copy_type: string
+          data: Json
+          group_id: string | null
+          id: string
+          import_source_digest: string | null
+          latest_transfer: Json | null
+          organization_id: string
+          participant_ids: string[]
+          redacted: boolean
+          registered_at: string
+          registered_by: string | null
+          registration_id: string
+          revision: number
+          sequence_number: number
+          sequence_year: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_copy_registry_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_copy_registry_object_matches: {
+        Args: {
+          p: Database["public"]["Tables"]["org_document_versions"]["Row"]
+        }
+        Returns: boolean
+      }
+      uc_copy_registry_original_ref: {
+        Args: {
+          p: Database["public"]["Tables"]["org_document_versions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_copy_registry_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_copy_registry_preview: {
+        Args: { p_org: string; p_raw: string }
+        Returns: Json
+      }
+      uc_copy_registry_privacy_targets: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_copy_registry_record_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_copy_registry_records"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_copy_registry_scope: {
+        Args: { p_org: string; p_scope: Json; p_write?: boolean }
+        Returns: string
+      }
+      uc_copy_registry_source: {
+        Args: {
+          p_org: string
+          p_ref: Json
+          p_required?: boolean
+          p_unresolved?: boolean
+        }
+        Returns: Json
+      }
+      uc_copy_registry_visible: {
+        Args: { p_group: string; p_record_group: string }
+        Returns: boolean
+      }
       uc_custom_journal_allowed: {
         Args: { p_org: string; p_write: boolean }
         Returns: boolean
@@ -21258,6 +22032,51 @@ export type Database = {
         Args: { p_course: string; p_org: string; p_user: string }
         Returns: boolean
       }
+      uc_dsr_add_days: {
+        Args: { p_days: number; p_trigger: string; p_working: boolean }
+        Returns: string
+      }
+      uc_dsr_apply: {
+        Args: {
+          p_action: string
+          p_expected_revision: number
+          p_payload: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      uc_dsr_authority_fence: {
+        Args: { p_org: string; p_subject: string; p_write: boolean }
+        Returns: undefined
+      }
+      uc_dsr_can_manage: {
+        Args: { p_org: string; p_subject: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_dsr_create: {
+        Args: {
+          p_contact_email: string
+          p_description: string
+          p_organization_id: string
+          p_request_id: string
+          p_request_type: string
+        }
+        Returns: Json
+      }
+      uc_dsr_fence: {
+        Args: { p_subjects: string[]; p_write: boolean }
+        Returns: undefined
+      }
+      uc_dsr_list: {
+        Args: {
+          p_cursor?: Json
+          p_limit?: number
+          p_organization_id?: string
+          p_request_id?: string
+        }
+        Returns: Json
+      }
+      uc_dsr_working_2026: { Args: { p_day: string }; Returns: boolean }
       uc_empty_education_profile: { Args: never; Returns: Json }
       uc_enrollment_delete_actor_writable: { Args: never; Returns: boolean }
       uc_enrollment_delete_has_witness: {
@@ -21819,6 +22638,84 @@ export type Database = {
         Args: { p_actor: string; p_org: string; p_user: string }
         Returns: string
       }
+      uc_scoped_journal_base: {
+        Args: { p_context: Json; p_org: string; p_write?: boolean }
+        Returns: Json
+      }
+      uc_scoped_journal_capture: {
+        Args: { p_journal: string; p_locked_people: string[]; p_org: string }
+        Returns: string
+      }
+      uc_scoped_journal_context: {
+        Args: { p_input: Json; p_org: string }
+        Returns: Json
+      }
+      uc_scoped_journal_context_json: {
+        Args: { p_journal: string }
+        Returns: Json
+      }
+      uc_scoped_journal_detail: {
+        Args: { p_full?: boolean; p_journal: string }
+        Returns: Json
+      }
+      uc_scoped_journal_erase_user: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_scoped_journal_escape: { Args: { p_text: string }; Returns: string }
+      uc_scoped_journal_export_json: {
+        Args: { p_full?: boolean; p_id: string }
+        Returns: Json
+      }
+      uc_scoped_journal_fence: {
+        Args: {
+          p_group: string
+          p_org: string
+          p_people: string[]
+          p_request?: string
+        }
+        Returns: undefined
+      }
+      uc_scoped_journal_head_people: {
+        Args: { p_journal: string }
+        Returns: string[]
+      }
+      uc_scoped_journal_history_json: { Args: { p_id: string }; Returns: Json }
+      uc_scoped_journal_html: { Args: { p_manifest: Json }; Returns: string }
+      uc_scoped_journal_matches: {
+        Args: { p_input: Json; p_journal: string; p_org: string }
+        Returns: boolean
+      }
+      uc_scoped_journal_people: {
+        Args: { p_journal: string }
+        Returns: string[]
+      }
+      uc_scoped_journal_permission: {
+        Args: { p_group: string; p_org: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_scoped_journal_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_scoped_journal_read_fence: {
+        Args: { p_context: Json; p_org: string; p_people: string[] }
+        Returns: undefined
+      }
+      uc_scoped_journal_record_json: { Args: { p_id: string }; Returns: Json }
+      uc_scoped_journal_source: {
+        Args: { p_context: Json; p_org: string; p_source: Json; p_user: string }
+        Returns: string[]
+      }
+      uc_scoped_journal_source_current: {
+        Args: { p_context: Json; p_org: string; p_source: Json; p_user: string }
+        Returns: boolean
+      }
+      uc_scoped_journal_subject: {
+        Args: { p_context: Json; p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_scoped_journal_text_hash: { Args: { p_text: string }; Returns: string }
       uc_session_access: {
         Args: { p_group: string; p_org: string; p_write: boolean }
         Returns: string
