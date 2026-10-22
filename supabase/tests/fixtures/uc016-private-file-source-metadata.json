@@ -1,0 +1,526 @@
+{
+  "query": "SELECT jsonb_build_object(\n 'captured_at_utc',clock_timestamp(),\n 'functions',(SELECT jsonb_agg(jsonb_build_object('signature',p.oid::regprocedure::text,'owner',pg_get_userbyid(p.proowner),'md5',md5(p.prosrc),'definition',pg_get_functiondef(p.oid),'acl',p.proacl::text,'config',p.proconfig) ORDER BY p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN('uc_document_teacher_limited','uc_document_action_allowed')),\n 'tables',(SELECT jsonb_object_agg(s.name,jsonb_build_object('columns',(SELECT jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'not_null',a.attnotnull,'default',pg_get_expr(d.adbin,d.adrelid)) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=to_regclass(s.name) AND a.attnum>0 AND NOT a.attisdropped),'constraints',(SELECT jsonb_agg(jsonb_build_object('name',c.conname,'definition',pg_get_constraintdef(c.oid,true))ORDER BY c.conname) FROM pg_constraint c WHERE c.conrelid=to_regclass(s.name)))) FROM (VALUES('public.org_documents'),('public.org_document_versions'),('storage.objects'),('storage.buckets'))s(name))\n) AS uc016_source_dependency_metadata;",
+  "response": {
+    "rows": [
+      {
+        "uc016_source_dependency_metadata": {
+          "captured_at_utc": "2026-10-22T09:20:28.233438+00:00",
+          "functions": [
+            {
+              "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+              "config": [
+                "search_path=pg_catalog, public"
+              ],
+              "definition": "CREATE OR REPLACE FUNCTION public.uc_document_teacher_limited(p_org uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT public.has_role(auth.uid(),'admin'::public.app_role)\n AND EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.role='teacher')\n AND NOT public.is_org_owner(auth.uid(),p_org)\n AND NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.organization_id=p_org AND s.role<>'teacher'\n  AND (s.expires_at IS NULL OR s.expires_at>now()));\n$function$\n",
+              "md5": "d8ecb3db74c0ec7ec4032156ef805f25",
+              "owner": "postgres",
+              "signature": "uc_document_teacher_limited(uuid)"
+            },
+            {
+              "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+              "config": [
+                "search_path=pg_catalog, public"
+              ],
+              "definition": "CREATE OR REPLACE FUNCTION public.uc_document_action_allowed(p_org uuid, p_action text, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_document_has_action(p_org,p_action)\n  AND public.uc_document_scope_allowed(p_org,p_group,p_enrollment)\n$function$\n",
+              "md5": "57882c7393016e733a5049833eef41a4",
+              "owner": "postgres",
+              "signature": "uc_document_action_allowed(uuid,text,uuid,uuid)"
+            }
+          ],
+          "tables": {
+            "public.org_document_versions": {
+              "columns": [
+                {
+                  "default": "gen_random_uuid()",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "document_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "organization_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "version_number",
+                  "not_null": true,
+                  "type": "integer"
+                },
+                {
+                  "default": null,
+                  "name": "file_url",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "file_path",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "file_size",
+                  "not_null": false,
+                  "type": "bigint"
+                },
+                {
+                  "default": null,
+                  "name": "file_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "change_summary",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "uploaded_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "uploaded_by_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": "now()",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": null,
+                  "name": "event_kind",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "restored_from_version_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "request_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "request_payload",
+                  "not_null": false,
+                  "type": "jsonb"
+                },
+                {
+                  "default": null,
+                  "name": "result_revision",
+                  "not_null": false,
+                  "type": "bigint"
+                },
+                {
+                  "default": null,
+                  "name": "storage_object_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "storage_metadata",
+                  "not_null": false,
+                  "type": "jsonb"
+                },
+                {
+                  "default": null,
+                  "name": "document_metadata",
+                  "not_null": false,
+                  "type": "jsonb"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "FOREIGN KEY (document_id) REFERENCES org_documents(id) ON DELETE CASCADE",
+                  "name": "org_document_versions_document_id_fkey"
+                },
+                {
+                  "definition": "UNIQUE (document_id, version_number)",
+                  "name": "org_document_versions_document_id_version_number_key"
+                },
+                {
+                  "definition": "CHECK (file_size IS NULL OR file_size >= 0) NOT VALID",
+                  "name": "org_document_versions_file_size_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+                  "name": "org_document_versions_organization_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "org_document_versions_pkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (restored_from_version_id) REFERENCES org_document_versions(id)",
+                  "name": "org_document_versions_restored_from_version_id_fkey"
+                }
+              ]
+            },
+            "public.org_documents": {
+              "columns": [
+                {
+                  "default": "gen_random_uuid()",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "organization_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "type",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "file_url",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": "now()",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": "now()",
+                  "name": "updated_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": null,
+                  "name": "issue_date",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "default": null,
+                  "name": "expires_at",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "default": "'active'::text",
+                  "name": "status",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "responsible_person",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "reminder_sent_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": null,
+                  "name": "deleted_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": null,
+                  "name": "deleted_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": "0",
+                  "name": "document_revision",
+                  "not_null": true,
+                  "type": "bigint"
+                },
+                {
+                  "default": null,
+                  "name": "current_version_id",
+                  "not_null": false,
+                  "type": "uuid"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "FOREIGN KEY (current_version_id) REFERENCES org_document_versions(id) DEFERRABLE INITIALLY DEFERRED",
+                  "name": "org_documents_current_version_fk"
+                },
+                {
+                  "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+                  "name": "org_documents_organization_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "org_documents_pkey"
+                },
+                {
+                  "definition": "CHECK (status = ANY (ARRAY['active'::text, 'archived'::text, 'expired'::text]))",
+                  "name": "org_documents_status_check"
+                }
+              ]
+            },
+            "storage.buckets": {
+              "columns": [
+                {
+                  "default": null,
+                  "name": "id",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "owner",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": "now()",
+                  "name": "created_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": "now()",
+                  "name": "updated_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": "false",
+                  "name": "public",
+                  "not_null": false,
+                  "type": "boolean"
+                },
+                {
+                  "default": "false",
+                  "name": "avif_autodetection",
+                  "not_null": false,
+                  "type": "boolean"
+                },
+                {
+                  "default": null,
+                  "name": "file_size_limit",
+                  "not_null": false,
+                  "type": "bigint"
+                },
+                {
+                  "default": null,
+                  "name": "allowed_mime_types",
+                  "not_null": false,
+                  "type": "text[]"
+                },
+                {
+                  "default": null,
+                  "name": "owner_id",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": "'STANDARD'::storage.buckettype",
+                  "name": "type",
+                  "not_null": true,
+                  "type": "storage.buckettype"
+                },
+                {
+                  "default": "'DISABLED'::text",
+                  "name": "versioning_status",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "lifecycle_configuration",
+                  "not_null": false,
+                  "type": "jsonb"
+                },
+                {
+                  "default": null,
+                  "name": "lifecycle_configuration_generation",
+                  "not_null": false,
+                  "type": "uuid"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "CHECK ((lifecycle_configuration IS NULL) = (lifecycle_configuration_generation IS NULL))",
+                  "name": "buckets_lifecycle_configuration_pair_check"
+                },
+                {
+                  "definition": "CHECK (lifecycle_configuration IS NULL OR jsonb_typeof(lifecycle_configuration) = 'object'::text AND lifecycle_configuration ? 'rules'::text AND\nCASE\n    WHEN jsonb_typeof(lifecycle_configuration -> 'rules'::text) = 'array'::text THEN jsonb_array_length(lifecycle_configuration -> 'rules'::text) >= 1 AND jsonb_array_length(lifecycle_configuration -> 'rules'::text) <= 1000\n    ELSE false\nEND)",
+                  "name": "buckets_lifecycle_configuration_shape_check"
+                },
+                {
+                  "definition": "CHECK (type = 'STANDARD'::storage.buckettype OR lifecycle_configuration IS NULL AND lifecycle_configuration_generation IS NULL)",
+                  "name": "buckets_lifecycle_configuration_standard_only_check"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "buckets_pkey"
+                },
+                {
+                  "definition": "CHECK (versioning_status = 'DISABLED'::text)",
+                  "name": "buckets_versioning_dark_check"
+                },
+                {
+                  "definition": "CHECK (type = 'STANDARD'::storage.buckettype OR versioning_status = 'DISABLED'::text)",
+                  "name": "buckets_versioning_standard_only_check"
+                },
+                {
+                  "definition": "CHECK (versioning_status = ANY (ARRAY['DISABLED'::text, 'ENABLED'::text, 'SUSPENDED'::text]))",
+                  "name": "buckets_versioning_status_check"
+                }
+              ]
+            },
+            "storage.objects": {
+              "columns": [
+                {
+                  "default": "gen_random_uuid()",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "default": null,
+                  "name": "bucket_id",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "owner",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "default": "now()",
+                  "name": "created_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": "now()",
+                  "name": "updated_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": "now()",
+                  "name": "last_accessed_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": null,
+                  "name": "metadata",
+                  "not_null": false,
+                  "type": "jsonb"
+                },
+                {
+                  "default": "string_to_array(name, '/'::text)",
+                  "name": "path_tokens",
+                  "not_null": false,
+                  "type": "text[]"
+                },
+                {
+                  "default": null,
+                  "name": "version",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "owner_id",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "default": null,
+                  "name": "user_metadata",
+                  "not_null": false,
+                  "type": "jsonb"
+                },
+                {
+                  "default": null,
+                  "name": "archived_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "default": "false",
+                  "name": "is_delete_marker",
+                  "not_null": true,
+                  "type": "boolean"
+                },
+                {
+                  "default": "false",
+                  "name": "is_versioned",
+                  "not_null": true,
+                  "type": "boolean"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "FOREIGN KEY (bucket_id) REFERENCES storage.buckets(id)",
+                  "name": "objects_bucketId_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "objects_pkey"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

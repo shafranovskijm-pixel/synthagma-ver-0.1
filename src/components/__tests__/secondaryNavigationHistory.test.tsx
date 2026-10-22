@@ -61,7 +61,7 @@ vi.mock("@/components/organization/AutoAttendanceJournal", () => ({ AutoAttendan
 vi.mock("@/components/organization/AutoGradesJournal", () => ({ AutoGradesJournal: () => null }));
 vi.mock("@/components/organization/AutoFinalAttestationJournal", () => ({ AutoFinalAttestationJournal: () => null }));
 vi.mock("@/components/organization/AutoDocumentRegistrationJournal", () => ({ AutoDocumentRegistrationJournal: () => null }));
-vi.mock("@/components/organization/CopiesDuplicatesJournal", () => ({ CopiesDuplicatesJournal: () => null }));
+vi.mock("@/components/organization/ServerCopiesDuplicatesJournal", () => ({ ServerCopiesDuplicatesJournal: () => null }));
 vi.mock("@/components/organization/EducationDocumentsJournal", () => ({ EducationDocumentsJournal: ({ focusEnrollmentId }: any) => <h2>Education journal {focusEnrollmentId}</h2> }));
 vi.mock("@/components/organization/JournalCreationWizard", () => ({ JournalCreationWizard: () => null }));
 vi.mock("@/components/organization/IdentificationJournal", () => ({ IdentificationJournal: ({ onClose }: any) => <section><h2>Identification journal</h2><button onClick={onClose}>Close journal</button></section> }));

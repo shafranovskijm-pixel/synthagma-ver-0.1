@@ -1,7 +1,6 @@
 import { useCallback, useState, useEffect } from "react";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
-import { useCopiesJournalScope, type CopiesJournalScope } from "@/hooks/useCopiesJournalScope";
-import { COPIES_STORAGE_CHANGED, COPIES_STORAGE_ERROR, copiesJournalKey, readCopiesJournal } from "@/lib/journals/copiesJournalStorage";
+import { useCopiesJournalScope } from "@/hooks/useCopiesJournalScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -15,7 +14,7 @@ import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
 import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
-import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
+import { ServerCopiesDuplicatesJournal } from "./ServerCopiesDuplicatesJournal";
 import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { CustomJournalsPanel } from './CustomJournalsPanel';
 import { CustomJournalEditor } from './CustomJournalEditor';
@@ -97,7 +96,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const hasEducationDocumentFocus = Boolean(focusedEducationEnrollmentId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean; copyScope?: CopiesJournalScope; copySource?: string | null } | null>(null);
+  const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
@@ -110,9 +109,9 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const journalView = searchParams.get("journalView");
   const knownManualJournal = JOURNAL_CATEGORIES.flatMap(category => category.journals).find(journal => journal.id === journalType)
 ;
-  const activeJournal = journalView === "manual" && knownManualJournal
+  const activeJournal = journalView === "manual" && knownManualJournal && knownManualJournal.id !== "copies_duplicates"
     ? { type: knownManualJournal.id, title: knownManualJournal.title } : null;
-  const activeAutoJournal = journalView === "auto" && journalType
+  const activeAutoJournal = journalType === "copies_duplicates" && (journalView === "auto" || journalView === "manual") ? "copies_duplicates" : journalView === "auto" && journalType
     && (AUTO_JOURNALS[journalType] || SPECIAL_JOURNALS.has(journalType) || journalType === "identification")
     ? journalType : hasEducationDocumentFocus ? "education_documents" : null;
 
@@ -187,29 +186,20 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   }, [organizationId]);
 
   const requestDeleteJournal = (journal: JournalItem) => {
-    if (journal.id !== "copies_duplicates") {
-      setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required });
+    if (journal.id === "copies_duplicates") {
+      if (isCurrentCopyScope()) toast.info("Общий реестр не очищается из списка журналов. Отдельные записи можно сохранить в архиве реестра.");
       return;
     }
-    if (!isCurrentCopyScope()) return;
-    try {
-      const source = readCopiesJournal(copyScope.organizationId);
-      if (isCurrentCopyScope()) setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required, copyScope, copySource: source.raw });
-    } catch { if (isCurrentCopyScope()) toast.error(COPIES_STORAGE_ERROR); }
+    setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required });
   };
 
   const handleDeleteJournals = async () => {
     if (!deletingJournal) return;
     try {
       if (deletingJournal.type === "copies_duplicates") {
-        if (!isCurrentCopyScope() || deletingJournal.copyScope !== copyScope) return;
-        let source: ReturnType<typeof readCopiesJournal>;
-        try { source = readCopiesJournal(copyScope.organizationId); }
-        catch { toast.error(COPIES_STORAGE_ERROR); return; }
-        if (source.raw !== deletingJournal.copySource) { toast.error(COPIES_STORAGE_CHANGED); return; }
-        if (!isCurrentCopyScope()) return;
-        localStorage.removeItem(copiesJournalKey(copyScope.organizationId));
-        toast.success("Журнал очищен"); setDeletingJournal(null); return;
+        setDeletingJournal(null);
+        toast.info("Записи общего реестра и прежний локальный исходник сохранены. Используйте архив внутри реестра.");
+        return;
       }
       const { error } = await supabase.from("journal_instances").delete().eq("organization_id", organizationId).eq("journal_type", deletingJournal.type);
       if (error) throw error;
@@ -223,7 +213,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const filteredCategories = JOURNAL_CATEGORIES.map((cat) => ({
     ...cat,
     journals: cat.journals
-      .filter((j) => !inGroupContext || isGroupSupportedJournal(j.id))
+      .filter((j) => !inGroupContext || j.id === "copies_duplicates" || isGroupSupportedJournal(j.id))
       .filter((j) => j.title.toLowerCase().includes(searchQuery.toLowerCase()) || j.description.toLowerCase().includes(searchQuery.toLowerCase())),
   })).filter((cat) => cat.journals.length > 0);
 
@@ -241,7 +231,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     if (activeAutoJournal === "current_control") return gate("current_control", <AutoGradesJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "final_attestation") return gate("final_attestation", <AutoFinalAttestationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "document_registration") return gate("document_registration", <AutoDocumentRegistrationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
-    if (activeAutoJournal === "copies_duplicates") return gate("copies_duplicates", <CopiesDuplicatesJournal organizationId={organizationId} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "copies_duplicates") return <ServerCopiesDuplicatesJournal organizationId={organizationId} registryScope={scopedGroupId !== null ? { kind: 'group', group_id: scopedGroupId } : { kind: 'organization' }} onClose={closeAuto} />;
     if (activeAutoJournal === "education_documents") return gate("education_documents", (
       <EducationDocumentsJournal
         organizationId={organizationId}
@@ -364,7 +354,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       {!inGroupContext&&<details className="space-y-4" open><summary className="font-semibold cursor-pointer">Прежние журналы и перенос определений</summary><p className="text-xs text-muted-foreground">Эти журналы сохраняют прежнюю область организации. Записи не привязываются к группе автоматически.</p><CustomJournalsPanel organizationId={organizationId} model={customModel} createOpen={false} onCreateOpenChange={()=>{}} onOpen={id=>navigateJournal(id,'custom')} /></details>}
 
       {/* Delete Dialog */}
-      <AlertDialog open={!!deletingJournal && (deletingJournal.type !== "copies_duplicates" || deletingJournal.copyScope === copyScope)} onOpenChange={() => setDeletingJournal(null)}>
+      <AlertDialog open={!!deletingJournal && deletingJournal.type !== "copies_duplicates"} onOpenChange={() => setDeletingJournal(null)}>
         <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Удалить журнал?</AlertDialogTitle><AlertDialogDescription>Вы уверены, что хотите удалить все данные журнала <strong>"{deletingJournal?.title}"</strong>?{journalCounts[deletingJournal?.type || ""] > 0 && <> Будет удалено журналов: {journalCounts[deletingJournal?.type || ""]}. </>}Это действие нельзя отменить.</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={handleDeleteJournals} className="bg-destructive hover:bg-destructive/90">Удалить</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
@@ -407,7 +397,7 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
           <Button variant="default" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
         )}
         <Button variant="outline" size="sm" className="rounded-lg"><Download className="w-4 h-4 mr-2" />Шаблон</Button>
-        {!journal.required && !inGroupContext && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
+        {!journal.required && !inGroupContext && journal.id !== "copies_duplicates" && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
       </div>
     </div>
   );

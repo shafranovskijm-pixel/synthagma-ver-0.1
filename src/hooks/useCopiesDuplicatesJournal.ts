@@ -45,6 +45,7 @@ const emptyView = (scope: CopiesJournalScope) => ({
 });
 type View = ReturnType<typeof emptyView>;
 
+/** @deprecated Historical browser-only editor retained for recovery/tests. Production routes use ServerCopiesDuplicatesJournal and useCopyRegistry; never route new work here. */
 export function useCopiesDuplicatesJournal(organizationId: string) {
   const { scope, isCurrent } = useCopiesJournalScope(organizationId);
   const [state, setState] = useState(() => emptyView(scope));
