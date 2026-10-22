@@ -1,3 +1,6 @@
+import { captureDocumentOutputFence } from '@/lib/documents/outputFence';
+import { createSafePrintFrame } from './printHtmlToPdf';
+import { HtmlPrintError } from './printHtmlSafety';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -7,28 +10,23 @@ import jsPDF from "jspdf";
  * Возвращает Blob PDF (или скачивает, если fileName задан).
  */
 export async function renderHtmlToPdf(html: string, fileName?: string): Promise<Blob> {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.left = "-99999px";
-  iframe.style.top = "0";
-  iframe.style.width = "794px"; // A4 width @ 96dpi
-  iframe.style.height = "1123px";
-  iframe.style.border = "0";
-  document.body.appendChild(iframe);
-
-  try {
-    const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(html);
-    doc.close();
-
-    // Дать шрифтам/изображениям загрузиться
-    await new Promise<void>((resolve) => {
-      const done = () => resolve();
-      if (doc.readyState === "complete") setTimeout(done, 300);
-      else iframe.addEventListener("load", () => setTimeout(done, 300), { once: true });
-    });
-
+  const assertCurrent = captureDocumentOutputFence(); assertCurrent();
+  const frame = await createSafePrintFrame(html, fileName, { rasterImages: true });
+  let active = true;
+  const assertActive = () => { assertCurrent(); if (!active) throw new HtmlPrintError('TIMED_OUT'); };
+  const render = async (): Promise<Blob> => {
+    assertActive();
+    const doc = frame.document;
+    // Freeze successfully loaded CORS-safe images into local bytes. html2canvas
+    // must not silently skip a remote stamp/signature or make another request.
+    for (const image of Array.from(doc.images)) {
+      if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 25000000) throw new HtmlPrintError('RESOURCE_FAILED');
+      const imageCanvas = document.createElement('canvas'); imageCanvas.width = image.naturalWidth; imageCanvas.height = image.naturalHeight;
+      const imageContext = imageCanvas.getContext('2d'); if (!imageContext) throw new HtmlPrintError('RESOURCE_FAILED');
+      try { imageContext.drawImage(image, 0, 0); image.src = imageCanvas.toDataURL('image/png'); if (typeof image.decode === 'function') await image.decode(); }
+      catch { throw new HtmlPrintError('RESOURCE_FAILED', 'Не удалось включить изображение или подпись в PDF. Проверьте доступ к исходнику; неполный PDF не сохранён.'); }
+      assertActive();
+    }
     const target = (doc.querySelector(".doc") as HTMLElement) || doc.body;
     const canvas = await html2canvas(target, {
       scale: 2,
@@ -37,6 +35,8 @@ export async function renderHtmlToPdf(html: string, fileName?: string): Promise<
       windowWidth: target.scrollWidth,
     });
 
+    assertActive();
+    if (!canvas.width || !canvas.height) throw new HtmlPrintError('RESOURCE_FAILED');
     const pdf = new jsPDF("p", "mm", "a4");
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
@@ -55,7 +55,7 @@ export async function renderHtmlToPdf(html: string, fileName?: string): Promise<
         const slice = document.createElement("canvas");
         slice.width = canvas.width;
         slice.height = sliceH;
-        const ctx = slice.getContext("2d")!;
+        const ctx = slice.getContext("2d"); if (!ctx) throw new HtmlPrintError('RESOURCE_FAILED');
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, slice.width, slice.height);
         ctx.drawImage(canvas, 0, offset, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
@@ -67,10 +67,13 @@ export async function renderHtmlToPdf(html: string, fileName?: string): Promise<
       }
     }
 
+    assertActive();
     const blob = pdf.output("blob");
+    assertActive();
     if (fileName) pdf.save(fileName);
     return blob;
-  } finally {
-    document.body.removeChild(iframe);
-  }
+  };
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try { return await Promise.race([render(), new Promise<Blob>((_resolve, reject) => { timer = setTimeout(() => { active = false; reject(new HtmlPrintError('TIMED_OUT')); }, 45000); })]); }
+  finally { active = false; if (timer) clearTimeout(timer); frame.dispose(); }
 }

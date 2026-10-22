@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+import { escapeDocumentHtml } from './printHtmlSafety';
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
 
 interface ProtocolData {
@@ -49,7 +51,8 @@ function fmt(s: string | null | undefined) {
   } catch { return s; }
 }
 
-export function buildProtocolHtml(d: ProtocolData): string {
+export function buildProtocolHtml(input: ProtocolData): string {
+  const d = Object.fromEntries(Object.entries(input).map(([key, value]) => [key, typeof value === 'string' ? escapeDocumentHtml(value) : value])) as unknown as ProtocolData;
   const protocolNumber = `ПЭП-${d.signatureToken.slice(0, 8).toUpperCase()}`;
   return `<!DOCTYPE html>
 <html lang="ru"><head><meta charset="UTF-8"><title>Протокол подписания ${protocolNumber}</title>
@@ -138,9 +141,9 @@ ${d.status === "signed" ? `
 </body></html>`;
 }
 
-export function downloadSignatureProtocol(d: ProtocolData) {
-  const html = buildProtocolHtml(d);
-  printHtmlContent(html, `Протокол ПЭП ${d.signatureToken.slice(0, 8)}`);
+export async function downloadSignatureProtocol(d: ProtocolData): Promise<void> {
+  try { await printHtmlContent(buildProtocolHtml(d), 'Протокол ПЭП ' + d.signatureToken.slice(0, 8)); }
+  catch (error) { toast.error(error instanceof Error ? error.message : 'Не удалось подготовить протокол для печати'); }
 }
 
 export function exportSignaturesToCSV(rows: any[]) {

@@ -1,3 +1,4 @@
+import { captureDocumentOutputFence } from "@/lib/documents/outputFence";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -514,6 +515,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     }
     if (busy || !acquireContractSubmission(submitLock)) return;
     setBusy(true);
+    const currentOutput = captureDocumentOutputFence();
     try {
       let batchScenario = counterparty;
       let produced: Array<{ name: string; html: string; number: string }>;
@@ -602,6 +604,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       // Persist every contract in one PostgREST request. PostgreSQL executes a
       // bulk insert atomically, so a failure cannot leave only the first few
       // students saved and make a retry duplicate them.
+      currentOutput();
       const { error: insErr } = await (supabase as any).from("org_contracts").insert(contractRows);
       if (insErr) {
         // The request may have committed even when its HTTP response was lost.
@@ -641,9 +644,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
           throw insErr;
         }
       }
+      currentOutput();
       setPersistenceUncertain(false);
 
       // Скачиваем редактируемые DOCX: один документ — файл, несколько — ZIP.
+      let wordDownloadStarted = false;
       try {
         if (produced.length === 1) {
           const blob = await htmlToDocxBlob(produced[0].html);
@@ -652,6 +657,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
           const blob = await htmlDocsToZipBlob(produced);
           downloadBlob(blob, sanitizeFileName(`Договоры ${groupName}`, "zip"));
         }
+        wordDownloadStarted = true;
       } catch (e: any) {
         toast.error("DOCX не сформирован, но договоры сохранены", { description: e?.message });
       }
@@ -674,6 +680,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         toast.warning("Договор сохранён, пакет документов не завершён", {
           description: "Повторите создание 9 документов группы из карточки — новый договор не потребуется.",
         });
+      } else if (!wordDownloadStarted) {
+        toast.warning("Договоры сохранены, Word не выгружен", {description:"Повторите DOCX из папки договоров. Создавать договор заново не нужно."});
       } else {
         toast.success(produced.length === 1 ? "Договор и пакет сохранены" : `Договоры и пакет сохранены: ${produced.length}`);
       }

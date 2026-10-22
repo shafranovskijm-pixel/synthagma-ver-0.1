@@ -1,3 +1,4 @@
+import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -252,33 +253,11 @@ export function SalesContracts({ prefillCompany, onPrefillConsumed }: SalesContr
     return doc.documentElement.outerHTML;
   };
 
-  const handleDownloadWord = (contract: SalesContract, withStamp: boolean = true) => {
+  const handleDownloadWord = async (contract: SalesContract, withStamp = true) => {
     if (!contract.html_content) return;
-    
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(
-      withStamp ? contract.html_content : stripStampFromHtml(contract.html_content),
-      'text/html'
-    );
-    
-    // Extract styles and body content separately to avoid nested <html>
-    const styleEl = doc.querySelector('style');
-    const styleContent = styleEl ? styleEl.outerHTML : '';
-    const bodyContent = doc.body ? doc.body.innerHTML : contract.html_content;
-    
-    const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
-${styleContent}
-</head><body>${bodyContent}</body></html>`;
-    const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const suffix = withStamp ? '' : '_без_печати';
-    a.download = `Договор_${contract.contract_number || contract.id}${suffix}.doc`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const html=withStamp?contract.html_content:stripStampFromHtml(contract.html_content);
+    const suffix=withStamp?'':'_без_печати';
+    await downloadHtmlWord(html,'Договор_'+(contract.contract_number || contract.id)+suffix+'.docx');
   };
 
   const addCustomService = () => setCustomServices([...customServices, { name: '', price: 0 }]);

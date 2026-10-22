@@ -1,3 +1,5 @@
+import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
 /**
  * Shared helpers for document generators (Invoice, Act, etc.)
  */
@@ -136,37 +138,7 @@ export interface DocumentCourse {
   duration: string | null;
 }
 
-export const downloadAsDoc = (html: string, title: string, filename: string) => {
-  const docContent = `
-<!DOCTYPE html>
-<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head>
-<meta charset="utf-8">
-<meta name="ProgId" content="Word.Document">
-<title>${title}</title>
-</head>
-<body>
-${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}
-</body>
-</html>`;
-
-  const blob = new Blob([docContent], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
-
-export const printHtml = (html: string) => {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 500);
-  }
-};
+/** Kept as a source-compatible name for old callers; the output is genuine DOCX. */
+export const downloadAsDoc = (html: string, title: string, filename: string): Promise<boolean> =>
+  downloadHtmlWord(html,filename || title);
+export const printHtml = (html: string): Promise<void> => printHtmlContent(html);

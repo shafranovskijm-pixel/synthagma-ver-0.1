@@ -125,7 +125,8 @@ export function StudentPepAgreementCard({
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    try {
     if (!current) return;
     const orgLine = `${organizationName || ""}${organizationInn ? ` · ИНН ${organizationInn}` : ""}`.trim();
     const html = buildPepAgreementPdfHtml({
@@ -143,7 +144,8 @@ export function StudentPepAgreementCard({
         agreementVersion: current.agreement_version,
       },
     });
-    printHtmlContent(html, "Соглашение об использовании ПЭП");
+    await printHtmlContent(html, "Соглашение об использовании ПЭП");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось подготовить документ для печати"); }
   };
 
   const isAccepted = !!current;

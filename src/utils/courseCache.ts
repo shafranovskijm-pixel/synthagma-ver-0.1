@@ -44,6 +44,9 @@ export function observeOfflineAccess(actorId: string, fingerprint: string): void
   validatedScopes.clear();
 }
 
+/** Monotonic auth/access epoch, including anonymous transitions. */
+export function captureOfflineAuthRevision(): number { return authRevision; }
+
 export function captureOfflineContext(): { actorId: string; revision: number } | null {
   return activeActor ? { actorId: activeActor, revision: authRevision } : null;
 }

@@ -1,3 +1,4 @@
+import { htmlToDocxBlob, downloadBlob, sanitizeFileName } from '@/lib/docx/htmlToDocx';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -181,20 +182,19 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
     if (html) setPreviewHtml(html);
   };
 
-  const handlePrint = () => {
+  const printPreparedHtml = async (html: string, title: string) => {
+    try { await printHtmlContent(html, title); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Не удалось подготовить документ для печати'); }
+  };
+  const handlePrint = async () => {
     const html = buildPreview();
-    if (html) printHtmlContent(html, meta.title);
+    if (html) await printPreparedHtml(html, meta.title);
   };
 
-  const handleDownloadDoc = () => {
-    const html = buildPreview();
-    if (!html) return;
-    const blob = new Blob(["\ufeff", html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const fname = `${meta.title.replace(/[^\w-]+/g, "_")}_${vars.doc_number || "draft"}.doc`;
-    const a = document.createElement("a");
-    a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  const handleDownloadDoc = async () => {
+    const html = buildPreview(); if (!html) return;
+    try { const blob = await htmlToDocxBlob(html); downloadBlob(blob, sanitizeFileName(meta.title + '_' + (vars.doc_number || 'draft'), 'docx')); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Не удалось подготовить Word. Исходный документ сохранён.'); }
   };
 
   const handleDownloadPdf = async (html?: string, name?: string) => {
@@ -430,7 +430,7 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
                     <Button size="sm" variant="outline" onClick={() => setPreviewHtml(r.html_content)} title="Просмотр">
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => printHtmlContent(r.html_content, "Документ")} title="Печать">
+                    <Button size="sm" variant="outline" onClick={() => printPreparedHtml(r.html_content, "Документ")} title="Печать">
                       <Printer className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="outline"
@@ -576,7 +576,7 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
 
           <div className="flex flex-wrap justify-end gap-2 sticky bottom-4 bg-background/95 backdrop-blur border rounded-lg p-3 shadow-lg">
             <Button variant="outline" onClick={handlePreview}><Eye className="h-4 w-4 mr-1" /> Предпросмотр</Button>
-            <Button variant="outline" onClick={handleDownloadDoc}><Download className="h-4 w-4 mr-1" /> DOC</Button>
+            <Button variant="outline" onClick={handleDownloadDoc}><Download className="h-4 w-4 mr-1" /> DOCX</Button>
             <Button variant="outline" onClick={() => handleDownloadPdf()} disabled={pdfLoading}>
               {pdfLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileDown className="h-4 w-4 mr-1" />} PDF
             </Button>
@@ -602,7 +602,7 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
             <Button variant="outline" onClick={() => previewHtml && handleDownloadPdf(previewHtml, "document")}>
               <FileDown className="h-4 w-4 mr-1" /> PDF
             </Button>
-            <Button variant="outline" onClick={() => previewHtml && printHtmlContent(previewHtml, "Документ")}>
+            <Button variant="outline" onClick={() => previewHtml && printPreparedHtml(previewHtml, "Документ")}>
               <Printer className="h-4 w-4 mr-1" /> Печать
             </Button>
           </DialogFooter>

@@ -221,10 +221,10 @@ const RostechnadzorCoursesPage = () => {
                   variant="outline"
                   disabled={catalogLoading || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!fullCatalog?.length) return;
                     try {
-                      exportCatalogToDocx(fullCatalog);
+                      await exportCatalogToDocx(fullCatalog);
                       toast.success("Файл Word сформирован");
                     } catch (e) {
                       console.error(e);

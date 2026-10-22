@@ -1,3 +1,4 @@
+import { captureDocumentOutputFence } from '@/lib/documents/outputFence';
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FileText, Receipt, FileCheck, Lock, Loader2, Download, ExternalLink } from "lucide-react";
@@ -49,6 +50,7 @@ export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emp
   /** Печать/скачивание PDF существующего счёта — новый счёт НЕ создаётся. */
   const handleInvoicePdf = async () => {
     if (!invoice || invoicePdfBusy) return;
+    const assertCurrent = captureDocumentOutputFence();
     setInvoicePdfBusy(true);
     try {
       const snapshot = (contractVarsRaw.requisites || {}) as any;
@@ -64,7 +66,8 @@ export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emp
         periodMonths: Number(invoice.period_months) || 1,
         amount: Number(invoice.amount),
       };
-      printHtmlContent(await generateInvoiceHtml(data), `Счёт ${invoice.invoice_number}`);
+      const html = await generateInvoiceHtml(data); assertCurrent();
+      await printHtmlContent(html, `Счёт ${invoice.invoice_number}`);
     } catch (e: any) {
       toast.error(e?.message || "Не удалось подготовить PDF счёта");
     } finally {

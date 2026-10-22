@@ -1,3 +1,4 @@
+import { htmlToDocxBlob, downloadBlob } from "@/lib/docx/htmlToDocx";
 import jsPDF from "jspdf";
 
 export interface CatalogCourse {
@@ -23,8 +24,8 @@ const totalCount = (groups: CatalogGroup[]) =>
 const escapeHtml = (str: string) =>
   str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// =================== WORD (.doc через HTML, открывается MS Word/LibreOffice) ===================
-export function exportCatalogToDocx(groups: CatalogGroup[]) {
+// =================== WORD (OOXML DOCX) ===================
+export async function exportCatalogToDocx(groups: CatalogGroup[]) {
   const total = totalCount(groups);
   const dateLabel = new Date().toLocaleDateString("ru-RU");
 
@@ -74,40 +75,23 @@ export function exportCatalogToDocx(groups: CatalogGroup[]) {
 </body>
 </html>`;
 
-  const blob = new Blob(["\ufeff", html], { type: "application/msword" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Каталог-курсов-Синтагма-${todayStr()}.doc`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(await htmlToDocxBlob(html), `Каталог-курсов-Синтагма-${todayStr()}.docx`);
 }
 
 // =================== PDF (jsPDF, кириллица через встроенный шрифт PT Sans) ===================
 async function ensureCyrillicFont(doc: jsPDF) {
-  // jsPDF + helvetica не поддерживает кириллицу. Подгружаем PT Sans (Google Fonts CDN) как base64.
-  // Если не удалось — используем helvetica с транслитом fallback.
+  const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),15_000);
   try {
-    const url = "https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0KExQ.ttf";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("font fetch failed");
-    const buf = await res.arrayBuffer();
-    let binary = "";
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-    const base64 = btoa(binary);
-    doc.addFileToVFS("PTSans.ttf", base64);
-    doc.addFont("PTSans.ttf", "PTSans", "normal");
-    doc.addFont("PTSans.ttf", "PTSans", "bold");
-    doc.setFont("PTSans", "normal");
-    return true;
-  } catch (e) {
-    console.warn("Cyrillic font load failed, falling back to helvetica:", e);
-    doc.setFont("helvetica", "normal");
-    return false;
-  }
+    for(const [file,style] of [['PTSans-Regular.ttf','normal'],['PTSans-Bold.ttf','bold']] as const) {
+      const response=await fetch('/fonts/'+file,{signal:abort.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+      if(!response.ok) throw new Error('Не удалось загрузить шрифт с поддержкой кириллицы. PDF не сформирован.');
+      const bytes=new Uint8Array(await response.arrayBuffer());
+      if(bytes.length<100 || bytes.length>5_000_000) throw new Error('Некорректный шрифт PDF.');
+      let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+      doc.addFileToVFS(file,btoa(binary));doc.addFont(file,'PTSans',style);
+    }
+    doc.setFont('PTSans','normal');
+  } finally {clearTimeout(timeout);}
 }
 
 export async function exportCatalogToPdf(groups: CatalogGroup[]) {
@@ -159,31 +143,20 @@ export async function exportCatalogToPdf(groups: CatalogGroup[]) {
     doc.setFontSize(13);
     const declension = g.count >= 5 ? "курсов" : g.count >= 2 ? "курса" : "курс";
     const header = `${g.title}  —  ${g.count} ${declension}`;
-    const headerLines = doc.splitTextToSize(header, contentWidth);
-    doc.text(headerLines, marginX, y);
-    y += headerLines.length * 6 + 1;
-
-    doc.setTextColor(40, 40, 40);
-    doc.setFontSize(10);
-    for (const course of g.courses) {
-      const titleLines = doc.splitTextToSize(`• ${course.title}`, contentWidth - 4);
-      const descLines = course.description
-        ? doc.splitTextToSize(course.description, contentWidth - 8)
-        : [];
-      const blockH = titleLines.length * 5 + descLines.length * 4.5 + 1;
-      ensureSpace(blockH);
-      doc.setTextColor(40, 40, 40);
-      doc.setFontSize(10);
-      doc.text(titleLines, marginX + 4, y);
-      y += titleLines.length * 5;
-      if (descLines.length) {
-        doc.setTextColor(110, 110, 110);
-        doc.setFontSize(9);
-        doc.text(descLines, marginX + 8, y);
-        y += descLines.length * 4.5;
+    const headerLines: string[]=doc.splitTextToSize(header,contentWidth);
+    for(const line of headerLines){ensureSpace(6);doc.text(line,marginX,y);y+=6;}y+=1;
+    for(const course of g.courses) {
+      doc.setTextColor(40,40,40);doc.setFontSize(10);
+      const titleLines: string[]=doc.splitTextToSize('• '+course.title,contentWidth-4);
+      for(const line of titleLines){ensureSpace(5);doc.text(line,marginX+4,y);y+=5;}
+      if(course.description) {
+        doc.setTextColor(110,110,110);doc.setFontSize(9);
+        const descriptionLines: string[]=doc.splitTextToSize(course.description,contentWidth-8);
+        for(const line of descriptionLines){ensureSpace(4.5);doc.text(line,marginX+8,y);y+=4.5;}
       }
-      y += 1.5;
+      y+=1.5;
     }
+
     y += 4;
   }
 

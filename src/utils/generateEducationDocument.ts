@@ -1,3 +1,5 @@
+import { captureDocumentOutputFence } from '@/lib/documents/outputFence';
+import { escapeDocumentHtml, printableImageSource } from './printHtmlSafety';
 import type { EducationDocumentRecord } from "@/hooks/useEducationDocumentsJournal";
 
 export interface OrgDataForDocument {
@@ -11,13 +13,11 @@ export interface OrgDataForDocument {
 }
 
 function formatDate(dateStr: string): string {
-  if (!dateStr) return "___________";
-  const d = new Date(dateStr);
-  const months = [
-    "января", "февраля", "марта", "апреля", "мая", "июня",
-    "июля", "августа", "сентября", "октября", "ноября", "декабря",
-  ];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} г.`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr ?? '')) return '___________';
+  const date = new Date(dateStr + 'T00:00:00.000Z');
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== dateStr) return '___________';
+  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  return date.getUTCDate() + ' ' + months[date.getUTCMonth()] + ' ' + date.getUTCFullYear() + ' г.';
 }
 
 function getDocumentTitle(type: string): string {
@@ -49,40 +49,41 @@ function getDocumentDescription(type: string): string {
 function stampSignatureHtml(org: OrgDataForDocument): string {
   const parts: string[] = [];
   if (org.stamp_url) {
-    parts.push(`<img src="${org.stamp_url}" style="position:absolute;left:0;bottom:0;width:120px;height:auto;opacity:0.85;" />`);
+    parts.push(`<img src="${escapeDocumentHtml(printableImageSource(org.stamp_url))}" style="position:absolute;left:0;bottom:0;width:120px;height:auto;opacity:0.85;" />`);
   }
   if (org.signature_url) {
-    parts.push(`<img src="${org.signature_url}" style="position:absolute;left:140px;bottom:10px;width:100px;height:auto;opacity:0.85;" />`);
+    parts.push(`<img src="${escapeDocumentHtml(printableImageSource(org.signature_url))}" style="position:absolute;left:140px;bottom:10px;width:100px;height:auto;opacity:0.85;" />`);
   }
   return parts.join("");
 }
 
 function buildVerifyUrl(regNumber: string, documentId?: string): string {
   const base =
-    typeof window !== "undefined" && window.location?.origin
+    typeof window !== "undefined" && /^https?:$/.test(window.location?.protocol) && window.location?.origin
       ? window.location.origin
       : "https://синтагма.рф";
   return `${base}/verify/${encodeURIComponent(regNumber)}${documentId ? `?document_id=${encodeURIComponent(documentId)}` : ""}`;
 }
 
-// Builds a Google Chart QR image URL — works without bundling a QR library inside
-// the printed/exported HTML and renders reliably in PDF.
-function qrImageUrl(text: string, size = 110): string {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
-}
-
-export function generateEducationDocumentHtml(
-  record: EducationDocumentRecord,
-  org: OrgDataForDocument,
-): string {
+/** Local PNG generation avoids sending registration identifiers to a third party. */
+export async function generateEducationDocumentHtml(
+  inputRecord: EducationDocumentRecord,
+  inputOrg: OrgDataForDocument,
+): Promise<string> {
+  const assertCurrent = captureDocumentOutputFence(); assertCurrent();
+  const verifyUrl = buildVerifyUrl(inputRecord.reg_number, inputRecord.id);
+  const { default: QRCode } = await import('qrcode'); assertCurrent();
+  const qrData = printableImageSource(await QRCode.toDataURL(verifyUrl, { width: 110, margin: 1, errorCorrectionLevel: 'M', type: 'image/png' }));
+  assertCurrent();
+  const record = Object.fromEntries(Object.entries(inputRecord).map(([key, value]) => [key, typeof value === 'string' ? escapeDocumentHtml(value) : value])) as unknown as EducationDocumentRecord;
+  const org: OrgDataForDocument = { ...inputOrg, name: escapeDocumentHtml(inputOrg.name), license_number: escapeDocumentHtml(inputOrg.license_number), city: escapeDocumentHtml(inputOrg.city), director_name: escapeDocumentHtml(inputOrg.director_name), director_position: escapeDocumentHtml(inputOrg.director_position) };
   const title = getDocumentTitle(record.document_type);
   const description = getDocumentDescription(record.document_type);
   const issueDate = formatDate(record.issue_date);
   const protocolDate = record.protocol_date ? formatDate(record.protocol_date) : "___________";
   const directorName = org.director_name || "____________________";
   const directorPosition = org.director_position || "Руководитель";
-  const orgCity = org.city || "г. Москва";
-  const verifyUrl = buildVerifyUrl(record.reg_number, record.id);
+  const orgCity = org.city || "Место выдачи не указано";
 
   const qualificationBlock =
     record.document_type !== "certificate" && record.qualification_name
@@ -254,13 +255,13 @@ export function generateEducationDocumentHtml(
         <div class="signature-label">${directorName}</div>
       </div>
       <div class="stamp-area">
-        <img src="${qrImageUrl(verifyUrl)}" style="width:90px;height:90px;display:block;margin:0 auto 4px;" alt="QR" />
+        <img src="${escapeDocumentHtml(qrData)}" style="width:90px;height:90px;display:block;margin:0 auto 4px;" alt="QR" />
         <div style="font-size:10px;color:#666;">Проверить подлинность</div>
         <div style="font-size:9px;color:#999;">синтагма.рф/verify</div>
       </div>
     </div>
     <div class="reg-line">
-      Регистрационный номер: ${record.reg_number} · Проверить: ${verifyUrl}
+      Регистрационный номер: ${record.reg_number} · Проверить: ${escapeDocumentHtml(verifyUrl)}
     </div>
   </div>
 </div>

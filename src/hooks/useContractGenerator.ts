@@ -1,3 +1,5 @@
+import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
 import { useState, useEffect } from "react";
 import { localDateIso, localDateIsoPlusMonths } from "@/lib/date/localDate";
 import { supabase } from "@/integrations/supabase/client";
@@ -381,25 +383,18 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     setIsGenerating(true);
     try {
       const html = generateUnconfirmedDraft();
-      const printWindow = window.open('', '_blank');
-      if (printWindow) { printWindow.document.write(html); printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 500); }
+      await printHtmlContent(html, 'Договор '+contractNumber);
       toast.success("Договор сформирован");
     } catch (error) { console.error("Error:", error); toast.error("Ошибка генерации"); }
     finally { setIsGenerating(false); }
   };
 
-  const handleDownloadDOC = () => {
+  const handleDownloadDOC = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId);
     if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     const html = generateUnconfirmedDraft();
     const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || 'компания');
-    const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>Договор ${contractNumber}</title><style>@page{size:A4;margin:2cm}body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.5}</style></head><body>${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
-    const blob = new Blob([docContent], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url; link.download = `Договор_${contractNumber}_${counterpartyName}.doc`;
-    document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
-    toast.success("Договор скачан в формате DOC");
+    if (await downloadHtmlWord(html, `Договор_${contractNumber}_${counterpartyName}.docx`)) toast.success("Подготовлен DOCX договора");
   };
 
   const handleSaveContract = async () => {
