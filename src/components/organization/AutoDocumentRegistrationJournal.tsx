@@ -1,3 +1,4 @@
+/** @deprecated Historical compatibility only. Production registry uses server-backed documentRegistry; do not add callers or count these old paths as UC018 verification. */
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

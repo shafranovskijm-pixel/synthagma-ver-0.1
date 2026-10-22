@@ -1,0 +1,110 @@
+{
+  "captured_at": "2026-10-22T11:38:47.695Z",
+  "source": "Actual production READONLY catalog; no customer rows",
+  "functions": [
+    {
+      "body_md5": "f6c3518b10e2d34b6693a5fe757b3499",
+      "definition": "CREATE OR REPLACE FUNCTION public.auto_audit_log()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user_id uuid;\n  v_user_name text;\n  v_org_id uuid;\n  v_entity_name text;\n  v_action text;\n  v_entity_type text;\n  v_entity_id text;\n  v_details jsonb;\nBEGIN\n  v_user_id := auth.uid();\n  IF v_user_id IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;\n\n  -- Get user name\n  SELECT COALESCE(full_name, email, 'Unknown') INTO v_user_name\n  FROM profiles WHERE user_id = v_user_id LIMIT 1;\n\n  -- Determine action\n  v_action := CASE TG_OP\n    WHEN 'INSERT' THEN 'create'\n    WHEN 'UPDATE' THEN 'update'\n    WHEN 'DELETE' THEN 'delete'\n  END;\n\n  -- Table-specific logic\n  IF TG_TABLE_NAME = 'courses' THEN\n    v_entity_type := 'course';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.title;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.title;\n      IF TG_OP = 'UPDATE' AND OLD.is_published IS DISTINCT FROM NEW.is_published THEN\n        v_action := CASE WHEN NEW.is_published THEN 'update' ELSE 'update' END;\n        v_details := jsonb_build_object('published', NEW.is_published);\n      END IF;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'enrollments' THEN\n    v_entity_type := 'enrollment';\n    IF TG_OP = 'DELETE' THEN\n      v_entity_id := OLD.id::text;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = OLD.course_id LIMIT 1;\n      SELECT COALESCE(p.full_name, p.email) INTO v_entity_name FROM profiles p WHERE p.user_id = OLD.user_id LIMIT 1;\n    ELSE\n      v_entity_id := NEW.id::text;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = NEW.course_id LIMIT 1;\n      SELECT COALESCE(p.full_name, p.email) INTO v_entity_name FROM profiles p WHERE p.user_id = NEW.user_id LIMIT 1;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'profiles' THEN\n    v_entity_type := 'student';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.user_id::text;\n      v_entity_name := COALESCE(OLD.full_name, OLD.email);\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.user_id::text;\n      v_entity_name := COALESCE(NEW.full_name, NEW.email);\n      -- Skip trivial updates (last_visit_at only)\n      IF TG_OP = 'UPDATE' AND OLD.full_name IS NOT DISTINCT FROM NEW.full_name \n         AND OLD.email IS NOT DISTINCT FROM NEW.email\n         AND OLD.login IS NOT DISTINCT FROM NEW.login\n         AND OLD.organization_id IS NOT DISTINCT FROM NEW.organization_id\n         AND OLD.company_id IS NOT DISTINCT FROM NEW.company_id THEN\n        RETURN NEW;\n      END IF;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'companies' THEN\n    v_entity_type := 'company';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.name;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.name;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'course_documents' THEN\n    v_entity_type := 'document';\n    IF TG_OP = 'DELETE' THEN\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.name;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = OLD.course_id LIMIT 1;\n    ELSE\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.name;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = NEW.course_id LIMIT 1;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'registration_links' THEN\n    v_entity_type := 'link';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.name;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.name;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'journal_instances' THEN\n    v_entity_type := 'journal';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.title;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.title;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'education_document_records' THEN\n    v_entity_type := 'document';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.full_name || ' — ' || OLD.document_type;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.full_name || ' — ' || NEW.document_type;\n    END IF;\n\n  ELSE\n    RETURN COALESCE(NEW, OLD);\n  END IF;\n\n  -- Only log if we have an org_id\n  IF v_org_id IS NOT NULL THEN\n    INSERT INTO audit_logs (organization_id, user_id, user_name, action_type, entity_type, entity_id, entity_name, details, user_agent)\n    VALUES (v_org_id, v_user_id, v_user_name, v_action, v_entity_type, v_entity_id, v_entity_name, v_details, NULL);\n  END IF;\n\n  RETURN COALESCE(NEW, OLD);\nEND;\n$function$\n",
+      "signature": "auto_audit_log()"
+    },
+    {
+      "body_md5": "e1a94f123c7c46cbe9281b4506d3ede9",
+      "definition": "CREATE OR REPLACE FUNCTION public.trigger_encrypt_profile_password()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'extensions'\nAS $function$\nBEGIN\n  IF NEW.generated_password IS NOT NULL AND NEW.generated_password != '' AND NOT (NEW.generated_password LIKE 'ENC:%') THEN\n    NEW.generated_password = encrypt_password(NEW.generated_password);\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+      "signature": "trigger_encrypt_profile_password()"
+    }
+  ],
+  "metadata": {
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "not_null": true,
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "organization_id",
+        "not_null": true,
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "user_id",
+        "not_null": true,
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "user_name",
+        "not_null": false,
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "action_type",
+        "not_null": true,
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "entity_type",
+        "not_null": true,
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "entity_id",
+        "not_null": false,
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "entity_name",
+        "not_null": false,
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "details",
+        "not_null": false,
+        "type": "jsonb"
+      },
+      {
+        "default": null,
+        "name": "ip_address",
+        "not_null": false,
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "user_agent",
+        "not_null": false,
+        "type": "text"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "not_null": true,
+        "type": "timestamp with time zone"
+      }
+    ],
+    "constraints": [
+      {
+        "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+        "name": "audit_logs_organization_id_fkey"
+      },
+      {
+        "definition": "PRIMARY KEY (id)",
+        "name": "audit_logs_pkey"
+      }
+    ],
+    "functions": [
+      {
+        "body_md5": "b49f5d90a83aa2067302de675c7b0b0a",
+        "definition": "CREATE OR REPLACE FUNCTION public.encrypt_password(p_text text)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'extensions'\nAS $function$\nBEGIN\n  IF p_text IS NULL OR p_text = '' THEN RETURN p_text; END IF;\n  IF p_text LIKE 'ENC:%' THEN RETURN p_text; END IF;\n  RETURN 'ENC:' || encode(pgp_sym_encrypt(p_text, _get_pw_key()), 'base64');\nEND;\n$function$\n",
+        "signature": "encrypt_password(text)"
+      }
+    ],
+    "triggers": null
+  }
+}

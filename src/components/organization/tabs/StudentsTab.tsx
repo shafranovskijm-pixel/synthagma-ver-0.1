@@ -674,7 +674,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                         }}
                         className="text-destructive focus:text-destructive"
                       >
-                        <XCircle className="w-4 h-4 mr-2" />Отчислить с курса ({enrollmentsCount})
+                        <XCircle className="w-4 h-4 mr-2" />Подготовить отчисление ({enrollmentsCount})
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => panelMode === "archive" ? setShowArchiveRemoval(true) : props.onShowBulkDeleteConfirm?.(getSelectedUserIds())} className="text-destructive focus:text-destructive">
