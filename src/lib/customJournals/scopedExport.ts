@@ -34,5 +34,14 @@ export async function verifyScopedJournalExport(raw:ScopedJournalExport,expected
 export function downloadVerifiedJournalExport(value:{manifestText:string;htmlText:string},exportId:string,format:'json'|'html',isCurrent:()=>boolean){
  if(!isCurrent())throw new JournalExportVerificationError('ACCESS_DENIED');
  const blob=new Blob([format==='json'?value.manifestText:value.htmlText],{type:format==='json'?'application/json;charset=utf-8':'text/html;charset=utf-8'}),url=URL.createObjectURL(blob);
- try{if(!isCurrent())throw new JournalExportVerificationError('ACCESS_DENIED');const link=document.createElement('a');link.href=url;link.download='journal_'+exportId+'.'+format;link.click();}finally{URL.revokeObjectURL(url);}
+ let link:HTMLAnchorElement|null=null,activated=false;
+ try{
+  if(!isCurrent())throw new JournalExportVerificationError('ACCESS_DENIED');
+  link=document.createElement('a');link.href=url;link.download='journal_'+exportId+'.'+format;
+  document.body.appendChild(link);link.click();activated=true;
+ }finally{
+  link?.remove();
+  // Keep the object URL alive while the browser starts consuming the download.
+  if(activated)setTimeout(()=>URL.revokeObjectURL(url),1000);else URL.revokeObjectURL(url);
+ }
 }
