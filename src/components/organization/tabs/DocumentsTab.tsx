@@ -1,3 +1,4 @@
+import { DSR_DEADLINE_HELP } from "@/lib/dataSubjectDeadlines";
 import React, { useCallback, useEffect, useMemo, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -91,7 +92,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   frdo: "Выгрузка данных в ФИС ФРДО",
   counterparties: "Договоры, счета и закрывающие документы с контрагентами",
   signatures: "Журнал отправленных на подписание документов и доказательства подписей",
-  pd_requests: "Запросы субъектов ПД по 152-ФЗ — отзыв согласия, удаление, копия данных. Срок ответа 30 дней.",
+  pd_requests: DSR_DEADLINE_HELP,
   incoming: "Сканы подписанных контрагентом экземпляров — для двустороннего документооборота",
   recycle_bin: "Удалённые документы можно восстановить в исходном разделе. Автоматическая очистка приостановлена.",
 };

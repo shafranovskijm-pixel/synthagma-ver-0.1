@@ -1,6 +1,7 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
+import { CopyRegistryError } from '@/lib/copyRegistry/errors';
 import { base, capabilities, data, group, org, preview, record, uid } from '@/lib/copyRegistry/__tests__/fixtures';
 import { ServerCopiesDuplicatesJournal } from '../ServerCopiesDuplicatesJournal';
 
@@ -80,4 +81,32 @@ describe('production server copies journal presentation and actions', () => {
     await act(async () => resolve({ ...base(), kind: 'import', import: imported }));
     expect(screen.queryByText('Строк в исходнике: 1')).not.toBeInTheDocument(); expect(screen.queryByText('Сохранённый исходник переноса')).not.toBeInTheDocument();
   });
+  it.each(['REVISION_CONFLICT', 'DEPENDENCY_UNAVAILABLE'] as const)('keeps failed archive details visible in the modal for %s without a false success or history event', async code => {
+    mock.model.mutate.mockRejectedValue(new CopyRegistryError(code));
+    await act(async () => { render(<ServerCopiesDuplicatesJournal organizationId={org} onClose={vi.fn()} />); });
+    fireEvent.click(screen.getByRole('button', { name: 'В архив ' + record().registration_id }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Причина фиксации *'), { target: { value: 'Введённое основание архивации' } });
+    await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' })));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(code === 'REVISION_CONFLICT' ? 'действие не записано' : 'Результат пока не подтверждён');
+    expect(within(dialog).getByLabelText('Причина фиксации *')).toHaveValue('Введённое основание архивации');
+    expect(mock.model.mutate).toHaveBeenCalledWith(1, { action: 'archive', record_id: record().id, reason: 'Введённое основание архивации' });
+    expect(mock.success).not.toHaveBeenCalled(); expect(mock.model.reload).not.toHaveBeenCalled();
+    expect(mock.model.records[0].revision).toBe(1); expect(mock.model.records[0].archived).toBe(false);
+  });
+  it('shows transfer validation inside the modal, then preserves transfer text on a stale revision without recording it', async () => {
+    mock.model.records[0].can_transfer = true; mock.model.mutate.mockRejectedValue(new CopyRegistryError('REVISION_CONFLICT'));
+    await act(async () => { render(<ServerCopiesDuplicatesJournal organizationId={org} onClose={vi.fn()} />); });
+    fireEvent.click(screen.getByRole('button', { name: 'Зафиксировать передачу ' + record().registration_id }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Причина фиксации *'), { target: { value: 'Сообщение сотрудника' } });
+    await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' })));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Проверьте обязательные поля'); expect(mock.model.mutate).not.toHaveBeenCalled();
+    fireEvent.change(within(dialog).getByLabelText('Сведения о передаче *'), { target: { value: 'Подтверждение вручения, введённое сотрудником' } });
+    await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' })));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('нажмите «Отмена», обновите реестр');
+    expect(within(dialog).getByLabelText('Сведения о передаче *')).toHaveValue('Подтверждение вручения, введённое сотрудником');
+    expect(mock.model.mutate).toHaveBeenCalledOnce(); expect(mock.success).not.toHaveBeenCalled(); expect(mock.model.records[0].latest_transfer).toBeNull();
+  });
+
 });

@@ -1,0 +1,30 @@
+{
+  "kind": "UC023_SHORT_ACTUAL_POSTAPPEND_CATALOG_PASS",
+  "at": "2026-10-22T11:02:07.695Z",
+  "result": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T104358Z-1b90dc4e/result.json",
+  "resultSHA256": "70b0815dc179177bdadfef0b200c4d748c084c7bf241df498481d3521434e695",
+  "catalogSHA256": "ef0ea556fcd4145d23d4b1b452c018851e7d9d5cda8f8e511475bf0739112074",
+  "newFunctions": 8,
+  "oldTwoBodies": [
+    {
+      "signature": "get_documents_kpi(uuid)",
+      "source_md5": "c31477a0e96c8e317317ac137b746c3a"
+    },
+    {
+      "signature": "set_dsr_due_date()",
+      "source_md5": "e6995183a8a29ee7560679fac917fcb7"
+    }
+  ],
+  "newOrReplacedDSRChecks": 3,
+  "parentFKTriggers": 4,
+  "historyRows": 0,
+  "exactPassingFixtureUnchanged": true,
+  "actualCounts": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0
+  },
+  "bothOwnedCleanup": "PASS",
+  "sourcePinsUnchanged": true,
+  "notProductionSQLExecution": true
+}

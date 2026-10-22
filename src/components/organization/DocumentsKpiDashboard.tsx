@@ -125,6 +125,7 @@ function DocumentsKpiDashboardContent({ organizationId, onNavigate }: Props) {
       ["Конверсия КП → договор, %", kpi.proposal_to_contract_conversion ?? "Нет доступа"],
       ["Запросы ПД — открыто", kpi.pd_requests_open],
       ["Запросы ПД — просрочено", kpi.pd_requests_overdue],
+      ["Запросы ПД — проверить основание и срок", kpi.pd_requests_review_required ?? 0],
       ["Входящие — всего", kpi.incoming_total],
       ["Входящие — за месяц", kpi.incoming_this_month],
     ];
@@ -168,14 +169,15 @@ function DocumentsKpiDashboardContent({ organizationId, onNavigate }: Props) {
       </div>
 
       {/* Алерты */}
-      {(kpi.expired_count > 0 || kpi.pd_requests_overdue > 0) && (
+      {(kpi.expired_count > 0 || kpi.pd_requests_overdue > 0 || (kpi.pd_requests_review_required ?? 0) > 0) && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-medium text-destructive">Требует внимания</p>
             <ul className="text-xs mt-1 space-y-0.5 text-foreground/80">
               {kpi.expired_count > 0 && <li>• {kpi.expired_count} подписаний с истёкшим сроком</li>}
-              {kpi.pd_requests_overdue > 0 && <li>• {kpi.pd_requests_overdue} просроченных запросов ПД (152-ФЗ требует ответа за 30 дней)</li>}
+              {kpi.pd_requests_overdue > 0 && <li>• {kpi.pd_requests_overdue} просроченных контрольных сроков запросов ПД; основание и календарь указаны в карточке</li>}
+              {(kpi.pd_requests_review_required ?? 0) > 0 && <li>• {kpi.pd_requests_review_required} запросов ПД: нужно проверить основание, фактическую дату и календарь</li>}
             </ul>
           </div>
         </div>
@@ -229,6 +231,7 @@ function DocumentsKpiDashboardContent({ organizationId, onNavigate }: Props) {
             iconColor={kpi.pd_requests_overdue > 0 ? "text-destructive" : "text-emerald-500"}
             variant={pdOverdueTone}
             badge={kpi.pd_requests_overdue > 0 ? { text: `${kpi.pd_requests_overdue} просрочено`, tone: "danger" } : undefined}
+            hint={(kpi.pd_requests_review_required ?? 0) > 0 ? `Проверить сроки: ${kpi.pd_requests_review_required}` : "Сроки зависят от вида требования"}
             onClick={goPd} />
           <KpiCard title="Входящие документы" value={kpi.incoming_total} icon={Inbox} iconColor="text-cyan-500"
             hint={`За этот месяц: ${kpi.incoming_this_month}`}

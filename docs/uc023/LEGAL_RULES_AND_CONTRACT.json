@@ -1,0 +1,87 @@
+{
+  "task": "UC023 — сроки обращений субъектов ПД",
+  "asOf": "2026-10-22",
+  "status": "Source package in preparation; not production evidence",
+  "verifiedSpecificRules": [
+    {
+      "basis": "152-FZ art20(1)(2)",
+      "days": 10,
+      "unit": "working",
+      "extension": "up to 5 working; motivated notice sent to subject"
+    },
+    {
+      "basis": "art20(3),21(2)",
+      "days": 7,
+      "unit": "working",
+      "trigger": "supporting information, not arbitrary request creation"
+    },
+    {
+      "basis": "art21(5.1)",
+      "days": 10,
+      "unit": "working",
+      "extension": "up to 5 working; motivated notice",
+      "exceptions": "art6(1)2–11,art10(2),art11(2)"
+    },
+    {
+      "basis": "art21(3)",
+      "days": 3,
+      "unit": "working",
+      "followUp": "destruction within10 working after detection if lawful processing impossible"
+    },
+    {
+      "basis": "art21(4)(5)",
+      "days": 30,
+      "unit": "calendar",
+      "exceptions": "lawful retention/contract/other statutory basis requires reasoned operator decision"
+    },
+    {
+      "basis": "art21(6)",
+      "rule": "If destruction impossible within statutory term: block; <=6months unless federal law different. Not ordinary extension."
+    },
+    {
+      "basis": "152-FZ art10.1(12)(13)(14)",
+      "rule": "Distribution-specific consent cessation can be immediate; third-party transmission violation demand3working or court term. Not the ordinary10/30rule.",
+      "implementation": "Explicit manual legal basis workflow for these special requirements; do not apply ordinary cessation/withdrawal automatically."
+    }
+  ],
+  "primarySources": [
+    {
+      "url": "https://mintrud.gov.ru/docs/laws/130",
+      "verified": "Indexed official full text articles20/21 read. Consolidation lists amendments through24Jun2025; specific rule text verified, not claim complete2026consolidation."
+    },
+    {
+      "url": "https://depgossl.tomsk.gov.ru/normativnye-pravovye-akty-rossijskoj-federatsii",
+      "verified": "Official indexed catalog lists152-FZ red26Jul2026. LinkedDOCX direct retrieval403; body NOT read and no claim otherwise."
+    },
+    {
+      "url": "https://publication.pravo.gov.ru/document/0001202509240023",
+      "verified": "Official publication identifier of decree1466 dated24Sep2025."
+    },
+    {
+      "url": "https://static.government.ru/media/files/4jeB8hNKm69ggOa9yDiYOli6YoAyM21i.pdf",
+      "verified": "Official indexed decree full text: Jan3→Jan9,Jan4→Dec31 2026."
+    },
+    {
+      "url": "https://mintrud.gov.ru/labour/relationship/351",
+      "verified": "Official Art112 holiday list and weekend rollover text."
+    },
+    {
+      "url": "https://11.rosguard.gov.ru/uploads/2025/07/5_grazhdanskijj_kodeks_rossijjskojj_federacii_chast_pervaya.pdf",
+      "verified": "Official indexed Art191 next-day start; no automatic civil-law extension assumed for statutory personal-data duties."
+    },
+    {
+      "url": "https://minobrnauki.gov.ru/open_ministry/gossluzhba/entry/files/%D0%A4%D0%B5%D0%B4%D0%B5%D1%80%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9%20%D0%B7%D0%B0%D0%BA%D0%BE%D0%BD%20%D0%BE%D1%82%2027.07.2006%20N%20152-%D0%A4%D0%97%20(%D1%80%D0%B5%D0%B4.%20%D0%BE%D1%82%2024.06.2025.pdf",
+      "verified": "Official indexedArt10.1(12–14) text read; special distribution cessation distinct from ordinary cessation."
+    }
+  ],
+  "implementationContract": {
+    "ruleVersion": "152fz-dsr-2026-10-22-v1",
+    "calendar": "RF federal five-day2026 only; regional calendars/manualyear require explicit operator review",
+    "trigger": "Operator confirms actual date and IANA timezone; no guessed legal deadline before review",
+    "counting": "Next day after triggering event for ordinary day-count duties; working rules skip2026federal weekends/holidays.30calendar is an operational control date not pushed later on weekends. No automatic Art193 extension assumed without a confirmed applicable basis; manual legal review for special distribution/court terms.",
+    "history": "No existing due_date/status rewrite; absent rule details means historical needs review. Every deliberate amendment records before/after actor reason revision.",
+    "extensions": "Only access/cessation10-working; total<=5working; sent-notice date/reference/reason required; cannot retroactively cure missed notice",
+    "safety": "No data erasure, automatic retention policy or compliance certification. Reasoned retention/refusal does not silently stop clocks.",
+    "auth": "Canonical document action+student scope; own requests read by subject; revoked actor/subject fenced; all new mutations through finite CAS RPC; no public40001"
+  }
+}

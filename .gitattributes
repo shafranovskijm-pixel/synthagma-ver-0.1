@@ -1,0 +1,32 @@
+# UC023 reviewed source bytes and native metadata remain canonical LF.
+src/components/organization/DataSubjectRequestsManager.tsx text eol=lf
+src/components/organization/DataSubjectRequestReviewDialog.tsx text eol=lf
+src/components/organization/__tests__/DataSubjectRequestReviewDialog.test.tsx text eol=lf
+src/components/organization/DocumentsKpiDashboard.tsx text eol=lf
+src/components/organization/tabs/DocumentsTab.tsx text eol=lf
+src/components/student/StudentDataSubjectRequests.tsx text eol=lf
+src/content/documents/personal-data-policy.md text eol=lf
+src/hooks/useDataSubjectRequests.ts text eol=lf
+src/hooks/__tests__/useDataSubjectRequests.test.tsx text eol=lf
+src/hooks/useDocumentsKpi.ts text eol=lf
+src/lib/dataSubjectDeadlines.ts text eol=lf
+src/lib/__tests__/dataSubjectDeadlines.test.ts text eol=lf
+src/pages/PersonalDataPolicy.tsx text eol=lf
+supabase/functions/_shared/data-subject-deadline-rules.ts text eol=lf
+supabase/functions/support-chat/index.ts text eol=lf
+supabase/migrations/20261022220000_uc_personal_data_request_deadlines.sql text eol=lf
+docs/uc023/** text eol=lf
+supabase/tests/fixtures/uc023-*.json text eol=lf
+supabase/tests/native/data-subject-requests/** text eol=lf
+docs/releases/sintagma-production/uc-personal-data-request-deadlines-20261022/** text eol=lf
+.gitattributes text eol=lf
+# Retain exact inherited UC016 native closure bytes on Windows.
+supabase/tests/native/full-cycle/full-cycle.fixture.ts text eol=lf
+supabase/tests/native/scoped-journals/scoped-journals.fixture.ts text eol=lf
+supabase/tests/native/copy-registry/copy-registry.native.ts text eol=lf
+supabase/tests/native/copy-registry/copy-registry.fixture.ts text eol=lf
+supabase/tests/fixtures/uc-full-cycle-collect-portable-metadata.sql text eol=lf
+supabase/tests/fixtures/uc-full-cycle-collect-stage51-metadata.sql text eol=lf
+supabase/tests/fixtures/uc-full-cycle-legacy-journal-live.json text eol=lf
+supabase/tests/fixtures/uc016-private-file-source-metadata.json text eol=lf
+supabase/tests/fixtures/uc016-legacy101-conflicts.json text eol=lf

@@ -1,0 +1,119 @@
+{
+  "kind": "UC023_ACTUAL_COMBINED_NATIVE_V3_PASS",
+  "observed_at": "2026-10-22T10:36:16.080Z",
+  "status": "PASS_NATIVE_ONLY_NOT_PRODUCTION_RELEASE",
+  "actualCounts": {
+    "success": true,
+    "numTotalTests": 3,
+    "numPassedTests": 3,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0
+  },
+  "strictChecks": {
+    "exactActualThreeCounts": true,
+    "exactSingleFocusedSuite": true,
+    "allThreeExactAssertionTitlesPassed": true,
+    "adapterPass": true,
+    "exactThreeSequentialDatabasesClosed": true,
+    "threeInitiallyAbsentRolesExactlyRestored": true,
+    "oneExactOriginalConstructorSeam": true,
+    "exactReadyClusterForAdapter": true,
+    "actualFoldedStage51InstalledEveryCase": true,
+    "allThreeBoundCaseFacts": true,
+    "exactUC023AdditivePreservationAndAuthorityClosure": true,
+    "actualAuthorityCalendarHistoryPaginationKPI": true,
+    "actualTrustedWorkerAndActorHistoryCleanup": true,
+    "actualTwoDistinctNativeBackendPIDs": true,
+    "actualPrivacyAuthorityAndCASBarriers": true,
+    "sourceMirrorRuntimePinsUnchanged": true
+  },
+  "testEngines": {
+    "PGStarts": 1,
+    "Vitest": 1,
+    "automaticRetries": 0
+  },
+  "fixtureBasis": {
+    "exactCurrentAccepted": "615+617+618 raw0fd7a0e3595a96cf7acec44e02fb83c155a702ab7f8346178032e091d050789e",
+    "appendD": "53b11125da06f9024685c962c93978652fd3f6af70101ff46b300085d95ed05f",
+    "constructorOnlySeam": true,
+    "actualDSRAndKPIAndUpdatedAtMetadata": true,
+    "emptyInheritedPlaceholderCompletedAdditively": true,
+    "permissionPredicatesNotStubbed": true,
+    "no616OrFakeLedger": true,
+    "fullProductionMetadataOrHTTPNotClaimed": true
+  },
+  "preservation": {
+    "historicalOldRowProjectionExcludingOnly2NewColumns": true,
+    "allOtherOldRowsets": true,
+    "allOldFunctionMetadataAndOtherBodies": true,
+    "actualServiceWorkerRollbackExact": true,
+    "actorOnlyAuthFKDoesNotEraseOtherSubjectHistory": true,
+    "current618OtherSubjectRegistryCopyRetained": true
+  },
+  "source": {
+    "productHold": "work/source-holds/SOURCE_HOLD_D.json",
+    "productHoldSHA256": "930e4c22d49a69ea55fee5df06ee39e5d590834bdb32df0bbf81384236bf21c2",
+    "product21PinsAfterPassAllMatch": true,
+    "profileManifest": "work/native-acceptance-v3-20261022/profile/linux-full-cycle-manifest.json",
+    "manifestSHA256": "63512be03eb5980dec58fd07e7723b8eeb441de7c4b529baced3cc2aed095c05",
+    "profileHoldSHA256": "1d9820dc19a5bc71838f4eb093cb901c8984f7dd54890aec1419d6afe83bea53",
+    "sourcePins": 1068,
+    "mirrors": 118,
+    "allOriginalAndNewSourcePinsUnchanged": true
+  },
+  "twoActualBackendPIDs": [
+    486,
+    487
+  ],
+  "cleanup": {
+    "node": "PASS_OWNED_LINUX_NODE_HELPER_EXITED_AND_CAPTURED_OBJECTS_CLEANED",
+    "nodeOwnedResourcesStopped": true,
+    "pg": "PASS_OWNED_WSL_PG17_STOPPED",
+    "pgResourcesStopped": true
+  },
+  "priorFailure": {
+    "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T102929Z-77f6925a/result.json",
+    "sha256": "b08352b8072eb70c41a057ed863e6d1769cb2e29089a3d545d4a4f50cf910011",
+    "reason": "Fixture expected DSR absent; accepted erasure miniature already has empty attribution placeholder; failed before UC023 product migration. Both owned cleanup passed. Source V2 and raw failed result preserved."
+  },
+  "proofs": [
+    {
+      "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/result.json",
+      "bytes": 4596,
+      "sha256": "ebd42d6cbaeff2bce3098dc60c338297193f8f2ba950555a800201389e1e773f"
+    },
+    {
+      "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/vitest.json",
+      "bytes": 1743,
+      "sha256": "1163b5e7fedfa14ac4e1491687e9bd6579c2038cd8d03ed23783806c6ff26ba1"
+    },
+    {
+      "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/native-adapter.json",
+      "bytes": 27154,
+      "sha256": "d303897347720318699b64c0b0c4f63279cb955feb552c444587989a091bf04e"
+    },
+    {
+      "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/data-subject-requests-cases.json",
+      "bytes": 11536,
+      "sha256": "6c0670ddae0242964b284ffe14626f02d2584d13dc602a3bd3a05f0fd3e2fb39"
+    },
+    {
+      "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/linux-node-result.json",
+      "bytes": 4275,
+      "sha256": "13a18380545b3d7f571731e34a6d00c5a2ceda15aa16455c2344f010318250ff"
+    },
+    {
+      "path": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/constructor-transform.jsonl",
+      "bytes": 344,
+      "sha256": "69cb013181a643a2e829b91ba8f02163499b5b132c00db09205e2f10d96a1cde"
+    }
+  ],
+  "limits": [
+    "Exactly3cohesiveactualcases, not15separatetests; planned15criteria grouped by meaningful workflow.",
+    "Concurrent newly inserted third subject interleaving is source-reviewed captured-ID fence, not a runtime pause/injection claim.",
+    "No real Auth API; final local Auth-row deletion after genuine worker success specifically validates nullable actor FK.",
+    "No cloud/provider writes or production acceptance by author; parent handles guarded apply, both frontend/support-chat deployment and ordinary live acceptance.",
+    "Specific official law articles/calendar verified; full2026consolidated body unavailable remains explicitly documented, no legal certification."
+  ]
+}

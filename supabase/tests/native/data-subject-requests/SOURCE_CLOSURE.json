@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "scope": "Minimal UC023 exact actual native3 source extension. Existing UC016 fixture imports are inherited byteexact from merged93913cb; no engine binaries, credentials or customer rows.",
+  "files": [
+    {
+      "path": "supabase/tests/native/data-subject-requests/data-subject-requests.fixture.ts",
+      "bytes": 12700,
+      "sha256": "4ba957729b36549fb3a210476d7345e8843d75a4c82a66de56aaad5da4e95fa0"
+    },
+    {
+      "path": "supabase/tests/native/data-subject-requests/data-subject-requests.native.ts",
+      "bytes": 21749,
+      "sha256": "19fb571e025fc69d0133b46f2d758a2f968696887d5f81ca41b1041c93dff147"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc023-dsr-actual-metadata.json",
+      "bytes": 52865,
+      "sha256": "5e61dbf8bd91bd29189ab510269ce1887150f67df8105764a5c043a09135bdbe"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc023-kpi-actual-dependencies.json",
+      "bytes": 111039,
+      "sha256": "507e1ef28a9699ec7911f3503442ebbddeb694fe3cf73f05d6fd371cc6fb55f7"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc023-updated-at-actual-metadata.json",
+      "bytes": 1641,
+      "sha256": "113660631c67162ce56bc8a8caed9cf4fabaea005e9c796c69bad868d6153286"
+    }
+  ],
+  "inherits": {
+    "commit": "93913cb9415dbbd86cc74a0860e936d8d1e330d7",
+    "closure": "supabase/tests/native/copy-registry/SOURCE_CLOSURE.json",
+    "fixtureSHA256": "bea7dd135ff7632ea7de71dacb41e0284c87382538fb7a4c403649bd1215e666",
+    "current618RawSHA256": "0fd7a0e3595a96cf7acec44e02fb83c155a702ab7f8346178032e091d050789e"
+  },
+  "runtime": {
+    "profile": "work/uc023-privacy-deadlines-20261022/work/native-acceptance-v3-20261022/profile/linux-full-cycle-manifest.json",
+    "manifestSHA256": "63512be03eb5980dec58fd07e7723b8eeb441de7c4b529baced3cc2aed095c05",
+    "result": "work/pg-lab-uc013-20261019/results/uc-full-cycle-native-linux-20261022T103315Z-a2bd0e66/result.json",
+    "resultSHA256": "ebd42d6cbaeff2bce3098dc60c338297193f8f2ba950555a800201389e1e773f",
+    "counts": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "cleanup": "both owned Node and PG PASS"
+  },
+  "scopeLimits": [
+    "Actual source-only extension to accepted615+617+618, no616/fakeledger/productionHTTP claim.",
+    "Three cohesive scenarios group fifteen criteria; no claim of fifteen separate tests.",
+    "Final Auth-row deletion is isolated simulation after genuine public trusted-worker job success."
+  ]
+}

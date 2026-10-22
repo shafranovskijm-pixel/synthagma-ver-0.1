@@ -44,6 +44,7 @@ export function CopyRegistryForm({ model, record, originals, people, originalsNe
   onMoreOriginals: () => void; onMorePeople: () => void; onCancel: () => void; onSaved: (result: CopyMutation) => void;
 }) {
   const [form, setForm] = useState<FormState>(() => initialForm(record));
+  const [error, setError] = useState<string | null>(null);
   const inputId = useId();
   const disabled = model.saving || model.pending;
   const currentOriginal = record?.data.original, currentSubject = record?.data.subject, currentRecipient = record?.data.recipient, currentEvidence = record?.data.basis.evidence;
@@ -67,17 +68,27 @@ export function CopyRegistryForm({ model, record, originals, people, originalsNe
   };
   const save = async () => {
     if (!model.scopeCurrent() || disabled) return;
+    setError(null);
     const data = copyDataSchema.safeParse({ copy_type: form.copyType, declared_number: form.declaredNumber.trim() || null, document_date: form.documentDate,
       original: form.original, subject: form.subjectId === 'none' ? { kind: 'none' } : { kind: 'person', user_id: form.subjectId },
       recipient: form.recipientMode === 'person' ? { kind: 'person', user_id: form.recipientId } : { kind: 'external', name: form.recipientName.trim(), capacity: form.capacity },
       basis: { reason: form.basisReason, note: form.basisNote.trim(), evidence: form.evidence }, notes: form.notes.trim() });
-    if (!data.success) { toast.error(copyRegistryMessages.INVALID_INPUT); return; }
+    if (!data.success) { setError(copyRegistryMessages.INVALID_INPUT); return; }
     const payload = data.data as CopyData;
-    if (!record && payload.original.kind !== 'org_document_version' || record && !form.correctionReason.trim()) { toast.error(copyRegistryMessages.INVALID_INPUT); return; }
+    if (!record && payload.original.kind !== 'org_document_version' || record && !form.correctionReason.trim()) { setError(copyRegistryMessages.INVALID_INPUT); return; }
     try {
       const result = await model.mutate(record?.revision ?? 0, record ? { action: 'update', record_id: record.id, data: payload, reason: form.correctionReason.trim() } : { action: 'create', data: payload });
       if (model.scopeCurrent()) onSaved(result);
-    } catch (error) { if (model.scopeCurrent()) toast.error(copyRegistryMessages[normalizeCopyRegistryError(error).code]); }
+    } catch (failure) {
+      if (model.scopeCurrent()) {
+        const code = normalizeCopyRegistryError(failure).code;
+        const message = code === 'REVISION_CONFLICT'
+          ? 'Запись изменил другой сотрудник. Ваш текст сохранён в этой форме, исправление не записано. Скопируйте нужные изменения, нажмите «Отмена», обновите реестр и откройте актуальную запись.'
+          : copyRegistryMessages[code];
+        setError(message);
+        toast.error(message);
+      }
+    }
   };
   return <div className="space-y-4">
     <fieldset disabled={disabled} className="space-y-4">
@@ -101,6 +112,7 @@ export function CopyRegistryForm({ model, record, originals, people, originalsNe
       <div className="space-y-2"><Label htmlFor={inputId + '-notes'}>Примечание</Label><Textarea id={inputId + '-notes'} value={form.notes} maxLength={4000} onChange={event => setForm(previous => ({ ...previous, notes: event.target.value }))} rows={3} className="rounded-xl resize-none" /></div>
       {record && <div className="space-y-2"><Label htmlFor={inputId + '-correction'}>Причина исправления *</Label><Textarea id={inputId + '-correction'} value={form.correctionReason} maxLength={2000} onChange={event => setForm(previous => ({ ...previous, correctionReason: event.target.value }))} rows={2} className="rounded-xl resize-none" /></div>}
     </fieldset>
+    {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
     <div className="flex justify-end gap-2"><Button variant="outline" onClick={onCancel} disabled={disabled}>Отмена</Button><Button onClick={save} disabled={disabled || (record ? !record.can_edit : !model.capabilities?.can_create)}>{model.saving && <SigmaSpinner size="sm" className="mr-2" />}{record ? 'Сохранить исправление' : 'Добавить запись'}</Button></div>
   </div>;
 }

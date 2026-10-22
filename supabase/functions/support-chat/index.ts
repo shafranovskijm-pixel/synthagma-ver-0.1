@@ -1,3 +1,4 @@
+import { DSR_SUPPORT_CONTEXT } from "../_shared/data-subject-deadline-rules.ts";
 import { STUDENT_QUOTA_SUPPORT_CONTEXT } from "../_shared/student-quota-rules.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -16,6 +17,7 @@ const SYSTEM_PROMPT = `Ты — официальная техническая п
 • Это LMS для дополнительного профессионального образования (ДПО, ПО, рабочие профессии).
 • Тарифы: Бесплатный, Старт, Стандарт, Профессиональный, Максимальный. Стоимость и числовые лимиты сверяй с текущей страницей тарифов; не обещай бессрочную платную подписку.
 ${STUDENT_QUOTA_SUPPORT_CONTEXT}
+${DSR_SUPPORT_CONTEXT}
 • Конструктор курсов: уроки разных типов (видео, презентация, тест, обратная связь, ИИ-аватар, домашнее задание).
 • ИИ-генерация курсов и обложек (на базе GigaChat).
 • ФИС ФРДО: автоматическая выгрузка отчётов в Excel (35/41 колонка).
