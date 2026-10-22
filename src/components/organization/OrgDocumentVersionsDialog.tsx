@@ -12,6 +12,7 @@ import { useOrgDocumentVersions, type OrgDocumentVersion } from "@/hooks/useOrgD
 import { Loader2, Upload, Download, RotateCcw, History } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import type { ScopedOrgDocumentTransport } from "@/lib/programFiles";
 
 interface OrgDocumentVersionsDialogProps {
   open: boolean;
@@ -21,6 +22,8 @@ interface OrgDocumentVersionsDialogProps {
   organizationId: string;
   onRestored?: () => void;
   canWrite?: boolean;
+  transport?: ScopedOrgDocumentTransport;
+  accept?: string;
 }
 
 export function OrgDocumentVersionsDialog({
@@ -31,8 +34,10 @@ export function OrgDocumentVersionsDialog({
   organizationId,
   onRestored,
   canWrite = false,
+  transport,
+  accept,
 }: OrgDocumentVersionsDialogProps) {
-  const { versions, loading, loadError, hasLoaded, refresh, uploadVersion, restoreVersion, currentVersionId, canChange } = useOrgDocumentVersions(open ? documentId : null, canWrite);
+  const { versions, loading, loadError, hasLoaded, refresh, uploadVersion, restoreVersion, currentVersionId, canChange } = useOrgDocumentVersions(open ? documentId : null, canWrite, transport);
   const [uploading, setUploading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [summary, setSummary] = useState("");
@@ -48,8 +53,9 @@ export function OrgDocumentVersionsDialog({
       downloadTask.current = null;
       pending?.controller.abort();
     };
-  }, [documentId, open]);
+  }, [documentId, open, transport?.key]);
   const downloading = download?.progress === "preparing" || download?.progress === "downloading";
+  const scopeCurrent = () => { try { transport?.assertCurrent(); return true; } catch { return false; } };
   const handleDownload = async (version: OrgDocumentVersion) => {
     if (downloadTask.current || !version.file_url || !open) return;
     const task = { controller: new AbortController() };
@@ -57,16 +63,22 @@ export function OrgDocumentVersionsDialog({
     const latestProgress: { value: PrivateDownloadProgress } = { value: "failed" };
     setDownload({ versionId: version.id, progress: "preparing" });
     try {
+      transport?.assertCurrent();
       const ok = await downloadPrivateFile("org-documents", version.file_path || version.file_url, version.file_name || documentName, {
         signal: task.controller.signal,
+        assertCurrent: transport?.assertCurrent,
+        signUrl: transport?.signUrl,
         onProgress: progress => {
+          if (!scopeCurrent()) return;
           latestProgress.value = progress;
           if (downloadTask.current === task) setDownload({ versionId: version.id, progress });
         },
       });
+      if (!scopeCurrent()) return;
       if (downloadTask.current === task) setDownload({ versionId: version.id,
         progress: ok ? "handed_to_browser" : latestProgress.value === "timed_out" ? "timed_out" : "failed" });
     } catch {
+      if (!scopeCurrent()) return;
       if (downloadTask.current === task) setDownload({ versionId: version.id, progress: "failed" });
     } finally {
       if (downloadTask.current === task) downloadTask.current = null;
@@ -74,8 +86,10 @@ export function OrgDocumentVersionsDialog({
   };
 
   const handleFile = async (file: File) => {
+    try { transport?.assertCurrent(); } catch { return; }
     setUploading(true);
     const ok = await uploadVersion({ organizationId, file, changeSummary: summary });
+    try { transport?.assertCurrent(); } catch { return; }
     setUploading(false);
     if (ok) {
       setSummary("");
@@ -107,6 +121,7 @@ export function OrgDocumentVersionsDialog({
           <Input
             ref={fileRef}
             type="file"
+            accept={accept}
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -197,9 +212,10 @@ export function OrgDocumentVersionsDialog({
                       size="icon"
                       disabled={!canChange || uploading || restoring || !v.file_url || v.id === currentVersionId}
                       onClick={async () => {
+                        if (!scopeCurrent()) return;
                         setRestoring(true);
-                        try { const ok = await restoreVersion(v); if (ok) onRestored?.(); }
-                        finally { setRestoring(false); }
+                        try { const ok = await restoreVersion(v); if (scopeCurrent() && ok) onRestored?.(); }
+                        finally { if (scopeCurrent()) setRestoring(false); }
                       }}
                       title="Сделать актуальной"
                     >
@@ -213,7 +229,7 @@ export function OrgDocumentVersionsDialog({
         </ScrollArea>
           </TabsContent>
           <TabsContent value="review" className="max-h-[65vh] overflow-auto">
-            {documentId && <OrgDocumentWorkflowPanel organizationId={organizationId} documentId={documentId} currentVersionId={currentVersionId} versions={versions} onOpenFiles={() => setActiveTab("files")} />}
+            {documentId && <OrgDocumentWorkflowPanel organizationId={organizationId} documentId={documentId} currentVersionId={currentVersionId} versions={versions} transport={transport} onOpenFiles={() => setActiveTab("files")} />}
           </TabsContent>
         </Tabs>
       </DialogContent>

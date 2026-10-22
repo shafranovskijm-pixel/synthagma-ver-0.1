@@ -11,16 +11,22 @@ import { ReviewableDocument, type ReviewComment } from "@/components/signing/Rev
 import { useOrgDocumentWorkflow } from "@/hooks/useOrgDocumentWorkflow";
 import { acceptedContentChange, canApproveWorkflow, normalizeWorkflowLinks, workflowLabels, type WorkflowLink, type WorkflowComment } from "@/lib/orgDocumentWorkflow";
 import { loadOrgDocumentReviewContent } from "@/lib/orgDocumentReviewContent";
-import { openPrivateFile } from "@/utils/storageHelpers";
+import { openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
 import { toast } from "sonner";
 import type { OrgDocumentVersion } from "@/hooks/useOrgDocumentVersions";
+import type { ScopedOrgDocumentTransport } from "@/lib/programFiles";
 
-interface Props { organizationId: string; documentId: string; currentVersionId?: string | null; versions?: OrgDocumentVersion[]; onOpenFiles?: () => void }
+interface Props { organizationId: string; documentId: string; currentVersionId?: string | null; versions?: OrgDocumentVersion[]; onOpenFiles?: () => void; transport?: ScopedOrgDocumentTransport }
 const fileLabels: Record<string, string> = { none: "Нет файла", fileless: "Нет файла", active: "Файл актуален", expiring: "Срок файла истекает", expired: "Срок файла истёк", archived: "В архиве", deleted: "В корзине", unconfirmed: "Неизменность файла не подтверждена" };
 const reviewComment = (c: WorkflowComment): ReviewComment => ({ id: c.id, author_name: c.author_name, author_role: c.author_role,
   quoted_text: c.quoted_text, comment_text: c.comment_text, position_anchor: c.position_anchor, resolved: c.resolved, created_at: c.created_at });
-export function OrgDocumentWorkflowPanel({ organizationId, documentId, currentVersionId, versions = [], onOpenFiles }: Props) {
-  const h = useOrgDocumentWorkflow(organizationId, documentId, currentVersionId);
+export function OrgDocumentWorkflowPanel({ organizationId, documentId, currentVersionId, versions = [], onOpenFiles, transport }: Props) {
+  const h = useOrgDocumentWorkflow(organizationId, documentId, currentVersionId, transport);
+  const sourceFile = async (path: string, name?: string) => transport
+    ? downloadPrivateFile('org-documents', path, name, { assertCurrent: transport.assertCurrent, signUrl: transport.signUrl })
+    : openPrivateFile('org-documents', path);
+  const scopeCurrent = () => { try { transport?.assertCurrent(); return true; } catch { return false; } };
+  const sourceError = (message: string) => { if (scopeCurrent()) toast.error(message); };
   const [responsible, setResponsible] = useState(""), [reviewer, setReviewer] = useState("");
   const [links, setLinks] = useState<WorkflowLink[]>([]);
   const [comment, setComment] = useState(""), [note, setNote] = useState(""), [number, setNumber] = useState(""), [date, setDate] = useState("");
@@ -38,14 +44,14 @@ export function OrgDocumentWorkflowPanel({ organizationId, documentId, currentVe
   }, [w?.id, w?.revision, documentId]);
   useEffect(() => { setSelectedCycle("current"); setShowContent(false); setContent(null); }, [fileKey]);
   useEffect(() => {
-    if (!showContent || !d?.document.file_url || history) return;
+    if (!showContent || !d?.document.file_url || history || !scopeCurrent()) return;
     const abort = new AbortController();
     setContent({ key: fileKey, html: null, loading: true, error: null });
     void loadOrgDocumentReviewContent(d.document.file_path || d.document.file_url, d.document.file_name || "", abort.signal)
-      .then(html => { if (!abort.signal.aborted) setContent({ key: fileKey, html, loading: false, error: null }); })
-      .catch(error => { if (!abort.signal.aborted) setContent({ key: fileKey, html: null, loading: false, error: error.message || "Не удалось открыть содержимое версии" }); });
+      .then(html => { if (!abort.signal.aborted && scopeCurrent()) setContent({ key: fileKey, html, loading: false, error: null }); })
+      .catch(error => { if (!abort.signal.aborted && scopeCurrent()) setContent({ key: fileKey, html: null, loading: false, error: error.message || "Не удалось открыть содержимое версии" }); });
     return () => abort.abort();
-  }, [showContent, fileKey, d?.document.file_url, history]);
+  }, [showContent, fileKey, d?.document.file_url, history, transport]);
   const disabled = h.loading || h.saving || h.conflict || h.denied;
   const editable = !history && !!d?.capabilities.can_configure && (!w || ["draft", "changes_requested"].includes(w.state));
   const draftDirty = !!w && (responsible !== w.responsible_user_id || reviewer !== w.reviewer_user_id || JSON.stringify(normalizeWorkflowLinks(links)) !== JSON.stringify(normalizeWorkflowLinks(w.links)));
@@ -69,7 +75,7 @@ export function OrgDocumentWorkflowPanel({ organizationId, documentId, currentVe
       {d.document.file_state === "unconfirmed" && <div role="status" className="rounded-lg border p-3 space-y-2 text-sm">
         <p>Для внутреннего согласования нужна версия с зафиксированным файлом. Неизменность прежнего файла пока не подтверждена; его просмотр и история доступны. Загрузите новую версию на вкладке «Файлы и версии».</p>
         <div className="flex flex-wrap gap-2">
-          {d.document.file_url && <Button size="sm" variant="outline" onClick={async () => { if (!await openPrivateFile("org-documents", d.document.file_path || d.document.file_url!)) toast.error("Не удалось открыть прежний файл"); }}>Открыть прежний файл</Button>}
+          {d.document.file_url && <Button size="sm" variant="outline" onClick={async () => { if (!await sourceFile(d.document.file_path || d.document.file_url!, d.document.file_name || undefined)) sourceError("Не удалось открыть прежний файл"); }}>{transport ? 'Скачать прежний файл' : 'Открыть прежний файл'}</Button>}
           {onOpenFiles && <Button size="sm" variant="outline" className="max-w-full h-auto min-h-9 whitespace-normal" onClick={onOpenFiles}>Перейти к файлам и версиям</Button>}
         </div>
       </div>}
@@ -84,11 +90,11 @@ export function OrgDocumentWorkflowPanel({ organizationId, documentId, currentVe
         <Button size="sm" className="max-w-full h-auto min-h-9 whitespace-normal" disabled={disabled || !responsible || !reviewer || !d.document.current_version_id || !h.candidates} onClick={async () => { if (await h.saveDraft(responsible, reviewer, links)) toast.success("Участники и связи согласования сохранены"); }}>Сохранить участников и связи</Button>
       </div>}
       {view && <div className="space-y-3">
-        {viewedVersion && <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Версия v{viewedVersion.version_number}</Badge><span className="text-xs text-muted-foreground">{viewedVersion.file_name || "Файл этой версии"}</span>{history && viewedVersion.file_url && <Button size="sm" variant="outline" onClick={async () => { if (!await openPrivateFile("org-documents", viewedVersion.file_path || viewedVersion.file_url!)) toast.error("Не удалось открыть историческую версию"); }}>Открыть файл этой версии</Button>}</div>}
+        {viewedVersion && <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Версия v{viewedVersion.version_number}</Badge><span className="text-xs text-muted-foreground">{viewedVersion.file_name || "Файл этой версии"}</span>{history && viewedVersion.file_url && <Button size="sm" variant="outline" onClick={async () => { if (!await sourceFile(viewedVersion.file_path || viewedVersion.file_url!, viewedVersion.file_name || undefined)) sourceError("Не удалось открыть историческую версию"); }}>{transport ? 'Скачать файл этой версии' : 'Открыть файл этой версии'}</Button>}</div>}
         <p className="text-sm">Ответственный: {view.responsible_name || nameOf(view.responsible_user_id)}. Проверяющий: {view.reviewer_name || nameOf(view.reviewer_user_id)}.</p>
         {view.approval && <div className="rounded-lg border p-3 text-sm"><p>Внутреннее утверждение № {view.approval.number} от {view.approval.date}</p><p className="text-muted-foreground">Внесено: {view.approval.recorded_at}. Решение относится только к версии этого согласования.</p></div>}
         {(view.requires_new_version || view.comments.some(acceptedContentChange)) && <p role="status" className="text-sm text-muted-foreground">Приняты изменения текста. Внесите их в файл, загрузите новую версию и начните новое согласование. Текущий файл автоматически не изменён.</p>}
-        {!history && d.document.file_url && <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setShowContent(v => !v)}>{showContent ? "Скрыть содержимое" : "Показать содержимое для проверки"}</Button><Button size="sm" variant="outline" onClick={async () => { if (!await openPrivateFile("org-documents", d.document.file_path || d.document.file_url!)) toast.error("Не удалось открыть исходный файл"); }}>Открыть исходный файл</Button></div>}
+        {!history && d.document.file_url && <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setShowContent(v => !v)}>{showContent ? "Скрыть содержимое" : "Показать содержимое для проверки"}</Button><Button size="sm" variant="outline" onClick={async () => { if (!await sourceFile(d.document.file_path || d.document.file_url!, d.document.file_name || undefined)) sourceError("Не удалось открыть исходный файл"); }}>{transport ? 'Скачать исходный файл' : 'Открыть исходный файл'}</Button></div>}
         {!history && showContent && content?.key === fileKey && <>
           {content.loading && <p className="text-sm">Чтение файла…</p>}{content.error && <p role="alert" className="text-sm">{content.error}</p>}
           {!content.loading && !content.error && content.html === null && <p className="text-sm text-muted-foreground">Для этого формата откройте исходный файл. Замечания можно оставить ниже.</p>}

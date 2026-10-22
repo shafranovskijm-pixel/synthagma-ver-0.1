@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { OrgDocumentVersionsDialog } from "@/components/organization/OrgDocumentVersionsDialog";
 import { useCourseProgramBinding, useProgramFacts } from "@/hooks/useProgramFacts";
 import { LearningCriteriaPanel } from "./LearningCriteriaPanel";
+import { useProgramFileAccess } from "@/hooks/useProgramFileAccess";
+import { createScopedOrgDocumentTransport, programFileScopeCurrent, type ProgramFileScope, type ScopedOrgDocumentTransport } from "@/lib/programFiles";
+import { ProgramFileManagerDialog } from "./ProgramFileManagerDialog";
 import { emptyProgramFacts, programFactsReady, programFactsSchema, programFactStateLabels, programTypeLabels, trainingFormLabels,
   type ProgramEnvelope, type ProgramFacts, type ProgramVersion } from "@/lib/programFacts";
 
@@ -40,12 +43,26 @@ export function ProgramFactsSummary({ version }: { version: ProgramVersion }) {
 }
 
 export function ProgramFactsPanel({ organizationId, canConfigure = false, courses = [] }: Props) {
-  const h = useProgramFacts(organizationId, canConfigure);
+  const access = useProgramFileAccess(organizationId, canConfigure);
+  const transport = useMemo(() => access.scope ? createScopedOrgDocumentTransport(access.scope) : null, [access.scope]);
+  if (!access.scope || !transport) return <Card><CardContent className="py-4 text-sm text-muted-foreground" role="status">{access.loading ? 'Загрузка прав на программы…' : 'Файлы и сведения программ недоступны с текущими правами организации.'}</CardContent></Card>;
+  return <ProgramFactsWorkspace key={access.ownerKey} organizationId={organizationId} canConfigure={canConfigure && access.canWrite} courses={courses} scope={access.scope} transport={transport} />;
+}
+
+function ProgramFactsWorkspace({ organizationId, canConfigure = false, courses = [], scope, transport }: Props & { scope: ProgramFileScope; transport: ScopedOrgDocumentTransport }) {
+  const h = useProgramFacts(organizationId, canConfigure, transport);
   const [programId, setProgramId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [note, setNote] = useState("");
   const [fileHistory, setFileHistory] = useState<{ id: string; name: string } | null>(null);
+  const [filesOpen, setFilesOpen] = useState(false);
+  const fileOwner = useRef({ id: '', epoch: 0 });
+  const fileId = fileHistory?.id ?? '';
+  if (fileOwner.current.id !== fileId) fileOwner.current = { id: fileId, epoch: fileOwner.current.epoch + 1 };
+  const fileEpoch = fileOwner.current.epoch;
+  const historyTransport = useMemo(() => createScopedOrgDocumentTransport({ ...scope, key: `${scope.key}:history:${fileId}:${fileEpoch}`,
+    current: () => programFileScopeCurrent(scope) && !!fileId && fileOwner.current.id === fileId && fileOwner.current.epoch === fileEpoch }), [scope, fileId, fileEpoch]);
   useEffect(() => { setProgramId(""); setVersionId(""); setDraft(null); setNote(""); setFileHistory(null); }, [organizationId]);
   const program = h.programs?.find(p => p.program.id === programId) ?? null;
   const version = program?.versions.find(v => v.id === versionId) ?? program?.current_version ?? null;
@@ -68,7 +85,7 @@ export function ProgramFactsPanel({ organizationId, canConfigure = false, course
   };
   return <Card><CardContent className="py-4 space-y-4">
     <div className="flex items-start justify-between gap-3 flex-wrap"><div><h2 className="font-semibold">Программы и версии</h2><p className="text-sm text-muted-foreground">Согласование файла и проверка сведений программы — отдельные действия. Связь с курсом применяется к будущим группам; сведения уже зафиксированных групп сохраняются.</p></div>
-      {canConfigure && <Button variant="outline" size="sm" className={actionClass} disabled={disabled || !!draft} onClick={() => startDraft()}>Добавить программу</Button>}
+      <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" className={actionClass} onClick={() => setFilesOpen(true)}>Файлы программ</Button>{canConfigure && <Button variant="outline" size="sm" className={actionClass} disabled={disabled || !!draft} onClick={() => startDraft()}>Добавить программу</Button>}</div>
     </div>
     {h.error && <div role="alert" className="rounded-lg border p-3 space-y-2 text-sm"><p>{h.error}</p><Button variant="outline" size="sm" disabled={h.saving || h.loading} onClick={() => void h.reload()}>Повторить загрузку программ</Button></div>}
     {h.candidatesError && <p role="alert" className="text-sm text-muted-foreground">{h.candidatesError}</p>}
@@ -98,7 +115,7 @@ export function ProgramFactsPanel({ organizationId, canConfigure = false, course
       <div className="space-y-2"><Label htmlFor="program-name">Название записи программы</Label><Input id="program-name" value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} maxLength={500} disabled={disabled} /></div>
       <div className="space-y-2"><Label htmlFor="program-description">Описание записи</Label><Textarea id="program-description" value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} maxLength={4000} disabled={disabled} /></div>
       <div className="space-y-2"><Label htmlFor="program-file">Согласованная версия файла</Label><Select value={draft.fileVersionId} onValueChange={value => setDraft({ ...draft, fileVersionId: value })} disabled={disabled || !h.candidates}><SelectTrigger id="program-file"><SelectValue placeholder="Выберите файл после внутреннего согласования" /></SelectTrigger><SelectContent>{h.candidates?.files.map(f => <SelectItem key={f.version_id} value={f.version_id}>{f.document_name} · v{f.version_number} · № {f.approval.number} от {f.approval.date}</SelectItem>)}</SelectContent></Select>
-        {h.candidates?.files.length === 0 && <p className="text-xs text-muted-foreground">Сначала загрузите файл в «Документы организации» и завершите внутреннее согласование его версии.</p>}
+        {h.candidates?.files.length === 0 && <p className="text-xs text-muted-foreground">Откройте «Файлы программ», загрузите PDF программы и завершите внутреннее согласование его версии. Затем обновите список доступных файлов.</p>}
       </div>
       <div className="space-y-2"><Label htmlFor="program-reviewer">Проверяющий сведения программы</Label><Select value={draft.reviewerId} onValueChange={value => setDraft({ ...draft, reviewerId: value })} disabled={disabled || !h.candidates}><SelectTrigger id="program-reviewer"><SelectValue placeholder="Выберите сотрудника центра" /></SelectTrigger><SelectContent>{h.candidates?.reviewers.map(r => <SelectItem key={r.user_id} value={r.user_id}>{r.display_name}</SelectItem>)}</SelectContent></Select></div>
       {textFields.map(([field, label]) => <div className="space-y-2" key={field}><Label htmlFor={`program-${field}`}>{label}</Label><Textarea id={`program-${field}`} value={draft.facts[field] ?? ""} onChange={e => setFact(field, e.target.value || null)} maxLength={4000} rows={field === "attestation_criteria" ? 3 : 2} disabled={disabled} /></div>)}
@@ -110,14 +127,15 @@ export function ProgramFactsPanel({ organizationId, canConfigure = false, course
       {draftChanged && <p role="alert" className="text-sm">После открытия формы появилась другая запись программы. Предыдущее сохранение могло завершиться. Закройте форму и проверьте историю перед созданием следующей версии.</p>}
       <div className="flex flex-wrap gap-2"><Button className={actionClass} disabled={disabled || draftChanged || !h.programs || !draft.name.trim() || !draft.fileVersionId || !draft.reviewerId || !h.candidates || !programFactsSchema.safeParse(draft.facts).success} onClick={() => void saveDraft()}>Сохранить новую версию сведений</Button><Button variant="ghost" disabled={h.saving} onClick={() => setDraft(null)}>Закрыть без сохранения</Button></div>
     </div>}
-    <CourseProgramBindingPanel organizationId={organizationId} courses={courses} approved={approved} canConfigure={canConfigure && !!h.candidates && !h.denied} />
-    <OrgDocumentVersionsDialog open={!!fileHistory} onOpenChange={open => { if (!open) setFileHistory(null); }} organizationId={organizationId} documentId={fileHistory?.id ?? null} documentName={fileHistory?.name ?? "Файл программы"} canWrite={canConfigure} />
+    <CourseProgramBindingPanel organizationId={organizationId} courses={courses} approved={approved} canConfigure={canConfigure && !!h.candidates && !h.denied} transport={transport} />
+    <ProgramFileManagerDialog open={filesOpen} onOpenChange={setFilesOpen} scope={scope} canWrite={canConfigure} onChanged={h.reload} />
+    {fileHistory && <OrgDocumentVersionsDialog key={historyTransport.key} open={true} onOpenChange={open => { if (!open) { ++fileOwner.current.epoch; fileOwner.current.id = ''; setFileHistory(null); void h.reload(); } }} organizationId={organizationId} documentId={fileHistory.id} documentName={fileHistory.name} canWrite={canConfigure} transport={historyTransport} onRestored={() => void h.reload()} />}
   </CardContent></Card>;
 }
 
-function CourseProgramBindingPanel({ organizationId, courses, approved, canConfigure }: { organizationId: string; courses: Array<{ id: string; title: string }>; approved: Array<{ version: ProgramVersion; name: string }>; canConfigure: boolean }) {
+function CourseProgramBindingPanel({ organizationId, courses, approved, canConfigure, transport }: { organizationId: string; courses: Array<{ id: string; title: string }>; approved: Array<{ version: ProgramVersion; name: string }>; canConfigure: boolean; transport?: ScopedOrgDocumentTransport }) {
   const [courseId, setCourseId] = useState(""); const [versionId, setVersionId] = useState("");
-  const h = useCourseProgramBinding(organizationId, courseId || null, canConfigure);
+  const h = useCourseProgramBinding(organizationId, courseId || null, canConfigure, transport);
   useEffect(() => { setCourseId(""); setVersionId(""); }, [organizationId]);
   useEffect(() => { setVersionId(""); }, [courseId]);
   const bound = approved.find(v => v.version.id === h.data?.binding?.version_id);
