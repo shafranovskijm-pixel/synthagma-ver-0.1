@@ -1,10 +1,10 @@
 # ORIGINAL SINTAGMA
 
-https://github.com/shafranovskijm-pixel/synthagma-ai-learn
+https://github.com/shafranovskijm-pixel/synthagma-ver-0.1
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://synthagma-bloom.lovable.app
+**Production app**: https://xn--80aaiswd0ak.xn--p1ai
 
 ## Build with Lovable
 
@@ -28,3 +28,7 @@ npm run dev
 ## Release verification
 
 - 2026-08-07: verified atomic completion recovery for an already-passed final course test.
+
+## Edge Function tests
+
+See [Edge Function tests](docs/EDGE_TESTS.md) for the permanent test directory and current commands.
