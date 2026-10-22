@@ -99,7 +99,19 @@ export function privateCleanupWorkerSource(): string {
   return `/* UC private runtime-cache cleanup. No IndexedDB or lesson-asset purge. */
 const classifyRuntimeRequest = ${classifyRuntimeRequest.toString()};
 const cleanPrivateRuntimeCaches = ${cleanPrivateRuntimeCaches.toString()};
-const cleanup = (resetShell = false) => cleanPrivateRuntimeCaches(self.caches, self.location.origin, classifyRuntimeRequest, resetShell);
+// Activation and several tabs can request the same full scan at once. Share
+// the in-flight scan, but never persist a success flag across future requests.
+let cleanupTask = null;
+let cleanupResetsShell = false;
+const cleanup = (resetShell = false) => {
+  if (cleanupTask && (!resetShell || cleanupResetsShell)) return cleanupTask;
+  const previous = cleanupTask;
+  const task = (previous || Promise.resolve()).then(() => cleanPrivateRuntimeCaches(self.caches, self.location.origin, classifyRuntimeRequest, resetShell));
+  cleanupTask = task; cleanupResetsShell = resetShell;
+  const clear = () => { if (cleanupTask === task) { cleanupTask = null; cleanupResetsShell = false; } };
+  task.then(clear, clear);
+  return task;
+};
 self.__sintagmaPrivateRuntimeCleanup = cleanup;
 if (typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope) {
   // importScripts runs before Workbox precache/navigation registration. Their
@@ -122,7 +134,8 @@ if (typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWo
   self.addEventListener('activate', event => event.waitUntil(cleanup()));
   self.addEventListener('message', event => {
     if (event.data?.type !== 'SINTAGMA_CLEAN_PRIVATE_RUNTIME_CACHES') return;
-    const task = cleanup().then(() => event.ports?.[0]?.postMessage({ok:true, policyVersion:2}));
+    const reply = value => event.ports?.[0]?.postMessage(value);
+    const task = cleanup().then(() => reply({ok:true, policyVersion:2}), () => reply({ok:false, policyVersion:2, error:'CLEANUP_FAILED'}));
     event.waitUntil(task);
   });
 }
