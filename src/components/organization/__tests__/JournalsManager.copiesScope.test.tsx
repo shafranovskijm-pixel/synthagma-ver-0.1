@@ -46,6 +46,8 @@ vi.mock("@/components/ui/alert-dialog", () => {
     } };
 });
 
+
+vi.mock('@/hooks/useScopedCustomJournals',()=>({useScopedCustomJournals:(_org:string,context:any)=>({contextKey:'SYN_SCOPED',context,scopeCurrent:()=>true,refresh:0,journals:[],next:null,loading:false,error:null,canRead:true,canWrite:true,saving:false,pending:false,mutationError:null,read:vi.fn(),reload:vi.fn(),loadMore:vi.fn(),mutate:vi.fn(),retry:vi.fn()})}));
 import { JournalsManager } from "../JournalsManager";
 
 const key = (org: string) => `copies_duplicates_${org}`;
@@ -128,4 +130,8 @@ describe("parent copy journal clear confirmation is bound to its original contex
     expect(localStorage.getItem(key("org-a"))).toBe(raw); expect(mocks.toast.success).not.toHaveBeenCalled(); expect(mocks.toast.error).toHaveBeenCalledWith("Ошибка при удалении");
     log.mockRestore();
   });
+});
+
+describe("ordinary group journal availability",()=>{
+ it("allows journal creation with server write permission even when the group has no course",async()=>{render(<JournalsManager organizationId="org-a" groupId="00000000-0000-4000-8000-000000000002" courseId={null}/>);await act(async()=>{});expect(screen.getByRole("button",{name:"Создать журнал группы"})).toBeEnabled();expect(screen.getByTestId("group-journals-scope-notice")).toHaveTextContent("Заметки можно вести и без закреплённой программы");expect(screen.getByTestId("group-journals-scope-notice")).toHaveTextContent("Для связи с подтверждёнными занятиями и результатами закрепите программу группы");});
 });

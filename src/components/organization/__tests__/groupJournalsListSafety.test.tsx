@@ -36,6 +36,8 @@ vi.mock("@/components/organization/GroupContextBanner", () => ({
   GroupContextBanner: () => <div data-testid="group-banner" />,
 }));
 
+
+vi.mock('@/hooks/useScopedCustomJournals',()=>({useScopedCustomJournals:(_org:string,context:any)=>({contextKey:'SYN_SCOPED',context,scopeCurrent:()=>true,refresh:0,journals:[],next:null,loading:false,error:null,canRead:true,canWrite:true,saving:false,pending:false,mutationError:null,read:vi.fn(),reload:vi.fn(),loadMore:vi.fn(),mutate:vi.fn(),retry:vi.fn()})}));
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import {
   isGroupJournalContextActive,
@@ -141,7 +143,7 @@ describe("direct handler invocation in group context", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
-    // no wizard is mounted, so no completion path exists; storage must stay empty
+    // New scoped creation is server-only; it must never persist an unscoped local definition.
     expect(localStorage.getItem("custom_journals_org-1")).toBeNull();
     expect(screen.queryByText("Создать журнал")).not.toBeInTheDocument();
   });
