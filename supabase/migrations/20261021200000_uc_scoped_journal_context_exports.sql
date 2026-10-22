@@ -288,7 +288,7 @@ BEGIN
   SELECT sv.* INTO v_version FROM public.uc_conducted_session_versions sv WHERE sv.id=(p_source->>'session_version_id')::uuid AND sv.session_id=v_session.id AND sv.organization_id=p_org AND sv.group_id=v_session.group_id;
   IF v_session.id IS NULL OR v_version.id IS NULL OR v_version.redacted OR v_version.content_hash IS DISTINCT FROM p_source->>'content_hash'
    OR EXISTS(SELECT 1 FROM public.uc_conducted_session_versions newer_version WHERE newer_version.session_id=v_session.id AND newer_version.revision>v_version.revision)
-   OR NOT(v_version.source_proof->'program_ref' @> p_context->'program_ref')
+   OR NOT((v_version.source_proof->'program_ref') @> (p_context->'program_ref'))
    OR(p_user IS NOT NULL AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_version.attendance) attendance_row WHERE attendance_row->>'user_id'=p_user::text))
   THEN PERFORM public.uc_custom_journal_error('SOURCE_UNAVAILABLE');END IF;
   v_proof:=public.uc_session_source(p_org,v_session.group_id,v_session.calendar_version_id,v_session.lesson_id,v_session.roster_snapshot_id,v_session.calendar_hash);

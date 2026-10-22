@@ -56,7 +56,7 @@ register(1,async c=>{
  await denied(()=>c.read(organization,{kind:'list',after_id:null,limit:50,include_archived:false}),'CUSTOM_JOURNAL_ACCESS_DENIED');
  await denied(()=>c.read({kind:'group',group_id:lo.otherGroup},{kind:'journal',journal_id:made.journal.id}),'CUSTOM_JOURNAL_ACCESS_DENIED');
  await denied(()=>scopeRead(c.db,group,{kind:'journal',journal_id:made.journal.id},lo.foreign),'CUSTOM_JOURNAL_ACCESS_DENIED');
- await caller(c.db,lo.owner);const foreign=(await c.db.query<any>('SELECT id FROM organizations WHERE id=$1',[lo.foreign])).rows;expect(foreign).toHaveLength(1);
+ await c.db.exec('RESET ROLE');const foreign=(await c.db.query<any>('SELECT id FROM organizations WHERE id=$1',[lo.foreign])).rows;expect(foreign).toHaveLength(1);
  await caller(c.db,lo.teacher);const request=randomUUID(),exported=await capture(c,made.journal,group,request);
  await c.db.exec('RESET ROLE');await c.db.query("UPDATE org_staff SET sections_access=sections_access-'journals.write' WHERE user_id=$1",[lo.teacher]);await caller(c.db,lo.teacher);
  expect((await c.read(group,{kind:'journal',journal_id:made.journal.id})).capabilities.can_write).toBe(false);expect((await capture(c,made.journal)).export.id).toBeTruthy();
