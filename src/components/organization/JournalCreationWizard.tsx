@@ -270,7 +270,9 @@ export function JournalCreationWizard({
                           onClick={() => toggleField(field.id)}
                         >
                           <Checkbox
+                            aria-label={field.label}
                             checked={isSelected}
+                            onClick={(event) => event.stopPropagation()}
                             onCheckedChange={() => toggleField(field.id)}
                           />
                           <div
