@@ -1,0 +1,281 @@
+{
+  "acl_semantic": [
+    {
+      "grantable": false,
+      "grantee": "PUBLIC",
+      "grantor": "postgres",
+      "privilege": "EXECUTE"
+    },
+    {
+      "grantable": false,
+      "grantee": "postgres",
+      "grantor": "postgres",
+      "privilege": "EXECUTE"
+    },
+    {
+      "grantable": false,
+      "grantee": "anon",
+      "grantor": "postgres",
+      "privilege": "EXECUTE"
+    },
+    {
+      "grantable": false,
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "privilege": "EXECUTE"
+    },
+    {
+      "grantable": false,
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "privilege": "EXECUTE"
+    },
+    {
+      "grantable": false,
+      "grantee": "sandbox_exec_atxwvjxbqjgkbjlhsdch",
+      "grantor": "postgres",
+      "privilege": "EXECUTE"
+    }
+  ],
+  "all_tables": 379,
+  "body_md5": "5ead79d7015e619732c741b20bea4794",
+  "function": {
+    "oid": "136513",
+    "proacl": [
+      "=X/postgres",
+      "postgres=X/postgres",
+      "anon=X/postgres",
+      "authenticated=X/postgres",
+      "service_role=X/postgres",
+      "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+    ],
+    "proallargtypes": null,
+    "proargdefaults": null,
+    "proargmodes": null,
+    "proargnames": null,
+    "proargtypes": [],
+    "probin": null,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "prolang": "13573",
+    "proleakproof": false,
+    "proname": "purge_recycle_bin_30d",
+    "pronamespace": "2200",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proowner": "16384",
+    "proparallel": "u",
+    "proretset": false,
+    "prorettype": "23",
+    "prorows": 0,
+    "prosecdef": true,
+    "prosqlbody": null,
+    "prosrc": "\nDECLARE\n  v_count INTEGER := 0;\n  v_tmp INTEGER;\nBEGIN\n  DELETE FROM public.education_document_records WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.org_documents WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.company_documents WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.document_signatures WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.data_subject_requests WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.incoming_documents WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.document_issuance_log WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  DELETE FROM public.commercial_proposals WHERE deleted_at < now() - INTERVAL '30 days';\n  GET DIAGNOSTICS v_tmp = ROW_COUNT; v_count := v_count + v_tmp;\n  RETURN v_count;\nEND;\n",
+    "prosupport": "-",
+    "protrftypes": null,
+    "provariadic": "0",
+    "provolatile": "v"
+  },
+  "ledger": 620,
+  "owner": "postgres",
+  "public_tables": 344,
+  "role_ids": {
+    "anon": "16480",
+    "authenticated": "16481",
+    "postgres": "16384",
+    "sandbox_exec_atxwvjxbqjgkbjlhsdch": "104685",
+    "service_role": "16482"
+  },
+  "role_memberships": [
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "pg_monitor",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "supabase_etl_admin",
+      "role": "pg_monitor",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "supabase_read_only_user",
+      "role": "pg_monitor",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "pg_monitor",
+      "role": "pg_read_all_settings",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "pg_monitor",
+      "role": "pg_read_all_stats",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "pg_monitor",
+      "role": "pg_stat_scan_tables",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "pg_signal_backend",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "pg_read_all_data",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "supabase_etl_admin",
+      "role": "pg_read_all_data",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "supabase_read_only_user",
+      "role": "pg_read_all_data",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "pg_create_subscription",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "anon",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": false,
+      "member": "authenticator",
+      "role": "anon",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "authenticated",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": false,
+      "member": "authenticator",
+      "role": "authenticated",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "service_role",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": false,
+      "member": "authenticator",
+      "role": "service_role",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "authenticator",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": false,
+      "member": "supabase_storage_admin",
+      "role": "authenticator",
+      "set": true
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": false,
+      "member": "postgres",
+      "role": "sandbox_exec_atxwvjxbqjgkbjlhsdch",
+      "set": false
+    },
+    {
+      "admin": true,
+      "grantor": "supabase_admin",
+      "inherit": false,
+      "member": "postgres",
+      "role": "sandbox_exec",
+      "set": false
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "postgres",
+      "role": "supabase_privileged_role",
+      "set": true
+    },
+    {
+      "admin": false,
+      "grantor": "supabase_admin",
+      "inherit": true,
+      "member": "supabase_etl_admin",
+      "role": "supabase_privileged_role",
+      "set": true
+    }
+  ],
+  "schema": "public",
+  "signature": "purge_recycle_bin_30d()"
+}
