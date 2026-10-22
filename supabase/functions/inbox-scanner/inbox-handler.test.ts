@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import { parseRfc822 } from "../_shared/imap-mini";
-import { inboxMessagePayload } from "./message-payload";
+import { parseRfc822 } from "../_shared/imap-mini.ts";
+import { inboxMessagePayload } from "./message-payload.ts";
 
 // Actual Deno handler, with in-memory transport/DB adapters only. No network.
 const compiled = ts.transpileModule(readFileSync(resolve(process.cwd(), "supabase/functions/inbox-scanner/index.ts"), "utf8"), {
@@ -109,7 +109,7 @@ function fixture(options: {
 }
 
 describe("inbox scanner actual handler transport fixtures", () => {
-  it.each([{}, { Authorization: "Bearer anonymous" }])("rejects unauthenticated/non-admin %j before pool access or IMAP", async headers => {
+  it.each([{}, { Authorization: "Bearer anonymous" }] as Record<string, string>[])("rejects unauthenticated/non-admin %j before pool access or IMAP", async headers => {
     const f = fixture(); expect((await f.run(headers)).status).toBe(403);
     expect(f.getPool).not.toHaveBeenCalled(); expect(f.connectImap).not.toHaveBeenCalled();
   });
