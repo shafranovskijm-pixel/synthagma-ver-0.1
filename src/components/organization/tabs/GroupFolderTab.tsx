@@ -1,3 +1,4 @@
+import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUrlNavigation, useUrlQueryState } from "@/hooks/useUrlNavigation";
@@ -572,7 +573,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
 
 
-  const generateStudentsListDoc = () => {
+  const generateStudentsListDoc = async () => {
     const rows = students.map((s, i) => `
       <tr>
         <td>${i + 1}</td>
@@ -593,14 +594,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       <p><b>Количество слушателей:</b> ${students.length}</p>
       <table><tr><th>№</th><th>ФИО</th><th>Email</th><th>Логин</th></tr>${rows}</table>
     </body></html>`;
-    const blob = new Blob([html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Список_${(group?.name || "группа").replace(/\s+/g, "_")}.doc`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Список обучающихся сформирован");
+    if (await downloadHtmlWord(html, `Список_${group?.name || "группа"}.docx`)) toast.success("Подготовлен DOCX списка обучающихся");
   };
 
   if (loading) {

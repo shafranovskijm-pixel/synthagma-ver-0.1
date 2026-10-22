@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -298,7 +299,7 @@ export function EducationDocumentsJournal({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" title="Печать документа" onClick={() => { const html = generateEducationDocumentHtml(record, orgData); printHtmlContent(html, `${record.document_type === "certificate" ? "Удостоверение" : record.document_type === "diploma" ? "Диплом" : "Свидетельство"} ${record.document_number}`); }}><Printer className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" title="Печать документа" onClick={async () => { try { const html = await generateEducationDocumentHtml(record, orgData); await printHtmlContent(html, `${record.document_type === "certificate" ? "Удостоверение" : record.document_type === "diploma" ? "Диплом" : "Свидетельство"} ${record.document_number}`); } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось подготовить документ для печати"); } }}><Printer className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" disabled={!canIssue} onClick={() => handleOpenEdit(record)}><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={!canIssue} onClick={() => setDeletingRecord(record)}><Trash2 className="w-4 h-4" /></Button>
                       </div>

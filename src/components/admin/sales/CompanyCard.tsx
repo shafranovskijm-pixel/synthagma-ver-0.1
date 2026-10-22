@@ -1,3 +1,6 @@
+import { captureDocumentOutputFence } from "@/lib/documents/outputFence";
+import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -88,31 +91,23 @@ export function CompanyCard() {
   const handleExport = async (format: 'pdf' | 'docx') => {
     if (!requisites || requisitesLoading) return;
     setExporting(format);
+    const current = captureDocumentOutputFence();
     try {
       const { data, error: fnError } = await supabase.functions.invoke('generate-company-card', {
         body: { format, companyData: { ...KNOWN_DATA, address: company?.address, opf: company?.opf, ogrn: company?.ogrn || KNOWN_DATA.ogrnip } },
       });
+      current();
       if (fnError) throw fnError;
-      if (data?.base64) {
+      if (!data?.base64) throw new Error('Сервер не вернул документ');
+      if (data.base64) {
         const html = decodeURIComponent(escape(atob(data.base64)));
         if (format === 'pdf') {
-          const w = window.open('', '_blank');
-          if (w) {
-            w.document.write(html);
-            w.document.close();
-            setTimeout(() => w.print(), 500);
-          }
+          await printHtmlContent(html, 'Карточка компании');
         } else {
-          const blob = new Blob([html], { type: 'application/msword' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'Карточка_компании.doc';
-          a.click();
-          URL.revokeObjectURL(url);
+          if (!(await downloadHtmlWord(html, 'Карточка_компании.docx'))) return;
         }
       }
-      toast.success(format === 'pdf' ? 'Откройте печать для сохранения в PDF' : 'Файл Word скачан');
+      toast.success(format === 'pdf' ? 'Откройте печать для сохранения в PDF' : 'Подготовлен DOCX');
     } catch (e: any) {
       console.error('Export error:', e);
       toast.error('Ошибка экспорта: ' + (e.message || 'Неизвестная ошибка'));

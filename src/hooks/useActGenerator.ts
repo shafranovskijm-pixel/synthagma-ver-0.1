@@ -127,15 +127,14 @@ export function useActGenerator(
     if (!selectedCourseId) { toast.error("Выберите курс"); return; }
     if (!price || parseFloat(price) <= 0) { toast.error("Укажите стоимость"); return; }
     setIsGenerating(true);
-    try { printHtml(generateActHTML()); toast.success("Акт сформирован"); }
+    try { await printHtml(generateActHTML()); toast.success("Акт сформирован"); }
     catch (error) { console.error(error); toast.error("Ошибка генерации акта", { description: getErrorMessage(error) }); }
     finally { setIsGenerating(false); }
   };
 
-  const handleDownloadDOC = () => {
+  const handleDownloadDOC = async () => {
     if (!selectedCompany || !selectedCourseId) { toast.error("Заполните все поля"); return; }
-    downloadAsDoc(generateActHTML(), `Акт ${actNumber}`, `Акт_${actNumber}_${selectedCompany?.name || 'компания'}.doc`);
-    toast.success("Акт скачан");
+    if (await downloadAsDoc(generateActHTML(), `Акт ${actNumber}`, `Акт_${actNumber}_${selectedCompany?.name || 'компания'}.doc`)) toast.success("Подготовлен DOCX");
   };
 
   const handleSave = async (onSave?: (html: string, actNumber: string, companyName: string, amount: number) => Promise<void>, onClose?: () => void) => {

@@ -1,3 +1,4 @@
+import { STORAGE_PROXY_BASE_URL, STORAGE_PROXY_PREFIX } from './storageProxyUrl';
 import { Capacitor } from '@capacitor/core';
 
 /**
@@ -35,13 +36,13 @@ const LEGACY_STORAGE_HOSTS = new Set<string>([
 
 // Базовый URL прокси-сервера на отдельном VDS (NGINX, Timeweb).
 // Punycode для api.синтагма.рф.
-const PROXY_BASE_URL = 'https://api.xn--80aaiswd0ak.xn--p1ai';
+const PROXY_BASE_URL = STORAGE_PROXY_BASE_URL;
 
 // Префиксы — должны совпадать с Nginx-конфигом на VDS.
 const SAME_ORIGIN_PREFIX = {
   api: '/sb-api',
   functions: '/sb-functions',
-  storage: '/sb-storage',
+  storage: STORAGE_PROXY_PREFIX,
   realtime: '/sb-realtime',
 };
 

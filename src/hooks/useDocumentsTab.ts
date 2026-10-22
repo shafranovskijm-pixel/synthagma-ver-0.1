@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { captureDocumentOutputFence } from "@/lib/documents/outputFence";
+import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -66,6 +69,7 @@ export function useDocumentsTab(
   organizationName?: string,
   navigation?: DocumentsTabNavigationController,
 ) {
+  const pendingSaveBusy = useRef(false);
   const d = useOrgDashboard();
   const { plan } = useSubscriptionLimits(organizationId);
   const postpaid = usePostpaidAccessProfile(organizationId);
@@ -321,11 +325,7 @@ export function useDocumentsTab(
     });
     if (act) {
       setPendingAct(act);
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(act.html);
-        printWindow.document.close();
-      }
+      // No active same-origin preview window is created.
       toast.success("Акт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowActDialog(false);
       setActBasis(""); setActAmount(""); setActDate(new Date());
@@ -349,31 +349,33 @@ export function useDocumentsTab(
   };
 
   const handleSavePendingAct = async (action: 'download' | 'print') => {
-    if (!pendingAct) return;
-    await saveActDocument(pendingAct);
-    const { data } = await supabase.from("org_billing_documents" as any)
-      .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
-    if (data) setBillingDocs(data as any[]);
-    if (action === 'download') {
-      const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"></head><body>${pendingAct.html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
-      const blob = new Blob([docContent], { type: 'application/msword' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url; link.download = `${pendingAct.docName}.doc`;
-      document.body.appendChild(link); link.click(); document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success("Акт скачан и сохранён");
-    } else {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(pendingAct.html);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 500);
+    if(!pendingAct || pendingSaveBusy.current) return;
+    const draft=pendingAct;
+    pendingSaveBusy.current=true;
+    const current=captureDocumentOutputFence();
+    let persisted=false;
+    try {
+      current();
+      const savedAct=await saveActDocument(draft);
+      if(!savedAct) {toast.error('Акт не сохранён в реестре. Повторите сохранение; выгрузка не начата.');return;}
+      persisted=true;
+      setPendingAct(value=>value===draft?null:value);
+      current();
+      const {data,error:refreshError}=await supabase.from('org_billing_documents' as any).select('*').eq('organization_id',organizationId).order('created_at',{ascending:false});
+      current();
+      if(refreshError) throw refreshError;
+      if(data) setBillingDocs(data as any[]);
+      if(action==='download') {
+        if(await downloadHtmlWord(draft.html,draft.docName+'.docx')) toast.success('Акт сохранён, DOCX подготовлен');
+        else toast.warning('Акт сохранён в реестре; повторите выгрузку существующего акта');
+      } else {
+        await printHtmlContent(draft.html,draft.docName);
+        toast.success('Акт отправлен на печать и сохранён');
       }
-      toast.success("Акт отправлен на печать и сохранён");
-    }
-    setPendingAct(null);
+    } catch(error) {
+      if(persisted) toast.warning('Акт уже сохранён. Повторите выгрузку из реестра; создавать новый акт не нужно.',{description:getErrorMessage(error)});
+      else toast.error('Акт не сохранён в реестре',{description:getErrorMessage(error)});
+    } finally {pendingSaveBusy.current=false;}
   };
 
   const handleActSearchByInn = async (inn: string) => {
@@ -427,10 +429,12 @@ export function useDocumentsTab(
   };
 
   const handleGenerateInvoiceFromDocs = async () => {
+    const current=captureDocumentOutputFence();
     if (!organizationId) return;
     setGeneratingInvoice(true);
     try {
       if (!(await confirmPrepaidInvoiceAccess())) return;
+      current();
       const currentPlan = orgDetails.subscription_plan || "start";
       const amount = getSubscriptionInvoiceMonthlyAmount({
         plan: currentPlan,
@@ -458,8 +462,7 @@ export function useDocumentsTab(
         amount,
       };
       const html = await generateInvoiceHtml(invoiceData);
-      const printWindow = window.open('', '_blank');
-      if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
+      // The pending document is previewed through the safe print boundary when requested.
       setPendingInvoice({ html, insertData, invoiceNum, amount });
       toast.success("Счёт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowInvoiceDialog(false);
@@ -472,37 +475,37 @@ export function useDocumentsTab(
   };
 
   const handleSavePendingInvoice = async (action: 'download' | 'print') => {
-    if (!pendingInvoice) return;
+    if(!pendingInvoice || pendingSaveBusy.current) return;
+    const draft=pendingInvoice;
+    pendingSaveBusy.current=true;
+    const current=captureDocumentOutputFence();
+    let persisted=false;
     try {
-      if (!(await confirmPrepaidInvoiceAccess())) return;
-      const { data: invoice, error } = await supabase.from("subscription_invoices").insert(pendingInvoice.insertData).select("id").single();
-      if (error) throw error;
-      const orgDisplayName = d.organizationName || organizationName || "Организация";
-      await supabase.from("admin_notifications").insert({
-        type: "invoice",
-        title: `Новый счёт: ${pendingInvoice.invoiceNum}`,
-        message: `Организация «${orgDisplayName}» сформировала счёт на ${pendingInvoice.amount.toLocaleString("ru-RU")} ₽ (план: ${pendingInvoice.insertData.plan})`,
-        related_entity_id: organizationId,
-        metadata: { invoice_id: (invoice as any).id, organization_id: organizationId, amount: pendingInvoice.amount, plan: pendingInvoice.insertData.plan },
-      } as any);
-      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: pendingInvoice.invoiceNum, amount: pendingInvoice.amount, status: "pending", plan: pendingInvoice.insertData.plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
-      if (action === 'download') {
-        const blob = new Blob([pendingInvoice.html], { type: 'application/msword' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url; link.download = `Счёт_${pendingInvoice.invoiceNum}.doc`;
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast.success("Счёт скачан и сохранён");
+      current();
+      if(!(await confirmPrepaidInvoiceAccess())) return;
+      current();
+      const {data:invoice,error}=await supabase.from('subscription_invoices').insert(draft.insertData).select('id').single();
+      if(error) throw error;
+      persisted=true;
+      setPendingInvoice(value=>value===draft?null:value);
+      current();
+      if(!invoice?.id) throw new Error('Счёт сохранён, но ответ реестра неполон. Обновите список счетов.');
+      const orgDisplayName=d.organizationName || organizationName || 'Организация';
+      const {error:noticeError}=await supabase.from('admin_notifications').insert({type:'invoice',title:'Новый счёт: '+draft.invoiceNum,message:'Организация «'+orgDisplayName+'» сформировала счёт на '+draft.amount.toLocaleString('ru-RU')+' ₽ (план: '+draft.insertData.plan+')',related_entity_id:organizationId,metadata:{invoice_id:(invoice as any).id,organization_id:organizationId,amount:draft.amount,plan:draft.insertData.plan}} as any);
+      current();
+      if(noticeError) throw noticeError;
+      setInvoices(prev=>[{id:(invoice as any).id,invoice_number:draft.invoiceNum,amount:draft.amount,status:'pending',plan:draft.insertData.plan,period_months:1,invoice_date:new Date().toISOString(),created_at:new Date().toISOString()},...prev]);
+      if(action==='download') {
+        if(await downloadHtmlWord(draft.html,'Счёт_'+draft.invoiceNum+'.docx')) toast.success('Счёт сохранён, DOCX подготовлен');
+        else toast.warning('Счёт сохранён в реестре; повторите выгрузку существующего счёта');
       } else {
-        const printWindow = window.open('', '_blank');
-        if (printWindow) { printWindow.document.write(pendingInvoice.html); printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 500); }
-        toast.success("Счёт отправлен на печать и сохранён");
+        await printHtmlContent(draft.html,'Счёт '+draft.invoiceNum);
+        toast.success('Счёт отправлен на печать и сохранён');
       }
-    } catch (e) {
-      toast.error("Ошибка сохранения", { description: getErrorMessage(e) });
-    }
-    setPendingInvoice(null);
+    } catch(error) {
+      if(persisted) toast.warning('Счёт уже сохранён. Повторите выгрузку из реестра; создавать новый счёт не нужно.',{description:getErrorMessage(error)});
+      else toast.error('Счёт не сохранён',{description:getErrorMessage(error)});
+    } finally {pendingSaveBusy.current=false;}
   };
 
   const refreshCounterpartyDocs = async () => {

@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   htmlDocsToZipBlob: vi.fn(),
   downloadBlob: vi.fn(),
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastWarning: vi.fn(),
   existingRows: [] as any[],
 }));
 
@@ -97,8 +99,8 @@ vi.mock("@/lib/docx/htmlToDocx", () => ({
 vi.mock("sonner", () => ({
   toast: {
     error: mocks.toastError,
-    success: vi.fn(),
-    warning: vi.fn(),
+    success: mocks.toastSuccess,
+    warning: mocks.toastWarning,
     info: vi.fn(),
   },
 }));
@@ -351,4 +353,21 @@ describe("GenerateContractDialog individual bulk persistence", () => {
     expect(mocks.invoke).toHaveBeenCalledTimes(2);
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
+  it('keeps the saved contracts after a Word failure and directs retry to existing files without a second insert', async () => {
+    mocks.invoke.mockResolvedValue({data:{success:true,renderer:'browserless',path:'org/contracts/qa.pdf'},error:null});
+    mocks.htmlDocsToZipBlob.mockRejectedValueOnce(new Error('Signature unavailable'));
+    await openReviewAndSubmit();
+    await waitFor(()=>expect(mocks.onClose).toHaveBeenCalledOnce());
+    expect(mocks.insert).toHaveBeenCalledOnce();expect(mocks.onGenerated).toHaveBeenCalledOnce();expect(mocks.downloadBlob).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith('DOCX не сформирован, но договоры сохранены',expect.objectContaining({description:'Signature unavailable'}));
+    expect(mocks.toastWarning).toHaveBeenCalledWith('Договоры сохранены, Word не выгружен',expect.objectContaining({description:expect.stringContaining('Создавать договор заново не нужно')}));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+  it('does not insert a Browserless fallback or call the package complete', async () => {
+    mocks.invoke.mockResolvedValue({data:{success:true,renderer:'fallback',path:'org/contracts/fallback.pdf'},error:null});
+    await openReviewAndSubmit();
+    await waitFor(()=>expect(mocks.toastError).toHaveBeenCalled());
+    expect(mocks.insert).not.toHaveBeenCalled();expect(mocks.onGenerated).not.toHaveBeenCalled();expect(mocks.onClose).not.toHaveBeenCalled();
+  });
+
 });

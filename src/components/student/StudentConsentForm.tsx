@@ -344,7 +344,8 @@ export function StudentConsentForm({
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    try {
     const orgLine = `${organization?.name || ""}${organization?.inn ? ` · ИНН ${organization.inn}` : ""}${organization?.ogrn ? ` · ОГРН ${organization.ogrn}` : ""}`.trim();
     const stampSrc = currentConsent;
     const html = buildConsentPdfHtml({
@@ -363,7 +364,8 @@ export function StudentConsentForm({
         agreementVersion: pepAgreement?.agreement_version || null,
       },
     });
-    printHtmlContent(html, "Согласие на обработку ПД");
+    await printHtmlContent(html, "Согласие на обработку ПД");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось подготовить документ для печати"); }
   };
 
   if (isLoadingHistory) {

@@ -129,15 +129,14 @@ ${contractInfo ? `<div class="info-row"><span class="info-label">Основан�
     if (!selectedCourseId) { toast.error("Выберите курс"); return; }
     if (!price || parseFloat(price) <= 0) { toast.error("Укажите стоимость"); return; }
     setIsGenerating(true);
-    try { printHtml(generateInvoiceHTML()); toast.success("Счёт сформирован"); }
+    try { await printHtml(generateInvoiceHTML()); toast.success("Счёт сформирован"); }
     catch (error) { console.error(error); toast.error("Ошибка генерации счёта"); }
     finally { setIsGenerating(false); }
   };
 
-  const handleDownloadDOC = () => {
+  const handleDownloadDOC = async () => {
     if (!selectedCompany || !selectedCourseId) { toast.error("Заполните все поля"); return; }
-    downloadAsDoc(generateInvoiceHTML(), `Счёт ${invoiceNumber}`, `Счёт_${invoiceNumber}_${selectedCompany?.name || 'компания'}.doc`);
-    toast.success("Счёт скачан");
+    if (await downloadAsDoc(generateInvoiceHTML(), `Счёт ${invoiceNumber}`, `Счёт_${invoiceNumber}_${selectedCompany?.name || 'компания'}.doc`)) toast.success("Подготовлен DOCX");
   };
 
   const handleSave = async (onSave?: (html: string, invoiceNumber: string, companyName: string, amount: number, contractId?: string) => Promise<void>, onClose?: () => void) => {

@@ -404,13 +404,13 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const handleGeneratePrikaz = useCallback(() => {
     const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id));
     if (!selectedStudents.length) { toast.error("Выберите учеников"); return; }
-    generateDocument({ templateType: "prikaz", persons: selectedStudents.map(s => ({ fullName: s.name })) });
+    generateDocument({ templateType: "prikaz", purpose: "enrollment", persons: selectedStudents.map(s => ({ fullName: s.name })) });
   }, [students, selectedStudentIds, generateDocument]);
 
   const handleGenerateProtokol = useCallback(() => {
     const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id));
     if (!selectedStudents.length) { toast.error("Выберите учеников"); return; }
-    generateDocument({ templateType: "protokol", persons: selectedStudents.map(s => ({ fullName: s.name, isPassed: s.status === 'completed' })) });
+    generateDocument({ templateType: "protokol", purpose: "enrollment", persons: selectedStudents.map(s => ({ fullName: s.name })) });
   }, [students, selectedStudentIds, generateDocument]);
 
   const paginatedStudents = students;
