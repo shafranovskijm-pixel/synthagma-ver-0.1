@@ -18,6 +18,7 @@ import { useCopiesDuplicatesJournal, DOCUMENT_TYPES, ISSUE_REASONS } from "@/hoo
 
 interface CopiesDuplicatesJournalProps { organizationId: string; onClose: () => void; }
 
+/** @deprecated Historical browser-only editor retained for recovery/tests. Production routes use ServerCopiesDuplicatesJournal and useCopyRegistry; never route new work here. */
 export function CopiesDuplicatesJournal({ organizationId, onClose }: CopiesDuplicatesJournalProps) {
   const h = useCopiesDuplicatesJournal(organizationId);
 

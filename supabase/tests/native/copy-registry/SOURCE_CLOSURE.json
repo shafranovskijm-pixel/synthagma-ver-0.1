@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "scope": "Source-only actual UC016 native seven-case fixture closure; synthetic rows and captured schema definitions, no customer row dump, engine/runtime/profile artifacts excluded",
+  "files": [
+    {
+      "path": "supabase/tests/native/full-cycle/full-cycle.fixture.ts",
+      "bytes": 33076,
+      "sha256": "c13413ab022fd06d35ca51fd7fc91215459eccf7fe218a436e3061ffe45427a9",
+      "origin": "work/uc-full-cycle-native-acceptance-v3-20261021/suite/full-cycle.fixture.ts"
+    },
+    {
+      "path": "supabase/tests/native/scoped-journals/scoped-journals.fixture.ts",
+      "bytes": 11699,
+      "sha256": "9c9e0efced6af54fd4cfaea365d40bc187392c4446c2a5d918f6d88faf19a755",
+      "origin": "work/uc015-shared-privacy-fence-fix-20261022/native-source/scoped-journals.fixture.ts"
+    },
+    {
+      "path": "supabase/tests/native/copy-registry/copy-registry.native.ts",
+      "bytes": 30631,
+      "sha256": "9d1ecfb64c14f7de0a44af5acca5fe2f95a0cd658675e1d75694c5d936cc1538",
+      "origin": "work/uc016-server-registry-native-v6-20261022/suite/copy-registry.native.ts"
+    },
+    {
+      "path": "supabase/tests/native/copy-registry/copy-registry.fixture.ts",
+      "bytes": 9315,
+      "sha256": "bea7dd135ff7632ea7de71dacb41e0284c87382538fb7a4c403649bd1215e666",
+      "origin": "work/uc016-server-registry-native-v3-20261022/suite/copy-registry.fixture.ts"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc-full-cycle-collect-portable-metadata.sql",
+      "bytes": 17309,
+      "sha256": "57c456606811b5eaf24f0128cd5a6de64ab76ecfc59605b18429af696b33a5ab",
+      "origin": "work/uc-full-cycle-production-release-v3-20261021/collect-combined-portable-metadata.sql"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc-full-cycle-collect-stage51-metadata.sql",
+      "bytes": 23474,
+      "sha256": "ed62ee05ef172164d0023f69d94ef3db436cedc72bcc0afb4d2218f97f2a8cc8",
+      "origin": "work/uc-full-cycle-production-release-v3-20261021/collect-stage51-prepare-metadata.sql"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc-full-cycle-legacy-journal-live.json",
+      "bytes": 88396,
+      "sha256": "9ed6b53c1261a3d10a3d4795822bb464974cf9d688c51183330c4b398c5a4fe4",
+      "origin": "work/uc-full-cycle-native-acceptance-20261021/ACTUAL_LEGACY_JOURNAL_METADATA_20261021.json"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc016-private-file-source-metadata.json",
+      "bytes": 20411,
+      "sha256": "5cee53c645a17c50887cb5e5df1e13d4b747c52e66741eaaae945afb98cae022",
+      "origin": "work/uc-continuous-roadmap-20261022/ACTUAL_UC016_FILE_SOURCE_DEPENDENCY_METADATA.json"
+    },
+    {
+      "path": "supabase/tests/fixtures/uc016-legacy101-conflicts.json",
+      "bytes": 60442,
+      "sha256": "df5253fe980bc89b692b47c8acd5dff10f3a8b90c4084f70f5a4b9189b560c0f",
+      "origin": "work/uc016-server-registry-evidence-20261022/qa-fixtures/UC016-QA-legacy101-conflicts.json"
+    }
+  ],
+  "profile": {
+    "path": "work/uc016-server-registry-native-v6-20261022/profile/linux-full-cycle-manifest.json",
+    "sha256": "b8dac01f82d8b2e0c99b182a5ad9b8103e5b5f71e6a616163c3a0a18469b51ff",
+    "fixtureSqlAppend618SHA256": "0fd7a0e3595a96cf7acec44e02fb83c155a702ab7f8346178032e091d050789e",
+    "wireSourceSHA256": "a364956737ec3abd4b6c2dadd23729afb91d6d980f7ae8f92f32d514c98b5cd6"
+  }
+}
