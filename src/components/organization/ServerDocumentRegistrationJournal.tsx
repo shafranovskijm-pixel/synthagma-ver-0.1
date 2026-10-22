@@ -11,7 +11,7 @@ import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { useDocumentRegistry, type DocumentRegistryModel } from '@/hooks/useDocumentRegistry';
 import type { RegistryEvent, RegistryLegacy, RegistryMutation, RegistryRecord, RegistryScope } from '@/lib/documentRegistry/contract';
 import { normalizeRegistryError, registryMessages } from '@/lib/documentRegistry/errors';
-import { downloadRegistryExport } from '@/lib/documentRegistry/export';
+import { prepareRegistryExport, type PreparedRegistryExport } from '@/lib/documentRegistry/export';
 import { DocumentRegistryForm, REGISTRY_DOCUMENT_TYPES } from './DocumentRegistryForm';
 import { RegistryChoice } from './RegistrySourceField';
 import { RegistryPendingNotice } from './RegistryPendingNotice';
@@ -27,11 +27,22 @@ function RegistryWorkspace({ model, onClose }: { model: DocumentRegistryModel; o
   const id = useId(), mounted = useRef(true), legacyEpoch = useRef(0), historyEpoch = useRef(0);
   const [editor, setEditor] = useState<{ record?: RegistryRecord; legacy?: RegistryLegacy } | null>(null), [archive, setArchive] = useState<RegistryRecord | null>(null), [reason, setReason] = useState(''), [actionError, setActionError] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null);
   const [search, setSearch] = useState(model.filters.text), [exportBusy, setExportBusy] = useState(false), [tab, setTab] = useState<'registry' | 'legacy'>('registry');
+  const [preparedExport, setPreparedExport] = useState<PreparedRegistryExport | null>(null);
+  const preparedRef = useRef<PreparedRegistryExport | null>(null), exportEpoch = useRef(0), exportRunning = useRef(false);
   const [legacy, setLegacy] = useState<{ rows: RegistryLegacy[]; next: string | null; loading: boolean; error: string | null }>({ rows: [], next: null, loading: false, error: null });
   const [history, setHistory] = useState<{ record: RegistryRecord; rows: RegistryEvent[]; next: number | null; loading: boolean; error: string | null } | null>(null);
   const viewer = useRegistryFileViewer(model), caps = model.capabilities, disabled = model.loading || model.saving || model.pending;
   const current = () => mounted.current && model.scopeCurrent();
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; legacyEpoch.current++; historyEpoch.current++; }; }, []);
+  const exportContext = model.contextKey + '|' + JSON.stringify(model.filters) + '|' + JSON.stringify(caps), latestExportContext = useRef(exportContext);
+  latestExportContext.current = exportContext;
+  const clearPreparedExport = () => { preparedRef.current?.dispose(); preparedRef.current = null; setPreparedExport(null); };
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; legacyEpoch.current++; historyEpoch.current++; exportEpoch.current++; preparedRef.current?.dispose(); preparedRef.current = null; }; }, []);
+  useEffect(() => { exportEpoch.current++; exportRunning.current = false; setExportBusy(false); clearPreparedExport(); }, [exportContext]);
+  useEffect(() => {
+    if (!preparedExport) return;
+    const timer = setTimeout(() => { if (mounted.current && preparedRef.current === preparedExport) { clearPreparedExport(); setNotice('Срок подготовленной выгрузки истёк. Подготовьте её заново.'); } }, Math.max(0, preparedExport.expiresAt - Date.now()));
+    return () => clearTimeout(timer);
+  }, [preparedExport]);
   useEffect(() => { const timer = setTimeout(() => { if (current() && search !== model.filters.text && !model.pending) model.setFilters(old => ({ ...old, text: search })); }, 250); return () => clearTimeout(timer); }, [search, model.filters.text, model.pending]);
   const accept = async (result: RegistryMutation) => {
     if (!current()) return;
@@ -59,15 +70,32 @@ function RegistryWorkspace({ model, onClose }: { model: DocumentRegistryModel; o
     catch (failure) { if (current()) { const code = normalizeRegistryError(failure).code; setActionError(registryMessages[code] + (code === 'REVISION_CONFLICT' ? ' Введённый текст остался в форме. Скопируйте нужное, закройте её и обновите реестр.' : '')); } }
   };
   const exportData = async (format: 'json' | 'xlsx') => {
-    if (!current() || exportBusy || !caps?.can_read) return;
-    setExportBusy(true); setNotice(null);
-    try { const filters = structuredClone(model.filters); await downloadRegistryExport(async () => { const result = await model.read({ kind: 'export', filters }); if (result.kind !== 'export') throw new Error('Wrong registry response'); return result.export; }, { organizationId: model.organizationId, scope: model.registryScope, filters }, format, current); }
-    catch (failure) { if (current()) setNotice(registryMessages[normalizeRegistryError(failure).code]); }
-    finally { if (current()) setExportBusy(false); }
+    if (!current() || exportRunning.current || !caps?.can_read) return;
+    const ticket = ++exportEpoch.current;
+    const exportCurrent = () => current() && !!caps.can_read && latestExportContext.current === exportContext && exportEpoch.current === ticket;
+    exportRunning.current = true; setExportBusy(true); setNotice(null); clearPreparedExport();
+    try {
+      const filters = structuredClone(model.filters);
+      const prepared = await prepareRegistryExport(async () => { const result = await model.read({ kind: 'export', filters }); if (result.kind !== 'export') throw new Error('Wrong registry response'); return result.export; }, { organizationId: model.organizationId, scope: model.registryScope, filters }, format, exportCurrent);
+      if (!exportCurrent() || !prepared.available()) { prepared.dispose(); return; }
+      preparedRef.current = prepared; setPreparedExport(prepared);
+      try { prepared.download(); } catch (failure) {
+        if (!prepared.available()) { clearPreparedExport(); throw failure; }
+        setNotice('Не удалось начать автоматическое скачивание. Файл подготовлен; используйте кнопку ниже.');
+      }
+    }
+    catch (failure) { if (exportCurrent()) setNotice(registryMessages[normalizeRegistryError(failure).code]); }
+    finally { if (exportCurrent()) { exportRunning.current = false; setExportBusy(false); } }
+  };
+  const downloadPrepared = () => {
+    const prepared = preparedRef.current;
+    if (!current() || !caps?.can_read || !prepared || prepared !== preparedExport || !prepared.available()) { clearPreparedExport(); return; }
+    try { prepared.download(); setNotice('Файл передан на скачивание.'); }
+    catch (failure) { if (!prepared.available()) clearPreparedExport(); if (current()) setNotice(registryMessages[normalizeRegistryError(failure).code]); }
   };
   const header = <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-4"><Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl" aria-label="Назад к журналам"><ArrowLeft className="w-5 h-5" /></Button><div><h2 className="text-xl font-semibold">Журнал регистрации документов</h2><p className="text-sm text-muted-foreground">Входящие и исходящие документы{model.registryScope.kind === 'group' ? ' этой группы' : ' организации'}: точный файл, участники и история</p></div></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={model.reload} disabled={model.saving} className="rounded-xl"><RotateCw className="w-4 h-4 mr-2" />Обновить</Button><Button variant="outline" onClick={() => setEditor({})} disabled={disabled || !caps?.can_register} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Добавить</Button><Button onClick={() => exportData('xlsx')} disabled={disabled || exportBusy || !caps?.can_read} className="rounded-xl"><FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в Excel</Button><Button variant="outline" onClick={() => exportData('json')} disabled={disabled || exportBusy || !caps?.can_read} className="rounded-xl">JSON с историей</Button></div></div>;
   if (!caps?.can_read) return <div className="space-y-6">{header}{model.loading ? <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div> : <p role="alert" className="text-sm text-muted-foreground">{registryMessages[model.error ?? 'ACCESS_DENIED']}</p>}</div>;
-  return <div className="space-y-6">{header}{notice && <p role="status" className="text-sm">{notice}</p>}{model.error && <p role="alert" className="text-sm text-destructive">{registryMessages[model.error]}</p>}<RegistryPendingNotice model={model} onResult={accept} />{!caps.can_register && <p className="text-sm text-muted-foreground">Для регистрации нужны права вести журнал и работать с точной сохранённой версией документа. Права на файлы не предоставляются автоматически.</p>}
+  return <div className="space-y-6">{header}{notice && <p role="status" className="text-sm">{notice}</p>}{preparedExport && <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2" aria-label="Подготовленная выгрузка"><p role="status" className="text-sm">Выгрузка готова: {preparedExport.format === 'json' ? 'JSON с историей' : 'Excel с историей'}. Записей — {preparedExport.recordCount}, событий — {preparedExport.eventCount}. Если загрузка не началась автоматически, нажмите «Скачать».</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="rounded-xl" onClick={downloadPrepared}><Download className="w-4 h-4 mr-2" />Скачать подготовленный {preparedExport.format === 'json' ? 'JSON' : 'Excel'}</Button><Button variant="ghost" className="rounded-xl" onClick={clearPreparedExport}>Закрыть выгрузку</Button></div><p className="text-xs text-muted-foreground">Файл содержит проверенный снимок с историей и доступен здесь 5 минут. Изменение кабинета, прав или фильтров требует новой подготовки.</p></div>}{model.error && <p role="alert" className="text-sm text-destructive">{registryMessages[model.error]}</p>}<RegistryPendingNotice model={model} onResult={accept} />{!caps.can_register && <p className="text-sm text-muted-foreground">Для регистрации нужны права вести журнал и работать с точной сохранённой версией документа. Права на файлы не предоставляются автоматически.</p>}
     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">{[
       { value: model.counts.total, label: 'Всего', icon: FileText, color: 'blue' }, { value: model.counts.incoming, label: 'Входящих', icon: ArrowDownLeft, color: 'green' }, { value: model.counts.outgoing, label: 'Исходящих', icon: ArrowUpRight, color: 'amber' }, { value: model.counts.contracts, label: 'Договоров', icon: FileCheck, color: 'purple' }, { value: model.counts.orders, label: 'Приказов', icon: Hash, color: 'indigo' },
     ].map(item => <div key={item.label} className="bg-card rounded-xl border border-border p-4"><div className="flex items-center gap-3"><div className={'w-10 h-10 rounded-lg bg-' + item.color + '-500/10 flex items-center justify-center'}><item.icon className={'w-5 h-5 text-' + item.color + '-500'} /></div><div><p className="text-2xl font-bold">{item.value}</p><p className="text-xs text-muted-foreground">{item.label}</p></div></div></div>)}</div>
