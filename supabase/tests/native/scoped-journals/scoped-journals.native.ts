@@ -58,13 +58,13 @@ register(1,async c=>{
  await denied(()=>scopeRead(c.db,group,{kind:'journal',journal_id:made.journal.id},lo.foreign),'CUSTOM_JOURNAL_ACCESS_DENIED');
  await c.db.exec('RESET ROLE');const foreign=(await c.db.query<any>('SELECT id FROM organizations WHERE id=$1',[lo.foreign])).rows;expect(foreign).toHaveLength(1);
  await caller(c.db,lo.teacher);const request=randomUUID(),exported=await capture(c,made.journal,group,request);
- await c.db.exec('RESET ROLE');await c.db.query("UPDATE org_staff SET sections_access=sections_access-'journals.write' WHERE user_id=$1",[lo.teacher]);await caller(c.db,lo.teacher);
+ await caller(c.db,lo.owner);await c.db.exec('RESET ROLE');await c.db.query("UPDATE org_staff SET sections_access=sections_access-'journals.write' WHERE user_id=$1",[lo.teacher]);await caller(c.db,lo.teacher);
  expect((await c.read(group,{kind:'journal',journal_id:made.journal.id})).capabilities.can_write).toBe(false);expect((await capture(c,made.journal)).export.id).toBeTruthy();
  await denied(()=>c.save(made.journal,{notes:'Read-only cannot write'}),'CUSTOM_JOURNAL_ACCESS_DENIED');
- await c.db.exec('RESET ROLE');await c.db.query('DELETE FROM org_staff_document_groups WHERE staff_id=$1 AND group_id=$2',[lo.teacherStaff,lo.group]);await caller(c.db,lo.teacher);
+ await caller(c.db,lo.owner);await c.db.exec('RESET ROLE');await c.db.query('DELETE FROM org_staff_document_groups WHERE staff_id=$1 AND group_id=$2',[lo.teacherStaff,lo.group]);await caller(c.db,lo.teacher);
  for(const query of [{kind:'journal',journal_id:made.journal.id},{kind:'export',journal_id:made.journal.id,export_id:exported.export.id}])await denied(()=>c.read(group,query),'CUSTOM_JOURNAL_ACCESS_DENIED');
  await denied(()=>capture(c,made.journal,group,request),'CUSTOM_JOURNAL_ACCESS_DENIED');
- await c.db.exec('RESET ROLE');await c.db.query('INSERT INTO account_deletion_revocations(user_id)VALUES($1)',[lo.teacher]);await caller(c.db,lo.teacher);await denied(()=>c.read(group,{kind:'list',after_id:null,limit:50,include_archived:false}),'CUSTOM_JOURNAL_ACCESS_DENIED');
+ await caller(c.db,lo.owner);await c.db.exec('RESET ROLE');await c.db.query('INSERT INTO account_deletion_revocations(user_id)VALUES($1)',[lo.teacher]);await caller(c.db,lo.teacher);await denied(()=>c.read(group,{kind:'list',after_id:null,limit:50,include_archived:false}),'CUSTOM_JOURNAL_ACCESS_DENIED');
  c.note({kind:'current_scope_authority',onlyGroupLearnerListed:true,otherGroupAndTenantDenied:true,readOnlyCaptureAccepted:true,readOnlyWriteDenied:true,removedAssignmentReadAndReplayDenied:true,revokedActorDenied:true});
 });
 register(2,async c=>{
