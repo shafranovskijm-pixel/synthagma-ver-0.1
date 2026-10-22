@@ -34,6 +34,7 @@ export interface DocumentsKpi {
   // Запросы ПД
   pd_requests_open: number;
   pd_requests_overdue: number;
+  pd_requests_review_required?: number;
 
   // Входящие
   incoming_total: number;

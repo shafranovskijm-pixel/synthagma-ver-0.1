@@ -1,0 +1,2751 @@
+{
+  "observed_at": "2026-10-22T10:10:01.168Z",
+  "scope": "schema-only actual production dependencies; no customer rows",
+  "result": {
+    "rows": [
+      {
+        "inspection": {
+          "functions": [
+            {
+              "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+              "md5": "16edf9d392db190610be2fa99c21c8f0",
+              "metadata": {
+                "oid": "253394",
+                "proacl": [
+                  "postgres=X/postgres",
+                  "service_role=X/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+                ],
+                "proallargtypes": null,
+                "proargdefaults": null,
+                "proargmodes": null,
+                "proargnames": null,
+                "proargtypes": [],
+                "probin": null,
+                "proconfig": [
+                  "search_path=pg_catalog, public"
+                ],
+                "procost": 100,
+                "proisstrict": false,
+                "prokind": "f",
+                "prolang": "13573",
+                "proleakproof": false,
+                "proname": "account_deletion_subject_write_guard",
+                "pronamespace": "2200",
+                "pronargdefaults": 0,
+                "pronargs": 0,
+                "proowner": "16384",
+                "proparallel": "u",
+                "proretset": false,
+                "prorettype": "2279",
+                "prorows": 0,
+                "prosecdef": true,
+                "prosqlbody": null,
+                "prosupport": "-",
+                "protrftypes": null,
+                "provariadic": "0",
+                "provolatile": "v"
+              },
+              "signature": "account_deletion_subject_write_guard()"
+            },
+            {
+              "definition": "CREATE OR REPLACE FUNCTION public.get_documents_kpi(p_organization_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_is_admin boolean;\n  v_current_org uuid;\n  v_now timestamptz := now();\n  v_month_start timestamptz := date_trunc('month', v_now);\n  v_in30 timestamptz := v_now + interval '30 days';\n  v_six_months_ago timestamptz := date_trunc('month', v_now - interval '5 months');\n  v_result jsonb;\n  v_sig_total int; v_sig_signed int; v_sig_pending int;\n  v_sig_expired int; v_sig_rejected int;\n  v_edu_total int; v_edu_month int; v_dup int; v_cancel int;\n  v_expiring int; v_expired int;\n  v_contracts_total int; v_contracts_signed int; v_contracts_pending int;\n  v_prop_total int; v_prop_accepted int;\n  v_pd_open int; v_pd_overdue int;\n  v_inc_total int; v_inc_month int;\n  v_monthly_sigs jsonb; v_monthly_edu jsonb;\nBEGIN\n  IF NOT public.uc_document_scope_allowed(p_organization_id,NULL,NULL) THEN RAISE EXCEPTION 'organization_wide_document_scope_required' USING ERRCODE='42501'; END IF;\n  IF v_user IS NULL OR NOT public.account_deletion_access_allowed() THEN\n    RAISE EXCEPTION 'Authentication required or account access revoked' USING ERRCODE='42501';\n  END IF;\n  IF NOT public.can_access_organization(p_organization_id,'documents.read') THEN\n    RAISE EXCEPTION 'Forbidden' USING ERRCODE='42501';\n  END IF;\n\n  -- Подписания\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status = 'signed'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('sent','viewed')),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status = 'expired'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status = 'rejected'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('sent','viewed') AND expires_at <= v_in30 AND expires_at >= v_now),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('sent','viewed') AND expires_at < v_now)\n  INTO v_sig_total, v_sig_signed, v_sig_pending, v_sig_expired, v_sig_rejected, v_expiring, v_expired\n  FROM public.document_signatures\n  WHERE organization_id = p_organization_id;\n\n  -- Документы об образовании\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND created_at >= v_month_start),\n    count(*) FILTER (WHERE deleted_at IS NULL AND document_status = 'duplicate'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND document_status = 'cancelled')\n  INTO v_edu_total, v_edu_month, v_dup, v_cancel\n  FROM public.education_document_records\n  WHERE organization_id = p_organization_id;\n\n  -- Договоры с контрагентами (через JOIN с companies для org-фильтра)\n  SELECT\n    count(*) FILTER (WHERE cd.deleted_at IS NULL AND cd.type = 'contract'),\n    count(*) FILTER (WHERE cd.deleted_at IS NULL AND cd.type = 'contract' AND cd.is_paid = true),\n    count(*) FILTER (WHERE cd.deleted_at IS NULL AND cd.type = 'contract' AND COALESCE(cd.is_paid, false) = false)\n  INTO v_contracts_total, v_contracts_signed, v_contracts_pending\n  FROM public.company_documents cd\n  JOIN public.companies c ON c.id = cd.company_id\n  WHERE c.organization_id = p_organization_id;\n\n  -- КП\n  IF public.can_access_organization(p_organization_id,'sales.read') THEN\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('accepted','signed'))\n  INTO v_prop_total, v_prop_accepted\n  FROM public.commercial_proposals\n  WHERE organization_id = p_organization_id;\n  ELSE\n    v_prop_total := NULL;\n    v_prop_accepted := NULL;\n  END IF;\n\n  -- Запросы ПД\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('new','in_progress')),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('new','in_progress') AND due_date < v_now::date)\n  INTO v_pd_open, v_pd_overdue\n  FROM public.data_subject_requests\n  WHERE organization_id = p_organization_id;\n\n  -- Входящие\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND created_at >= v_month_start)\n  INTO v_inc_total, v_inc_month\n  FROM public.incoming_documents\n  WHERE organization_id = p_organization_id;\n\n  -- Тренд подписаний (6 мес.)\n  WITH months AS (\n    SELECT date_trunc('month', v_six_months_ago + (n || ' month')::interval) AS m\n    FROM generate_series(0, 5) n\n  ),\n  sigs AS (\n    SELECT date_trunc('month', created_at) AS m_sent,\n           date_trunc('month', signed_at) AS m_signed\n    FROM public.document_signatures\n    WHERE organization_id = p_organization_id\n      AND deleted_at IS NULL\n      AND (created_at >= v_six_months_ago OR signed_at >= v_six_months_ago)\n  )\n  SELECT jsonb_agg(jsonb_build_object(\n    'month', to_char(months.m, 'TMMon YY'),\n    'sent', COALESCE((SELECT count(*) FROM sigs WHERE m_sent = months.m), 0),\n    'signed', COALESCE((SELECT count(*) FROM sigs WHERE m_signed = months.m), 0)\n  ) ORDER BY months.m)\n  INTO v_monthly_sigs FROM months;\n\n  -- Тренд документов об образовании (6 мес.)\n  WITH months AS (\n    SELECT date_trunc('month', v_six_months_ago + (n || ' month')::interval) AS m\n    FROM generate_series(0, 5) n\n  )\n  SELECT jsonb_agg(jsonb_build_object(\n    'month', to_char(months.m, 'TMMon YY'),\n    'count', COALESCE((\n      SELECT count(*) FROM public.education_document_records\n      WHERE organization_id = p_organization_id\n        AND deleted_at IS NULL\n        AND date_trunc('month', created_at) = months.m\n    ), 0)\n  ) ORDER BY months.m)\n  INTO v_monthly_edu FROM months;\n\n  v_result := jsonb_build_object(\n    'signatures_total', v_sig_total,\n    'signatures_signed', v_sig_signed,\n    'signatures_pending', v_sig_pending,\n    'signatures_expired', v_sig_expired,\n    'signatures_rejected', v_sig_rejected,\n    'signing_conversion', CASE WHEN v_sig_total > 0 THEN round((v_sig_signed::numeric / v_sig_total) * 100) ELSE 0 END,\n    'education_docs_total', v_edu_total,\n    'education_docs_this_month', v_edu_month,\n    'duplicates_count', v_dup,\n    'cancelled_count', v_cancel,\n    'expiring_soon', v_expiring,\n    'expired_count', v_expired,\n    'contracts_total', v_contracts_total,\n    'contracts_signed', v_contracts_signed,\n    'contracts_pending', v_contracts_pending,\n    'proposals_total', v_prop_total,\n    'proposals_accepted', v_prop_accepted,\n    'proposal_to_contract_conversion', CASE WHEN v_prop_total IS NULL THEN NULL WHEN v_prop_total > 0 THEN round((v_prop_accepted::numeric / v_prop_total) * 100) ELSE 0 END,\n    'pd_requests_open', v_pd_open,\n    'pd_requests_overdue', v_pd_overdue,\n    'incoming_total', v_inc_total,\n    'incoming_this_month', v_inc_month,\n    'monthly_signatures', COALESCE(v_monthly_sigs, '[]'::jsonb),\n    'monthly_education_docs', COALESCE(v_monthly_edu, '[]'::jsonb)\n  );\n\n  RETURN v_result;\nEND;\n$function$\n",
+              "md5": "7b1d582dbaea5a699b554aa0e90e98b0",
+              "metadata": {
+                "oid": "139479",
+                "proacl": [
+                  "postgres=X/postgres",
+                  "authenticated=X/postgres",
+                  "service_role=X/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+                ],
+                "proallargtypes": null,
+                "proargdefaults": null,
+                "proargmodes": null,
+                "proargnames": [
+                  "p_organization_id"
+                ],
+                "proargtypes": [
+                  "2950"
+                ],
+                "probin": null,
+                "proconfig": [
+                  "search_path=public"
+                ],
+                "procost": 100,
+                "proisstrict": false,
+                "prokind": "f",
+                "prolang": "13573",
+                "proleakproof": false,
+                "proname": "get_documents_kpi",
+                "pronamespace": "2200",
+                "pronargdefaults": 0,
+                "pronargs": 1,
+                "proowner": "16384",
+                "proparallel": "u",
+                "proretset": false,
+                "prorettype": "3802",
+                "prorows": 0,
+                "prosecdef": true,
+                "prosqlbody": null,
+                "prosupport": "-",
+                "protrftypes": null,
+                "provariadic": "0",
+                "provolatile": "s"
+              },
+              "signature": "get_documents_kpi(uuid)"
+            },
+            {
+              "definition": "CREATE OR REPLACE FUNCTION public.set_dsr_due_date()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.due_date IS NULL THEN\n    NEW.due_date := (NEW.created_at + interval '30 days')::date;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+              "md5": "a3fe0db2ed0244deb595e9ac76712d93",
+              "metadata": {
+                "oid": "136393",
+                "proacl": [
+                  "=X/postgres",
+                  "postgres=X/postgres",
+                  "anon=X/postgres",
+                  "authenticated=X/postgres",
+                  "service_role=X/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+                ],
+                "proallargtypes": null,
+                "proargdefaults": null,
+                "proargmodes": null,
+                "proargnames": null,
+                "proargtypes": [],
+                "probin": null,
+                "proconfig": [
+                  "search_path=public"
+                ],
+                "procost": 100,
+                "proisstrict": false,
+                "prokind": "f",
+                "prolang": "13573",
+                "proleakproof": false,
+                "proname": "set_dsr_due_date",
+                "pronamespace": "2200",
+                "pronargdefaults": 0,
+                "pronargs": 0,
+                "proowner": "16384",
+                "proparallel": "u",
+                "proretset": false,
+                "prorettype": "2279",
+                "prorows": 0,
+                "prosecdef": false,
+                "prosqlbody": null,
+                "prosupport": "-",
+                "protrftypes": null,
+                "provariadic": "0",
+                "provolatile": "v"
+              },
+              "signature": "set_dsr_due_date()"
+            }
+          ],
+          "tables": [
+            {
+              "columns": [
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "created_by",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "manager_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "company_name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "company_inn",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "company_email",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "company_phone",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "contact_person",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "tariff_plan",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "custom_note",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "0",
+                  "generated": "",
+                  "identity": "",
+                  "name": "total_amount",
+                  "not_null": true,
+                  "type": "numeric"
+                },
+                {
+                  "acl": null,
+                  "default": "'draft'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "status",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "valid_until",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "updated_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "0",
+                  "generated": "",
+                  "identity": "",
+                  "name": "discount_percent",
+                  "not_null": false,
+                  "type": "numeric"
+                },
+                {
+                  "acl": null,
+                  "default": "'СИНТАГМА'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "'support@sintagma.com.ru'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_email",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "'https://sintagma.com.ru/'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_website",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "'platform'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "scope",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "organization_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "linked_signature_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "last_sent_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "template_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": "0",
+                  "generated": "",
+                  "identity": "",
+                  "name": "view_count",
+                  "not_null": true,
+                  "type": "integer"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "first_viewed_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "last_viewed_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "preset_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "intro_html",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "outro_html",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "false",
+                  "generated": "",
+                  "identity": "",
+                  "name": "is_template",
+                  "not_null": true,
+                  "type": "boolean"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)",
+                  "name": "commercial_proposals_created_by_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (linked_signature_id) REFERENCES document_signatures(id) ON DELETE SET NULL",
+                  "name": "commercial_proposals_linked_signature_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (manager_id) REFERENCES sales_managers(id)",
+                  "name": "commercial_proposals_manager_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+                  "name": "commercial_proposals_organization_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "commercial_proposals_pkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (preset_id) REFERENCES proposal_presets(id) ON DELETE SET NULL",
+                  "name": "commercial_proposals_preset_id_fkey"
+                },
+                {
+                  "definition": "CHECK ((scope = ANY (ARRAY['platform'::text, 'org'::text])))",
+                  "name": "commercial_proposals_scope_check"
+                },
+                {
+                  "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'sent'::text, 'negotiation'::text, 'accepted'::text, 'rejected'::text])))",
+                  "name": "commercial_proposals_status_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (template_id) REFERENCES email_templates(id) ON DELETE SET NULL",
+                  "name": "commercial_proposals_template_id_fkey"
+                }
+              ],
+              "metadata": {
+                "oid": "63520",
+                "relacl": [
+                  "postgres=arwdDxtm/postgres",
+                  "anon=arwdDxtm/postgres",
+                  "authenticated=arwdDxtm/postgres",
+                  "service_role=arwdDxtm/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+                  "sandbox_exec=ar/postgres"
+                ],
+                "relallvisible": 13,
+                "relam": "2",
+                "relchecks": 2,
+                "relfilenode": "63520",
+                "relforcerowsecurity": false,
+                "relfrozenxid": "2986821",
+                "relhasindex": true,
+                "relhasrules": false,
+                "relhassubclass": false,
+                "relhastriggers": true,
+                "relispartition": false,
+                "relispopulated": true,
+                "relisshared": false,
+                "relkind": "r",
+                "relminmxid": "190",
+                "relname": "commercial_proposals",
+                "relnamespace": "2200",
+                "relnatts": 33,
+                "reloftype": "0",
+                "reloptions": null,
+                "relowner": "16384",
+                "relpages": 17,
+                "relpartbound": null,
+                "relpersistence": "p",
+                "relreplident": "d",
+                "relrewrite": "0",
+                "relrowsecurity": true,
+                "reltablespace": "0",
+                "reltoastrelid": "63529",
+                "reltuples": 113,
+                "reltype": "63522"
+              },
+              "name": "commercial_proposals",
+              "policies": [
+                {
+                  "cmd": "ALL",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Admin full access to proposals",
+                  "qual": "has_role('admin'::app_role, auth.uid())",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "commercial_proposals",
+                  "with_check": "has_role('admin'::app_role, auth.uid())"
+                },
+                {
+                  "cmd": "ALL",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Org members manage own proposals",
+                  "qual": "((scope = 'org'::text) AND (organization_id = current_organization_id()))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "commercial_proposals",
+                  "with_check": "((scope = 'org'::text) AND (organization_id = current_organization_id()))"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Sales can read platform proposal templates",
+                  "qual": "((is_template = true) AND (scope = 'platform'::text))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "commercial_proposals",
+                  "with_check": null
+                },
+                {
+                  "cmd": "ALL",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Sales managers own proposals",
+                  "qual": "(has_role('sales_manager'::app_role, auth.uid()) AND ((created_by = auth.uid()) OR (manager_id IN ( SELECT sales_managers.id\n   FROM sales_managers\n  WHERE (sales_managers.user_id = auth.uid())))))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "commercial_proposals",
+                  "with_check": "(has_role('sales_manager'::app_role, auth.uid()) AND (created_by = auth.uid()))"
+                },
+                {
+                  "cmd": "ALL",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "account_deletion_no_revoked_access",
+                  "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "commercial_proposals",
+                  "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+                }
+              ],
+              "triggers": [
+                {
+                  "definition": "CREATE TRIGGER update_commercial_proposals_updated_at BEFORE UPDATE ON public.commercial_proposals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+                  "name": "update_commercial_proposals_updated_at"
+                }
+              ]
+            },
+            {
+              "columns": [
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "organization_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "inn",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "updated_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "kpp",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "ogrn",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "address",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "director",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "stamp_url",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signature_url",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "email",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "user_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "login_email",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "generated_password",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "postal_address",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "phone",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "bank_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "bank_account",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "bank_bik",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "bank_corr_account",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signatory_position",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signatory_name_genitive",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signatory_authority_clause",
+                  "not_null": false,
+                  "type": "text"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "companies_pkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)",
+                  "name": "companies_user_id_fkey"
+                }
+              ],
+              "metadata": {
+                "oid": "18970",
+                "relacl": [
+                  "postgres=arwdDxtm/postgres",
+                  "anon=arwdDxtm/postgres",
+                  "authenticated=arwdDxtm/postgres",
+                  "service_role=arwdDxtm/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+                  "sandbox_exec=ar/postgres"
+                ],
+                "relallvisible": 0,
+                "relam": "2",
+                "relchecks": 0,
+                "relfilenode": "18970",
+                "relforcerowsecurity": false,
+                "relfrozenxid": "1346",
+                "relhasindex": true,
+                "relhasrules": false,
+                "relhassubclass": false,
+                "relhastriggers": true,
+                "relispartition": false,
+                "relispopulated": true,
+                "relisshared": false,
+                "relkind": "r",
+                "relminmxid": "1",
+                "relname": "companies",
+                "relnamespace": "2200",
+                "relnatts": 25,
+                "reloftype": "0",
+                "reloptions": null,
+                "relowner": "16384",
+                "relpages": 0,
+                "relpartbound": null,
+                "relpersistence": "p",
+                "relreplident": "d",
+                "relrewrite": "0",
+                "relrowsecurity": true,
+                "reltablespace": "0",
+                "reltoastrelid": "18976",
+                "reltuples": -1,
+                "reltype": "18972"
+              },
+              "name": "companies",
+              "policies": [
+                {
+                  "cmd": "UPDATE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Companies can update own record",
+                  "qual": "(id = current_company_id())",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": null
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Companies can view own record",
+                  "qual": "(id = current_company_id())",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": null
+                },
+                {
+                  "cmd": "DELETE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Org staff can delete companies",
+                  "qual": "can_access_organization(organization_id, 'companies.write'::text)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": null
+                },
+                {
+                  "cmd": "INSERT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Org staff can insert companies",
+                  "qual": null,
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": "can_access_organization(organization_id, 'companies.write'::text)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Org staff can read companies",
+                  "qual": "can_access_organization(organization_id, 'companies.read'::text)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": null
+                },
+                {
+                  "cmd": "UPDATE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "Org staff can update companies",
+                  "qual": "can_access_organization(organization_id, 'companies.write'::text)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": "can_access_organization(organization_id, 'companies.write'::text)"
+                },
+                {
+                  "cmd": "ALL",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "account_deletion_no_revoked_access",
+                  "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "companies",
+                  "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+                }
+              ],
+              "triggers": [
+                {
+                  "definition": "CREATE TRIGGER audit_companies AFTER INSERT OR DELETE OR UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+                  "name": "audit_companies"
+                },
+                {
+                  "definition": "CREATE TRIGGER trigger_encrypt_company_password BEFORE INSERT OR UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION trigger_encrypt_profile_password()",
+                  "name": "trigger_encrypt_company_password"
+                },
+                {
+                  "definition": "CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+                  "name": "update_companies_updated_at"
+                }
+              ]
+            },
+            {
+              "columns": [
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "company_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "type",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "file_url",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "file_path",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "file_size",
+                  "not_null": false,
+                  "type": "integer"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "uploaded_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "uploaded_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": "false",
+                  "generated": "",
+                  "identity": "",
+                  "name": "is_paid",
+                  "not_null": false,
+                  "type": "boolean"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "paid_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "amount",
+                  "not_null": false,
+                  "type": "numeric(12,2)"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "contract_number",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "course_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "students_count",
+                  "not_null": false,
+                  "type": "integer"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "contract_date",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_by",
+                  "not_null": false,
+                  "type": "uuid"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE",
+                  "name": "company_documents_company_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL",
+                  "name": "company_documents_course_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "company_documents_pkey"
+                },
+                {
+                  "definition": "CHECK ((type = ANY (ARRAY['contract'::text, 'invoice'::text, 'act'::text, 'other'::text])))",
+                  "name": "company_documents_type_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (uploaded_by) REFERENCES auth.users(id)",
+                  "name": "company_documents_uploaded_by_fkey"
+                }
+              ],
+              "metadata": {
+                "oid": "18996",
+                "relacl": [
+                  "postgres=arwdDxtm/postgres",
+                  "anon=arwdDxtm/postgres",
+                  "authenticated=arwdDxtm/postgres",
+                  "service_role=arwdDxtm/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+                  "sandbox_exec=ar/postgres"
+                ],
+                "relallvisible": 0,
+                "relam": "2",
+                "relchecks": 1,
+                "relfilenode": "18996",
+                "relforcerowsecurity": false,
+                "relfrozenxid": "1356",
+                "relhasindex": true,
+                "relhasrules": false,
+                "relhassubclass": false,
+                "relhastriggers": true,
+                "relispartition": false,
+                "relispopulated": true,
+                "relisshared": false,
+                "relkind": "r",
+                "relminmxid": "1",
+                "relname": "company_documents",
+                "relnamespace": "2200",
+                "relnatts": 18,
+                "reloftype": "0",
+                "reloptions": null,
+                "relowner": "16384",
+                "relpages": 2,
+                "relpartbound": null,
+                "relpersistence": "p",
+                "relreplident": "d",
+                "relrewrite": "0",
+                "relrowsecurity": true,
+                "reltablespace": "0",
+                "reltoastrelid": "19002",
+                "reltuples": 0,
+                "reltype": "18998"
+              },
+              "name": "company_documents",
+              "policies": [
+                {
+                  "cmd": "ALL",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "account_deletion_no_revoked_access",
+                  "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "company_documents",
+                  "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "uc_document_assigned_read",
+                  "qual": "(EXISTS ( SELECT 1\n   FROM companies c\n  WHERE ((c.id = company_documents.company_id) AND ((c.user_id = auth.uid()) OR (NOT uc_document_teacher_limited(c.organization_id))))))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "company_documents",
+                  "with_check": null
+                },
+                {
+                  "cmd": "DELETE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_delete",
+                  "qual": "uc_document_company_access(company_id, true)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "company_documents",
+                  "with_check": null
+                },
+                {
+                  "cmd": "INSERT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_insert",
+                  "qual": null,
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "company_documents",
+                  "with_check": "uc_document_company_access(company_id, true)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_select",
+                  "qual": "uc_document_company_access(company_id, false)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "company_documents",
+                  "with_check": null
+                },
+                {
+                  "cmd": "UPDATE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_update",
+                  "qual": "uc_document_company_access(company_id, true)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "company_documents",
+                  "with_check": "uc_document_company_access(company_id, true)"
+                }
+              ],
+              "triggers": [
+                {
+                  "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.company_documents FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+                  "name": "uc_document_action_guard"
+                }
+              ]
+            },
+            {
+              "columns": [
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_type",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_title",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_html",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_hash",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_snapshot_url",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "organization_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_user_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "recipient_type",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "recipient_user_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "recipient_email",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "recipient_name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "'draft'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "status",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "replace((gen_random_uuid())::text, '-'::text, ''::text)",
+                  "generated": "",
+                  "identity": "",
+                  "name": "signature_token",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "pep_agreement_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "sent_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "viewed_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_ip",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_user_agent",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "rejected_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "rejection_reason",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "(now() + '7 days'::interval)",
+                  "generated": "",
+                  "identity": "",
+                  "name": "expires_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "updated_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "'sign'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "mode",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "current_revision_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_signed_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_signed_ip",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "sender_signed_user_agent",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "false",
+                  "generated": "",
+                  "identity": "",
+                  "name": "requires_bilateral",
+                  "not_null": true,
+                  "type": "boolean"
+                },
+                {
+                  "acl": null,
+                  "default": "'pep'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "signature_method",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "handwritten_scan_path",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_document_path",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "false",
+                  "generated": "",
+                  "identity": "",
+                  "name": "hidden_for_sender",
+                  "not_null": true,
+                  "type": "boolean"
+                },
+                {
+                  "acl": null,
+                  "default": "false",
+                  "generated": "",
+                  "identity": "",
+                  "name": "hidden_for_recipient",
+                  "not_null": true,
+                  "type": "boolean"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "email_opened_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "email_open_token",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "linked_proposal_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "template_version_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_revision_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_source_bucket",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_source_path",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_source_hash",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_organization_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "signed_organization_inn",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "handwritten_scan_hash",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "'not_requested'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "certificate_state",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "certificate_hash",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "certificate_error",
+                  "not_null": false,
+                  "type": "text"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "CHECK ((document_type = ANY (ARRAY['contract'::text, 'consent'::text, 'pep_agreement'::text, 'act'::text, 'order'::text, 'custom_pdf'::text, 'education_document'::text, 'external_upload'::text])))",
+                  "name": "document_signatures_document_type_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (linked_proposal_id) REFERENCES commercial_proposals(id) ON DELETE SET NULL",
+                  "name": "document_signatures_linked_proposal_id_fkey"
+                },
+                {
+                  "definition": "CHECK ((mode = ANY (ARRAY['sign'::text, 'review'::text])))",
+                  "name": "document_signatures_mode_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+                  "name": "document_signatures_organization_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (pep_agreement_id) REFERENCES pep_agreements(id) ON DELETE SET NULL",
+                  "name": "document_signatures_pep_agreement_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "document_signatures_pkey"
+                },
+                {
+                  "definition": "CHECK ((recipient_type = ANY (ARRAY['student'::text, 'company'::text, 'individual'::text, 'admin_sintagma'::text])))",
+                  "name": "document_signatures_recipient_type_check"
+                },
+                {
+                  "definition": "UNIQUE (signature_token)",
+                  "name": "document_signatures_signature_token_key"
+                },
+                {
+                  "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'sent'::text, 'viewed'::text, 'signed'::text, 'rejected'::text, 'expired'::text, 'revoked'::text, 'in_review'::text, 'changes_requested'::text])))",
+                  "name": "document_signatures_status_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (template_version_id) REFERENCES org_contract_template_versions(id) ON DELETE SET NULL",
+                  "name": "document_signatures_template_version_id_fkey"
+                }
+              ],
+              "metadata": {
+                "oid": "130837",
+                "relacl": [
+                  "postgres=arwdDxtm/postgres",
+                  "anon=arwdDxtm/postgres",
+                  "authenticated=arwdDxtm/postgres",
+                  "service_role=arwdDxtm/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+                  "sandbox_exec=ar/postgres"
+                ],
+                "relallvisible": 0,
+                "relam": "2",
+                "relchecks": 4,
+                "relfilenode": "135999",
+                "relforcerowsecurity": false,
+                "relfrozenxid": "177332",
+                "relhasindex": true,
+                "relhasrules": false,
+                "relhassubclass": false,
+                "relhastriggers": true,
+                "relispartition": false,
+                "relispopulated": true,
+                "relisshared": false,
+                "relkind": "r",
+                "relminmxid": "139",
+                "relname": "document_signatures",
+                "relnamespace": "2200",
+                "relnatts": 54,
+                "reloftype": "0",
+                "reloptions": null,
+                "relowner": "16384",
+                "relpages": 1,
+                "relpartbound": null,
+                "relpersistence": "p",
+                "relreplident": "f",
+                "relrewrite": "0",
+                "relrowsecurity": true,
+                "reltablespace": "0",
+                "reltoastrelid": "136002",
+                "reltuples": 1,
+                "reltype": "130839"
+              },
+              "name": "document_signatures",
+              "policies": [
+                {
+                  "cmd": "ALL",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "account_deletion_no_revoked_access",
+                  "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "document_signatures",
+                  "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "uc_document_assigned_read",
+                  "qual": "uc_document_signature_read_scope(id)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "document_signatures",
+                  "with_check": null
+                },
+                {
+                  "cmd": "DELETE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_signatures_delete_draft",
+                  "qual": "((status = 'draft'::text) AND (signed_at IS NULL) AND can_access_organization(organization_id, 'documents.write'::text))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "document_signatures",
+                  "with_check": null
+                },
+                {
+                  "cmd": "INSERT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_signatures_insert",
+                  "qual": null,
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "document_signatures",
+                  "with_check": "(can_access_organization(organization_id, 'documents.write'::text) AND (sender_user_id = auth.uid()))"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_signatures_read",
+                  "qual": "uc_signature_actor_allowed(id, false, true)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "document_signatures",
+                  "with_check": null
+                },
+                {
+                  "cmd": "UPDATE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_signatures_update",
+                  "qual": "can_access_organization(organization_id, 'documents.write'::text)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "document_signatures",
+                  "with_check": "can_access_organization(organization_id, 'documents.write'::text)"
+                }
+              ],
+              "triggers": [
+                {
+                  "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('recipient_user_id', 'sender_user_id')",
+                  "name": "account_deletion_subject_fence"
+                },
+                {
+                  "definition": "CREATE TRIGGER on_signature_signed_update_proposal AFTER UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION mark_proposal_accepted_on_signing()",
+                  "name": "on_signature_signed_update_proposal"
+                },
+                {
+                  "definition": "CREATE TRIGGER trg_notify_on_signature_event AFTER INSERT OR UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION notify_on_signature_event()",
+                  "name": "trg_notify_on_signature_event"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_signature_file_provenance BEFORE INSERT OR UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION uc_guard_signature_file_provenance()",
+                  "name": "uc_signature_file_provenance"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_signature_integrity BEFORE INSERT OR DELETE OR UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION uc_guard_signature_integrity()",
+                  "name": "uc_signature_integrity"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_signature_operation_guard BEFORE INSERT OR DELETE OR UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION uc_guard_signature_actions()",
+                  "name": "uc_signature_operation_guard"
+                },
+                {
+                  "definition": "CREATE TRIGGER update_doc_sig_updated_at BEFORE UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+                  "name": "update_doc_sig_updated_at"
+                },
+                {
+                  "definition": "CREATE TRIGGER validate_signature_method_trg BEFORE INSERT OR UPDATE OF signature_method ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION validate_signature_method()",
+                  "name": "validate_signature_method_trg"
+                }
+              ]
+            },
+            {
+              "columns": [
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "organization_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "reg_number",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "full_name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "birth_date",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_type",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_series",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_number",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "issue_date",
+                  "not_null": true,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "specialty_name",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "qualification_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "protocol_number",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "protocol_date",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "order_number",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "order_date",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": "'original'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "document_status",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "original_document_data",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": "'personal'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "delivery_method",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "delivery_details",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "notes",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "enrollment_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "updated_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "user_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "course_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "group_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "education_result",
+                  "not_null": false,
+                  "type": "text"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "CHECK ((delivery_method = ANY (ARRAY['personal'::text, 'representative'::text, 'postal'::text])))",
+                  "name": "education_document_records_delivery_method_check"
+                },
+                {
+                  "definition": "CHECK ((document_status = ANY (ARRAY['original'::text, 'duplicate'::text])))",
+                  "name": "education_document_records_document_status_check"
+                },
+                {
+                  "definition": "CHECK ((document_type = ANY (ARRAY['certificate'::text, 'diploma'::text, 'qualification'::text])))",
+                  "name": "education_document_records_document_type_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE SET NULL",
+                  "name": "education_document_records_enrollment_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+                  "name": "education_document_records_organization_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "education_document_records_pkey"
+                }
+              ],
+              "metadata": {
+                "oid": "21935",
+                "relacl": [
+                  "postgres=arwdDxtm/postgres",
+                  "anon=arwdDxtm/postgres",
+                  "authenticated=arwdDxtm/postgres",
+                  "service_role=arwdDxtm/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+                  "sandbox_exec=ar/postgres"
+                ],
+                "relallvisible": 0,
+                "relam": "2",
+                "relchecks": 3,
+                "relfilenode": "21935",
+                "relforcerowsecurity": false,
+                "relfrozenxid": "2001",
+                "relhasindex": true,
+                "relhasrules": false,
+                "relhassubclass": false,
+                "relhastriggers": true,
+                "relispartition": false,
+                "relispopulated": true,
+                "relisshared": false,
+                "relkind": "r",
+                "relminmxid": "1",
+                "relname": "education_document_records",
+                "relnamespace": "2200",
+                "relnatts": 29,
+                "reloftype": "0",
+                "reloptions": null,
+                "relowner": "16384",
+                "relpages": 13,
+                "relpartbound": null,
+                "relpersistence": "p",
+                "relreplident": "d",
+                "relrewrite": "0",
+                "relrowsecurity": true,
+                "reltablespace": "0",
+                "reltoastrelid": "21946",
+                "reltuples": 256,
+                "reltype": "21937"
+              },
+              "name": "education_document_records",
+              "policies": [
+                {
+                  "cmd": "ALL",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "account_deletion_no_revoked_access",
+                  "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "education_document_records",
+                  "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "uc_document_assigned_read",
+                  "qual": "((user_id = auth.uid()) OR uc_document_owns_enrollment(enrollment_id, organization_id) OR uc_document_record_scope(organization_id, group_id, enrollment_id, user_id, course_id))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "education_document_records",
+                  "with_check": null
+                },
+                {
+                  "cmd": "DELETE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_delete",
+                  "qual": "uc_document_row_action_allowed('education_document_records'::text, to_jsonb(education_document_records.*))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "education_document_records",
+                  "with_check": null
+                },
+                {
+                  "cmd": "INSERT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_insert",
+                  "qual": null,
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "education_document_records",
+                  "with_check": "uc_document_row_action_allowed('education_document_records'::text, to_jsonb(education_document_records.*))"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_select",
+                  "qual": "(uc_document_org_access(organization_id, false) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid())) OR uc_document_owns_enrollment(enrollment_id, organization_id))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "education_document_records",
+                  "with_check": null
+                },
+                {
+                  "cmd": "UPDATE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_update",
+                  "qual": "uc_document_row_action_allowed('education_document_records'::text, to_jsonb(education_document_records.*))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "education_document_records",
+                  "with_check": "uc_document_row_action_allowed('education_document_records'::text, to_jsonb(education_document_records.*))"
+                }
+              ],
+              "triggers": [
+                {
+                  "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+                  "name": "account_deletion_subject_fence"
+                },
+                {
+                  "definition": "CREATE TRIGGER audit_education_documents AFTER INSERT OR DELETE OR UPDATE ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+                  "name": "audit_education_documents"
+                },
+                {
+                  "definition": "CREATE TRIGGER trg_auto_log_document_issuance AFTER INSERT ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION auto_log_document_issuance()",
+                  "name": "trg_auto_log_document_issuance"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+                  "name": "uc_document_action_guard"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_program_issuance_guard BEFORE INSERT OR UPDATE ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION uc_guard_program_issuance()",
+                  "name": "uc_program_issuance_guard"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_program_issuance_record AFTER INSERT OR UPDATE ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION uc_record_program_issuance()",
+                  "name": "uc_program_issuance_record"
+                },
+                {
+                  "definition": "CREATE TRIGGER update_education_document_records_updated_at BEFORE UPDATE ON public.education_document_records FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+                  "name": "update_education_document_records_updated_at"
+                }
+              ]
+            },
+            {
+              "columns": [
+                {
+                  "acl": null,
+                  "default": "gen_random_uuid()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "organization_id",
+                  "not_null": true,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": "'contract'::text",
+                  "generated": "",
+                  "identity": "",
+                  "name": "doc_type",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "title",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "counterparty_name",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "counterparty_inn",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "doc_number",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "doc_date",
+                  "not_null": false,
+                  "type": "date"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "file_url",
+                  "not_null": true,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "file_path",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "file_size",
+                  "not_null": false,
+                  "type": "bigint"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "notes",
+                  "not_null": false,
+                  "type": "text"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "related_signature_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "related_billing_doc_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "related_company_id",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "uploaded_by",
+                  "not_null": false,
+                  "type": "uuid"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "created_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": "now()",
+                  "generated": "",
+                  "identity": "",
+                  "name": "updated_at",
+                  "not_null": true,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_at",
+                  "not_null": false,
+                  "type": "timestamp with time zone"
+                },
+                {
+                  "acl": null,
+                  "default": null,
+                  "generated": "",
+                  "identity": "",
+                  "name": "deleted_by",
+                  "not_null": false,
+                  "type": "uuid"
+                }
+              ],
+              "constraints": [
+                {
+                  "definition": "CHECK ((doc_type = ANY (ARRAY['contract'::text, 'act'::text, 'invoice'::text, 'other'::text])))",
+                  "name": "incoming_documents_doc_type_check"
+                },
+                {
+                  "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+                  "name": "incoming_documents_organization_id_fkey"
+                },
+                {
+                  "definition": "PRIMARY KEY (id)",
+                  "name": "incoming_documents_pkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (related_billing_doc_id) REFERENCES org_billing_documents(id) ON DELETE SET NULL",
+                  "name": "incoming_documents_related_billing_doc_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (related_company_id) REFERENCES companies(id) ON DELETE SET NULL",
+                  "name": "incoming_documents_related_company_id_fkey"
+                },
+                {
+                  "definition": "FOREIGN KEY (related_signature_id) REFERENCES document_signatures(id) ON DELETE SET NULL",
+                  "name": "incoming_documents_related_signature_id_fkey"
+                }
+              ],
+              "metadata": {
+                "oid": "136452",
+                "relacl": [
+                  "postgres=arwdDxtm/postgres",
+                  "anon=arwdDxtm/postgres",
+                  "authenticated=arwdDxtm/postgres",
+                  "service_role=arwdDxtm/postgres",
+                  "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+                  "sandbox_exec=ar/postgres"
+                ],
+                "relallvisible": 0,
+                "relam": "2",
+                "relchecks": 1,
+                "relfilenode": "136452",
+                "relforcerowsecurity": false,
+                "relfrozenxid": "184038",
+                "relhasindex": true,
+                "relhasrules": false,
+                "relhassubclass": false,
+                "relhastriggers": true,
+                "relispartition": false,
+                "relispopulated": true,
+                "relisshared": false,
+                "relkind": "r",
+                "relminmxid": "139",
+                "relname": "incoming_documents",
+                "relnamespace": "2200",
+                "relnatts": 20,
+                "reloftype": "0",
+                "reloptions": null,
+                "relowner": "16384",
+                "relpages": 0,
+                "relpartbound": null,
+                "relpersistence": "p",
+                "relreplident": "d",
+                "relrewrite": "0",
+                "relrowsecurity": true,
+                "reltablespace": "0",
+                "reltoastrelid": "136460",
+                "reltuples": -1,
+                "reltype": "136454"
+              },
+              "name": "incoming_documents",
+              "policies": [
+                {
+                  "cmd": "ALL",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "account_deletion_no_revoked_access",
+                  "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "incoming_documents",
+                  "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "RESTRICTIVE",
+                  "policyname": "uc_document_assigned_read",
+                  "qual": "(NOT uc_document_teacher_limited(organization_id))",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "incoming_documents",
+                  "with_check": null
+                },
+                {
+                  "cmd": "DELETE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_delete",
+                  "qual": "uc_document_org_access(organization_id, true)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "incoming_documents",
+                  "with_check": null
+                },
+                {
+                  "cmd": "INSERT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_insert",
+                  "qual": null,
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "incoming_documents",
+                  "with_check": "uc_document_org_access(organization_id, true)"
+                },
+                {
+                  "cmd": "SELECT",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_select",
+                  "qual": "uc_document_org_access(organization_id, false)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "incoming_documents",
+                  "with_check": null
+                },
+                {
+                  "cmd": "UPDATE",
+                  "permissive": "PERMISSIVE",
+                  "policyname": "uc_documents_update",
+                  "qual": "uc_document_org_access(organization_id, true)",
+                  "roles": [
+                    "authenticated"
+                  ],
+                  "schemaname": "public",
+                  "tablename": "incoming_documents",
+                  "with_check": "uc_document_org_access(organization_id, true)"
+                }
+              ],
+              "triggers": [
+                {
+                  "definition": "CREATE TRIGGER trg_incoming_docs_updated_at BEFORE UPDATE ON public.incoming_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+                  "name": "trg_incoming_docs_updated_at"
+                },
+                {
+                  "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.incoming_documents FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+                  "name": "uc_document_action_guard"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

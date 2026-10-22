@@ -1,0 +1,52 @@
+{
+  "observed_at": "2026-10-22T10:17:12.848Z",
+  "result": {
+    "rows": [
+      {
+        "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n",
+        "metadata": {
+          "oid": "17724",
+          "proacl": [
+            "=X/postgres",
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres",
+            "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+          ],
+          "proallargtypes": null,
+          "proargdefaults": null,
+          "proargmodes": null,
+          "proargnames": null,
+          "proargtypes": [],
+          "probin": null,
+          "proconfig": [
+            "search_path=public"
+          ],
+          "procost": 100,
+          "proisstrict": false,
+          "prokind": "f",
+          "prolang": "13573",
+          "proleakproof": false,
+          "proname": "update_updated_at_column",
+          "pronamespace": "2200",
+          "pronargdefaults": 0,
+          "pronargs": 0,
+          "proowner": "16384",
+          "proparallel": "u",
+          "proretset": false,
+          "prorettype": "2279",
+          "prorows": 0,
+          "prosecdef": false,
+          "prosqlbody": null,
+          "prosupport": "-",
+          "protrftypes": null,
+          "provariadic": "0",
+          "provolatile": "v"
+        },
+        "signature": "update_updated_at_column()",
+        "source_md5": "301a884953d37769916294bb60562e05"
+      }
+    ]
+  }
+}

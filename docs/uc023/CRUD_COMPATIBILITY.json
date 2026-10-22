@@ -1,0 +1,42 @@
+{
+  "asOf": "2026-10-22",
+  "status": "Source-only intentional compatibility delta, requires actual SQL/rehearsal/live proof before release",
+  "existingTable": "public.data_subject_requests",
+  "oldDataPreservation": {
+    "onlyAddedColumns": [
+      "deadline_details jsonb nullable",
+      "deadline_revision bigint NOTNULLDEFAULT0"
+    ],
+    "oldProjection": "to_jsonb(row)-deadline_details-deadline_revision exactly unchanged by migration",
+    "oldRowsTouchedByMigration": false,
+    "oldDueDateRewrite": false,
+    "oldStatusRewrite": false,
+    "oldRlsPolicies": "not modified",
+    "oldTriggers": "same attached identities; only set_dsr_due_date body changes for future INSERT; updated_at and account_deletion_subject_fence unchanged"
+  },
+  "intentionalAcl": {
+    "authenticated": "ALL direct table privileges removed, includingTRUNCATE/REFERENCES/TRIGGER, plus all explicit columnSELECT/INSERT/UPDATE/REFERENCES. Existing own create/read and authorized org operations use3scoped RPCs.",
+    "anonAndPublic": "ALL direct table and explicit column privileges revoked; preventsTRUNCATE bypass of RLS.",
+    "serviceRole": "Existing data_subject_requests service-role table privileges not altered; existing privileged recycle/restore/purge RPCs still run as their original owner.",
+    "newHistoryAndPrivateHelpers": "All non-owner default ACL grantees stripped only for newly added history table/functions. Only3new public RPCs EXECUTE authenticated."
+  },
+  "authority": {
+    "ownRead": "auth.uid=request.user_id; account access allowed; actor+page subjects42007 shared fence; private table SELECT cannot bypass",
+    "organizationReadWrite": "uc_document_has_action(org,read/write) AND uc_document_student_scope_allowed(org,subject); read-only cannot mutate, expired/unassigned staff cannot bypass; authority rows FOR SHARE NOWAIT before final recheck",
+    "create": "Existing own subject must have genuine profile/enrollment/effective group relation to target org; only auth.uid stored; request UUID replay exact payload",
+    "mutation": "Exclusive sorted actor+subject42007 locks first, authority row share+recheck, request FOR UPDATE NOWAIT, exact revision, finite PT409; server resolution actor/time, canonical calculation only"
+  },
+  "legitimateOldPaths": {
+    "frontend": "Only directCRUDconsumer useDataSubjectRequests refactored; public API ability preserved through stronger scope/CAS.",
+    "softDeleteRestore": "Owner RPCs still update deleted_at/deleted_by; new trigger is INSERT-only and cannot rewrite historical deadlines on restore.",
+    "subjectErasure": "Existing approved subject-request removal cascades only linked new events; no new erasure scheduler/action.",
+    "historyActorErasure": "Nullable new actor_id Auth FK ONDELETESETNULL; history snapshots omit actor UUID metadata; other subjects history not cascaded on actor removal.",
+    "contractualRetention": "No existing policy/business-rule/destruction decision invented; all factual blocking/refusal/retention is an explicit operator record."
+  },
+  "bodyPreimages": {
+    "set_dsr_due_date()": "a3fe0db2ed0244deb595e9ac76712d93",
+    "get_documents_kpi(uuid)": "7b1d582dbaea5a699b554aa0e90e98b0"
+  },
+  "metadata": "Raw migration snapshots and asserts all pg_proc metadata exceptprosrc for these2existing functions. No ledgercount guard in raw migration.",
+  "engineExecutionByAuthor": "NONE"
+}

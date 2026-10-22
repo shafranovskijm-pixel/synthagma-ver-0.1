@@ -1,0 +1,148 @@
+{
+  "status": "Source-only acceptance plan; NO tests/runtime/cloud mutations by author",
+  "base": "4c965f30f4ff4f9f8ea7ecc534bc2be7c5995e06",
+  "migration": "20261022220000_uc_personal_data_request_deadlines.sql",
+  "blockingReleaseConditions": [
+    "Actual old-function body preimages match (DSR trigger a3fe0db2ed0244deb595e9ac76712d93; KPI 7b1d582dbaea5a699b554aa0e90e98b0)",
+    "Historical row projection excluding ONLY deadline_details/deadline_revision byte hash unchanged; all other existing rowsets unchanged",
+    "Actual authenticated RPC native + live acceptance, no direct SELECT/INSERT/UPDATE dependency remains",
+    "Frontend plus support-chat edge deployment confirmed; no success claim from source-only unit tests"
+  ],
+  "rpc": {
+    "uc_dsr_create": {
+      "args": [
+        "p_request_id uuid",
+        "p_organization_id uuid",
+        "p_request_type text",
+        "p_description text",
+        "p_contact_email text"
+      ],
+      "returns": "request row; idempotent exact own payload replay; no user supplied deadline"
+    },
+    "uc_dsr_list": {
+      "args": [
+        "p_organization_id uuid|null",
+        "p_request_id uuid|null",
+        "p_cursor JSONB|null {created_at,id}",
+        "p_limit integer1–200 default100"
+      ],
+      "returns": "{requests:row[],counts:{all,pending,in_progress,resolved,rejected},next_cursor:{created_at,id}|null}; exact request id includes history. Stable captured-page ids fenced before response; no silent truncation."
+    },
+    "uc_dsr_apply": {
+      "args": [
+        "p_request_id uuid",
+        "p_expected_revision bigint",
+        "p_action review|extend|respond",
+        "p_payload JSONB"
+      ],
+      "authority": "canonical document write + student scope, actor/subject privacy fence, current auth row locks, request row NOWAIT+CAS",
+      "returns": "updated request; one immutable event revision; all-or-nothing",
+      "errors": {
+        "22023": "invalid kind, facts, date, extension, response, decision",
+        "42501": "absent/revoked/unscoped authority",
+        "PT409": "stale/busy finite conflict, never public40001"
+      }
+    }
+  },
+  "nativeCases": [
+    [
+      "N01",
+      "Old data/metadata preservation and no historical deadline rewrite"
+    ],
+    [
+      "N02",
+      "Own create, forbidden foreign org, retry same uuid exact replay, mismatched payload PT409, direct deadline forgery denied; TRUNCATE/REFERENCES/TRIGGER and all direct column/table privileges absent, attempted authenticatedTRUNCATE42501 preservesrows."
+    ],
+    [
+      "N03",
+      "Access10working:2026-01-01→Jan23; motivated timely extension2→Jan27, max5total"
+    ],
+    [
+      "N04",
+      "Correction7working from evidence Oct22→Nov2; no5day extension; evidence date explicitly confirmed"
+    ],
+    [
+      "N05",
+      "Cessation10working Oct22→Nov6 plus up to5→Nov13; legal exception reason retained"
+    ],
+    [
+      "N06",
+      "Withdrawal30calendar Oct22→Nov21; Saturday control date not silently pushed later; no universal30forotherkinds"
+    ],
+    [
+      "N07",
+      "Deletion needs confirmed legal basis: evidence7working, purpose30calendar, unlawful stop3working plus destruction10working if required; no actual destruction"
+    ],
+    [
+      "N08",
+      "Unsupported2027/year crossing/regional calendar explicit review state; no weekday fallback; optional manual control markedmanual"
+    ],
+    [
+      "N09",
+      "Extension notice future/late/missing reason/reference fails; repeat total or>5fails; history unchanged on failure"
+    ],
+    [
+      "N10",
+      "Two actual native sessions: same actor read/read succeeds; exclusive erasure blocks read/write and ordinary write excludes concurrent erasure; NOWAIT/CAS finite conflicts"
+    ],
+    [
+      "N11",
+      "Own-only, expiredstaff, teacher assigned student and foreign org/subject isolation; role/scope revoke during operation fence"
+    ],
+    [
+      "N12",
+      "History state has no copied actor UUID fields; subject-request deletion cascades its events only; Auth actor SETNULL leaves other subject history intact"
+    ],
+    [
+      "N13",
+      "Retention/refusal need concrete norm+reason; blocked destruction needs actual block date and≤6month control; no silent clock pause; closed request immutable"
+    ],
+    [
+      "N14",
+      "KPI counts pending not nonexistentnew, separates needsreview/history/manual, uses confirmed zone for known control; all other KPI sections preserved"
+    ],
+    [
+      "N15",
+      "List keyset pages1/200, equal timestamps deterministic id order, exact server totals, next_cursor complete; no newly inserted unfenced subject leaks into captured response"
+    ]
+  ],
+  "clientCases": {
+    "count": 19,
+    "files": [
+      "src/lib/__tests__/dataSubjectDeadlines.test.ts",
+      "src/hooks/__tests__/useDataSubjectRequests.test.tsx",
+      "src/components/organization/__tests__/DataSubjectRequestReviewDialog.test.tsx"
+    ],
+    "command": "node_modules/.bin/vitest run src/lib/__tests__/dataSubjectDeadlines.test.ts src/hooks/__tests__/useDataSubjectRequests.test.tsx src/components/organization/__tests__/DataSubjectRequestReviewDialog.test.tsx",
+    "types": "node_modules/.bin/tsc -p tsconfig.app.json --noEmit",
+    "addedB": [
+      "Actor changes before React render: no session/RPC under other actor",
+      "Explicit capturedBearer; mismatched session denied",
+      "Null/wrongID/wrongrevision mutation responses never succeed",
+      "Foreign-org list and inconsistent cursor refused"
+    ],
+    "addedC": [
+      "Exact paginated context afterB validator ABI extension",
+      "Positive genuinecreate including PGbtrim space-only normalization; positive operator revision receipt"
+    ]
+  },
+  "liveSyntheticAcceptance": [
+    "One QA subject submits access and cessation requests; no production personal records edited",
+    "QA org operator confirms actual trigger+zone+calendar; deadline/history persists through reload",
+    "Second actor stale revision receives finite conflict; own subject sees response/extension",
+    "QA manual/unknown-calendar request remains visibly unverified; prior historical deadline untouched",
+    "Prove interface design before/after and all old test data preserved"
+  ],
+  "notChanged": [
+    "Prices, plans, individual postpay",
+    "Contractual30day data-return terms and document-expiry30day windows",
+    "Real customer retention decisions, signatures, existing requests, invoices, consent records",
+    "Existing account erasure policies; nullable audit actor FK follows final Auth cleanup only"
+  ],
+  "knownLimitations": [
+    "OfficialTomskcatalog2026revisionverified; linkedDOCX403 body not read. SpecificArts20/21 text verified on officialMintrud; no certification of complete current law consolidation.",
+    "Federal2026five-day calendar only; regional/year2027requires manual legal review",
+    "No automated actual correction, block, destruction, letter sending or compliance certification"
+  ],
+  "nativeFixtureBasis": "Production KPI scope guard actual7b1 preserved; docs/uc023/ACTUAL_KPI_PREIMAGE_REVIEW.json proves exact delta from repositorybf2."
+}

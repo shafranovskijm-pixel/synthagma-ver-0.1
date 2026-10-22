@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ShieldCheck, FileText, Trash2, Pencil, AlertCircle, Plus, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { ShieldCheck, FileText, Trash2, Pencil, PauseCircle, AlertCircle, Plus, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { useMyDataSubjectRequests, DSR_TYPE_LABELS, DSR_STATUS_LABELS, DSR_STATUS_COLORS, type DSRType } from "@/hooks/useDataSubjectRequests";
 import { format } from "date-fns";
+import { DSR_DEADLINE_HELP, dsrDeadlineLabel } from "@/lib/dataSubjectDeadlines";
 import { ru } from "date-fns/locale";
 
 interface Props {
@@ -23,6 +24,7 @@ const TYPE_ICONS: Record<DSRType, typeof FileText> = {
   deletion: Trash2,
   withdrawal: ShieldCheck,
   correction: Pencil,
+  cessation: PauseCircle,
 };
 
 const TYPE_DESCRIPTIONS: Record<DSRType, string> = {
@@ -30,16 +32,21 @@ const TYPE_DESCRIPTIONS: Record<DSRType, string> = {
   deletion: "Полное удаление ваших данных. Может быть отклонено, если есть законные основания для хранения (документы об образовании).",
   withdrawal: "Отозвать ранее данное согласие на обработку. После этого организация прекратит обработку, кроме предусмотренных законом случаев.",
   correction: "Запросить исправление неточных или устаревших данных",
+  cessation: "Потребовать прекращения обработки. Организация проверит, есть ли предусмотренные законом основания продолжать отдельные операции.",
 };
 
 export function StudentDataSubjectRequests({ userId, organizationId, userEmail }: Props) {
-  const { requests, loading, submitting, create } = useMyDataSubjectRequests(userId);
+  const { requests, loading, submitting, create, scopeKey, hasMore, loadMore, loadedCount, counts } = useMyDataSubjectRequests(userId);
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<DSRType>("access");
   const [description, setDescription] = useState("");
   const [email, setEmail] = useState(userEmail || "");
+  const formScope = useRef(scopeKey);
+  const visibleOpen = open && formScope.current === scopeKey;
+  useEffect(() => { setOpen(false); setDescription(""); setEmail(userEmail || ""); }, [scopeKey, userEmail]);
 
   const handleSubmit = async () => {
+    if (formScope.current !== scopeKey) return;
     const ok = await create(organizationId, type, description, email);
     if (ok) {
       setOpen(false);
@@ -68,10 +75,10 @@ export function StudentDataSubjectRequests({ userId, organizationId, userEmail }
               Управление персональными данными
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Согласно 152-ФЗ вы можете запросить копию, исправление, отзыв согласия или удаление ваших данных. Срок ответа — 30 дней.
+              {DSR_DEADLINE_HELP}
             </p>
           </div>
-          <Button onClick={() => setOpen(true)} className="rounded-xl gap-2">
+          <Button onClick={() => { formScope.current = scopeKey; setOpen(true); }} className="rounded-xl gap-2">
             <Plus className="w-4 h-4" /> Новый запрос
           </Button>
         </CardHeader>
@@ -103,8 +110,8 @@ export function StudentDataSubjectRequests({ userId, organizationId, userEmail }
                     )}
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Создан: {format(new Date(req.created_at), "dd MMM yyyy", { locale: ru })}</span>
-                      {req.due_date && req.status === "pending" && (
-                        <span>Срок ответа: до {format(new Date(req.due_date), "dd MMM yyyy", { locale: ru })}</span>
+                      {req.due_date && ["pending", "in_progress"].includes(req.status) && (
+                        <span>Контрольная дата: {req.due_date}</span>
                       )}
                       {req.resolved_at && (
                         <span className="flex items-center gap-1">
@@ -113,6 +120,8 @@ export function StudentDataSubjectRequests({ userId, organizationId, userEmail }
                         </span>
                       )}
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">{dsrDeadlineLabel(req.deadline_details)}</p>
+                    {!!req.deadline_details?.extension_days && <p className="text-xs text-muted-foreground">Продление: {req.deadline_details.extension_days} рабочих дней. Уведомление: {req.deadline_details.notice_on}. {req.deadline_details.reason}</p>}
                     {req.response && (
                       <div className="mt-3 pt-3 border-t border-border/60">
                         <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Ответ организации</p>
@@ -124,10 +133,11 @@ export function StudentDataSubjectRequests({ userId, organizationId, userEmail }
               })}
             </div>
           )}
+          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground mt-3"><span>Загружено {loadedCount} из {counts.all} запросов.</span>{hasMore && <Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={loading}>Загрузить ещё</Button>}</div>
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={visibleOpen} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Новый запрос по персональным данным</DialogTitle>
@@ -160,7 +170,7 @@ export function StudentDataSubjectRequests({ userId, organizationId, userEmail }
               />
             </div>
             <div className="bg-muted/40 rounded-xl p-3 text-xs text-muted-foreground">
-              <strong className="text-foreground">Важно:</strong> срок ответа — 30 дней с момента подачи (ст. 14 152-ФЗ). Удаление данных может быть отклонено в случаях, когда хранение требуется по закону (документы об образовании).
+              <strong className="text-foreground">Важно:</strong> {DSR_DEADLINE_HELP} Организация проверяет фактическую дату получения и основание. Обязательные документы не удаляются автоматически; сохранение или отказ требуют конкретного законного основания и ответа.
             </div>
           </div>
           <DialogFooter>

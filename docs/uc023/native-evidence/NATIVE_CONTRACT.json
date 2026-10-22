@@ -1,0 +1,63 @@
+{
+  "status": "FROZEN_SOURCE_ONLY_NOT_EXECUTED_ROOT_EXACT_INVOCATION_REQUIRED",
+  "version": 1,
+  "expectedCases": 3,
+  "expectedDatabases": 3,
+  "maximumCaseDatabaseConnections": 2,
+  "expectedDatabaseNames": [
+    "uc116_case_001",
+    "uc116_case_002",
+    "uc116_case_003"
+  ],
+  "suiteCanonicalPath": "supabase/tests/native/data-subject-requests/data-subject-requests.native.ts",
+  "constructorRawSha256": "97ef6a9e200646b34fe9043d8aa0d2c88ea8afb68227ffbc6f6f6a338968d8e5",
+  "cases": [
+    {
+      "id": "PD01",
+      "title": "PD01 actual operator authority legal calendar history pagination KPI and additive old-data preservation",
+      "evidenceTitle": "actual operator authority legal calendar history pagination KPI and additive old-data preservation"
+    },
+    {
+      "id": "PD02",
+      "title": "PD02 trusted subject erasure cascades own history while actor Auth cleanup retains another subject history",
+      "evidenceTitle": "trusted subject erasure cascades own history while actor Auth cleanup retains another subject history"
+    },
+    {
+      "id": "PD03",
+      "title": "PD03 two actual sessions preserve privacy reads erasure exclusion authority and revision conflicts",
+      "evidenceTitle": "two actual sessions preserve privacy reads erasure exclusion authority and revision conflicts"
+    }
+  ],
+  "appendMigration": {
+    "path": "supabase/migrations/20261021200000_uc_scoped_journal_context_exports.sql",
+    "rawSHA256": "3c1b1de82823ec589a374cc6cb3255573fd16b9ce0e29c4605909052796f4cb3",
+    "oldFourOnlyProsrc": true
+  },
+  "expectedNewFunctions": 25,
+  "expectedNewTables": 5,
+  "expectedParentFKTriggers": 6,
+  "unchangedBaseMigrationsCanonicalSHA256": {
+    "20261019120000_uc_group_education_facts.sql": "b54b161b9670f5e06d80fca10413033b2b800c3cb6b5e519069d05b0b349c07b",
+    "20261020140000_uc_learning_outcome_foundation.sql": "aaf22aea94055562f3fcfcf31d97a6bbeb1adad99f96c3d7e94c050d5472d978",
+    "20261020150000_uc_server_custom_journals.sql": "c91de9e7586780b1a7cc823f5ea19860e7acd70eab3bbbfddc5be6314ccd15d8",
+    "20261021160000_uc_conducted_sessions.sql": "49452c2b93d780b28f0ebe3570db28575efefd4a34eedb46f506da6a7ea13200"
+  },
+  "accepted614RawSHA256": "c97e13ce49e95cb1410815b91eb30465eef9db03615f9e4be78e4c65b99a5dc0",
+  "strictActualClientVerifier": "src/lib/customJournals/scopedExport.ts#verifyScopedJournalExport",
+  "nativeCatalogFile": null,
+  "oldGenericFiveNotRerunOrClaimed": true,
+  "oldFullCycleTenNotRerunOrClaimed": true,
+  "appendMigration617": {
+    "path": "supabase/migrations/20261022203000_uc_shared_journal_privacy_fence.sql",
+    "rawSHA256": "263822e6cf4acc65435948a7d384f496e8feab944a6f2f0dcba15f4c431af17d"
+  },
+  "scope": "Focused actual UC023 native authority/calendar/history/CAS/privacy on accepted615+617+618. No616 installed; exact618 current worker bridges installed and no ledger or permission stubs. Production full preservation guarded separately.",
+  "appendMigration618": {
+    "path": "supabase/migrations/20261022210000_uc_copy_registry.sql",
+    "rawSHA256": "0fd7a0e3595a96cf7acec44e02fb83c155a702ab7f8346178032e091d050789e"
+  },
+  "appendMigration023": {
+    "path": "supabase/migrations/20261022220000_uc_personal_data_request_deadlines.sql",
+    "rawSHA256": "53b11125da06f9024685c962c93978652fd3f6af70101ff46b300085d95ed05f"
+  }
+}

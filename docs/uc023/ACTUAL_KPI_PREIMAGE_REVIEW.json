@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-10-22T09:57:50.433Z",
+  "source": "../uc-continuous-roadmap-20261022/ACTUAL_UC023_DSR_KPI_METADATA.json",
+  "actualBodyMd5": "7b1d582dbaea5a699b554aa0e90e98b0",
+  "oldRepositoryBodyMd5": "bf2a4257aa25cc98c117cf493fd37af3",
+  "delta": "Exactly one organization-wide scope guard inserted afterBEGIN; removing that one exact line restores old repository prosrc byte-for-byte. No other body delta.",
+  "guard": "IF NOT public.uc_document_scope_allowed(p_organization_id,NULL,NULL) THEN RAISE EXCEPTION 'organization_wide_document_scope_required' USING ERRCODE='42501'; END IF;",
+  "newMigration": "Raw guard now requires ONLY actual7b1 preimage. Finite replacements remain PD declaration+PD count block+new JSON key; existing organization-wide scope guard is preserved unmodified.",
+  "executedSql": false
+}
