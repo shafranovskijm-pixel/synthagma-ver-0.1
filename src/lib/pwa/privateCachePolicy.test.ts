@@ -99,3 +99,27 @@ describe('private runtime cache policy', () => {
     expect([...rows.get(name)!.keys()]).toEqual([shell]);
   });
 });
+
+describe('classic worker concurrent cleanup receipts', () => {
+  function loadWorker(storage: any) {
+    const events = new Map<string, any>(); class WorkerScope {}
+    const worker = Object.assign(new WorkerScope(), { location: { origin }, caches: storage, addEventListener: (name: string, fn: any) => events.set(name, fn) });
+    Object.defineProperty(worker, 'indexedDB', { get: () => { throw new Error('IDB must remain untouched'); } });
+    new Function('self', 'ServiceWorkerGlobalScope', privateCleanupWorkerSource())(worker, WorkerScope);
+    return events;
+  }
+  it('coalesces activation and requests from two tabs, acknowledges each only after the shared cleanup, and rescans next time', async () => {
+    let finish!: (names: string[]) => void; const keys = vi.fn(() => new Promise<string[]>(resolve => { finish = resolve; })); const events = loadWorker({ keys });
+    const tasks: Promise<void>[] = [], first = vi.fn(), second = vi.fn();
+    events.get('activate')({ waitUntil: (task: Promise<void>) => tasks.push(task) });
+    for (const postMessage of [first, second]) events.get('message')({ data: { type: 'SINTAGMA_CLEAN_PRIVATE_RUNTIME_CACHES' }, ports: [{ postMessage }], waitUntil: (task: Promise<void>) => tasks.push(task) });
+    await Promise.resolve(); expect(keys).toHaveBeenCalledOnce(); expect(first).not.toHaveBeenCalled(); expect(second).not.toHaveBeenCalled(); finish([]); await Promise.all(tasks);
+    expect(first).toHaveBeenCalledWith({ ok: true, policyVersion: 2 }); expect(second).toHaveBeenCalledWith({ ok: true, policyVersion: 2 });
+    keys.mockResolvedValue([]); let next!: Promise<void>; events.get('message')({ data: { type: 'SINTAGMA_CLEAN_PRIVATE_RUNTIME_CACHES' }, ports: [{ postMessage: vi.fn() }], waitUntil: (task: Promise<void>) => { next = task; } }); await next; expect(keys).toHaveBeenCalledTimes(2);
+  });
+  it('reports an actual cleanup error rather than success and permits a later fresh retry', async () => {
+    const keys = vi.fn().mockRejectedValueOnce(new Error('storage failed')).mockResolvedValue([]); const events = loadWorker({ keys }); const postMessage = vi.fn(); let task!: Promise<void>;
+    const request = () => events.get('message')({ data: { type: 'SINTAGMA_CLEAN_PRIVATE_RUNTIME_CACHES' }, ports: [{ postMessage }], waitUntil: (value: Promise<void>) => { task = value; } });
+    request(); await task; expect(postMessage).toHaveBeenLastCalledWith({ ok: false, policyVersion: 2, error: 'CLEANUP_FAILED' }); request(); await task; expect(postMessage).toHaveBeenLastCalledWith({ ok: true, policyVersion: 2 }); expect(keys).toHaveBeenCalledTimes(2);
+  });
+});

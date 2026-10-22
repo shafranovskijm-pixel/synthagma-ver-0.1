@@ -5,7 +5,14 @@ import { installLegacyProxyBadgeKiller } from "./utils/legacyProxyBadgeKiller";
 import { installErrorReporter } from "./utils/errorReporter";
 import { installNativeDownloads } from "./mobile/nativeDownloads";
 import { nativeStartupUrl } from "./mobile/nativeNavigation";
-import { clearPrivateRuntimeCaches, refreshApplicationCaches, ensurePrivateRuntimePolicy } from './utils/privateRuntimeCacheCleanup';
+import { clearPrivateRuntimeCaches, refreshApplicationCaches, ensurePrivateRuntimePolicy, startAfterPrivateRuntimePolicy, PrivateRuntimePolicyError, installPrivateRuntimeFetchFence } from './utils/privateRuntimeCacheCleanup';
+
+const isNative = Capacitor.isNativePlatform();
+const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
+const privatePolicyRequired = !isNative && !isPreview && import.meta.env.PROD;
+// Gate the native transport before existing wrappers capture it. This also
+// protects import-time Auth refresh and proxy retries after controller changes.
+if (privatePolicyRequired) installPrivateRuntimeFetchFence();
 
 // Перехватчик fetch для обхода корпоративных блокировок Supabase-доменов
 // через резервные субдомены (api/functions/storage.sintagma.com.ru)
@@ -28,14 +35,14 @@ installNativeDownloads();
 
 declare const __BUILD_TIMESTAMP__: string;
 
-const isNative = Capacitor.isNativePlatform();
+
 // Start at sign-in, but preserve ordinary /privacy and other same-app links
 // when the native server serves them as a fresh hashless document.
 const nativeRoute = isNative ? nativeStartupUrl(window.location) : null;
 if (nativeRoute) {
   window.history.replaceState(null, '', nativeRoute);
 }
-const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
+
 
 const BUILD_GUARD_KEY = '__build_refresh_guard';
 const REMOTE_GUARD_KEY = '__remote_refresh_guard';
@@ -46,7 +53,8 @@ const currentVersion = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIME
 
 // Skip build-version reload if bootstrap already did a session-guard reload
 const bootstrapJustReloaded = isPreview && sessionStorage.getItem('__purge_preview_session') === '1';
-const privatePolicyReady = !isNative && !isPreview && import.meta.env.PROD ? ensurePrivateRuntimePolicy() : Promise.resolve();
+
+const privatePolicyReady = privatePolicyRequired ? ensurePrivateRuntimePolicy() : Promise.resolve();
 
 async function purgeAllCaches() {
   await refreshApplicationCaches();
@@ -54,7 +62,9 @@ async function purgeAllCaches() {
 
 (async () => {
   await privatePolicyReady;
-  await clearPrivateRuntimeCaches();
+  // The production barrier already waits for the current worker full cleanup.
+  // Avoid repeating that scan concurrently with App startup.
+  if (!privatePolicyRequired) await clearPrivateRuntimeCaches();
   // Legacy login prefill exists only in memory. Defer cache/SW reloads for this
   // document instead of persisting credentials or losing them after a release.
   if ((window as Window & { __sintagmaLegacyLoginEntry?: boolean }).__sintagmaLegacyLoginEntry) return;
@@ -113,17 +123,29 @@ async function purgeAllCaches() {
 })().catch(() => { /* bootstrapApp renders the reconnect boundary. */ });
 
 async function bootstrapApp() {
-  await privatePolicyReady;
-  const [{ createRoot }, { default: App }] = await Promise.all([
-    import("react-dom/client"),
-    import("./App.tsx"),
-  ]);
-
-  const root = document.getElementById("root")!;
-  createRoot(root).render(<App />);
+  const prepare = () => Promise.all([import("react-dom/client"), import("./App.tsx")]);
+  const start = ([{ createRoot }, { default: App }]: Awaited<ReturnType<typeof prepare>>) => {
+    const root = document.getElementById("root")!;
+    createRoot(root).render(<App />);
+  };
+  if (privatePolicyRequired) await startAfterPrivateRuntimePolicy(prepare, start);
+  else { await privatePolicyReady; start(await prepare()); }
 }
 
-void bootstrapApp().catch(() => {
+void bootstrapApp().catch(error => {
+  const policyCode = error instanceof PrivateRuntimePolicyError ? error.code : null;
+  // Finite diagnostics only: do not log private URLs, auth state or raw errors.
+  console.warn('[startup]', { phase: policyCode ? 'private-policy' : 'application-load', code: policyCode || 'APPLICATION_LOAD_FAILED' });
   const root = document.getElementById('root');
-  if (root) root.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center"><p>Подключитесь к Интернету и обновите страницу, чтобы безопасно открыть кабинет.</p><button class="underline" onclick="location.reload()">Обновить страницу</button></div>';
+  if (!root) return;
+  const boundary = document.createElement('div'); boundary.className = 'min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center';
+  const message = document.createElement('p');
+  message.textContent = policyCode === 'CLEANUP_FAILED'
+    ? 'Не удалось безопасно подготовить локальные данные. Обновите страницу, чтобы повторить проверку.'
+    : policyCode ? 'Не удалось подтвердить безопасное обновление кабинета. Обновите страницу, чтобы повторить проверку.'
+      : 'Не удалось загрузить приложение. Проверьте соединение и обновите страницу.';
+  const diagnostic = document.createElement('p'); diagnostic.className = 'text-sm text-muted-foreground';
+  diagnostic.textContent = 'Код проверки: ' + (policyCode || 'APPLICATION_LOAD_FAILED');
+  const retry = document.createElement('button'); retry.className = 'underline'; retry.textContent = 'Обновить страницу'; retry.addEventListener('click', () => location.reload());
+  boundary.append(message, diagnostic, retry); root.replaceChildren(boundary);
 });
