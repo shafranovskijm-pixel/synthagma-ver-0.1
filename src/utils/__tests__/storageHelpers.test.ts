@@ -175,4 +175,16 @@ describe("private storage file actions", () => {
     await expect(downloadPrivateFile("org-documents", "org/private.pdf")).resolves.toBe(false);
     expect(click).not.toHaveBeenCalled();
   });
+  it("refuses a late private body at final handoff after the scoped actor/context changed", async () => {
+    let finishBody!: (blob: Blob) => void, live = true;
+    mocks.createSignedUrl.mockResolvedValue({ data: { signedUrl: "https://storage.example/programme.pdf" }, error: null });
+    const body = vi.fn(() => new Promise<Blob>(resolve => { finishBody = resolve; }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ "content-type": "application/pdf" }), blob: body }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype,"click").mockImplementation(()=>undefined);
+    const create = vi.fn(); vi.stubGlobal("URL",class extends URL {static createObjectURL=create;static revokeObjectURL=vi.fn();});
+    const pending=downloadPrivateFile("org-documents","org/programme.pdf","Программа.pdf",{assertCurrent:()=>{if(!live)throw Error('old owner');}});
+    await vi.advanceTimersByTimeAsync(0);expect(body).toHaveBeenCalledOnce();
+    live=false;finishBody(new Blob(['%PDF-synthetic']));await expect(pending).resolves.toBe(false);
+    expect(click).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();
+  });
 });

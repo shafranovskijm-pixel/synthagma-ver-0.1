@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import type { ScopedOrgDocumentTransport } from "@/lib/programFiles";
 import { parseProgramList, parseCourseBinding, parseGroupProgramFacts, programCandidatesSchema, programFactsSchema,
   programVersionSchema, programFactsReady, courseBindingSchema, groupBindingSchema, enrollmentSnapshotSchema,
   type ProgramCandidates, type ProgramEnvelope, type ProgramFacts } from "@/lib/programFacts";
@@ -9,7 +10,8 @@ const rpc = (name: string, args: Record<string, unknown>) => (supabase.rpc as an
 const validId = (value: string) => z.string().uuid().safeParse(value).success;
 type ResourceState<T> = { key: string; data: T | null; loading: boolean; saving: boolean; error: string | null; conflict: boolean; denied: boolean; saved: boolean };
 /** An uncertain write retains its UUID and body. A receipt is followed by a fresh read. */
-function useFactsResource<T>(key: string, enabled: boolean, read: () => Promise<T>) {
+function useFactsResource<T>(key: string, enabled: boolean, read: () => Promise<T>, transport?: ScopedOrgDocumentTransport) {
+  const currentScope = () => { try { transport?.assertCurrent(); return true; } catch { return false; } };
   const active = useRef(key), generation = useRef(0), busy = useRef(false);
   const pending = useRef<{ fingerprint: string; requestId: string } | null>(null);
   const empty = (): ResourceState<T> => ({ key, data: null, loading: enabled, saving: false, error: null, conflict: false, denied: false, saved: false });
@@ -19,23 +21,23 @@ function useFactsResource<T>(key: string, enabled: boolean, read: () => Promise<
     return () => { ++generation.current; };
   }, [key]);
   const reload = useCallback(async () => {
-    if (!enabled || active.current !== key || busy.current) return;
+    if (!enabled || active.current !== key || busy.current || !currentScope()) return;
     const run = ++generation.current;
     setState(s => ({ ...s, loading: true, error: null, saved: false }));
     try {
       const data = await read();
-      if (active.current !== key || generation.current !== run) return;
+      if (active.current !== key || generation.current !== run || !currentScope()) return;
       pending.current = null;
       setState({ ...empty(), data, loading: false });
     } catch (e: any) {
-      if (active.current !== key || generation.current !== run) return;
+      if (active.current !== key || generation.current !== run || !currentScope()) return;
       setState({ ...empty(), loading: false, denied: e?.code === "42501",
         error: e?.code === "42501" ? "Сведения о программе недоступны с вашими правами." : "Не удалось загрузить программу. Повторите загрузку." });
     }
   }, [key, enabled, read]);
   useEffect(() => { void reload(); }, [reload]);
   const mutate = async (name: string, body: Record<string, unknown>, validate: (value: unknown) => void): Promise<boolean> => {
-    if (!enabled || active.current !== key || state.key !== key || !state.data || state.loading || state.conflict || state.denied || busy.current) return false;
+    if (!enabled || active.current !== key || state.key !== key || !state.data || state.loading || state.conflict || state.denied || busy.current || !currentScope()) return false;
     const fingerprint = JSON.stringify([name, body]);
     if (pending.current && pending.current.fingerprint !== fingerprint) {
       setState(s => ({ ...s, error: "Исход предыдущего сохранения неизвестен. Повторите то же действие или обновите сведения перед другим действием." }));
@@ -47,19 +49,19 @@ function useFactsResource<T>(key: string, enabled: boolean, read: () => Promise<
     let committed = false;
     setState(s => ({ ...s, saving: true, error: null, saved: false }));
     try {
-      const result = await rpc(name, { ...body, p_request_id: pending.current.requestId });
+      const result = await (transport?.rpc ?? rpc)(name, { ...body, p_request_id: pending.current.requestId });
       if (result.error) throw result.error;
       validate(result.data);
       committed = true;
-      if (active.current !== key || generation.current !== run) return false;
+      if (active.current !== key || generation.current !== run || !currentScope()) return false;
       pending.current = null;
       const data = await read();
-      if (active.current !== key || generation.current !== run) return false;
+      if (active.current !== key || generation.current !== run || !currentScope()) return false;
       setState({ ...empty(), data, loading: false, saved: true });
       return true;
     } catch (e: any) {
-      if (active.current !== key || generation.current !== run) return false;
-      const conflict = e?.code === "40001" || e?.code === "55000";
+      if (active.current !== key || generation.current !== run || !currentScope()) return false;
+      const conflict = e?.code === "40001" || e?.code === "55000" || !!transport && e?.code === "PT409";
       if (conflict || e?.code === "42501" || e?.code === "22023") pending.current = null;
       setState(s => ({ ...s, data: committed ? null : s.data, saving: false, loading: false, saved: committed, conflict, denied: e?.code === "42501",
         error: committed ? "Изменение сохранено, но текущее состояние не загрузилось. Обновите сведения перед следующим действием."
@@ -70,28 +72,30 @@ function useFactsResource<T>(key: string, enabled: boolean, read: () => Promise<
       return false;
     } finally { if (active.current === key && generation.current === run) busy.current = false; }
   };
-  const exposed = state.key === key ? state : empty();
+  const exposed = state.key === key && currentScope() ? state : empty();
   return { ...exposed, reload, mutate, usable: !!exposed.data && !exposed.loading && !exposed.saving && !exposed.conflict && !exposed.denied };
 }
 
 type ProgramListState = { programs: ProgramEnvelope[]; candidates: ProgramCandidates | null; candidatesError: string | null };
 type CreateVersion = { programId: string; name: string; description: string; fileVersionId: string; reviewerId: string; facts: ProgramFacts };
-export function useProgramFacts(organizationId: string | null, canConfigure = false) {
+export function useProgramFacts(organizationId: string | null, canConfigure = false, transport?: ScopedOrgDocumentTransport) {
   const org = organizationId ?? "";
   const read = useCallback(async (): Promise<ProgramListState> => {
-    const result = await rpc("list_program_facts", { p_organization_id: org });
+    const result = await (transport?.rpc ?? rpc)("list_program_facts", { p_organization_id: org });
+    transport?.assertCurrent();
     if (result.error) throw result.error;
     const programs = parseProgramList(result.data, org);
     if (!canConfigure) return { programs, candidates: null, candidatesError: null };
     try {
-      const choices = await rpc("list_program_facts_candidates", { p_organization_id: org });
+      const choices = await (transport?.rpc ?? rpc)("list_program_facts_candidates", { p_organization_id: org });
+      transport?.assertCurrent();
       if (choices.error) throw choices.error;
       return { programs, candidates: programCandidatesSchema.parse(choices.data), candidatesError: null };
     } catch {
       return { programs, candidates: null, candidatesError: "Не удалось получить доступные файлы и сотрудников. История программ доступна; для изменений повторите загрузку." };
     }
-  }, [org, canConfigure]);
-  const h = useFactsResource(`programs:${org}:${canConfigure}`, !!org, read);
+  }, [org, canConfigure, transport]);
+  const h = useFactsResource(`programs:${org}:${canConfigure}${transport ? ':' + transport.key : ''}`, !!org, read, transport);
   const createVersion = async (input: CreateVersion) => {
     const p = h.data?.programs.find(p => p.program.id === input.programId), c = h.data?.candidates;
     if (!h.usable || !canConfigure || !c || !validId(input.programId) || !input.name.trim()
@@ -120,14 +124,14 @@ export function useProgramFacts(organizationId: string | null, canConfigure = fa
     candidatesError: h.data?.candidatesError ?? null, createVersion, transition };
 }
 
-export function useCourseProgramBinding(organizationId: string | null, courseId: string | null, canConfigure = false) {
+export function useCourseProgramBinding(organizationId: string | null, courseId: string | null, canConfigure = false, transport?: ScopedOrgDocumentTransport) {
   const org = organizationId ?? "", course = courseId ?? "";
   const read = useCallback(async () => {
-    const r = await rpc("get_course_program_binding", { p_organization_id: org, p_course_id: course });
+    const r = await (transport?.rpc ?? rpc)("get_course_program_binding", { p_organization_id: org, p_course_id: course });
     if (r.error) throw r.error;
     return parseCourseBinding(r.data, org, course);
-  }, [org, course]);
-  const h = useFactsResource(`course:${org}:${course}:${canConfigure}`, !!org && !!course, read);
+  }, [org, course, transport]);
+  const h = useFactsResource(`course:${org}:${course}:${canConfigure}${transport ? ':' + transport.key : ''}`, !!org && !!course, read, transport);
   const bind = async (versionId: string) => {
     if (!h.usable || !canConfigure || !h.data || !validId(versionId)) return false;
     return h.mutate("bind_course_program_version", { p_organization_id: org, p_course_id: course,

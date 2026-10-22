@@ -81,7 +81,7 @@ describe("organization version history permissions and event UI",()=>{
   });
   it("shows readable history but no upload controls and disables restoration without write rights",()=>{
     render(<OrgDocumentVersionsDialog {...props} />);
-    expect(state.read).toHaveBeenCalledWith("doc",false);
+    expect(state.read).toHaveBeenCalledWith("doc",false,undefined);
     expect(screen.getByText("Снимок на дату операции")).toBeInTheDocument();
     expect(screen.queryByRole("button",{name:"Загрузить новую версию"})).not.toBeInTheDocument();
     screen.getAllByTitle("Сделать актуальной").forEach(button=>expect(button).toBeDisabled());
@@ -103,7 +103,18 @@ describe("organization version history permissions and event UI",()=>{
   });
   it("does not fetch document history while its dialog is closed",()=>{
     render(<OrgDocumentVersionsDialog {...props} open={false} canWrite />);
-    expect(state.read).toHaveBeenCalledWith(null,true);
+    expect(state.read).toHaveBeenCalledWith(null,true,undefined);
+  });
+  it("forwards an opt-in programme scope into history/download and suppresses a late browser receipt",async()=>{
+    let live=true,finish!:(v:boolean)=>void;
+    const transport={key:'programme-owner',assertCurrent:()=>{if(!live)throw Error('old context');},signUrl:vi.fn(),rpc:vi.fn(),readDocument:vi.fn(),readVersions:vi.fn(),saveUpload:vi.fn(),restore:vi.fn()};
+    state.download.mockImplementation(()=>new Promise<boolean>(resolve=>{finish=resolve;}));
+    render(<OrgDocumentVersionsDialog {...props} transport={transport} accept="application/pdf,.pdf"/>);
+    expect(state.read).toHaveBeenCalledWith('doc',false,transport);
+    fireEvent.click(screen.getAllByTitle('Скачать')[0]);
+    expect(state.download).toHaveBeenCalledWith('org-documents',versions[0].file_url,'Лицензия',expect.objectContaining({assertCurrent:transport.assertCurrent,signUrl:transport.signUrl}));
+    live=false;await act(async()=>finish(true));
+    expect(screen.queryByText('Файл передан браузеру для сохранения.')).not.toBeInTheDocument();
   });
 });
 

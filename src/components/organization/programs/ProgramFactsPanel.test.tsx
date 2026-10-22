@@ -4,6 +4,9 @@ import { ids, programEnvelope, programVersion } from "./programFacts.fixtures";
 const mocks = vi.hoisted(() => ({ programs: {} as any, course: {} as any, usePrograms: vi.fn(), useCourse: vi.fn() }));
 vi.mock("@/hooks/useProgramFacts", () => ({ useProgramFacts: (...a: any[]) => { mocks.usePrograms(...a); return mocks.programs; }, useCourseProgramBinding: (...a: any[]) => { mocks.useCourse(...a); return mocks.course; } }));
 vi.mock("@/components/organization/OrgDocumentVersionsDialog", () => ({ OrgDocumentVersionsDialog: ({ open, documentId }: any) => open ? <div data-testid="file-history">{documentId}</div> : null }));
+vi.mock("@/hooks/useProgramFileAccess", () => ({ useProgramFileAccess: (org: string, canConfigure: boolean) => ({ scope: { actorId:'actor',organizationId:org,accessRevision:1,key:org,current:()=>true },ownerKey:org,canWrite:canConfigure,canRead:true,loading:false }) }));
+vi.mock("@/lib/programFiles", () => ({ createScopedOrgDocumentTransport:(scope:any)=>({key:scope.key,assertCurrent:()=>undefined}),programFileScopeCurrent:(scope:any)=>scope.current() }));
+vi.mock("./ProgramFileManagerDialog", () => ({ ProgramFileManagerDialog: ({open,onChanged}:any)=>open ? <div data-testid="programme-files"><button onClick={onChanged}>Обновить согласованные файлы</button></div> : null }));
 // Native select preserves selection events while keeping these tests focused on programme decisions.
 vi.mock("@/components/ui/select", async () => {
   const { Children, isValidElement } = await import("react");
@@ -53,7 +56,7 @@ describe("ProgramFactsPanel decisions", () => {
     fireEvent.change(screen.getByLabelText("Утверждённая версия для курса"), { target: { value: ids.version } });
     fireEvent.click(screen.getByRole("button", { name: "Связать с курсом для будущих групп" }));
     expect(mocks.course.bind).toHaveBeenCalledWith(ids.version);
-    expect(mocks.useCourse).toHaveBeenLastCalledWith(ids.org, ids.course, true);
+    expect(mocks.useCourse).toHaveBeenLastCalledWith(ids.org, ids.course, true, expect.objectContaining({key:ids.org}));
   });
   it("does not silently duplicate an uncertain save after reload reveals that the programme changed", async () => {
     const view = render(<ProgramFactsPanel organizationId={ids.org} canConfigure />); openDraft();
@@ -91,5 +94,15 @@ describe("ProgramFactsPanel decisions", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Сведения недоступны");
     expect(screen.queryByText(/Версии программы со сведениями пока не созданы/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Добавить программу" })).toBeDisabled();
+  });
+  it("offers the separate PDF path when approved candidates are empty, without creating or approving facts", () => {
+    mocks.programs.candidates.files=[];
+    render(<ProgramFactsPanel organizationId={ids.org} canConfigure/>);
+    fireEvent.click(screen.getByRole('button',{name:'Добавить программу'}));
+    expect(screen.getByText(/Откройте «Файлы программ», загрузите PDF/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Файлы программ'}));
+    expect(screen.getByTestId('programme-files')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Обновить согласованные файлы'}));
+    expect(mocks.programs.reload).toHaveBeenCalledOnce(); expect(mocks.programs.createVersion).not.toHaveBeenCalled(); expect(mocks.programs.transition).not.toHaveBeenCalled();
   });
 });

@@ -89,8 +89,16 @@ export const openPrivateFile = async (
  * a successful signing response alone does not prove the file was retrieved.
  */
 export type PrivateDownloadProgress = "preparing" | "downloading" | "handed_to_browser" | "failed" | "timed_out" | "cancelled";
+export interface PrivateDownloadSigningInput {
+  bucket: string; path: string; expiresIn: number; downloadName: string; signal: AbortSignal; deadline: number;
+}
+export type PrivateDownloadSigner = (input: PrivateDownloadSigningInput) => Promise<string | null>;
 export interface PrivateDownloadOptions {
   onProgress?: (progress: PrivateDownloadProgress) => void;
+  /** Optional current actor/context guard for scoped callers. No new access is granted. */
+  assertCurrent?: () => void;
+  /** Optional original-actor signing transport. Legacy callers retain the standard SDK. */
+  signUrl?: PrivateDownloadSigner;
   signal?: AbortSignal;
 }
 const PRIVATE_DOWNLOAD_DEADLINE_MS = 45000;
@@ -118,6 +126,7 @@ export const downloadPrivateFile = async (
   if (options.signal?.aborted) cancel();
   const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, PRIVATE_DOWNLOAD_DEADLINE_MS);
   const ensureActive = () => {
+    options.assertCurrent?.();
     if (!controller.signal.aborted && Date.now() >= deadline) { timedOut = true; controller.abort(); }
     if (controller.signal.aborted) throw new DOMException("Download stopped", "AbortError");
   };
@@ -137,7 +146,9 @@ export const downloadPrivateFile = async (
   });
   try {
     ensureActive(); report("preparing");
-    const signedUrl = await waitFor(getSignedStorageUrl(bucket, path, 3600, downloadName));
+    const signedUrl = await waitFor(options.signUrl
+      ? options.signUrl({ bucket, path, expiresIn: 3600, downloadName, signal: controller.signal, deadline })
+      : getSignedStorageUrl(bucket, path, 3600, downloadName));
     ensureActive();
     if (!signedUrl) { report("failed"); return false; }
     report("downloading");

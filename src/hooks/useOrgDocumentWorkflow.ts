@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { ScopedOrgDocumentTransport } from "@/lib/programFiles";
 import { canApproveWorkflow, normalizeWorkflowLinks, parseWorkflowEnvelope, validApprovalDate, workflowCandidatesSchema, workflowSchema,
   type WorkflowCandidates, type WorkflowEnvelope, type WorkflowLink } from "@/lib/orgDocumentWorkflow";
 
 type State = { key: string; data: WorkflowEnvelope | null; candidates: WorkflowCandidates | null; loading: boolean; saving: boolean;
   error: string | null; denied: boolean; conflict: boolean; saved: boolean };
 const rpc = (name: string, args: Record<string, unknown>) => (supabase.rpc as any)(name, args);
-export function useOrgDocumentWorkflow(organizationId: string, documentId: string | null, refreshKey?: string | null) {
-  const key = `${organizationId}:${documentId ?? ""}:${refreshKey ?? ""}`;
+export function useOrgDocumentWorkflow(organizationId: string, documentId: string | null, refreshKey?: string | null, transport?: ScopedOrgDocumentTransport) {
+  const key = `${organizationId}:${documentId ?? ""}:${refreshKey ?? ""}${transport ? ':' + transport.key : ''}`;
+  const currentScope = () => { try { transport?.assertCurrent(); return true; } catch { return false; } };
   const active = useRef(key), generation = useRef(0), busy = useRef(false);
   const pending = useRef<{ key: string; requestId: string } | null>(null);
   const empty = (): State => ({ key, data: null, candidates: null, loading: !!documentId, saving: false, error: null, denied: false, conflict: false, saved: false });
@@ -18,26 +20,28 @@ export function useOrgDocumentWorkflow(organizationId: string, documentId: strin
   }, [key]);
 
   const readCurrent = useCallback(async () => {
-    const result = await rpc("get_org_document_workflow", { p_document_id: documentId });
+    const result = await (transport?.rpc ?? rpc)("get_org_document_workflow", { p_document_id: documentId });
+    transport?.assertCurrent();
     if (result.error) throw result.error;
     const data = parseWorkflowEnvelope(result.data, documentId!, organizationId);
     // Selector RPC is write-only. A read-only history view must not require it.
     if (!data.capabilities.can_configure) return { data, candidates: null };
-    const choices = await rpc("list_org_document_review_candidates", { p_document_id: documentId });
+    const choices = await (transport?.rpc ?? rpc)("list_org_document_review_candidates", { p_document_id: documentId });
+    transport?.assertCurrent();
     if (choices.error) throw choices.error;
     return { data, candidates: workflowCandidatesSchema.parse(choices.data) };
-  }, [documentId, organizationId]);
+  }, [documentId, organizationId, transport]);
   const reload = useCallback(async () => {
-    if (!documentId || active.current !== key || busy.current) return;
+    if (!documentId || active.current !== key || busy.current || !currentScope()) return;
     const run = ++generation.current;
     setState(empty());
     try {
       const loaded = await readCurrent();
-      if (active.current !== key || run !== generation.current) return;
+      if (active.current !== key || run !== generation.current || !currentScope()) return;
       pending.current = null;
       setState({ ...empty(), ...loaded, loading: false });
     } catch (error: any) {
-      if (active.current !== key || run !== generation.current) return;
+      if (active.current !== key || run !== generation.current || !currentScope()) return;
       setState({ ...empty(), loading: false, denied: error?.code === "42501",
         error: error?.code === "42501" ? "Внутреннее согласование этого документа недоступно с вашими правами." : "Не удалось загрузить согласование. Повторите загрузку." });
     }
@@ -45,7 +49,7 @@ export function useOrgDocumentWorkflow(organizationId: string, documentId: strin
   useEffect(() => { void reload(); }, [reload]);
 
   const mutate = async (name: string, args: Record<string, unknown>): Promise<boolean> => {
-    if (!documentId || active.current !== key || state.key !== key || !state.data || state.loading || state.conflict || busy.current) return false;
+    if (!documentId || active.current !== key || state.key !== key || !state.data || state.loading || state.conflict || busy.current || !currentScope()) return false;
     const requestKey = JSON.stringify([name, args]);
     if (pending.current && pending.current.key !== requestKey) {
       setState(s => ({ ...s, error: "Исход предыдущего сохранения не подтверждён. Повторите его или обновите документ перед другим действием." }));
@@ -57,21 +61,21 @@ export function useOrgDocumentWorkflow(organizationId: string, documentId: strin
     setState(s => ({ ...s, saving: true, error: null, saved: false }));
     let committed = false;
     try {
-      const result = await rpc(name, { ...args, p_request_id: pending.current.requestId });
+      const result = await (transport?.rpc ?? rpc)(name, { ...args, p_request_id: pending.current.requestId });
       if (result.error) throw result.error;
       const w = workflowSchema.parse(result.data);
       if (w.document_id !== documentId || w.organization_id !== organizationId || w.version_id !== state.data.document.current_version_id) throw new Error("Unexpected workflow result");
       committed = true;
-      if (active.current !== key || run !== generation.current) return false;
+      if (active.current !== key || run !== generation.current || !currentScope()) return false;
       pending.current = null;
       // A replay is the original receipt, not necessarily the current workflow.
       const loaded = await readCurrent();
-      if (active.current !== key || run !== generation.current) return false;
+      if (active.current !== key || run !== generation.current || !currentScope()) return false;
       setState({ ...empty(), ...loaded, loading: false, saved: true });
       return true;
     } catch (error: any) {
-      if (active.current !== key || run !== generation.current) return false;
-      const conflict = error?.code === "40001" || error?.code === "55000";
+      if (active.current !== key || run !== generation.current || !currentScope()) return false;
+      const conflict = error?.code === "40001" || error?.code === "55000" || !!transport && error?.code === "PT409";
       if (conflict || error?.code === "42501" || error?.code === "22023") pending.current = null;
       setState(s => ({ ...s, data: committed ? null : s.data, candidates: committed ? null : s.candidates,
         saving: false, loading: false, conflict, denied: error?.code === "42501", saved: committed,
@@ -116,5 +120,5 @@ export function useOrgDocumentWorkflow(organizationId: string, documentId: strin
     return mutate("resolve_org_document_review_comment", { p_comment_id: commentId, p_expected_workflow_revision: w.revision,
       p_resolution: resolution, p_reply: reply.trim() || null });
   };
-  return { ...(state.key === key ? state : empty()), reload, saveDraft, transition, addComment, resolveComment };
+  return { ...(state.key === key && currentScope() ? state : empty()), reload, saveDraft, transition, addComment, resolveComment };
 }
