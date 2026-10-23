@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { cacheDashboardData, getCachedDashboardData, captureOfflineActor, isOfflineActorCurrent,
-  rememberOfflineScope, getOfflineScope, forgetOfflineScope, mayUseOfflineFallback } from "@/utils/courseCache";
+  rememberOfflineScope, getOfflineScope, forgetOfflineScope, mayUseOfflineFallback, isOfflineScopeCurrent, type OfflineScope } from "@/utils/courseCache";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
@@ -138,6 +138,7 @@ export function useStudentDashboard() {
   const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<{generation:number;kind:'unavailable'}|null>(null);
+  const [offlineCopy, setOfflineCopy] = useState<{generation:number;request:number;scope:OfflineScope}|null>(null);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
   const [isPreviewMode] = useState(false);
@@ -261,7 +262,7 @@ export function useStudentDashboard() {
     setTotalTimeSpent(0); setTotalCompletedLessons(0); setIsVideoIdentified(false);
     setDocumentsProgress({ completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
     setShowOnboarding(false); setShowVideoIdentification(false); setShowDocumentsUpload(false); setShowConsentForm(false);
-    setMessages(initialMessages); setInputValue(''); setIsAiLoading(false); setLoadedGeneration(-1); setSettledGeneration(-1); setLoadError(null);
+    setMessages(initialMessages); setInputValue(''); setIsAiLoading(false); setLoadedGeneration(-1); setSettledGeneration(-1); setLoadError(null); setOfflineCopy(null);
     if ((snapshotAccessDenied || snapshotUnconfirmed) && user && effectiveUserId) forgetOfflineScope(user.id, effectiveUserId, mode, 'dashboard');
     if (effectiveUserId && user && !authLoading && !snapshotAccessDenied && !snapshotUnconfirmed) { void loadData(); }
     else { setLoading(false); setSettledGeneration(identityRef.current.generation); }
@@ -323,6 +324,7 @@ export function useStudentDashboard() {
     const boundedQuery = <T,>(query:T):T => typeof (query as {abortSignal?:unknown}).abortSignal === 'function' ? (query as T & {abortSignal:(signal:AbortSignal)=>T}).abortSignal(controller.signal) : query;
     setLoading(true);
     setLoadError(null);
+    setOfflineCopy(null);
 
 
     // Bound presentation even when a network promise never settles. Late results lose this request identity.
@@ -575,11 +577,12 @@ export function useStudentDashboard() {
         const scope = mayUseOfflineFallback(error) ? getOfflineScope(actorId, uid, mode, 'dashboard') : null;
         const cached = scope ? await getCachedDashboardData(scope) : null;
         if (!current()) return;
-        if (cached) {
+        if (cached && isOfflineScopeCurrent(scope)) {
           setCourses(cached.courses || []);
-          if (cached.profile) setProfile(cached.profile);
-          if (cached.branding) setBranding(cached.branding);
-          if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
+          setCatalogCourses([]); setCategories([]);
+          setProfile(cached.profile ?? null);
+          setBranding(cached.branding ?? null);
+          setDashboardSettings(cached.dashboardSettings ?? { showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
           setTotalTimeSpent(cached.totalTimeSpent || 0);
           setTotalCompletedLessons(cached.totalCompletedLessons || 0);
           const cachedDocs = cached.documentsProgress as Partial<DocumentsProgress> | undefined;
@@ -589,6 +592,7 @@ export function useStudentDashboard() {
             requiredTypes: cachedDocs?.requiredTypes ?? DEFAULT_REQUIRED_DOCUMENT_TYPES,
           });
           toast.info('Загружены данные из кеша', { description:"'Данные могут быть устаревшими'" });
+          setOfflineCopy({generation,request,scope});
           setLoadedGeneration(generation);
         } else {
           setCourses([]); setCatalogCourses([]); setProfile(null); setBranding(null); setLoadedGeneration(-1);
@@ -656,6 +660,7 @@ export function useStudentDashboard() {
     dashboardSettings: privateVisible ? dashboardSettings : { showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: 'catalog' as const, studentTheme: null },
     loading: !!user && (!!authLoading || loading || settledGeneration !== identityRef.current.generation),
     loadError: loadError?.generation === identityRef.current.generation || snapshotAccessDenied || snapshotUnconfirmed ? 'unavailable' as const : null,
+    offlineCopy: privateVisible && offlineCopy?.generation === identityRef.current.generation && offlineCopy.request === requestRef.current && isOfflineScopeCurrent(offlineCopy.scope),
     totalTimeSpent: privateVisible ? totalTimeSpent : 0, totalCompletedLessons: privateVisible ? totalCompletedLessons : 0,
     totalProgress: privateVisible ? totalProgress : 0, firstName: privateVisible ? firstName : '', formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
