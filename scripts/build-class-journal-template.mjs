@@ -10,6 +10,10 @@ const outputDir = path.join(
   repoRoot,
   "supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1",
 );
+const rawOutputDir = path.join(
+  repoRoot,
+  "assets/document-templates/group-doc-templates/goreltech/class-journal/v1",
+);
 const sourcePath = process.argv[2] || path.join(
   repoRoot,
   "docs/group-documents/client-templates/goreltech-group-package-v1/source/class_journal.source.docx",
@@ -307,7 +311,8 @@ const manifest = {
 };
 
 fs.mkdirSync(outputDir, { recursive: true });
-fs.writeFileSync(path.join(outputDir, "template.docx"), templateBytes);
+fs.mkdirSync(rawOutputDir, { recursive: true });
+fs.writeFileSync(path.join(rawOutputDir, "template.docx"), templateBytes);
 fs.writeFileSync(path.join(outputDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
 process.stdout.write(`${JSON.stringify({ source_sha256: sourceHash, template_sha256: templateHash, outputDir }, null, 2)}\n`);

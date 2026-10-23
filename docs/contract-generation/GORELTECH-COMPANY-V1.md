@@ -11,7 +11,7 @@
 ## Файлы-источники
 
 - `docs/group-documents/client-templates/goreltech-group-package-v1/source/company_contract.source.doc` — точный клиентский файл из архива `для сайта (1).zip`; SHA-256 `D8B70377F773EAFF0A9C00BF018BA97CB5437E78DB9ACA9C1B91DCB1928DB965`.
-- `_shared/contract-templates/goreltech/company/v1/template.docx` — DOCX-first рабочая копия клиентского Word-файла с токенами вместо заполняемых полей.
+- `assets/document-templates/contract-templates/goreltech/company/v1/template.docx` — DOCX-first рабочая копия клиентского Word-файла с токенами вместо заполняемых полей.
 - `_shared/contract-templates/goreltech/company/v1/manifest.json` — 35 типизированных переменных, повторители, условные приложения и правила блокировки.
 - `DOCX-FIRST-CONTRACT-ALGORITHM.md` — общий алгоритм адаптации договоров других клиентов.
 
