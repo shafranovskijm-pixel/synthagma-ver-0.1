@@ -278,3 +278,21 @@ verify_jwt = false
 # current-scope SQL operations before any service commit or private file access.
 [functions.frdo-packet-artifact]
 verify_jwt = false
+
+[functions.signature-source-verification]
+verify_jwt = false
+
+# UC022: original JWT/exact invitation and current DB scope are verified by the handler.
+
+[functions.signature-controlled-source-verification]
+verify_jwt = false
+
+# UC022: original JWT/exact invitation and current DB scope are verified by the handler.
+
+[functions.signature-assurance]
+verify_jwt = false
+
+# UC022: original JWT/exact invitation and current DB scope are verified by the handler.
+
+[functions.signature-protected-file]
+verify_jwt = false

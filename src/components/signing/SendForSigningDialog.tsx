@@ -1,3 +1,7 @@
+import{canInviteWithPolicy}from'@/lib/signatureAssurance/invitationPolicy';
+import{captureSignatureAssuranceScope,readSignatureAssurance,signatureEvidenceMessages,normalizeSignatureEvidenceError}from'@/lib/signatureAssurance/client';
+import{prepareBoundInvitation,policyChoiceFromVersion}from'@/lib/signatureAssurance/boundInvitation';
+import type{PolicyChoice}from'@/lib/signatureAssurance/types';
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -46,6 +50,10 @@ function ScopedSendForSigningDialog({ open, onOpenChange, payload, recipients = 
   const [sending, setSending] = useState(false);
   const [resultLink, setResultLink] = useState<string | null>(null);
   const pending = useRef(false);
+  const boundPlan=useRef<ReturnType<typeof prepareBoundInvitation>|null>(null);
+  const[policyChoices,setPolicyChoices]=useState<PolicyChoice[]>([]),[selectedPolicy,setSelectedPolicy]=useState(''),[policyNext,setPolicyNext]=useState<string|null>(null),[policyError,setPolicyError]=useState<string|null>(null),[policyLoading,setPolicyLoading]=useState(false),[draftLocked,setDraftLocked]=useState(false);
+  const loadPolicies=async(after:string|null=null)=>{if(!payload||!open)return;const assert=scope.capture();setPolicyLoading(true);try{const owner=captureSignatureAssuranceScope(payload.organizationId,()=>{try{assert();return true;}catch{return false;}});const response=await readSignatureAssurance(owner,{kind:'policy_list',after_id:after,limit:100});assert();if(response.result.kind!=='policy_list')return;const choices=response.result.policies.filter(p=>canInviteWithPolicy(p,payload.documentType)).map(policyChoiceFromVersion);setPolicyChoices(old=>after?[...old,...choices]:choices);setPolicyNext(response.result.next_after_id);setPolicyError(null);}catch(error){try{assert();setPolicyError(signatureEvidenceMessages[normalizeSignatureEvidenceError(error).code]);}catch{/* old owner */}}finally{try{assert();setPolicyLoading(false);}catch{/* old owner */}}};
+  useEffect(()=>{boundPlan.current=null;setDraftLocked(false);setSelectedPolicy('');if(open)void loadPolicies();},[open,payload?.organizationId,payload?.documentType]);
 
   useEffect(() => {
     if (open) {
@@ -101,6 +109,15 @@ function ScopedSendForSigningDialog({ open, onOpenChange, payload, recipients = 
         .eq("user_id", user.id)
         .maybeSingle().setHeader('Authorization', bearer));
       if (profileError) throw new Error('Не удалось прочитать отправителя.');
+
+      if(mode==='sign'){
+        const selected=policyChoices.find(p=>p.id===selectedPolicy);if(!selected)throw new Error('Выберите принятую редакцию правил для этого документа.');
+        if(!boundPlan.current){boundPlan.current=prepareBoundInvitation(payload.organizationId,()=>{try{current();return true;}catch{return false;}},{documentType:payload.documentType,documentId:payload.documentId??null,documentTitle:payload.documentTitle,documentHtml:payload.documentHtml,documentHash,senderName:senderProfile?.full_name||senderProfile?.email||null,recipientType,recipientUserId,recipientEmail,recipientName,expiresAt:expires,policyVersionId:selected.id,classification:selected.classification});setDraftLocked(true);}
+        const ready=await read.wait(boundPlan.current.run());read.active();
+        try{await read.wait(supabase.functions.invoke('send-signing-email',{headers:{Authorization:bearer},body:{signatureId:ready.id,recipientEmail,recipientName,documentTitle:payload.documentTitle,signatureToken:ready.signature_token}}));}catch{read.active();}
+        setResultLink(window.location.origin+'/sign/'+ready.signature_token);toast.success('Правила и исходная версия закреплены; приглашение создано.');return;
+      }
+
 
       read.active();
       const { data: inserted, error: insertErr } = await read.wait(supabase
@@ -219,7 +236,7 @@ function ScopedSendForSigningDialog({ open, onOpenChange, payload, recipients = 
             <Button className="w-full" onClick={() => onOpenChange(false)}>Готово</Button>
           </div>
         ) : (
-          <fieldset disabled={sending} className="space-y-4">
+          <><fieldset disabled={sending||draftLocked} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Цель отправки</Label>
               <RadioGroup value={mode} onValueChange={(v) => setMode(v as "sign" | "review")} className="grid grid-cols-2 gap-2">
@@ -240,6 +257,7 @@ function ScopedSendForSigningDialog({ open, onOpenChange, payload, recipients = 
               </RadioGroup>
             </div>
 
+          {mode==='sign'&&<div className="space-y-2"><Label>Принятые правила подтверждения</Label><select className="w-full border rounded-md bg-background p-2 text-sm"value={selectedPolicy}onChange={e=>setSelectedPolicy(e.target.value)}><option value="">Выберите редакцию</option>{policyChoices.map(choice=><option key={choice.id}value={choice.id}>{choice.classification.subtype} · версия {choice.version} · {choice.method==='authenticated_account_confirmation'?'Учётная запись':choice.method==='scan_received'?'Бумажный скан':choice.method==='bearer_invitation_confirmation'?'Подтверждение по ссылке':'Графический макет'}</option>)}</select>{policyLoading&&<p className="text-xs">Загружаем редакции…</p>}{policyError&&<p className="text-sm text-destructive">{policyError}</p>}{policyNext&&<Button size="sm"variant="outline"type="button"disabled={policyLoading}onClick={()=>void loadPolicies(policyNext)}>Показать ещё редакции</Button>}<p className="text-xs text-muted-foreground">До отправки фиксируются точная редакция правил и исходная версия документа. Графический макет фиксируется отдельно в журнале и не является подтверждением получателя. Если подходящей редакции нет, подготовьте и примите её в журнале подтверждений.</p></div>}
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="registered" disabled={recipients.length === 0} className="gap-2">
@@ -284,13 +302,14 @@ function ScopedSendForSigningDialog({ open, onOpenChange, payload, recipients = 
 
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>Отмена</Button>
-              <Button onClick={handleSend} disabled={sending} className="gap-2">
+              <Button onClick={handleSend} disabled={sending||(mode==="sign"&&!selectedPolicy)} className="gap-2">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {mode === "review" ? "Отправить на согласование" : "Отправить на подпись"}
               </Button>
             </DialogFooter>
           </Tabs>
           </fieldset>
+          {draftLocked&&<div className="space-y-2"><p className="text-xs text-muted-foreground">Сохранён один черновик приглашения. При неясном ответе продолжите тот же запрос; новое приглашение не создаётся.</p><Button disabled={sending}onClick={()=>void handleSend()}>{sending?'Проверяем…':'Продолжить сохранённое приглашение'}</Button></div>}</>
         )}
       </DialogContent>
     </Dialog>
