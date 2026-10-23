@@ -24,7 +24,7 @@ export function useAdmissionCase(organizationId: string|null|undefined, studentU
   const viewKey = JSON.stringify([globalKey,selected,target.current.counter]);
   const [associations,setAssociations] = useState<{key:string; data:c.AdmissionAssociations|null; loading:boolean; error:c.AdmissionErrorCode|null}>({key:'',data:null,loading:false,error:null});
   const [value,setValue] = useState<CaseValue>({key:'',data:null,loading:false,error:null});
-  const [work,setWork] = useState<{key:string; busy:boolean; pending:boolean; error:c.AdmissionErrorCode|null}>({key:'',busy:false,pending:false,error:null});
+  const [work,setWork] = useState<{key:string; busy:boolean; pending:boolean; error:c.AdmissionErrorCode|null; uploadHttpStatus?:number}>({key:'',busy:false,pending:false,error:null});
   const [resourceError,setResourceError] = useState<{key:string; error:c.AdmissionErrorCode|null}>({key:'',error:null});
   const pending = useRef<Pending|null>(null);
   const authorityEpoch = useRef(0);
@@ -38,11 +38,11 @@ export function useAdmissionCase(organizationId: string|null|undefined, studentU
     return {...api.captureAdmissionScope(organizationId!,studentUserId!,exact,() => current() && lifecycle.current.revision === lifecycleRevision && authorityEpoch.current === authority && (!includeTarget || target.current.counter === counter)),
       contextKey:JSON.stringify([globalGeneration,lifecycleRevision,counter,authority])};
   };
-  const denyAccess = () => {
+  const denyAccess = (uploadHttpStatus?:number) => {
     if (!current()) return;
     authorityEpoch.current++;caseSequence.current++;pending.current=null;busy.current=false;
     setValue({key:viewKey,data:null,loading:false,error:'ACCESS_DENIED'});
-    setResourceError({key:viewKey,error:'ACCESS_DENIED'});setWork({key:viewKey,busy:false,pending:false,error:'ACCESS_DENIED'});
+    setResourceError({key:viewKey,error:'ACCESS_DENIED'});setWork({key:viewKey,busy:false,pending:false,error:'ACCESS_DENIED',uploadHttpStatus});
   };
   const selectAssociation = (scope: c.AdmissionScope|null) => {
     if (!current()) return;
@@ -125,11 +125,11 @@ export function useAdmissionCase(organizationId: string|null|undefined, studentU
       setWork({key:viewKey,busy:false,pending:false,error:null}); return true;
     } catch (error) {
       if (!api.admissionScopeCurrent(actorScope)) return false;
-      const code = api.normalizeAdmissionError(error).code;
+      const failure = api.normalizeAdmissionError(error), code = failure.code;
       const uncertain = code === 'DEPENDENCY_UNAVAILABLE';
       if (!uncertain) pending.current = null;
-      if (code === 'ACCESS_DENIED') {denyAccess();return false;}
-      setWork({key:viewKey,busy:false,pending:uncertain,error:code}); return false;
+      if (code === 'ACCESS_DENIED') {denyAccess(failure.uploadHttpStatus);return false;}
+      setWork({key:viewKey,busy:false,pending:uncertain,error:code,uploadHttpStatus:failure.uploadHttpStatus}); return false;
     } finally { if (api.admissionScopeCurrent(actorScope)) busy.current = false; }
   };
   const mutate = async (command: c.AdmissionCaseAction) => {
@@ -163,6 +163,7 @@ export function useAdmissionCase(organizationId: string|null|undefined, studentU
     associationsLoading: current() && (associations.key !== globalKey || associations.loading), associationsError: current() && associations.key === globalKey ? associations.error : null,
     data, staff, loading: current() && !!selected && (!visible || value.loading), error: visible ? value.error : null,
     busy: current() && work.key === viewKey && work.busy, pending: current() && work.key === viewKey && work.pending,
+    operationUploadHttpStatus: current() && work.key === viewKey ? work.uploadHttpStatus : undefined,
     operationError: current() && work.key === viewKey ? work.error : null, resourceError: current() && resourceError.key === viewKey ? resourceError.error : null,
     refresh, refreshAssociations, mutate, capture, denyAccess, retryPending: () => pending.current ? execute(pending.current) : Promise.resolve(false),
     options: (kind:'responsibles'|'local_acts',afterId:string|null = null) => resource((scope,state) => api.readAdmissionOptions(scope,state,kind,afterId)),
