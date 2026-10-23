@@ -71,11 +71,15 @@ export async function fixture(bytes = pdf, mime: AdmissionMime = "application/pd
   const attest = vi.fn(async (_name: string, _args: Record<string, unknown>) => {mode = "sealed"; return {data: {schema_version: 1, case_id: caseId,
     reservation_id: reservation, evidence_version_id: evidence, state: "sealed", byte_sha256: hash, byte_size: bytes.length, mime_type: mime}, error: null};});
   const serviceFrom = vi.fn((_bucket: string) => ({download: serviceDownload, upload, info}));
-  const service = {rpc: attest, storage: {from: serviceFrom}};
+  const observe = vi.fn(async (_args: Record<string, unknown>): Promise<AdmissionDbResult> => ({data: {schema_version: 1, actor_id: actor, case_id: caseId,
+    reservation_id: reservation, evidence_version_id: evidence, expected_revision: 4, request_id: requestId, source_fingerprint: source.fingerprint,
+    object: {bucket: ADMISSION_EVIDENCE_BUCKET, path: sealedPath, object_id: sealedId, updated_at: time, byte_size: bytes.length,
+      mime_type: mime, known_sha256: null, fingerprint: "9".repeat(64)}}, error: null}));
+  const service = {rpc: vi.fn((name: string, args: Record<string, unknown>) => name === "uc_observe_admission_sealed_object" ? observe(args) : attest(name, args)), storage: {from: serviceFrom}};
   const createCaller = vi.fn((_authorization: string, _signal: AbortSignal) => caller), createService = vi.fn((_signal: AbortSignal) => service);
   const deps = {configured: true, createCaller, createService};
   return {hash, bytes, mime, source, base, context, fileContext, receipt, caller, service, getUser, rpc, download, callerFrom, serviceDownload, upload, info,
-    attest, serviceFrom, createCaller, createService, deps, sealedPath, setMode: (value: typeof mode) => {mode = value;},
+    attest, observe, serviceFrom, createCaller, createService, deps, sealedPath, setMode: (value: typeof mode) => {mode = value;},
     run: (body: unknown = commitInput) => admissionEvidenceCommitRequest(post(body), deps),
     file: (body: unknown = fileInput) => admissionEvidenceFileRequest(post(body), deps)};
 }
