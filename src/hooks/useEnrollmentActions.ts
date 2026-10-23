@@ -162,11 +162,11 @@ export function useEnrollmentActions(
       try {
         const { data: existingEnrollments, error: existErr } = await supabase
           .from("enrollments")
-          .select("user_id")
+          .select("user_id, status")
           .eq("course_id", courseId)
           .in("user_id", userIds);
         if (existErr) throw existErr;
-        existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+        existingUserIds = new Set((existingEnrollments || []).filter(e => e.status !== "cancelled").map(e => e.user_id));
       } catch (err) {
         console.error("[bulkEnroll] preflight existing enrollments failed:", err);
         toast.error("Не удалось проверить существующие зачисления. Зачисление отменено.");

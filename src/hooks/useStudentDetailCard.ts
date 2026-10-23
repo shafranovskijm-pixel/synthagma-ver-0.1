@@ -856,6 +856,12 @@ export function useStudentDetailCardLogic({
     }
   };
 
+  // Child course/document actions refresh the current parent card through this
+  // callback. A continuation from an old learner or access epoch cannot refresh it.
+  const notifyStudentUpdated = useCallback(() => {
+    if (identityKey && activeIdentityKeyRef.current === identityKey) onStudentUpdated?.();
+  }, [identityKey, onStudentUpdated]);
+
   const requestedIdentity = !!(isOpen && student?.user_id && organizationId);
   const currentDataLoadError = requestedIdentity && permissions.error
     ? "Не удалось подтвердить права на личное дело ученика. Повторите проверку прав."
@@ -863,6 +869,7 @@ export function useStudentDetailCardLogic({
 
   return {
     activeTab, setActiveTab,
+    onStudentUpdated: notifyStudentUpdated,
     isLoading: requestedIdentity && !currentDataLoadError && (!identityKey || isLoading || !hasCurrentIdentityData),
     dataLoadError: currentDataLoadError,
     retryLoadStudentData: loadStudentData,
