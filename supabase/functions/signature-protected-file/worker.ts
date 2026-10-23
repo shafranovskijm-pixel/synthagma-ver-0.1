@@ -1,5 +1,5 @@
 import {protectedFileRequestSchema,protectedFileContextSchema,protectedFileAbsentSchema,SIGNATURE_SOURCE_MAX_BYTES,type ProtectedFileRequest,type ProtectedFileContext,type ProtectedFileAbsent}from './contract.ts';
-import {canonicalSignatureStorageReader}from '../signature-controlled-source-verification/worker.ts';
+import {canonicalSignatureStorageReader}from './controlled-source/worker.ts';
 export {canonicalSignatureStorageReader};
 export type ProtectedFileFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'REVISION_CONFLICT'|'REQUEST_CONFLICT'|'SOURCE_UNAVAILABLE'|'SOURCE_CHANGED'|'CLOSED'|'EXPIRED'|'LIMIT_EXCEEDED'|'DEPENDENCY_UNAVAILABLE';
 export class ProtectedFileError extends Error{constructor(readonly code:ProtectedFileFailure){super(code);this.name='ProtectedFileError';}}

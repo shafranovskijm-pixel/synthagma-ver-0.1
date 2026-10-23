@@ -1,6 +1,6 @@
 import {publicEdgeRequest,publicEdgeSuccess,errorCode,uuid} from './contract.ts';
-import {signatureFileContextSchema,signatureFileVerificationReceiptSchema,trustedSignatureFileProofSchema,type SignatureFileAction,type SignatureFileTuple,type TrustedSignatureFileProof} from '../signature-controlled-source-verification/contract.ts';
-import {canonicalSignatureStorageReader} from '../signature-controlled-source-verification/worker.ts';
+import {signatureFileContextSchema,signatureFileVerificationReceiptSchema,trustedSignatureFileProofSchema,type SignatureFileAction,type SignatureFileTuple,type TrustedSignatureFileProof} from './controlled-source/contract.ts';
+import {canonicalSignatureStorageReader} from './controlled-source/worker.ts';
 import type {z} from 'npm:zod@3.25.76';
 export {canonicalSignatureStorageReader};
 export class AssuranceError extends Error {constructor(readonly code:z.infer<typeof errorCode>){super(code);this.name='AssuranceError';}}
