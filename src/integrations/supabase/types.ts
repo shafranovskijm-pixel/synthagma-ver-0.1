@@ -16283,6 +16283,68 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_course_assignment_removal_events: {
+        Row: {
+          actor_id: string
+          after_enrollment: Json
+          before_enrollment: Json
+          course_id: string
+          enrollment_id: string
+          group_id: string | null
+          id: string
+          organization_id: string
+          preflight_sha256: string
+          reason: string
+          recorded_at: string
+          request_id: string
+          revision: number
+          state: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          after_enrollment: Json
+          before_enrollment: Json
+          course_id: string
+          enrollment_id: string
+          group_id?: string | null
+          id?: string
+          organization_id: string
+          preflight_sha256: string
+          reason?: string
+          recorded_at?: string
+          request_id: string
+          revision: number
+          state: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          after_enrollment?: Json
+          before_enrollment?: Json
+          course_id?: string
+          enrollment_id?: string
+          group_id?: string | null
+          id?: string
+          organization_id?: string
+          preflight_sha256?: string
+          reason?: string
+          recorded_at?: string
+          request_id?: string
+          revision?: number
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_course_assignment_removal_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uc_custom_journal_history: {
         Row: {
           action: string
@@ -16755,6 +16817,345 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_education_issuance_contexts: {
+        Row: {
+          actor_id: string
+          backend_pid: number
+          course_id: string
+          created_at: string
+          enrollment_id: string
+          group_id: string
+          id: string
+          mode: string
+          official_identity: Json
+          organization_id: string
+          original_record_id: string | null
+          proof: Json
+          source_snapshot: Json
+          transaction_id: number
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          backend_pid: number
+          course_id: string
+          created_at?: string
+          enrollment_id: string
+          group_id: string
+          id?: string
+          mode: string
+          official_identity: Json
+          organization_id: string
+          original_record_id?: string | null
+          proof: Json
+          source_snapshot: Json
+          transaction_id: number
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          backend_pid?: number
+          course_id?: string
+          created_at?: string
+          enrollment_id?: string
+          group_id?: string
+          id?: string
+          mode?: string
+          official_identity?: Json
+          organization_id?: string
+          original_record_id?: string | null
+          proof?: Json
+          source_snapshot?: Json
+          transaction_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_education_issuance_events: {
+        Row: {
+          actor_id: string | null
+          id: string
+          kind: string
+          organization_id: string
+          participant_ids: string[]
+          payload: Json
+          previous_state_hash: string
+          reason: string
+          record_id: string
+          recorded_at: string
+          redacted: boolean
+          revision: number
+          state_hash: string
+          user_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          id?: string
+          kind: string
+          organization_id: string
+          participant_ids?: string[]
+          payload: Json
+          previous_state_hash: string
+          reason: string
+          record_id: string
+          recorded_at?: string
+          redacted?: boolean
+          revision: number
+          state_hash: string
+          user_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          id?: string
+          kind?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload?: Json
+          previous_state_hash?: string
+          reason?: string
+          record_id?: string
+          recorded_at?: string
+          redacted?: boolean
+          revision?: number
+          state_hash?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_education_issuance_preparation_items: {
+        Row: {
+          artifact: Json | null
+          course_id: string
+          eligibility_ref: Json
+          enrollment_id: string
+          final_record_id: string | null
+          frdo_facts: Json
+          group_id: string
+          id: string
+          input_revision: number
+          number_plan: Json
+          official_identity: Json
+          organization_id: string
+          output_document_id: string
+          output_request_id: string
+          participant_ids: string[]
+          preparation_id: string
+          redacted: boolean
+          render_input_hash: string
+          render_variables: Json
+          retained_subject_user_id: string | null
+          source_snapshot: Json
+          staging_proof: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          artifact?: Json | null
+          course_id: string
+          eligibility_ref: Json
+          enrollment_id: string
+          final_record_id?: string | null
+          frdo_facts: Json
+          group_id: string
+          id?: string
+          input_revision?: number
+          number_plan: Json
+          official_identity: Json
+          organization_id: string
+          output_document_id: string
+          output_request_id: string
+          participant_ids?: string[]
+          preparation_id: string
+          redacted?: boolean
+          render_input_hash: string
+          render_variables: Json
+          retained_subject_user_id?: string | null
+          source_snapshot: Json
+          staging_proof?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          artifact?: Json | null
+          course_id?: string
+          eligibility_ref?: Json
+          enrollment_id?: string
+          final_record_id?: string | null
+          frdo_facts?: Json
+          group_id?: string
+          id?: string
+          input_revision?: number
+          number_plan?: Json
+          official_identity?: Json
+          organization_id?: string
+          output_document_id?: string
+          output_request_id?: string
+          participant_ids?: string[]
+          preparation_id?: string
+          redacted?: boolean
+          render_input_hash?: string
+          render_variables?: Json
+          retained_subject_user_id?: string | null
+          source_snapshot?: Json
+          staging_proof?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_education_issuance_preparations: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          intent_hash: string
+          kind: string
+          number_witness: Json
+          organization_id: string
+          participant_ids: string[]
+          plan: Json
+          redacted: boolean
+          scope: Json
+          template: Json
+          template_byte_sha256: string | null
+          template_storage: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          intent_hash: string
+          kind: string
+          number_witness: Json
+          organization_id: string
+          participant_ids?: string[]
+          plan: Json
+          redacted?: boolean
+          scope: Json
+          template: Json
+          template_byte_sha256?: string | null
+          template_storage: Json
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          intent_hash?: string
+          kind?: string
+          number_witness?: Json
+          organization_id?: string
+          participant_ids?: string[]
+          plan?: Json
+          redacted?: boolean
+          scope?: Json
+          template?: Json
+          template_byte_sha256?: string | null
+          template_storage?: Json
+        }
+        Relationships: []
+      }
+      uc_education_issuance_requests: {
+        Row: {
+          action: string
+          actor_id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_hash: string
+          receipt: Json
+          request_id: string
+          scope: Json
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          organization_id: string
+          participant_ids?: string[]
+          payload_hash: string
+          receipt: Json
+          request_id: string
+          scope: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload_hash?: string
+          receipt?: Json
+          request_id?: string
+          scope?: Json
+        }
+        Relationships: []
+      }
+      uc_education_issuance_states: {
+        Row: {
+          annulment: Json | null
+          artifact: Json | null
+          course_id: string | null
+          created_at: string
+          enrollment_id: string | null
+          frdo_facts: Json | null
+          group_id: string | null
+          latest_handover: Json | null
+          notes: string
+          organization_id: string
+          original_record_id: string | null
+          participant_ids: string[]
+          proof: Json | null
+          record_id: string
+          recorded_by: string | null
+          redacted: boolean
+          registry_record_id: string | null
+          revision: number
+          updated_at: string
+          updated_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          annulment?: Json | null
+          artifact?: Json | null
+          course_id?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          frdo_facts?: Json | null
+          group_id?: string | null
+          latest_handover?: Json | null
+          notes?: string
+          organization_id: string
+          original_record_id?: string | null
+          participant_ids?: string[]
+          proof?: Json | null
+          record_id: string
+          recorded_by?: string | null
+          redacted?: boolean
+          registry_record_id?: string | null
+          revision: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          annulment?: Json | null
+          artifact?: Json | null
+          course_id?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          frdo_facts?: Json | null
+          group_id?: string | null
+          latest_handover?: Json | null
+          notes?: string
+          organization_id?: string
+          original_record_id?: string | null
+          participant_ids?: string[]
+          proof?: Json | null
+          record_id?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          registry_record_id?: string | null
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       uc_enrollment_delete_witnesses: {
         Row: {
           actor_id: string
@@ -16796,6 +17197,643 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      uc_enrollment_withdrawal_events: {
+        Row: {
+          actor_id: string | null
+          after_state: Json
+          basis: Json
+          before_state: Json
+          effective_date: string
+          enrollment_id: string
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          reason: string
+          recorded_at: string
+          redacted: boolean
+          revision: number
+          user_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          after_state: Json
+          basis: Json
+          before_state: Json
+          effective_date: string
+          enrollment_id: string
+          id?: string
+          organization_id: string
+          participant_ids?: string[]
+          reason: string
+          recorded_at?: string
+          redacted?: boolean
+          revision: number
+          user_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          after_state?: Json
+          basis?: Json
+          before_state?: Json
+          effective_date?: string
+          enrollment_id?: string
+          id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          reason?: string
+          recorded_at?: string
+          redacted?: boolean
+          revision?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_enrollment_withdrawal_states: {
+        Row: {
+          basis: Json
+          course_id: string
+          effective_date: string
+          enrollment_id: string
+          group_id: string | null
+          organization_id: string
+          participant_ids: string[]
+          recorded_at: string
+          recorded_by: string | null
+          redacted: boolean
+          revision: number
+          technical_snapshot: Json
+          user_id: string | null
+        }
+        Insert: {
+          basis: Json
+          course_id: string
+          effective_date: string
+          enrollment_id: string
+          group_id?: string | null
+          organization_id: string
+          participant_ids?: string[]
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision: number
+          technical_snapshot: Json
+          user_id?: string | null
+        }
+        Update: {
+          basis?: Json
+          course_id?: string
+          effective_date?: string
+          enrollment_id?: string
+          group_id?: string | null
+          organization_id?: string
+          participant_ids?: string[]
+          recorded_at?: string
+          recorded_by?: string | null
+          redacted?: boolean
+          revision?: number
+          technical_snapshot?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_frdo_operator_authority_revisions: {
+        Row: {
+          evidence: Json
+          external_delegation_verified: boolean
+          id: string
+          note: string | null
+          operator_user_id: string
+          organization_id: string
+          previous_state_hash: string | null
+          recorded_at: string
+          recorded_by: string | null
+          retained_people: string[]
+          revision: number
+          revocation_event_id: string | null
+          source_read: Json
+          state: string
+          state_hash: string
+          validity: Json
+        }
+        Insert: {
+          evidence: Json
+          external_delegation_verified?: boolean
+          id: string
+          note?: string | null
+          operator_user_id: string
+          organization_id: string
+          previous_state_hash?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          retained_people: string[]
+          revision: number
+          revocation_event_id?: string | null
+          source_read: Json
+          state: string
+          state_hash: string
+          validity: Json
+        }
+        Update: {
+          evidence?: Json
+          external_delegation_verified?: boolean
+          id?: string
+          note?: string | null
+          operator_user_id?: string
+          organization_id?: string
+          previous_state_hash?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          retained_people?: string[]
+          revision?: number
+          revocation_event_id?: string | null
+          source_read?: Json
+          state?: string
+          state_hash?: string
+          validity?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_operator_authority_revisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_frdo_packet_artifact_builds: {
+        Row: {
+          actor_id: string
+          artifact_id: string
+          artifact_ref: Json | null
+          bucket_id: string
+          byte_sha256: string | null
+          byte_size: number | null
+          failure: string | null
+          id: string
+          input_revision: number
+          lease_id: string | null
+          lease_until: string | null
+          mime: string
+          object_id: string | null
+          object_path: string
+          object_updated_at: string | null
+          organization_id: string
+          packet_id: string
+          part_proofs: Json | null
+          phase: string
+          readback_sha256: string | null
+          recorded_at: string
+          registry_record_id: string | null
+          retained_people: string[]
+          signing: Json
+          snapshot_sha256: string
+          template: Json
+          worker_request_id: string
+        }
+        Insert: {
+          actor_id: string
+          artifact_id?: string
+          artifact_ref?: Json | null
+          bucket_id: string
+          byte_sha256?: string | null
+          byte_size?: number | null
+          failure?: string | null
+          id?: string
+          input_revision: number
+          lease_id?: string | null
+          lease_until?: string | null
+          mime?: string
+          object_id?: string | null
+          object_path: string
+          object_updated_at?: string | null
+          organization_id: string
+          packet_id: string
+          part_proofs?: Json | null
+          phase: string
+          readback_sha256?: string | null
+          recorded_at?: string
+          registry_record_id?: string | null
+          retained_people: string[]
+          signing?: Json
+          snapshot_sha256: string
+          template: Json
+          worker_request_id: string
+        }
+        Update: {
+          actor_id?: string
+          artifact_id?: string
+          artifact_ref?: Json | null
+          bucket_id?: string
+          byte_sha256?: string | null
+          byte_size?: number | null
+          failure?: string | null
+          id?: string
+          input_revision?: number
+          lease_id?: string | null
+          lease_until?: string | null
+          mime?: string
+          object_id?: string | null
+          object_path?: string
+          object_updated_at?: string | null
+          organization_id?: string
+          packet_id?: string
+          part_proofs?: Json | null
+          phase?: string
+          readback_sha256?: string | null
+          recorded_at?: string
+          registry_record_id?: string | null
+          retained_people?: string[]
+          signing?: Json
+          snapshot_sha256?: string
+          template?: Json
+          worker_request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_packet_artifact_builds_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_artifact_builds_packet_id_fkey"
+            columns: ["packet_id"]
+            isOneToOne: false
+            referencedRelation: "uc_frdo_packets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_frdo_packet_events: {
+        Row: {
+          actor_id: string | null
+          id: string
+          kind: string
+          organization_id: string
+          packet_id: string
+          payload: Json
+          payload_sha256: string
+          previous_state_hash: string | null
+          recorded_at: string
+          retained_people: string[]
+          revision: number
+          state_hash: string
+        }
+        Insert: {
+          actor_id?: string | null
+          id?: string
+          kind: string
+          organization_id: string
+          packet_id: string
+          payload: Json
+          payload_sha256: string
+          previous_state_hash?: string | null
+          recorded_at?: string
+          retained_people: string[]
+          revision: number
+          state_hash: string
+        }
+        Update: {
+          actor_id?: string | null
+          id?: string
+          kind?: string
+          organization_id?: string
+          packet_id?: string
+          payload?: Json
+          payload_sha256?: string
+          previous_state_hash?: string | null
+          recorded_at?: string
+          retained_people?: string[]
+          revision?: number
+          state_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_packet_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_events_organization_id_packet_id_fkey"
+            columns: ["organization_id", "packet_id"]
+            isOneToOne: false
+            referencedRelation: "uc_frdo_packets"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_events_packet_id_fkey"
+            columns: ["packet_id"]
+            isOneToOne: false
+            referencedRelation: "uc_frdo_packets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_frdo_packet_requests: {
+        Row: {
+          action_kind: string
+          actor_id: string
+          intent_refs: Json
+          organization_id: string
+          payload_sha256: string
+          phase: string
+          receipt: Json | null
+          recorded_at: string
+          request_id: string
+          retained_people: string[]
+          scope: Json
+        }
+        Insert: {
+          action_kind: string
+          actor_id: string
+          intent_refs: Json
+          organization_id: string
+          payload_sha256: string
+          phase: string
+          receipt?: Json | null
+          recorded_at?: string
+          request_id: string
+          retained_people: string[]
+          scope: Json
+        }
+        Update: {
+          action_kind?: string
+          actor_id?: string
+          intent_refs?: Json
+          organization_id?: string
+          payload_sha256?: string
+          phase?: string
+          receipt?: Json | null
+          recorded_at?: string
+          request_id?: string
+          retained_people?: string[]
+          scope?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_packet_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_frdo_packet_subjects: {
+        Row: {
+          course_id: string
+          enrollment_id: string
+          group_id: string | null
+          organization_id: string
+          original: boolean
+          packet_id: string
+          record_id: string
+          selected: boolean
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          enrollment_id: string
+          group_id?: string | null
+          organization_id: string
+          original: boolean
+          packet_id: string
+          record_id: string
+          selected: boolean
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          enrollment_id?: string
+          group_id?: string | null
+          organization_id?: string
+          original?: boolean
+          packet_id?: string
+          record_id?: string
+          selected?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_organization_id_packet_id_fkey"
+            columns: ["organization_id", "packet_id"]
+            isOneToOne: false
+            referencedRelation: "uc_frdo_packets"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_packet_id_fkey"
+            columns: ["packet_id"]
+            isOneToOne: false
+            referencedRelation: "uc_frdo_packets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packet_subjects_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "education_document_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_frdo_packets: {
+        Row: {
+          capture: Json
+          created_at: string
+          created_by: string | null
+          current_build_id: string | null
+          cursor_secret: string
+          group_id: string | null
+          id: string
+          issuer_review: Json
+          latest_admin_handover_event_id: string | null
+          latest_receipt_event_id: string | null
+          latest_registry_record_id: string | null
+          latest_upload_event_id: string | null
+          organization_id: string
+          parent_correction: Json | null
+          redacted: boolean
+          retained_people: string[]
+          revision: number
+          scope: Json
+          snapshot_sha256: string
+          source_reads: Json
+          state: string
+          state_hash: string
+          stream: string
+        }
+        Insert: {
+          capture: Json
+          created_at?: string
+          created_by?: string | null
+          current_build_id?: string | null
+          cursor_secret?: string
+          group_id?: string | null
+          id?: string
+          issuer_review: Json
+          latest_admin_handover_event_id?: string | null
+          latest_receipt_event_id?: string | null
+          latest_registry_record_id?: string | null
+          latest_upload_event_id?: string | null
+          organization_id: string
+          parent_correction?: Json | null
+          redacted?: boolean
+          retained_people: string[]
+          revision: number
+          scope: Json
+          snapshot_sha256: string
+          source_reads: Json
+          state: string
+          state_hash: string
+          stream: string
+        }
+        Update: {
+          capture?: Json
+          created_at?: string
+          created_by?: string | null
+          current_build_id?: string | null
+          cursor_secret?: string
+          group_id?: string | null
+          id?: string
+          issuer_review?: Json
+          latest_admin_handover_event_id?: string | null
+          latest_receipt_event_id?: string | null
+          latest_registry_record_id?: string | null
+          latest_upload_event_id?: string | null
+          organization_id?: string
+          parent_correction?: Json | null
+          redacted?: boolean
+          retained_people?: string[]
+          revision?: number
+          scope?: Json
+          snapshot_sha256?: string
+          source_reads?: Json
+          state?: string
+          state_hash?: string
+          stream?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_packets_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_packets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_frdo_supplement_revisions: {
+        Row: {
+          evidence: Json
+          fields: Json
+          frozen_facts_sha256: string
+          id: string
+          organization_id: string
+          record_id: string
+          redacted: boolean
+          request_id: string
+          retained_people: string[]
+          review_note: string | null
+          reviewed_at: string
+          reviewed_by: string | null
+          revision: number
+          snapshot_sha256: string
+          source_reads: Json
+          user_id: string
+        }
+        Insert: {
+          evidence: Json
+          fields: Json
+          frozen_facts_sha256: string
+          id?: string
+          organization_id: string
+          record_id: string
+          redacted?: boolean
+          request_id: string
+          retained_people: string[]
+          review_note?: string | null
+          reviewed_at?: string
+          reviewed_by?: string | null
+          revision: number
+          snapshot_sha256: string
+          source_reads: Json
+          user_id: string
+        }
+        Update: {
+          evidence?: Json
+          fields?: Json
+          frozen_facts_sha256?: string
+          id?: string
+          organization_id?: string
+          record_id?: string
+          redacted?: boolean
+          request_id?: string
+          retained_people?: string[]
+          review_note?: string | null
+          reviewed_at?: string
+          reviewed_by?: string | null
+          revision?: number
+          snapshot_sha256?: string
+          source_reads?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_frdo_supplement_revisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_frdo_supplement_revisions_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "education_document_records"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       uc_goreltech_document_stages: {
         Row: {
@@ -18068,6 +19106,842 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_signature_assurance_agreements: {
+        Row: {
+          accepted_at: string
+          actor: Json
+          id: string
+          organization_id: string
+          policy_sha256: string
+          policy_version_id: string
+          rendered_text: string
+          rendered_text_sha256: string
+          revision: number
+          stream_id: string
+          subject_user_id: string
+          terms: Json
+        }
+        Insert: {
+          accepted_at?: string
+          actor: Json
+          id: string
+          organization_id: string
+          policy_sha256: string
+          policy_version_id: string
+          rendered_text: string
+          rendered_text_sha256: string
+          revision: number
+          stream_id: string
+          subject_user_id: string
+          terms: Json
+        }
+        Update: {
+          accepted_at?: string
+          actor?: Json
+          id?: string
+          organization_id?: string
+          policy_sha256?: string
+          policy_version_id?: string
+          rendered_text?: string
+          rendered_text_sha256?: string
+          revision?: number
+          stream_id?: string
+          subject_user_id?: string
+          terms?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_agreem_policy_version_id_organizati_fkey"
+            columns: ["policy_version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_policy_versions"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_agreement_stream_id_organization_id_fkey"
+            columns: ["stream_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_bindings: {
+        Row: {
+          agreement_sha256: string | null
+          bound_at: string
+          bound_by: string | null
+          classification: Json
+          document_snapshot_id: string
+          id: string
+          organization_id: string
+          party_role: string
+          policy_decision_revision: number
+          policy_sha256: string
+          policy_version_id: string
+          recipient_user_id: string | null
+          revision: number
+          signature_id: string
+          subject_user_id: string | null
+        }
+        Insert: {
+          agreement_sha256?: string | null
+          bound_at?: string
+          bound_by?: string | null
+          classification: Json
+          document_snapshot_id: string
+          id: string
+          organization_id: string
+          party_role: string
+          policy_decision_revision: number
+          policy_sha256: string
+          policy_version_id: string
+          recipient_user_id?: string | null
+          revision: number
+          signature_id: string
+          subject_user_id?: string | null
+        }
+        Update: {
+          agreement_sha256?: string | null
+          bound_at?: string
+          bound_by?: string | null
+          classification?: Json
+          document_snapshot_id?: string
+          id?: string
+          organization_id?: string
+          party_role?: string
+          policy_decision_revision?: number
+          policy_sha256?: string
+          policy_version_id?: string
+          recipient_user_id?: string | null
+          revision?: number
+          signature_id?: string
+          subject_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_bindin_document_snapshot_id_organiz_fkey"
+            columns: [
+              "document_snapshot_id",
+              "organization_id",
+              "signature_id",
+              "party_role",
+            ]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_document_snapshots"
+            referencedColumns: [
+              "id",
+              "organization_id",
+              "signature_id",
+              "party_role",
+            ]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_bindin_policy_version_id_organizati_fkey"
+            columns: ["policy_version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_policy_versions"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_bindin_signature_id_organization_id_fkey"
+            columns: ["signature_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_consents: {
+        Row: {
+          actor: Json
+          agreement_event_id: string
+          authority: Json
+          confirmed_at: string
+          id: string
+          organization_id: string
+          organization_inn: string | null
+          organization_name: string
+          policy_sha256: string
+          policy_version_id: string
+          previous_snapshot_id: string | null
+          rendered_text: string
+          rendered_text_sha256: string
+          revision: number
+          state: string
+          stream_id: string
+          subject_user_id: string
+          terms: Json
+          withdrawn_at: string | null
+        }
+        Insert: {
+          actor: Json
+          agreement_event_id: string
+          authority: Json
+          confirmed_at: string
+          id: string
+          organization_id: string
+          organization_inn?: string | null
+          organization_name: string
+          policy_sha256: string
+          policy_version_id: string
+          previous_snapshot_id?: string | null
+          rendered_text: string
+          rendered_text_sha256: string
+          revision: number
+          state: string
+          stream_id: string
+          subject_user_id: string
+          terms: Json
+          withdrawn_at?: string | null
+        }
+        Update: {
+          actor?: Json
+          agreement_event_id?: string
+          authority?: Json
+          confirmed_at?: string
+          id?: string
+          organization_id?: string
+          organization_inn?: string | null
+          organization_name?: string
+          policy_sha256?: string
+          policy_version_id?: string
+          previous_snapshot_id?: string | null
+          rendered_text?: string
+          rendered_text_sha256?: string
+          revision?: number
+          state?: string
+          stream_id?: string
+          subject_user_id?: string
+          terms?: Json
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_consen_agreement_event_id_organizat_fkey"
+            columns: ["agreement_event_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_agreements"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_consen_policy_version_id_organizati_fkey"
+            columns: ["policy_version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_policy_versions"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_consen_previous_snapshot_id_organiz_fkey"
+            columns: ["previous_snapshot_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_consents"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_consents_stream_id_organization_id_fkey"
+            columns: ["stream_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_document_snapshots: {
+        Row: {
+          captured_at: string
+          captured_by: string | null
+          document_revision_id: string | null
+          html_sha256: string
+          html_text: string
+          id: string
+          organization_id: string
+          original_file: Json | null
+          party_role: string
+          recipient_user_id: string | null
+          signature_id: string
+          source_file_state: string
+          subject_user_id: string | null
+        }
+        Insert: {
+          captured_at?: string
+          captured_by?: string | null
+          document_revision_id?: string | null
+          html_sha256: string
+          html_text: string
+          id: string
+          organization_id: string
+          original_file?: Json | null
+          party_role: string
+          recipient_user_id?: string | null
+          signature_id: string
+          source_file_state: string
+          subject_user_id?: string | null
+        }
+        Update: {
+          captured_at?: string
+          captured_by?: string | null
+          document_revision_id?: string | null
+          html_sha256?: string
+          html_text?: string
+          id?: string
+          organization_id?: string
+          original_file?: Json | null
+          party_role?: string
+          recipient_user_id?: string | null
+          signature_id?: string
+          source_file_state?: string
+          subject_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_docume_signature_id_organization_id_fkey"
+            columns: ["signature_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_events: {
+        Row: {
+          actor_user_id: string | null
+          agreement_event_id: string | null
+          binding_id: string | null
+          consent_snapshot_id: string | null
+          document_snapshot_id: string | null
+          id: string
+          kind: string
+          organization_id: string
+          party_role: string | null
+          payload: Json
+          policy_version_id: string | null
+          recipient_user_id: string | null
+          request_id: string
+          revision: number
+          server_at: string
+          signature_id: string | null
+          stream_id: string
+          stream_kind: string
+          subject_user_id: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          agreement_event_id?: string | null
+          binding_id?: string | null
+          consent_snapshot_id?: string | null
+          document_snapshot_id?: string | null
+          id: string
+          kind: string
+          organization_id: string
+          party_role?: string | null
+          payload: Json
+          policy_version_id?: string | null
+          recipient_user_id?: string | null
+          request_id: string
+          revision: number
+          server_at?: string
+          signature_id?: string | null
+          stream_id: string
+          stream_kind: string
+          subject_user_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          agreement_event_id?: string | null
+          binding_id?: string | null
+          consent_snapshot_id?: string | null
+          document_snapshot_id?: string | null
+          id?: string
+          kind?: string
+          organization_id?: string
+          party_role?: string | null
+          payload?: Json
+          policy_version_id?: string | null
+          recipient_user_id?: string | null
+          request_id?: string
+          revision?: number
+          server_at?: string
+          signature_id?: string | null
+          stream_id?: string
+          stream_kind?: string
+          subject_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_events_agreement_event_id_organizat_fkey"
+            columns: ["agreement_event_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_agreements"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_events_binding_id_organization_id_s_fkey"
+            columns: [
+              "binding_id",
+              "organization_id",
+              "signature_id",
+              "party_role",
+            ]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_bindings"
+            referencedColumns: [
+              "id",
+              "organization_id",
+              "signature_id",
+              "party_role",
+            ]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_events_consent_snapshot_id_organiza_fkey"
+            columns: ["consent_snapshot_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_consents"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_events_document_snapshot_id_organiz_fkey"
+            columns: [
+              "document_snapshot_id",
+              "organization_id",
+              "signature_id",
+              "party_role",
+            ]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_document_snapshots"
+            referencedColumns: [
+              "id",
+              "organization_id",
+              "signature_id",
+              "party_role",
+            ]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_events_policy_version_id_organizati_fkey"
+            columns: ["policy_version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_policy_versions"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_events_stream_id_organization_id_fkey"
+            columns: ["stream_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_file_proof_links: {
+        Row: {
+          organization_id: string
+          proof_id: string
+          relation: string
+          user_id: string
+        }
+        Insert: {
+          organization_id: string
+          proof_id: string
+          relation: string
+          user_id: string
+        }
+        Update: {
+          organization_id?: string
+          proof_id?: string
+          relation?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_file_proof_proof_id_organization_id_fkey"
+            columns: ["proof_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_file_proofs"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_file_proof_tokens: {
+        Row: {
+          operation: string
+          proof_id: string
+          transaction_id: number
+        }
+        Insert: {
+          operation: string
+          proof_id: string
+          transaction_id: number
+        }
+        Update: {
+          operation?: string
+          proof_id?: string
+          transaction_id?: number
+        }
+        Relationships: []
+      }
+      uc_signature_assurance_file_proofs: {
+        Row: {
+          actor_user_id: string | null
+          id: string
+          organization_id: string
+          party_role: string
+          proof: Json
+          recipient_user_id: string | null
+          request_sha256: string
+          signature_id: string
+          subject_user_id: string | null
+          verification_request_id: string
+          verified_at: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          id: string
+          organization_id: string
+          party_role: string
+          proof: Json
+          recipient_user_id?: string | null
+          request_sha256: string
+          signature_id: string
+          subject_user_id?: string | null
+          verification_request_id: string
+          verified_at?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          id?: string
+          organization_id?: string
+          party_role?: string
+          proof?: Json
+          recipient_user_id?: string | null
+          request_sha256?: string
+          signature_id?: string
+          subject_user_id?: string | null
+          verification_request_id?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
+      uc_signature_assurance_participants: {
+        Row: {
+          object_id: string
+          object_kind: string
+          organization_id: string
+          relation: string
+          user_id: string
+        }
+        Insert: {
+          object_id: string
+          object_kind: string
+          organization_id: string
+          relation: string
+          user_id: string
+        }
+        Update: {
+          object_id?: string
+          object_kind?: string
+          organization_id?: string
+          relation?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_signature_assurance_policy_decisions: {
+        Row: {
+          actor_user_id: string | null
+          authority: Json
+          id: string
+          organization_id: string
+          policy_version_id: string
+          reason: string
+          server_at: string
+          source_limits_acknowledged: boolean
+          state: string
+          stream_revision: number
+        }
+        Insert: {
+          actor_user_id?: string | null
+          authority: Json
+          id: string
+          organization_id: string
+          policy_version_id: string
+          reason: string
+          server_at?: string
+          source_limits_acknowledged: boolean
+          state: string
+          stream_revision: number
+        }
+        Update: {
+          actor_user_id?: string | null
+          authority?: Json
+          id?: string
+          organization_id?: string
+          policy_version_id?: string
+          reason?: string
+          server_at?: string
+          source_limits_acknowledged?: boolean
+          state?: string
+          stream_revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_policy_policy_version_id_organizati_fkey"
+            columns: ["policy_version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_policy_versions"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_policy_versions: {
+        Row: {
+          body: Json
+          body_json: string
+          body_sha256: string
+          created_at: string
+          created_by: string | null
+          family_id: string
+          id: string
+          organization_id: string
+          version: number
+        }
+        Insert: {
+          body: Json
+          body_json: string
+          body_sha256: string
+          created_at?: string
+          created_by?: string | null
+          family_id: string
+          id: string
+          organization_id: string
+          version: number
+        }
+        Update: {
+          body?: Json
+          body_json?: string
+          body_sha256?: string
+          created_at?: string
+          created_by?: string | null
+          family_id?: string
+          id?: string
+          organization_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_policy_ve_family_id_organization_id_fkey"
+            columns: ["family_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_private_manifests: {
+        Row: {
+          body_json: string
+          body_sha256: string
+          captured_at: string
+          captured_by: string | null
+          id: string
+          organization_id: string
+          signature_id: string
+          through_revision: number
+        }
+        Insert: {
+          body_json: string
+          body_sha256: string
+          captured_at?: string
+          captured_by?: string | null
+          id: string
+          organization_id: string
+          signature_id: string
+          through_revision: number
+        }
+        Update: {
+          body_json?: string
+          body_sha256?: string
+          captured_at?: string
+          captured_by?: string | null
+          id?: string
+          organization_id?: string
+          signature_id?: string
+          through_revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_privat_signature_id_organization_id_fkey"
+            columns: ["signature_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_requests: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          binding_id: string | null
+          entity_id: string
+          event_id: string | null
+          organization_id: string
+          party_role: string | null
+          payload_sha256: string
+          request_id: string
+          revision_applied: number
+          server_at: string
+          stream_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          binding_id?: string | null
+          entity_id: string
+          event_id?: string | null
+          organization_id: string
+          party_role?: string | null
+          payload_sha256: string
+          request_id: string
+          revision_applied: number
+          server_at?: string
+          stream_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          binding_id?: string | null
+          entity_id?: string
+          event_id?: string | null
+          organization_id?: string
+          party_role?: string | null
+          payload_sha256?: string
+          request_id?: string
+          revision_applied?: number
+          server_at?: string
+          stream_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_requests_binding_id_organization_id_fkey"
+            columns: ["binding_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_bindings"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_requests_event_id_organization_id_fkey"
+            columns: ["event_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_events"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "uc_signature_assurance_requests_stream_id_organization_id_fkey"
+            columns: ["stream_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_streams"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_scoped_manifests: {
+        Row: {
+          body_json: string
+          body_json_sha256: string
+          captured_at: string
+          captured_by: string | null
+          id: string
+          organization_id: string
+          receipt_html: string
+          receipt_html_sha256: string
+          signature_id: string
+          source_manifest_id: string
+        }
+        Insert: {
+          body_json: string
+          body_json_sha256: string
+          captured_at?: string
+          captured_by?: string | null
+          id: string
+          organization_id: string
+          receipt_html: string
+          receipt_html_sha256: string
+          signature_id: string
+          source_manifest_id: string
+        }
+        Update: {
+          body_json?: string
+          body_json_sha256?: string
+          captured_at?: string
+          captured_by?: string | null
+          id?: string
+          organization_id?: string
+          receipt_html?: string
+          receipt_html_sha256?: string
+          signature_id?: string
+          source_manifest_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_signature_assurance_scoped_source_manifest_id_organizat_fkey"
+            columns: ["source_manifest_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "uc_signature_assurance_private_manifests"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      uc_signature_assurance_streams: {
+        Row: {
+          created_at: string
+          entity_id: string
+          id: string
+          kind: string
+          organization_id: string
+          revision: number
+          subject_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          id: string
+          kind: string
+          organization_id: string
+          revision?: number
+          subject_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          revision?: number
+          subject_user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_signature_assurance_write_tokens: {
+        Row: {
+          object_id: string
+          object_kind: string
+          operation: string
+          transaction_id: number
+        }
+        Insert: {
+          object_id: string
+          object_kind: string
+          operation: string
+          transaction_id: number
+        }
+        Update: {
+          object_id?: string
+          object_kind?: string
+          operation?: string
+          transaction_id?: number
+        }
+        Relationships: []
+      }
       uc_signature_file_requests: {
         Row: {
           actor_id: string
@@ -19099,6 +20973,15 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_education_issuance_action: {
+        Args: {
+          p_action: Json
+          p_organization_id: string
+          p_request_id: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       apply_group_education_facts_action: {
         Args: {
@@ -19122,6 +21005,15 @@ export type Database = {
         Args: {
           p_action: Json
           p_context: Json
+          p_expected_revision: number
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      apply_signature_assurance: {
+        Args: {
+          p_action: Json
           p_expected_revision: number
           p_organization_id: string
           p_request_id: string
@@ -21000,6 +22892,15 @@ export type Database = {
         Returns: Json
       }
       prepare_due_postpaid_statements: { Args: never; Returns: Json }
+      prepare_education_issuance_artifacts: {
+        Args: {
+          p_organization_id: string
+          p_plan: Json
+          p_request_id: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
       prepare_final_test_photo: {
         Args: { p_lesson_id: string; p_request_id: string }
         Returns: Json
@@ -21092,6 +22993,14 @@ export type Database = {
         Args: { p_org: string; p_query: Json; p_scope: Json }
         Returns: Json
       }
+      read_course_assignment_removal: {
+        Args: {
+          p_enrollment_id: string
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       read_custom_journals: {
         Args: { p_organization_id: string; p_query: Json }
         Returns: Json
@@ -21100,6 +23009,11 @@ export type Database = {
         Args: { p_org: string; p_query: Json; p_scope: Json }
         Returns: Json
       }
+      read_education_issuance: {
+        Args: { p_organization_id: string; p_query: Json; p_scope: Json }
+        Returns: Json
+      }
+      read_frdo_packets: { Args: { p_request: Json }; Returns: Json }
       read_group_completion_decisions: {
         Args: { p_group_id: string; p_organization_id: string }
         Returns: Json
@@ -21114,6 +23028,10 @@ export type Database = {
       }
       read_scoped_custom_journals: {
         Args: { p_context: Json; p_organization_id: string; p_query: Json }
+        Returns: Json
+      }
+      read_signature_assurance: {
+        Args: { p_organization_id: string; p_query: Json }
         Returns: Json
       }
       read_student_admission_case: {
@@ -21186,6 +23104,16 @@ export type Database = {
           }
       release_ordinary_inbox_scan: {
         Args: { p_outcome: string; p_sender_pool_id: string; p_token: string }
+        Returns: Json
+      }
+      remove_erroneous_course_assignment: {
+        Args: {
+          p_enrollment_id: string
+          p_expected_hash: string
+          p_group_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
         Returns: Json
       }
       remove_org_staff_member: {
@@ -21894,6 +23822,10 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_assignment_removal_state: {
+        Args: { p_enrollment: string; p_group: string; p_org: string }
+        Returns: Json
+      }
       uc_attest_admission_case_evidence: {
         Args: {
           p_actor_id: string
@@ -21909,6 +23841,30 @@ export type Database = {
           p_source_fingerprint: string
           p_source_object_id: string
           p_source_updated_at: string
+        }
+        Returns: Json
+      }
+      uc_attest_education_issuance_artifact: {
+        Args: {
+          p_actor_id: string
+          p_input_revision: number
+          p_item_id: string
+          p_organization_id: string
+          p_preparation_id: string
+          p_proof: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      uc_attest_education_issuance_staging: {
+        Args: {
+          p_actor_id: string
+          p_input_revision: number
+          p_item_id: string
+          p_organization_id: string
+          p_preparation_id: string
+          p_proof: Json
+          p_request_id: string
         }
         Returns: Json
       }
@@ -22458,6 +24414,479 @@ export type Database = {
         Returns: Json
       }
       uc_dsr_working_2026: { Args: { p_day: string }; Returns: boolean }
+      uc_education_actor_json: {
+        Args: { p_json: Json; p_redact?: boolean; p_user: string }
+        Returns: Json
+      }
+      uc_education_actor_org_permission: {
+        Args: { p_actor: string; p_org: string; p_permission: string }
+        Returns: boolean
+      }
+      uc_education_admission_conditions: {
+        Args: { p_case: string }
+        Returns: Json
+      }
+      uc_education_admission_definition_shape: {
+        Args: { p_definition: Json; p_program_type: string }
+        Returns: boolean
+      }
+      uc_education_admission_digest: {
+        Args: {
+          p_program: Json
+          p_requirements: Json
+          p_reviews: Json
+          p_rule: string
+        }
+        Returns: string
+      }
+      uc_education_admission_evidence_shape: {
+        Args: { p_evidence: Json }
+        Returns: boolean
+      }
+      uc_education_admission_review_check: {
+        Args: {
+          p_case: string
+          p_evidence: Json
+          p_requirement: string
+          p_selected: Json
+        }
+        Returns: undefined
+      }
+      uc_education_admission_reviews: {
+        Args: { p_case: string }
+        Returns: Json
+      }
+      uc_education_artifact_actor: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_education_artifact_attest_shape: {
+        Args: { p_proof: Json; p_stage: boolean }
+        Returns: boolean
+      }
+      uc_education_artifact_context: {
+        Args: {
+          p_input_revision: number
+          p_item_id: string
+          p_organization_id: string
+          p_preparation_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      uc_education_artifact_context_json: {
+        Args: {
+          p_actor: string
+          p_item: string
+          p_preparation: string
+          p_request: string
+          p_revision: number
+        }
+        Returns: Json
+      }
+      uc_education_artifact_final: {
+        Args: { p_group: string; p_org: string; p_ref: Json }
+        Returns: {
+          artifact: Json | null
+          course_id: string
+          eligibility_ref: Json
+          enrollment_id: string
+          final_record_id: string | null
+          frdo_facts: Json
+          group_id: string
+          id: string
+          input_revision: number
+          number_plan: Json
+          official_identity: Json
+          organization_id: string
+          output_document_id: string
+          output_request_id: string
+          participant_ids: string[]
+          preparation_id: string
+          redacted: boolean
+          render_input_hash: string
+          render_variables: Json
+          retained_subject_user_id: string | null
+          source_snapshot: Json
+          staging_proof: Json | null
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_education_issuance_preparation_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_education_artifact_live: {
+        Args: {
+          p_actor: string
+          p_fresh?: boolean
+          p_item: string
+          p_preparation: string
+          p_revision: number
+        }
+        Returns: {
+          artifact: Json | null
+          course_id: string
+          eligibility_ref: Json
+          enrollment_id: string
+          final_record_id: string | null
+          frdo_facts: Json
+          group_id: string
+          id: string
+          input_revision: number
+          number_plan: Json
+          official_identity: Json
+          organization_id: string
+          output_document_id: string
+          output_request_id: string
+          participant_ids: string[]
+          preparation_id: string
+          redacted: boolean
+          render_input_hash: string
+          render_variables: Json
+          retained_subject_user_id: string | null
+          source_snapshot: Json
+          staging_proof: Json | null
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_education_issuance_preparation_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_education_artifact_saved_source: {
+        Args: { p_item: string }
+        Returns: Json
+      }
+      uc_education_artifact_service_request: {
+        Args: {
+          p_actor: string
+          p_item: string
+          p_org: string
+          p_preparation: string
+          p_request: string
+          p_revision: number
+        }
+        Returns: {
+          artifact: Json | null
+          course_id: string
+          eligibility_ref: Json
+          enrollment_id: string
+          final_record_id: string | null
+          frdo_facts: Json
+          group_id: string
+          id: string
+          input_revision: number
+          number_plan: Json
+          official_identity: Json
+          organization_id: string
+          output_document_id: string
+          output_request_id: string
+          participant_ids: string[]
+          preparation_id: string
+          redacted: boolean
+          render_input_hash: string
+          render_variables: Json
+          retained_subject_user_id: string | null
+          source_snapshot: Json
+          staging_proof: Json | null
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_education_issuance_preparation_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_education_change_apply: {
+        Args: {
+          p_change: Json
+          p_group: string
+          p_org: string
+          p_preview_hash: string
+        }
+        Returns: Json
+      }
+      uc_education_change_preview: {
+        Args: { p_change: Json; p_group: string; p_org: string }
+        Returns: Json
+      }
+      uc_education_erase_user: { Args: { p_user: string }; Returns: undefined }
+      uc_education_frdo_snapshot: {
+        Args: {
+          p_correct?: boolean
+          p_document_type: string
+          p_facts: Json
+          p_numbers: Json
+          p_org: string
+          p_original?: Json
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_education_handover_check: {
+        Args: { p_handover: Json; p_org: string; p_record: string }
+        Returns: undefined
+      }
+      uc_education_html: { Args: { p: string }; Returns: string }
+      uc_education_issue_actor: { Args: never; Returns: boolean }
+      uc_education_issue_admission: {
+        Args: {
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_program: Json
+          p_program_type: string
+        }
+        Returns: Json
+      }
+      uc_education_issue_artifact_projection: {
+        Args: { p_artifact: Json; p_legacy: boolean; p_org: string }
+        Returns: Json
+      }
+      uc_education_issue_basis_projection: {
+        Args: { p_basis: Json; p_org: string }
+        Returns: Json
+      }
+      uc_education_issue_block: { Args: { p_code: string }; Returns: Json }
+      uc_education_issue_can: {
+        Args: {
+          p_action: string
+          p_course: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_education_issue_candidate: {
+        Args: {
+          p_enrollment: string
+          p_lock?: boolean
+          p_org: string
+          p_scope_group: string
+        }
+        Returns: Json
+      }
+      uc_education_issue_caps: {
+        Args: {
+          p_course?: string
+          p_enrollment?: string
+          p_group: string
+          p_org: string
+          p_user?: string
+        }
+        Returns: Json
+      }
+      uc_education_issue_enrollment_fence: {
+        Args: { p_enrollment: string; p_exclusive?: boolean }
+        Returns: undefined
+      }
+      uc_education_issue_error: { Args: { p_code: string }; Returns: undefined }
+      uc_education_issue_event: { Args: { p_event: string }; Returns: Json }
+      uc_education_issue_export: {
+        Args: { p_org: string; p_scope: Json; p_selection: Json }
+        Returns: Json
+      }
+      uc_education_issue_fence: {
+        Args: {
+          p_group: string
+          p_key?: string
+          p_org: string
+          p_people: string[]
+        }
+        Returns: undefined
+      }
+      uc_education_issue_handover_projection: {
+        Args: { p_handover: Json; p_org: string }
+        Returns: Json
+      }
+      uc_education_issue_one: {
+        Args: { p_artifact: Json; p_item: string; p_reason: string }
+        Returns: Json
+      }
+      uc_education_issue_preview: {
+        Args: {
+          p_group: string
+          p_intent: Json
+          p_lock?: boolean
+          p_org: string
+        }
+        Returns: Json
+      }
+      uc_education_issue_proof_visible: {
+        Args: { p_proof: Json }
+        Returns: boolean
+      }
+      uc_education_issue_record: {
+        Args: { p_org: string; p_record: string; p_scope_group: string }
+        Returns: Json
+      }
+      uc_education_issue_scope: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: string
+      }
+      uc_education_issue_source: {
+        Args: { p_org: string; p_required?: boolean; p_source: Json }
+        Returns: Json
+      }
+      uc_education_issue_source_lock: {
+        Args: { p_org: string; p_source: Json }
+        Returns: undefined
+      }
+      uc_education_issue_source_projection: {
+        Args: { p_org: string; p_source: Json }
+        Returns: Json
+      }
+      uc_education_issue_state_hash: {
+        Args: { p_record: string }
+        Returns: string
+      }
+      uc_education_mutation_result: {
+        Args: {
+          p_org: string
+          p_receipt: Json
+          p_replayed: boolean
+          p_scope: Json
+        }
+        Returns: Json
+      }
+      uc_education_number_witness: {
+        Args: { p_date: string; p_org: string }
+        Returns: Json
+      }
+      uc_education_output_approval: { Args: { p_item: string }; Returns: Json }
+      uc_education_output_slot: {
+        Args: {
+          p_document: string
+          p_document_data: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+          p_restore: string
+          p_upload: Json
+        }
+        Returns: undefined
+      }
+      uc_education_personal_counts: { Args: { p_user: string }; Returns: Json }
+      uc_education_preparation_access: {
+        Args: { p_fresh?: boolean; p_item?: string; p_preparation: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          intent_hash: string
+          kind: string
+          number_witness: Json
+          organization_id: string
+          participant_ids: string[]
+          plan: Json
+          redacted: boolean
+          scope: Json
+          template: Json
+          template_byte_sha256: string | null
+          template_storage: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_education_issuance_preparations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_education_preparation_item_json: {
+        Args: { p_item: string }
+        Returns: Json
+      }
+      uc_education_preparation_json: {
+        Args: { p_preparation: string }
+        Returns: Json
+      }
+      uc_education_prospective_numbers: {
+        Args: {
+          p_date: string
+          p_index: number
+          p_series: string
+          p_witness: Json
+        }
+        Returns: Json
+      }
+      uc_education_render_variables: {
+        Args: {
+          p_document_type: string
+          p_facts: Json
+          p_identity: Json
+          p_numbers: Json
+          p_org: string
+          p_proof: Json
+        }
+        Returns: Json
+      }
+      uc_education_replacement_identity: {
+        Args: { p_correct: boolean; p_record: string }
+        Returns: Json
+      }
+      uc_education_retained_learning_summary: {
+        Args: { p_org: string; p_query: Json }
+        Returns: Json
+      }
+      uc_education_saved_output_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_education_template: {
+        Args: { p_lock?: boolean; p_org: string; p_template: Json }
+        Returns: Json
+      }
+      uc_education_template_current: {
+        Args: { p_org: string; p_storage: Json; p_template: Json }
+        Returns: boolean
+      }
+      uc_education_trusted_erasure: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      uc_education_withdraw_apply: {
+        Args: {
+          p_group: string
+          p_intent: Json
+          p_org: string
+          p_preview_hash: string
+          p_reason: string
+          p_refs: Json
+        }
+        Returns: Json
+      }
+      uc_education_withdraw_can: {
+        Args: {
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_write?: boolean
+        }
+        Returns: boolean
+      }
+      uc_education_withdraw_event: { Args: { p_event: string }; Returns: Json }
+      uc_education_withdraw_intent: {
+        Args: { p_group: string; p_intent: Json; p_org: string }
+        Returns: Json
+      }
+      uc_education_withdraw_state: {
+        Args: { p_enrollment: string; p_group: string; p_org: string }
+        Returns: Json
+      }
       uc_empty_education_profile: { Args: never; Returns: Json }
       uc_enrollment_delete_actor_writable: { Args: never; Returns: boolean }
       uc_enrollment_delete_has_witness: {
@@ -22466,6 +24895,10 @@ export type Database = {
       }
       uc_enrollment_delete_live_allowed: {
         Args: { p_course: string; p_enrollment: string; p_user: string }
+        Returns: boolean
+      }
+      uc_enrollment_is_withdrawn: {
+        Args: { p_enrollment: string }
         Returns: boolean
       }
       uc_erase_admission_cases: { Args: { p_user: string }; Returns: undefined }
@@ -22504,6 +24937,425 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_frdo_abandon_correction: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_action_sources: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_append_event: {
+        Args: {
+          p_event_id?: string
+          p_kind: string
+          p_packet: string
+          p_payload: Json
+          p_people?: string[]
+          p_state: string
+        }
+        Returns: {
+          actor_id: string | null
+          id: string
+          kind: string
+          organization_id: string
+          packet_id: string
+          payload: Json
+          payload_sha256: string
+          previous_state_hash: string | null
+          recorded_at: string
+          retained_people: string[]
+          revision: number
+          state_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_frdo_packet_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_frdo_apply_direct: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_artifact_access: {
+        Args: {
+          p_current_submission?: boolean
+          p_lock?: boolean
+          p_packet: string
+          p_ref: Json
+        }
+        Returns: {
+          actor_id: string
+          artifact_id: string
+          artifact_ref: Json | null
+          bucket_id: string
+          byte_sha256: string | null
+          byte_size: number | null
+          failure: string | null
+          id: string
+          input_revision: number
+          lease_id: string | null
+          lease_until: string | null
+          mime: string
+          object_id: string | null
+          object_path: string
+          object_updated_at: string | null
+          organization_id: string
+          packet_id: string
+          part_proofs: Json | null
+          phase: string
+          readback_sha256: string | null
+          recorded_at: string
+          registry_record_id: string | null
+          retained_people: string[]
+          signing: Json
+          snapshot_sha256: string
+          template: Json
+          worker_request_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_frdo_packet_artifact_builds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_frdo_artifact_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_frdo_packet_artifact_builds"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_assert_file_claim: {
+        Args: { p_lease: string; p_request: Json }
+        Returns: undefined
+      }
+      uc_frdo_authority_current: {
+        Args: {
+          p_org: string
+          p_ref: Json
+          p_require_current_operator?: boolean
+        }
+        Returns: {
+          evidence: Json
+          external_delegation_verified: boolean
+          id: string
+          note: string | null
+          operator_user_id: string
+          organization_id: string
+          previous_state_hash: string | null
+          recorded_at: string
+          recorded_by: string | null
+          retained_people: string[]
+          revision: number
+          revocation_event_id: string | null
+          source_read: Json
+          state: string
+          state_hash: string
+          validity: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_frdo_operator_authority_revisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_frdo_authority_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_frdo_operator_authority_revisions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_authority_ref: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_frdo_operator_authority_revisions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_begin_correction: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_begin_evidenced_action: {
+        Args: { p_command: Json }
+        Returns: Json
+      }
+      uc_frdo_begin_freeze: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_begin_supplement: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_candidate_object: {
+        Args: { p_lease: string; p_request: Json }
+        Returns: Json
+      }
+      uc_frdo_canonical: {
+        Args: { p_depth?: number; p_value: Json }
+        Returns: string
+      }
+      uc_frdo_capture_cas: {
+        Args: {
+          p_capture: Json
+          p_issuer_intent: Json
+          p_org: string
+          p_scope: Json
+          p_source_reads: Json
+        }
+        Returns: Json
+      }
+      uc_frdo_claim_file: { Args: { p_request: Json }; Returns: Json }
+      uc_frdo_commit_correction: { Args: { p_value: Json }; Returns: Json }
+      uc_frdo_commit_evidenced_action: {
+        Args: { p_value: Json }
+        Returns: Json
+      }
+      uc_frdo_commit_freeze: { Args: { p_value: Json }; Returns: Json }
+      uc_frdo_commit_supplement: { Args: { p_value: Json }; Returns: Json }
+      uc_frdo_correction_plan: {
+        Args: { p_org: string; p_plan: Json; p_scope: Json; p_write?: boolean }
+        Returns: Json
+      }
+      uc_frdo_currency: { Args: { p_packet: string }; Returns: string }
+      uc_frdo_cursor_decode: {
+        Args: { p_cursor: Json; p_filter: Json; p_org: string; p_scope: Json }
+        Returns: string
+      }
+      uc_frdo_cursor_encode: {
+        Args: { p_after: string; p_filter: Json; p_org: string; p_scope: Json }
+        Returns: string
+      }
+      uc_frdo_error: { Args: { p_code: string }; Returns: undefined }
+      uc_frdo_event_json: {
+        Args: {
+          p: Database["public"]["Tables"]["uc_frdo_packet_events"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_fail_file: {
+        Args: { p_build: string; p_code: string; p_lease: string }
+        Returns: Json
+      }
+      uc_frdo_fence: {
+        Args: { p_lock_key?: string; p_people: string[] }
+        Returns: undefined
+      }
+      uc_frdo_hash: { Args: { p_value: Json }; Returns: string }
+      uc_frdo_mapped_integrity: {
+        Args: { p_capture: Json; p_org: string; p_scope: Json }
+        Returns: undefined
+      }
+      uc_frdo_mutation_result: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_packet_access: {
+        Args: { p_packet: string; p_write?: boolean }
+        Returns: {
+          capture: Json
+          created_at: string
+          created_by: string | null
+          current_build_id: string | null
+          cursor_secret: string
+          group_id: string | null
+          id: string
+          issuer_review: Json
+          latest_admin_handover_event_id: string | null
+          latest_receipt_event_id: string | null
+          latest_registry_record_id: string | null
+          latest_upload_event_id: string | null
+          organization_id: string
+          parent_correction: Json | null
+          redacted: boolean
+          retained_people: string[]
+          revision: number
+          scope: Json
+          snapshot_sha256: string
+          source_reads: Json
+          state: string
+          state_hash: string
+          stream: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_frdo_packets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_frdo_packet_current: {
+        Args: { p_packet: string; p_write?: boolean }
+        Returns: {
+          capture: Json
+          created_at: string
+          created_by: string | null
+          current_build_id: string | null
+          cursor_secret: string
+          group_id: string | null
+          id: string
+          issuer_review: Json
+          latest_admin_handover_event_id: string | null
+          latest_receipt_event_id: string | null
+          latest_registry_record_id: string | null
+          latest_upload_event_id: string | null
+          organization_id: string
+          parent_correction: Json | null
+          redacted: boolean
+          retained_people: string[]
+          revision: number
+          scope: Json
+          snapshot_sha256: string
+          source_reads: Json
+          state: string
+          state_hash: string
+          stream: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_frdo_packets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_frdo_packet_json: { Args: { p_packet: string }; Returns: Json }
+      uc_frdo_packet_ref: {
+        Args: { p: Database["public"]["Tables"]["uc_frdo_packets"]["Row"] }
+        Returns: Json
+      }
+      uc_frdo_parts: { Args: { p_stream: string }; Returns: Json }
+      uc_frdo_pending_worker_request: {
+        Args: { p_command: Json }
+        Returns: Json
+      }
+      uc_frdo_personal_counts: { Args: { p_user: string }; Returns: Json }
+      uc_frdo_read_correction_selection: {
+        Args: { p_org: string; p_plan: Json; p_scope: Json }
+        Returns: Json
+      }
+      uc_frdo_read_inputs: {
+        Args: {
+          p_issuer: Json
+          p_org: string
+          p_preview?: boolean
+          p_scope: Json
+          p_selection: Json
+        }
+        Returns: Json
+      }
+      uc_frdo_receipt_state: {
+        Args: { p_receipt: Json; p_rows: Json }
+        Returns: string
+      }
+      uc_frdo_record_history_access: {
+        Args: {
+          p_org: string
+          p_record: string
+          p_scope: Json
+          p_write?: boolean
+        }
+        Returns: undefined
+      }
+      uc_frdo_record_live: {
+        Args: {
+          p_org: string
+          p_record: string
+          p_scope: Json
+          p_selected?: boolean
+          p_write?: boolean
+        }
+        Returns: Json
+      }
+      uc_frdo_registry_context: {
+        Args: {
+          p_context: Json
+          p_group: string
+          p_org: string
+          p_subject: Json
+        }
+        Returns: Json
+      }
+      uc_frdo_registry_data: {
+        Args: {
+          b: Database["public"]["Tables"]["uc_frdo_packet_artifact_builds"]["Row"]
+          p: Database["public"]["Tables"]["uc_frdo_packets"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_registry_snapshot_guard: {
+        Args: { p_org: string; p_snapshot: Json }
+        Returns: boolean
+      }
+      uc_frdo_registry_source: {
+        Args: { p_lock?: boolean; p_org: string; p_ref: Json }
+        Returns: Json
+      }
+      uc_frdo_registry_subject: {
+        Args: { p_org: string; p_source: Json; p_user: string }
+        Returns: boolean
+      }
+      uc_frdo_request_file: { Args: { p_command: Json }; Returns: Json }
+      uc_frdo_retention_block: { Args: { p_user: string }; Returns: undefined }
+      uc_frdo_scope_valid: { Args: { p_scope: Json }; Returns: boolean }
+      uc_frdo_seal_file: { Args: { p_value: Json }; Returns: Json }
+      uc_frdo_shape: {
+        Args: { p_keys: string[]; p_value: Json }
+        Returns: boolean
+      }
+      uc_frdo_source_descriptor: {
+        Args: { p_org: string; p_ref: Json }
+        Returns: Json
+      }
+      uc_frdo_source_live: {
+        Args: {
+          p_lock?: boolean
+          p_org: string
+          p_sealed: Json
+          p_source_read: Json
+        }
+        Returns: Json
+      }
+      uc_frdo_source_projection: {
+        Args: { p_org: string; p_sealed: Json }
+        Returns: Json
+      }
+      uc_frdo_source_set_add: {
+        Args: { p_sealed: Json; p_sources: Json }
+        Returns: Json
+      }
+      uc_frdo_storage_object_can_read: {
+        Args: { p_object: unknown }
+        Returns: boolean
+      }
+      uc_frdo_summary: {
+        Args: { p: Database["public"]["Tables"]["uc_frdo_packets"]["Row"] }
+        Returns: Json
+      }
+      uc_frdo_supplement_current: {
+        Args: { p_org: string; p_record: string }
+        Returns: {
+          evidence: Json
+          fields: Json
+          frozen_facts_sha256: string
+          id: string
+          organization_id: string
+          record_id: string
+          redacted: boolean
+          request_id: string
+          retained_people: string[]
+          review_note: string | null
+          reviewed_at: string
+          reviewed_by: string | null
+          revision: number
+          snapshot_sha256: string
+          source_reads: Json
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_frdo_supplement_revisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_frdo_supplement_json: {
+        Args: {
+          p_scope: Json
+          p_value: Database["public"]["Tables"]["uc_frdo_supplement_revisions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_supplement_ref: {
+        Args: {
+          p_value: Database["public"]["Tables"]["uc_frdo_supplement_revisions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_frdo_supplement_shape: { Args: { p_input: Json }; Returns: undefined }
+      uc_frdo_template: { Args: { p_stream: string }; Returns: Json }
       uc_group_education_actor_allowed: {
         Args: {
           p_actor: string
@@ -22920,6 +25772,16 @@ export type Database = {
         Args: { p_action: string; p_payload: Json }
         Returns: Json
       }
+      uc_observe_admission_sealed_object: {
+        Args: {
+          p_actor_id: string
+          p_case_id: string
+          p_expected_revision: number
+          p_request_id: string
+          p_reservation_id: string
+        }
+        Returns: Json
+      }
       uc_org_document_blob_committed: {
         Args: { p_bucket: string; p_path: string }
         Returns: boolean
@@ -23136,6 +25998,974 @@ export type Database = {
           p_write?: boolean
         }
         Returns: boolean
+      }
+      uc_signature_assurance_accept_agreement: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_active: {
+        Args: { p_actor?: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_actor: {
+        Args: { p_declared_name: string; p_user: string }
+        Returns: Json
+      }
+      uc_signature_assurance_append: {
+        Args: {
+          p_actor?: string
+          p_agreement?: string
+          p_authority: Json
+          p_binding?: string
+          p_conclusion?: string
+          p_consent?: string
+          p_declared_name?: string
+          p_document?: string
+          p_expected: number
+          p_kind: string
+          p_method: string
+          p_org: string
+          p_party_role?: string
+          p_policy?: string
+          p_reason: string
+          p_request: string
+          p_signature?: string
+          p_stream: string
+        }
+        Returns: {
+          actor_user_id: string | null
+          agreement_event_id: string | null
+          binding_id: string | null
+          consent_snapshot_id: string | null
+          document_snapshot_id: string | null
+          id: string
+          kind: string
+          organization_id: string
+          party_role: string | null
+          payload: Json
+          policy_version_id: string | null
+          recipient_user_id: string | null
+          request_id: string
+          revision: number
+          server_at: string
+          signature_id: string | null
+          stream_id: string
+          stream_kind: string
+          subject_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_append_scan: {
+        Args: {
+          p_actor?: string
+          p_agreement?: string
+          p_authority: Json
+          p_binding?: string
+          p_conclusion?: string
+          p_consent?: string
+          p_declared_name?: string
+          p_document?: string
+          p_expected: number
+          p_kind: string
+          p_method: string
+          p_org: string
+          p_party_role?: string
+          p_policy?: string
+          p_reason: string
+          p_request: string
+          p_scan?: Json
+          p_signature?: string
+          p_stream: string
+        }
+        Returns: {
+          actor_user_id: string | null
+          agreement_event_id: string | null
+          binding_id: string | null
+          consent_snapshot_id: string | null
+          document_snapshot_id: string | null
+          id: string
+          kind: string
+          organization_id: string
+          party_role: string | null
+          payload: Json
+          policy_version_id: string | null
+          recipient_user_id: string | null
+          request_id: string
+          revision: number
+          server_at: string
+          signature_id: string | null
+          stream_id: string
+          stream_kind: string
+          subject_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_as_can_access_organization: {
+        Args: {
+          _organization_id: string
+          _permission?: string
+          p_actor: string
+        }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_action_allowed: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_enrollment?: string
+          p_group?: string
+          p_org: string
+        }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_commercial_creation_allowed: {
+        Args: { p_actor: string; p_org: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_contract_scope: {
+        Args: {
+          p_actor: string
+          p_company: string
+          p_group: string
+          p_org: string
+          p_students: Json
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_has_action: {
+        Args: { p_action: string; p_actor: string; p_org: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_record_scope: {
+        Args: {
+          p_actor: string
+          p_course: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_scope_allowed: {
+        Args: {
+          p_actor: string
+          p_enrollment?: string
+          p_group?: string
+          p_org: string
+        }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_signature_read_scope: {
+        Args: { p_actor: string; p_signature_id: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_signature_scope: {
+        Args: { p_actor: string; p_signature_id: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_signature_source_scope: {
+        Args: { p_actor: string; p_document: string; p_org: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_document_teacher_limited: {
+        Args: { p_actor: string; p_org: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_resolve_selection: {
+        Args: {
+          p_actor: string
+          p_org: string
+          p_required?: boolean
+          p_value: Json
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_as_signature_action_allowed: {
+        Args: { p_action: string; p_actor: string; p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_signature_actor_allowed: {
+        Args: {
+          p_actor: string
+          p_recipient?: boolean
+          p_signature_id: string
+          p_write?: boolean
+        }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_signature_commercial_sender_allowed: {
+        Args: { p_actor: string; p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_signature_file_scope: {
+        Args: { p_actor: string; p_bucket: string; p_path: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_as_signature_storage_read: {
+        Args: { p_actor: string; p_bucket: string; p_name: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_attest_file_private: {
+        Args: { p_action: Json; p_actor: string; p_proof: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_auth_signature_action: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_authority: {
+        Args: { p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_bind_signature: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_capabilities: {
+        Args: { p_org: string; p_party?: string; p_signature?: string }
+        Returns: Json
+      }
+      uc_signature_assurance_capture_document: {
+        Args: {
+          p_expected_document_revision: string
+          p_expected_html_sha256: string
+          p_org: string
+          p_party: string
+          p_signature: string
+        }
+        Returns: {
+          captured_at: string
+          captured_by: string | null
+          document_revision_id: string | null
+          html_sha256: string
+          html_text: string
+          id: string
+          organization_id: string
+          original_file: Json | null
+          party_role: string
+          recipient_user_id: string | null
+          signature_id: string
+          source_file_state: string
+          subject_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_document_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_capture_document_as: {
+        Args: {
+          p_actor: string
+          p_expected_document_revision: string
+          p_expected_html_sha256: string
+          p_invitation?: string
+          p_org: string
+          p_party: string
+          p_signature: string
+        }
+        Returns: {
+          captured_at: string
+          captured_by: string | null
+          document_revision_id: string | null
+          html_sha256: string
+          html_text: string
+          id: string
+          organization_id: string
+          original_file: Json | null
+          party_role: string
+          recipient_user_id: string | null
+          signature_id: string
+          source_file_state: string
+          subject_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_document_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_capture_evidence_projection: {
+        Args: {
+          p_org: string
+          p_party: string
+          p_signature: string
+          p_through: number
+        }
+        Returns: {
+          body_json: string
+          body_sha256: string
+          captured_at: string
+          captured_by: string | null
+          id: string
+          organization_id: string
+          signature_id: string
+          through_revision: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_private_manifests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_classification: {
+        Args: { p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_confirm_consent: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_context: {
+        Args: { p_org: string; p_party: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_controlled_attest_private: {
+        Args: { p_action: Json; p_actor: string; p_proof: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_controlled_file_context_private: {
+        Args: { p_action: Json; p_actor: string }
+        Returns: Json
+      }
+      uc_signature_assurance_credential_source: {
+        Args: { p_org: string; p_value: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_current_document: {
+        Args: { p_org: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_current_file_scope: {
+        Args: { p_file: Json; p_org: string; p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_date: { Args: { p_value: Json }; Returns: boolean }
+      uc_signature_assurance_decide_policy: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_decode_probe: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      uc_signature_assurance_derive_manifest: {
+        Args: { p_org: string; p_signature: string; p_source: string }
+        Returns: Json
+      }
+      uc_signature_assurance_disclose_file: {
+        Args: { p_file: Json; p_org: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_disclose_selection: {
+        Args: { p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_empty_authority: { Args: never; Returns: Json }
+      uc_signature_assurance_empty_subject_stream: {
+        Args: { p_kind: string; p_org: string; p_subject: string }
+        Returns: string
+      }
+      uc_signature_assurance_error: {
+        Args: { p_code: string }
+        Returns: undefined
+      }
+      uc_signature_assurance_fence: {
+        Args: {
+          p_actor?: string
+          p_org: string
+          p_people: string[]
+          p_request?: string
+          p_stream?: string
+          p_write?: boolean
+        }
+        Returns: undefined
+      }
+      uc_signature_assurance_file_action: {
+        Args: { p_action: Json }
+        Returns: undefined
+      }
+      uc_signature_assurance_file_actor: {
+        Args: { p_action: Json; p_actor: string }
+        Returns: {
+          certificate_error: string | null
+          certificate_hash: string | null
+          certificate_state: string
+          created_at: string
+          current_revision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          document_hash: string | null
+          document_html: string | null
+          document_id: string | null
+          document_snapshot_url: string | null
+          document_title: string
+          document_type: string
+          email_open_token: string | null
+          email_opened_at: string | null
+          expires_at: string
+          handwritten_scan_hash: string | null
+          handwritten_scan_path: string | null
+          hidden_for_recipient: boolean
+          hidden_for_sender: boolean
+          id: string
+          linked_proposal_id: string | null
+          mode: string
+          organization_id: string
+          pep_agreement_id: string | null
+          recipient_email: string
+          recipient_name: string
+          recipient_type: string
+          recipient_user_id: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          requires_bilateral: boolean
+          sender_name: string | null
+          sender_signed_at: string | null
+          sender_signed_ip: string | null
+          sender_signed_user_agent: string | null
+          sender_user_id: string
+          sent_at: string | null
+          signature_method: string
+          signature_token: string
+          signed_at: string | null
+          signed_document_path: string | null
+          signed_ip: string | null
+          signed_organization_inn: string | null
+          signed_organization_name: string | null
+          signed_revision_id: string | null
+          signed_source_bucket: string | null
+          signed_source_hash: string | null
+          signed_source_path: string | null
+          signed_user_agent: string | null
+          status: string
+          template_version_id: string | null
+          updated_at: string
+          viewed_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "document_signatures"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_file_context_private: {
+        Args: { p_action: Json; p_actor: string }
+        Returns: Json
+      }
+      uc_signature_assurance_file_fence: {
+        Args: {
+          p_actor: string
+          p_previous_people?: string[]
+          p_previous_recipient?: string
+          p_previous_subject?: string
+          p_signature: Database["public"]["Tables"]["document_signatures"]["Row"]
+          p_write: boolean
+        }
+        Returns: undefined
+      }
+      uc_signature_assurance_file_people: {
+        Args: {
+          p_signature: Database["public"]["Tables"]["document_signatures"]["Row"]
+        }
+        Returns: {
+          relation: string
+          user_id: string
+        }[]
+      }
+      uc_signature_assurance_file_proof_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_signature_assurance_file_proof_receipt: {
+        Args: {
+          p_replay: boolean
+          p_row: Database["public"]["Tables"]["uc_signature_assurance_file_proofs"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_file_proof_retention_block: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_signature_assurance_file_read_private: {
+        Args: { p_action: Json; p_actor: string }
+        Returns: Json
+      }
+      uc_signature_assurance_file_read_service: {
+        Args: { p_action: Json; p_observed_actor_user_id: string }
+        Returns: Json
+      }
+      uc_signature_assurance_hash: { Args: { p_text: string }; Returns: string }
+      uc_signature_assurance_html_escape: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      uc_signature_assurance_integer: {
+        Args: { p_max?: number; p_min?: number; p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_invitation_authority: {
+        Args: { p_actor: string; p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_invitation_context: {
+        Args: { p_actor: string; p_token: string }
+        Returns: Json
+      }
+      uc_signature_assurance_issued_source: {
+        Args: {
+          p_expected_record_revision: number
+          p_expected_state_hash: string
+          p_org: string
+          p_signature: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_issued_source_as: {
+        Args: {
+          p_actor: string
+          p_expected_record_revision: number
+          p_expected_state_hash: string
+          p_for_confirmation?: boolean
+          p_invitation?: string
+          p_org: string
+          p_signature: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_legal_source: {
+        Args: { p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_mask_captured_authority: {
+        Args: { p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_mask_captured_file: {
+        Args: { p_org: string; p_signature: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_mask_captured_policy: {
+        Args: { p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_mask_captured_selection: {
+        Args: { p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_object_snapshot: {
+        Args: { p_bucket: string; p_path: string }
+        Returns: Json
+      }
+      uc_signature_assurance_own_current: {
+        Args: { p_org: string; p_subject: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_signature_assurance_policy_body: {
+        Args: { p_org: string; p_value: Json }
+        Returns: undefined
+      }
+      uc_signature_assurance_policy_eligible: {
+        Args: { p_org: string; p_policy: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_policy_read: {
+        Args: { p_org: string; p_policy: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_project_agreement: {
+        Args: { p_id: string; p_org: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_authority: {
+        Args: { p_authority: Json; p_org: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_binding: {
+        Args: { p_binding: string; p_org: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_consent: {
+        Args: { p_id: string; p_org: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_document: {
+        Args: { p_document: string; p_org: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_legacy_agreement: {
+        Args: { p_id: string; p_org: string; p_subject: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_legacy_consent: {
+        Args: { p_id: string; p_org: string; p_subject: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_policy: {
+        Args: { p_org: string; p_policy: string }
+        Returns: Json
+      }
+      uc_signature_assurance_project_signature_event: {
+        Args: { p_event: string; p_org: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_public_action: {
+        Args: { p_action: Json }
+        Returns: undefined
+      }
+      uc_signature_assurance_read_events: {
+        Args: { p_org: string; p_query: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_read_html_fields: {
+        Args: { p_document: string; p_org: string; p_signature: string }
+        Returns: Json
+      }
+      uc_signature_assurance_receipt: {
+        Args: {
+          p_replayed?: boolean
+          p_request: Database["public"]["Tables"]["uc_signature_assurance_requests"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_record_request: {
+        Args: {
+          p_action: string
+          p_actor?: string
+          p_binding?: string
+          p_digest: string
+          p_entity: string
+          p_event: string
+          p_org: string
+          p_party_role?: string
+          p_request: string
+          p_revision: number
+          p_stream: string
+        }
+        Returns: {
+          action: string
+          actor_user_id: string | null
+          binding_id: string | null
+          entity_id: string
+          event_id: string | null
+          organization_id: string
+          party_role: string | null
+          payload_sha256: string
+          request_id: string
+          revision_applied: number
+          server_at: string
+          stream_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_redactions: {
+        Args: { p_depth?: number; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_render_terms: {
+        Args: {
+          p_actor?: string
+          p_declared: string
+          p_kind: string
+          p_org: string
+          p_policy: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_request: {
+        Args: {
+          p_actor?: string
+          p_digest: string
+          p_org: string
+          p_request: string
+        }
+        Returns: {
+          action: string
+          actor_user_id: string | null
+          binding_id: string | null
+          entity_id: string
+          event_id: string | null
+          organization_id: string
+          party_role: string | null
+          payload_sha256: string
+          request_id: string
+          revision_applied: number
+          server_at: string
+          stream_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_resolve_selection: {
+        Args: { p_org: string; p_required?: boolean; p_value: Json }
+        Returns: Json
+      }
+      uc_signature_assurance_retention_block: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_signature_assurance_safe_authenticated_input: {
+        Args: { p_action: Json; p_org: string }
+        Returns: undefined
+      }
+      uc_signature_assurance_save_policy: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_selection: {
+        Args: { p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_selection_people: {
+        Args: { p_org: string; p_value: Json }
+        Returns: string[]
+      }
+      uc_signature_assurance_service: {
+        Args: {
+          p_action: Json
+          p_observed_actor_user_id: string
+          p_original_proof?: Json
+          p_request_ip?: string
+          p_request_user_agent?: string
+          p_scan_proof?: Json
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_sha: { Args: { p_value: Json }; Returns: boolean }
+      uc_signature_assurance_shape: {
+        Args: { p_keys: string[]; p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_signature_fence: {
+        Args: {
+          p_org: string
+          p_request?: string
+          p_signature: string
+          p_write?: boolean
+        }
+        Returns: {
+          certificate_error: string | null
+          certificate_hash: string | null
+          certificate_state: string
+          created_at: string
+          current_revision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          document_hash: string | null
+          document_html: string | null
+          document_id: string | null
+          document_snapshot_url: string | null
+          document_title: string
+          document_type: string
+          email_open_token: string | null
+          email_opened_at: string | null
+          expires_at: string
+          handwritten_scan_hash: string | null
+          handwritten_scan_path: string | null
+          hidden_for_recipient: boolean
+          hidden_for_sender: boolean
+          id: string
+          linked_proposal_id: string | null
+          mode: string
+          organization_id: string
+          pep_agreement_id: string | null
+          recipient_email: string
+          recipient_name: string
+          recipient_type: string
+          recipient_user_id: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          requires_bilateral: boolean
+          sender_name: string | null
+          sender_signed_at: string | null
+          sender_signed_ip: string | null
+          sender_signed_user_agent: string | null
+          sender_user_id: string
+          sent_at: string | null
+          signature_method: string
+          signature_token: string
+          signed_at: string | null
+          signed_document_path: string | null
+          signed_ip: string | null
+          signed_organization_inn: string | null
+          signed_organization_name: string | null
+          signed_revision_id: string | null
+          signed_source_bucket: string | null
+          signed_source_hash: string | null
+          signed_source_path: string | null
+          signed_user_agent: string | null
+          status: string
+          template_version_id: string | null
+          updated_at: string
+          viewed_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "document_signatures"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_signature_read: {
+        Args: { p_org: string; p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_signature_write: {
+        Args: { p_org: string; p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_stream: {
+        Args: {
+          p_entity: string
+          p_kind: string
+          p_org: string
+          p_subject?: string
+        }
+        Returns: {
+          created_at: string
+          entity_id: string
+          id: string
+          kind: string
+          organization_id: string
+          revision: number
+          subject_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_signature_assurance_streams"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_signature_assurance_subject_read: {
+        Args: { p_org: string; p_subject: string }
+        Returns: boolean
+      }
+      uc_signature_assurance_terms: {
+        Args: { p_kind: string; p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_text: {
+        Args: { p_empty?: boolean; p_max: number; p_value: Json }
+        Returns: boolean
+      }
+      uc_signature_assurance_token: {
+        Args: { p_id: string; p_kind: string; p_operation?: string }
+        Returns: undefined
+      }
+      uc_signature_assurance_track: {
+        Args: {
+          p_id: string
+          p_kind: string
+          p_org: string
+          p_relation: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      uc_signature_assurance_utc: { Args: { p_time: string }; Returns: string }
+      uc_signature_assurance_uuid: { Args: { p_value: Json }; Returns: boolean }
+      uc_signature_assurance_verify_controlled_source_service: {
+        Args: {
+          p_action: Json
+          p_observed_actor_user_id: string
+          p_original_proof?: Json
+          p_request_ip?: unknown
+          p_request_user_agent?: string
+          p_scan_proof?: Json
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_verify_invitation_file_service: {
+        Args: {
+          p_action: Json
+          p_observed_actor_user_id: string
+          p_original_proof?: Json
+          p_request_ip?: unknown
+          p_request_user_agent?: string
+          p_scan_proof?: Json
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_verify_source_service: {
+        Args: {
+          p_action: Json
+          p_observed_actor_user_id: string
+          p_original_proof?: Json
+          p_request_ip?: unknown
+          p_request_user_agent?: string
+          p_scan_proof?: Json
+        }
+        Returns: Json
+      }
+      uc_signature_assurance_withdraw_consent: {
+        Args: {
+          p_action: Json
+          p_expected: number
+          p_org: string
+          p_request: string
+        }
+        Returns: Json
       }
       uc_signature_canonical_file: {
         Args: { p_org: string; p_path: string; p_signature: string }
