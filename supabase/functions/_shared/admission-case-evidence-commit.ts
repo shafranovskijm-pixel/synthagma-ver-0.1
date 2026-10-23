@@ -1,6 +1,6 @@
 import { admissionRequestBoundary, admissionError, admissionJson, admissionDeadline, admissionCheckSignal, readAdmissionBody,
   parseAdmissionCommit, requireAdmissionActor, admissionDbData, parseAdmissionContext, admissionDownload, admissionSame, admissionMutation,
-  admissionSealedObject, admissionSealedInfo, admissionAttestation, admissionEvidenceEcho, ADMISSION_EVIDENCE_BUCKET, AdmissionError,
+  admissionSealedObject, admissionSealedInfoObserved, admissionObservedSealedObject, admissionAttestation, admissionEvidenceEcho, ADMISSION_EVIDENCE_BUCKET, AdmissionError,
   ADMISSION_EVIDENCE_REVISION, admissionCodes, type AdmissionDependencies, type AdmissionEvidenceContext } from "./admission-case-access.ts";
 
 const same = (before: unknown, after: unknown) => {if (!admissionSame(before, after)) throw new AdmissionError("SOURCE_CHANGED");};
@@ -10,7 +10,7 @@ function identity(context: AdmissionEvidenceContext) {
 }
 /** Sealing is byte attestation only. The original caller alone finalizes business evidence. */
 export async function admissionEvidenceCommitRequest(request: Request, deps: AdmissionDependencies): Promise<Response> {
-  let diagnosticStage: "boundary" | "read_input" | "authenticate_initial" | "context_initial" | "source_download" | "authenticate_after_source" | "context_after_source" | "sealed_upload" | "sealed_info_before" | "sealed_readback" | "sealed_info_after" | "authenticate_before_attest" | "context_before_attest" | "attest" | "authenticate_after_attest" | "context_after_attest" | "finalize" | "authenticate_after_finalize" | "context_consumed" | "result" = "boundary";
+  let diagnosticStage: "boundary" | "read_input" | "authenticate_initial" | "context_initial" | "source_download" | "authenticate_after_source" | "context_after_source" | "sealed_upload" | "sealed_info_before" | "sealed_observe_before" | "sealed_readback" | "sealed_info_after" | "sealed_observe_after" | "authenticate_before_attest" | "context_before_attest" | "attest" | "authenticate_after_attest" | "context_after_attest" | "finalize" | "authenticate_after_finalize" | "context_consumed" | "result" = "boundary";
   try {
     const authorization = admissionRequestBoundary(request);
     if (authorization instanceof Response) return authorization;
@@ -59,14 +59,23 @@ export async function admissionEvidenceCommitRequest(request: Request, deps: Adm
       // A lost upload response may leave an orphan. Never overwrite it: prove
       // the exact object and bytes or fail, leaving it inaccessible for retry.
       diagnosticStage = "sealed_info_before";
-      const sealedBefore = await admissionSealedInfo(service, path, proof.bytes.length, mime, signal);
+      const sdkBefore = await admissionSealedInfoObserved(service, path, proof.bytes.length, mime, signal);
+      diagnosticStage = "sealed_observe_before";
+      const observe = async (sdk: typeof sdkBefore) => {
+        admissionCheckSignal(signal);
+        const object = admissionObservedSealedObject(admissionDbData(await service.rpc("uc_observe_admission_sealed_object", {p_actor_id: actor, ...args})), after, sdk);
+        admissionCheckSignal(signal); return object;
+      };
+      const sealedBefore = await observe(sdkBefore);
       if (uploadedId !== undefined && uploadedId !== sealedBefore.object_id) throw new AdmissionError("SOURCE_CHANGED");
-      if (after.mode === "sealed") same(sealedBefore, {object_id: after.sealed.object_id, updated_at: after.sealed.updated_at});
+      if (after.mode === "sealed") same({object_id: sealedBefore.object_id, updated_at: sealedBefore.updated_at}, {object_id: after.sealed.object_id, updated_at: after.sealed.updated_at});
       diagnosticStage = "sealed_readback";
       const sealedBytes = await admissionDownload(service, {bucket: ADMISSION_EVIDENCE_BUCKET, path, byte_size: proof.bytes.length,
         mime_type: mime, known_sha256: proof.sha256}, signal);
       diagnosticStage = "sealed_info_after";
-      const sealedAfter = await admissionSealedInfo(service, path, proof.bytes.length, mime, signal); same(sealedBefore, sealedAfter);
+      const sdkAfter = await admissionSealedInfoObserved(service, path, proof.bytes.length, mime, signal); same(sdkBefore, sdkAfter);
+      diagnosticStage = "sealed_observe_after";
+      const sealedAfter = await observe(sdkAfter); same(sealedBefore, sealedAfter);
       if (sealedBytes.sha256 !== proof.sha256) throw new AdmissionError("SOURCE_CHANGED");
       diagnosticStage = "authenticate_before_attest";
       await requireAdmissionActor(caller, authorization, actor);
@@ -88,7 +97,7 @@ export async function admissionEvidenceCommitRequest(request: Request, deps: Adm
       if (sealed.mode !== "sealed") throw new AdmissionError("SOURCE_CHANGED");
       same(identity(after), identity(sealed)); same(after.source, sealed.source);
       const object = admissionSealedObject(sealed);
-      same({object_id: object.object_id, updated_at: object.updated_at}, sealedAfter);
+      same({object_id: object.object_id, updated_at: object.updated_at}, {object_id: sealedAfter.object_id, updated_at: sealedAfter.updated_at});
       if (object.known_sha256 !== proof.sha256 || object.byte_size !== proof.bytes.length || object.mime_type !== mime) throw new AdmissionError("SOURCE_CHANGED");
       admissionCheckSignal(signal);
       diagnosticStage = "finalize";

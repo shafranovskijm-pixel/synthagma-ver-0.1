@@ -1,5 +1,5 @@
 /** UC012 original-caller evidence boundary. No public locator, legal or admission inference. */
-export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261023-v3";
+export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261023-v4";
 export const ADMISSION_EVIDENCE_BUCKET = "admission-case-evidence";
 export const ADMISSION_MAX_BYTES = 20 * 1024 * 1024;
 export const ADMISSION_OPERATION_MS = 60_000;
@@ -388,7 +388,8 @@ export function admissionEvidenceEcho(result: AdmissionMutation, context: Pick<A
   if (evidence.requirement_id !== context.requirement_id || evidence.supersedes_id !== context.supersedes_id || evidence.case_revision_created !== expectedRevision + 1
     || evidence.byte_sha256 !== context.sealed.byte_sha256 || evidence.byte_size !== context.sealed.byte_size || evidence.mime_type !== context.sealed.mime_type) failSource();
 }
-export async function admissionSealedInfo(service: AdmissionService, path: string, bytes: number, mime: AdmissionMime, signal: AbortSignal): Promise<{object_id: string; updated_at: string}> {
+export interface AdmissionObservedInfo {object_id: string; updated_at: string; precision: number;}
+export async function admissionSealedInfoObserved(service: AdmissionService, path: string, bytes: number, mime: AdmissionMime, signal: AbortSignal): Promise<AdmissionObservedInfo> {
   admissionCheckSignal(signal);
   const result = await service.storage.from(ADMISSION_EVIDENCE_BUCKET).info(path);
   admissionCheckSignal(signal);
@@ -398,13 +399,36 @@ export async function admissionSealedInfo(service: AdmissionService, path: strin
     || data.size !== undefined && metadata.size !== undefined && data.size !== metadata.size
     || data.contentType !== undefined && metadata.mimetype !== undefined && data.contentType !== metadata.mimetype) failSource();
   try {
-    // InfoRenderer last_modified is storage.objects.updated_at, independently of
-    // the HTTP Last-Modified header. Keep the original database microseconds.
-    const times = [data.updatedAt, data.updated_at, data.lastModified, data.last_modified]
-      .filter(value => value !== undefined && value !== null).map(admissionTime);
-    const updatedAt = times[0];
+    // SDK JSON may have passed through a Date serializer. Retain its observed
+    // precision separately; never promote padded zeros to database microseconds.
+    const aliases = [data.updatedAt, data.updated_at, data.lastModified, data.last_modified].filter(value => value !== undefined && value !== null);
+    const times = aliases.map(admissionTime), updatedAt = times[0];
     if (updatedAt === undefined || times.some(value => value !== updatedAt)) failSource();
-    return {object_id: admissionUuid(data.id), updated_at: updatedAt!};
+    const precision = Math.max(...aliases.map(value => ((value as string).match(/\.(\d{1,6})(?:Z|\+00:00)$/)?.[1] || "").length));
+    return {object_id: admissionUuid(data.id), updated_at: updatedAt!, precision};
+  } catch {return failSource();}
+}
+/** Compatibility API retains its original shape and strict alias-conflict checks. */
+export async function admissionSealedInfo(service: AdmissionService, path: string, bytes: number, mime: AdmissionMime, signal: AbortSignal): Promise<{object_id: string; updated_at: string}> {
+  const {object_id, updated_at} = await admissionSealedInfoObserved(service, path, bytes, mime, signal);
+  return {object_id, updated_at};
+}
+export function admissionObservedSealedObject(raw: unknown, context: AdmissionEvidenceContext, sdk: AdmissionObservedInfo): AdmissionObjectProof {
+  try {
+    const value = shape(raw, {schema_version: literal(1), actor_id: admissionUuid, case_id: admissionUuid, reservation_id: admissionUuid,
+      evidence_version_id: admissionUuid, expected_revision: admissionRevision, request_id: admissionUuid, source_fingerprint: sha, object: () => {}});
+    if (value.actor_id !== context.actor_id || value.case_id !== context.case_id || value.reservation_id !== context.reservation_id
+      || value.evidence_version_id !== context.evidence_version_id || value.expected_revision !== context.expected_revision || value.request_id !== context.request_id
+      || value.source_fingerprint !== context.source.fingerprint) failSource();
+    const object = objectProof(value.object);
+    if (object.bucket !== ADMISSION_EVIDENCE_BUCKET || object.path !== context.sealed.path || object.known_sha256 !== null
+      || object.byte_size !== context.source.byte_size || object.mime_type !== context.source.mime_type || object.object_id !== sdk.object_id
+      || !Number.isInteger(sdk.precision) || sdk.precision < 0 || sdk.precision > 6) failSource();
+    const end = sdk.precision === 0 ? 19 : 20 + sdk.precision;
+    if (object.updated_at.slice(0, end) !== sdk.updated_at.slice(0, end)) failSource();
+    // This comparison is only a transport cross-check. The original PG time,
+    // identity and metadata fingerprint remain exact across observations/attest.
+    return object;
   } catch {return failSource();}
 }
 export function admissionAttestation(raw: unknown, context: AdmissionEvidenceContext, proof: {sha256: string; bytes: Uint8Array}): void {
