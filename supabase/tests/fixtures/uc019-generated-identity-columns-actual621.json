@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "status": "ACTUAL_SCHEMA_ONLY_GENERATED_IDENTITY_COLUMNS",
+  "observed_at": "2026-10-22T16:41:11.085Z",
+  "scope": "Bounded readonly public/storage pg_attribute nonempty attgenerated/attidentity; no customer rows, key or sequence values.",
+  "rows": [
+    {
+      "column_name": "id",
+      "expression": null,
+      "generated": "",
+      "identity": "d",
+      "not_null": true,
+      "schema_name": "public",
+      "table_name": "registration_attempt_rate_limits",
+      "type": "bigint"
+    },
+    {
+      "column_name": "id",
+      "expression": null,
+      "generated": "",
+      "identity": "d",
+      "not_null": true,
+      "schema_name": "public",
+      "table_name": "telegram_domain_rate_limits",
+      "type": "bigint"
+    },
+    {
+      "column_name": "path_tokens",
+      "expression": "string_to_array(name, '/'::text)",
+      "generated": "s",
+      "identity": "",
+      "not_null": false,
+      "schema_name": "storage",
+      "table_name": "objects",
+      "type": "text[]"
+    }
+  ]
+}

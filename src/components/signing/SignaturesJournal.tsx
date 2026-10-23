@@ -20,7 +20,9 @@ import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { BulkSendForSigningDialog } from "@/components/signing/BulkSendForSigningDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
-import { getAuthenticatedSignatureFile, getSignatureTokenFile, isHistoricalSignatureFileError, downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
+import { downloadSignatureRevisionFile, downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
+import { SignatureReadScopeProvider, useSignatureReadScope } from '@/hooks/useSignatureReadScope';
+import { captureSignatureRead, signatureAuthorization } from '@/lib/signatureClientScope';
 
 interface SignatureRow {
   id: string;
@@ -79,7 +81,12 @@ interface Props {
   initialStatus?: string;
 }
 
-export function SignaturesJournal({ organizationId, initialStatus }: Props) {
+export function SignaturesJournal(props: Props) {
+  const owner = useSignatureReadScope([props.organizationId, props.initialStatus]);
+  return <SignatureReadScopeProvider value={owner.capture()}><ScopedSignaturesJournal key={owner.key} {...props} /></SignatureReadScopeProvider>;
+}
+function ScopedSignaturesJournal({ organizationId, initialStatus }: Props) {
+  const scope = useSignatureReadScope([organizationId]);
   const [rows, setRows] = useState<SignatureRow[]>([]);
   const [orgs, setOrgs] = useState<Record<string, OrgInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -104,7 +111,10 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   }, [initialStatus]);
 
   const load = async (limit = pageSize) => {
+    const current = scope.capture(), read = captureSignatureRead({ assertCurrent: current });
     setLoading(true);
+    try {
+    const { bearer } = await signatureAuthorization(read); read.active();
     // Серверные фильтры (статус, тип, даты) + поиск по ILIKE через .or()
     let q = supabase
       .from("document_signatures")
@@ -120,7 +130,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
       const s = search.trim().replace(/[,()]/g, " ");
       q = q.or(`document_title.ilike.%${s}%,recipient_name.ilike.%${s}%,recipient_email.ilike.%${s}%`);
     }
-    const { data, error, count } = await q;
+    const { data, error, count } = await read.wait(q.setHeader('Authorization', bearer));
     if (error) { toast.error("Ошибка загрузки журнала"); setLoading(false); return; }
     const list = (data as any) || [];
     setRows(list);
@@ -129,12 +139,14 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     // Подгружаем названия организаций (для админки — все, для орг-кабинета — одна)
     const orgIds = Array.from(new Set(list.map((r: any) => r.organization_id))) as string[];
     if (orgIds.length) {
-      const { data: orgList } = await supabase.from("organizations").select("id, name, inn").in("id", orgIds);
+      read.active();
+      const { data: orgList } = await read.wait(supabase.from("organizations").select("id, name, inn").in("id", orgIds).setHeader('Authorization', bearer));
       const map: Record<string, OrgInfo> = {};
       (orgList || []).forEach((o: any) => { map[o.id] = { name: o.name, inn: o.inn }; });
       setOrgs(map);
     }
     setLoading(false);
+    } catch { try { current(); setLoading(false); toast.error('Не удалось загрузить журнал. Обновите список.'); } catch { /* old owner */ } }
   };
 
   // Перезагрузка при смене организации, фильтров, диапазона дат и debounced-поиска
@@ -239,15 +251,18 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
       rejectedAt: r.rejected_at,
       rejectionReason: r.rejection_reason,
       expiresAt: r.expires_at,
-      signatureToken: r.signature_token,
-    });
+      signatureId: r.id,
+    }, { assertCurrent: scope.capture() });
   };
 
   const handleDownloadCertificate = async (r: SignatureRow) => {
+    const current = scope.capture();
     try {
-      await downloadStoredSignatureArtifact({ token: r.signature_token, signatureId: r.id, organizationId: r.organization_id, locator: r.signed_document_path });
+      await downloadStoredSignatureArtifact({ token: r.signature_token, signatureId: r.id, organizationId: r.organization_id, locator: r.signed_document_path, assertCurrent: current });
+      current();
       toast.success("Скачивание сохранённого сертификата начато");
     } catch (e: any) {
+      try { current(); } catch { return; }
       toast.error("Не удалось скачать сертификат", { description: e?.message || String(e) });
     }
   };
@@ -286,9 +301,10 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     const list = filtered.filter((r) => selectedIds.has(r.id));
     if (!list.length) { toast.error("Не выбрано ни одной записи"); return; }
     setBulkBusy(true);
+    const current = scope.capture(), read = captureSignatureRead({ assertCurrent: current });
     const t = toast.loading(`Готовим архив протоколов: ${list.length} шт.`);
     try {
-      const { default: JSZip } = await import("jszip");
+      const { default: JSZip } = await read.wait(import("jszip"));
       const zip = new JSZip();
       const usedNames = new Set<string>();
       for (const r of list) {
@@ -312,30 +328,31 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
           rejectedAt: r.rejected_at,
           rejectionReason: r.rejection_reason,
           expiresAt: r.expires_at,
-          signatureToken: r.signature_token,
+          signatureId: r.id,
         });
         const safeTitle = (r.document_title || "document").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 60);
-        let baseName = `${r.signature_token.slice(0, 8)}_${safeTitle}.html`;
+        let baseName = `${r.id}_${safeTitle}.html`;
         let i = 2;
         while (usedNames.has(baseName)) {
-          baseName = `${r.signature_token.slice(0, 8)}_${safeTitle}_${i}.html`;
+          baseName = `${r.id}_${safeTitle}_${i}.html`;
           i++;
         }
         usedNames.add(baseName);
         zip.file(baseName, html);
       }
-      const blob = await zip.generateAsync({ type: "blob" });
+      const blob = await read.wait(zip.generateAsync({ type: "blob" })); read.active();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `signature-protocols-${new Date().toISOString().slice(0, 10)}.zip`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-      toast.success(`Архив скачан: ${list.length} протокол(ов)`, { id: t });
+      try { read.active(); document.body.appendChild(a); a.click(); }
+      finally { a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+      toast.success(`Архив передан на скачивание: ${list.length} протокол(ов)`, { id: t });
     } catch (e: any) {
+      try { current(); } catch { return; }
       toast.error("Не удалось сформировать ZIP", { id: t, description: e?.message || String(e) });
     } finally {
-      setBulkBusy(false);
+      try { current(); setBulkBusy(false); } catch { /* old journal */ }
     }
   };
 
@@ -669,43 +686,51 @@ function SignatureCommentsPanel({ signatureId }: { signatureId: string }) {
 }
 
 /** Панель файлов-версий для внешне загруженных договоров */
-export function SignatureFilesPanel({ signatureId, signatureToken, organizationId, senderUserId, documentType, status, requiresBilateral, senderSignedAt, onChanged }: {
+interface SignatureFilesPanelProps {
   signatureId: string; organizationId: string; status: string;
   signatureToken?: string;
   senderUserId: string; documentType: string;
   requiresBilateral?: boolean; senderSignedAt?: string | null; onChanged: () => void;
-}) {
+}
+export function SignatureFilesPanel(props: SignatureFilesPanelProps) {
+  const permissions = useDocumentActionPermissions(props.organizationId);
+  const owner = useSignatureReadScope([props.signatureId, props.signatureToken, props.organizationId, props.senderUserId, props.documentType, props.status, props.requiresBilateral, props.senderSignedAt, permissions]);
+  return <SignatureReadScopeProvider value={owner.capture()}><ScopedSignatureFilesPanel key={owner.key} {...props} /></SignatureReadScopeProvider>;
+}
+function ScopedSignatureFilesPanel({ signatureId, signatureToken, organizationId, senderUserId, documentType, status, requiresBilateral, senderSignedAt, onChanged }: SignatureFilesPanelProps) {
   const { user } = useAuth();
   const permissions = useDocumentActionPermissions(organizationId);
+  const scope = useSignatureReadScope([signatureId, signatureToken, organizationId, senderUserId, permissions]);
   const canCountersign = !!user?.id && senderUserId === user.id && (permissions.canSign ||
     (permissions.canSalesWrite && ["contract", "external_upload", "act"].includes(documentType)));
-  const [revisions, setRevisions] = useState<any[]>([]);
+  const [revisionRows, setRevisions] = useState<any[]>([]);
+  const [dataOwner, setDataOwner] = useState<string | null>(null);
+  const revisions = dataOwner === scope.key ? revisionRows : [];
   const [loading, setLoading] = useState(true);
   const [showUploader, setShowUploader] = useState(false);
   const [countersigning, setCountersigning] = useState(false);
   const [currentRevisionId, setCurrentRevisionId] = useState<string | null>(null);
 
   const loadRev = async () => {
+    const current = scope.capture(), read = captureSignatureRead({ assertCurrent: current });
     setLoading(true);
-    const [versions, parent] = await Promise.all([
-      (supabase as any).from("signature_revisions").select("*").eq("signature_id", signatureId).order("version", { ascending: false }),
-      supabase.from("document_signatures").select("current_revision_id").eq("id", signatureId).maybeSingle(),
-    ]);
+    try {
+    const { bearer } = await signatureAuthorization(read); read.active();
+    const [versions, parent] = await read.wait(Promise.all([
+      (supabase as any).from("signature_revisions").select("*").eq("signature_id", signatureId).order("version", { ascending: false }).setHeader('Authorization', bearer),
+      supabase.from("document_signatures").select("current_revision_id").eq("id", signatureId).maybeSingle().setHeader('Authorization', bearer),
+    ]));
     if (versions.error || parent.error || !parent.data) { setRevisions([]); setCurrentRevisionId(null); toast.error("Не удалось загрузить текущую версию"); }
-    else { setRevisions(versions.data || []); setCurrentRevisionId(parent.data.current_revision_id); }
+    else { setRevisions(versions.data || []); setCurrentRevisionId(parent.data.current_revision_id); setDataOwner(scope.key); }
     setLoading(false);
+    } catch { try { current(); setLoading(false); setRevisions([]); setCurrentRevisionId(null); toast.error('Не удалось загрузить текущую версию'); } catch { /* old panel */ } }
   };
-  useEffect(() => { loadRev(); }, [signatureId]);
+  useEffect(() => { loadRev(); }, [scope.key]);
 
   const downloadFile = async (path: string, name: string, revisionId: string) => {
-    let url: string;
-    try { url = signatureToken ? await getSignatureTokenFile({ token: signatureToken, signatureId, kind: "revision", revisionId })
-      .catch(error => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(path, organizationId); })
-      : await getAuthenticatedSignatureFile(path, organizationId); }
-    catch { toast.error("Не удалось открыть файл; проверьте привязку и доступ"); return; }
-    const a = document.createElement("a");
-    a.href = url; a.download = name; a.target = "_blank";
-    document.body.appendChild(a); a.click(); a.remove();
+    const current = scope.capture();
+    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId, organizationId, revisionId, locator: path, fileName: name, assertCurrent: current }); }
+    catch { try { current(); toast.error("Не удалось открыть файл; проверьте привязку и доступ"); } catch { /* old panel */ } }
   };
 
   const countersign = async () => {

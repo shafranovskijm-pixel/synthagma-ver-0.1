@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { safeInternalNext } from "@/utils/authReturn";
-import { AccountDeletionError, confirmAccountDeletion, getDeletionPreview, type DeletionAction, type DeletionPreview, type DeletionReceipt } from "./accountDeletion";
+import { AccountDeletionError, confirmAccountDeletion, educationArtifactRetentionReviewCode, getDeletionPreview, type DeletionAction, type DeletionPreview, type DeletionReceipt } from "./accountDeletion";
 import { clearPendingDeletion, savePendingDeletion } from "./pendingDeletion";
 
 const actionLabels: Record<DeletionAction, string> = {
@@ -91,7 +91,7 @@ export function AccountDeletionPanel({ accountId, accountLabel, onDeleted }: { a
       } else {
         try { clearPendingDeletion(preview.requestId); } catch { /* Keep the status capability if storage is temporarily unavailable. */ }
         setError(cause.message);
-        if (["PLAN_EXPIRED", "PLAN_CHANGED", "OWNERSHIP_TRANSFER_REQUIRED", "RETENTION_POLICY_REQUIRED", "AUTH_REQUIRED", "MFA_REAUTH_REQUIRED", "CONSENT_REQUIRED", "INVALID_CONSENT"].includes(cause.code)) {
+        if (["PLAN_EXPIRED", "PLAN_CHANGED", "OWNERSHIP_TRANSFER_REQUIRED", "RETENTION_POLICY_REQUIRED", educationArtifactRetentionReviewCode, "AUTH_REQUIRED", "MFA_REAUTH_REQUIRED", "CONSENT_REQUIRED", "INVALID_CONSENT"].includes(cause.code)) {
           setPreview(null); setOpen(false); setConfirmed(false);
         }
       }

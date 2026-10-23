@@ -25,3 +25,12 @@ it('fails the copy when the required signed scan cannot be read',async()=>{
  try{await expect(generateSignedPdf({signatureId:'synthetic',documentTitle:'Synthetic',documentHtml:'<p>Body</p>',scanFileUrl:'https://safe.invalid/scan.pdf',signatureMethod:'handwritten_scan'})).rejects.toThrow('сохранённый скан');expect(effects.stamp).toHaveBeenCalledTimes(stampCount)}finally{vi.unstubAllGlobals()}
 });
 it('requires a stored scan for a handwritten-signature copy',async()=>{await expect(generateSignedPdf({signatureId:'synthetic',documentTitle:'Synthetic',documentHtml:'<p>Body</p>',signatureMethod:'handwritten_scan'})).rejects.toThrow('скан отсутствует')});
+it('stops before the next private scan GET and final handoff if scope changes during HTML rendering',async()=>{
+ let finish!:()=>void,current=true;effects.render.mockImplementationOnce(()=>new Promise<void>(r=>{finish=r}));
+ const request=vi.fn<(_input: RequestInfo | URL, _init?: RequestInit) => Promise<{ ok: boolean; headers: Headers; arrayBuffer: () => Promise<ArrayBuffer> }>>(async()=>({ok:true,headers:new Headers(),arrayBuffer:async()=>new ArrayBuffer(1)}));vi.stubGlobal('fetch',request);
+ try{
+  const result=generateSignedPdf({signatureId:'synthetic',documentTitle:'Synthetic',documentHtml:'<p>Body</p>',scanFileUrl:'https://safe.invalid/private-scan.pdf',signatureMethod:'handwritten_scan',assertCurrent:()=>{if(!current)throw new Error('scope changed')}});
+  await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));current=false;finish();
+  await expect(result).rejects.toThrow('scope changed');expect(request.mock.calls.some(c=>c[0]==='https://safe.invalid/private-scan.pdf')).toBe(false);
+ }finally{vi.unstubAllGlobals()}
+});

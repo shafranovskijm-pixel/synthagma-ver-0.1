@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-const state=vi.hoisted(()=>({read:vi.fn(),upload:vi.fn(),restore:vi.fn(),refreshed:vi.fn(),download:vi.fn(),refresh:vi.fn()}));
+const state=vi.hoisted(()=>({read:vi.fn(),upload:vi.fn(),restore:vi.fn(),refreshed:vi.fn(),download:vi.fn(),refresh:vi.fn(),workflow:vi.fn()}));
 vi.mock("@/utils/storageHelpers",()=>({downloadPrivateFile:state.download}));
 vi.mock("@/hooks/useOrgDocumentVersions",()=>({useOrgDocumentVersions:state.read}));
-vi.mock("../documents/OrgDocumentWorkflowPanel",()=>({OrgDocumentWorkflowPanel:({onOpenFiles}:{onOpenFiles:()=>void})=><button onClick={onOpenFiles}>Перейти к файлам и версиям</button>}));
+vi.mock("../documents/OrgDocumentWorkflowPanel",()=>({OrgDocumentWorkflowPanel:(props:any)=>{state.workflow(props);return <button onClick={props.onOpenFiles}>Перейти к файлам и версиям</button>;}}));
 import { OrgDocumentVersionsDialog } from "../OrgDocumentVersionsDialog";
 const versions=[
   {id:"current",document_id:"doc",organization_id:"org",version_number:2,file_url:"https://example.test/new.pdf",created_at:"2026-10-18T00:00:00Z",event_kind:"upload"},
@@ -34,6 +34,12 @@ describe("organization version history permissions and event UI",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Перейти к файлам и версиям"}));
     expect(screen.getByRole("tab",{name:"Файлы и версии"})).toHaveAttribute("aria-selected","true");
     expect(screen.getByRole("button",{name:"Загрузить новую версию"})).toBeEnabled();
+    expect(state.upload).not.toHaveBeenCalled();expect(state.restore).not.toHaveBeenCalled();
+  });
+  it("forwards the template download-only source mode to ordinary review without changing default callers",()=>{
+    const assertCurrent=vi.fn(),controller=new AbortController();render(<OrgDocumentVersionsDialog {...props} sourceOpenMode="download" sourceDownloadAssertCurrent={assertCurrent} sourceDownloadSignal={controller.signal} />);
+    fireEvent.keyDown(screen.getByRole("tab",{name:"Внутреннее согласование"}),{key:"Enter"});
+    expect(state.workflow).toHaveBeenCalledWith(expect.objectContaining({sourceOpenMode:"download",sourceDownloadAssertCurrent:assertCurrent,sourceDownloadSignal:controller.signal}));
     expect(state.upload).not.toHaveBeenCalled();expect(state.restore).not.toHaveBeenCalled();
   });
   it("downloads a historical file through private Storage access",async()=>{
@@ -115,6 +121,18 @@ describe("organization version history permissions and event UI",()=>{
     expect(state.download).toHaveBeenCalledWith('org-documents',versions[0].file_url,'Лицензия',expect.objectContaining({assertCurrent:transport.assertCurrent,signUrl:transport.signUrl}));
     live=false;await act(async()=>finish(true));
     expect(screen.queryByText('Файл передан браузеру для сохранения.')).not.toBeInTheDocument();
+  });
+  it("enforces both template and programme guards before the scoped signer can hand off a file",async()=>{
+    let templateLive=true;
+    const templateGuard=vi.fn(()=>{if(!templateLive)throw Error("old template actor");});
+    const transport={key:"programme-owner",assertCurrent:vi.fn(),signUrl:vi.fn(),rpc:vi.fn(),readDocument:vi.fn(),readVersions:vi.fn(),saveUpload:vi.fn(),restore:vi.fn()};
+    state.download.mockImplementation(async(_bucket,_path,_name,options)=>{options.assertCurrent();templateLive=false;options.assertCurrent();return true;});
+    render(<OrgDocumentVersionsDialog {...props} transport={transport} sourceOpenMode="download" sourceDownloadAssertCurrent={templateGuard}/>);
+    fireEvent.click(screen.getAllByTitle("Скачать")[0]);
+    await waitFor(()=>expect(state.download).toHaveBeenCalledOnce());
+    expect(templateGuard).toHaveBeenCalled();expect(transport.assertCurrent).toHaveBeenCalled();
+    expect(state.download).toHaveBeenCalledWith("org-documents",versions[0].file_url,"Лицензия",expect.objectContaining({signUrl:transport.signUrl,assertCurrent:expect.any(Function)}));
+    expect(screen.queryByText("Файл передан браузеру для сохранения.")).not.toBeInTheDocument();
   });
 });
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { AdmissionIssuanceCondition } from '@/lib/admissionCases/issuanceCondition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -113,7 +114,7 @@ function StaffCasePanel({controller:h,state}:{controller:AdmissionCaseController
 function LocalRules({controller:h,state}:{controller:AdmissionCaseController;state:c.AdmissionStaffCase}) {
   const [options,setOptions] = useState<Extract<c.AdmissionOptions,{kind?:'local_acts'}>|null>(null);
   const [selected,setSelected] = useState<string[]>([]); const [reason,setReason] = useState('');
-  const [rows,setRows] = useState<{key:string;kind:c.AdmissionLocalRequirementInput['kind'];staff_label:string;provision:string;exception_policy:'not_defined'|'local_reasoned_exception'}[]>([
+  const [rows,setRows] = useState<{key:string;kind:c.AdmissionLocalRequirementInput['kind'];staff_label:string;provision:string;exception_policy:'not_defined'|'local_reasoned_exception';issuance_condition?:AdmissionIssuanceCondition}[]>([
     {key:'education_basis',kind:'education_basis',staff_label:c.admissionProcessLabels.education_basis,provision:'',exception_policy:'not_defined'},
     {key:'application',kind:'application',staff_label:c.admissionProcessLabels.application,provision:'',exception_policy:'not_defined'},
     {key:'contract_or_funding',kind:'contract_or_funding',staff_label:c.admissionProcessLabels.contract_or_funding,provision:'',exception_policy:'not_defined'},
@@ -133,10 +134,11 @@ function LocalRules({controller:h,state}:{controller:AdmissionCaseController;sta
         <p className="text-xs text-muted-foreground">Это вопросы для проверки, а не универсальное требование загрузить документы. Применимость каждого вопроса будет рассмотрена отдельно.</p>
         {rows.map((row,index) => <div key={row.key} className="space-y-2 rounded-lg bg-muted/30 p-3"><Input aria-label={`Вопрос ${index+1}`} value={row.staff_label} maxLength={160} disabled={disabled} onChange={event => setRows(previous => previous.map((value,i) => i===index ? {...value,staff_label:event.target.value} : value))}/>
           <Input aria-label={`Пункт акта ${index+1}`} placeholder="Пункт локального акта / основание проверки" value={row.provision} maxLength={1000} disabled={disabled} onChange={event => setRows(previous => previous.map((value,i) => i===index ? {...value,provision:event.target.value} : value))}/>
+          {row.kind === 'education_basis' && <IssuanceConditionFields value={row.issuance_condition} disabled={disabled} dpo={state.program_type === 'dpo_upskilling' || state.program_type === 'dpo_retraining'} onChange={condition => setRows(previous => previous.map((value,i) => { if(i !== index) return value; const {issuance_condition,...rest}=value; return condition ? {...rest,issuance_condition:condition} : rest; }))}/>}
           <select aria-label={`Исключение ${index+1}`} className={fieldClass} disabled={disabled} value={row.exception_policy} onChange={event => setRows(previous => previous.map((value,i) => i===index ? {...value,exception_policy:event.target.value as typeof row.exception_policy} : value))}><option value="not_defined">Исключение не предусмотрено</option><option value="local_reasoned_exception">Мотивированное исключение предусмотрено локальным актом</option></select></div>)}
         {rows.length < 50 && <Button size="sm" variant="outline" disabled={disabled} onClick={() => setRows(previous => [...previous,{key:`other_${previous.length}`,kind:'other_reviewed',staff_label:'',provision:'',exception_policy:'not_defined'}])}>Добавить вопрос</Button>}
         <Textarea aria-label="Основание проверки правил" placeholder="Основание применимости выбранных положений к этой программе" value={reason} maxLength={4000} disabled={disabled} onChange={event => setReason(event.target.value)}/>
-        <Button size="sm" disabled={disabled || !sources.length || !reason.trim() || rows.some(row => !row.staff_label.trim() || !row.provision.trim())} onClick={() => void save()}>Сохранить проверенную редакцию</Button>
+        <Button size="sm" disabled={disabled || !sources.length || !reason.trim() || rows.some(row => !row.staff_label.trim() || !row.provision.trim() || row.kind === 'education_basis' && (!row.issuance_condition || row.issuance_condition.kind === 'no_separate_primary_education_condition' && !row.issuance_condition.reason.trim()))} onClick={() => void save()}>Сохранить проверенную редакцию</Button>
       </div>}</>}
   </div>;
 }
@@ -144,16 +146,25 @@ function RequirementReview({controller:h,state,requirement}:{controller:Admissio
   const [applicability,setApplicability] = useState(requirement.applicability); const [reason,setReason] = useState('');
   const [selected,setSelected] = useState<string[]>(requirement.evidence_version_ids); const [exception,setException] = useState(false); const [exceptionReason,setExceptionReason] = useState('');
   const disabled = h.busy || h.pending;
+  const phase = state.issuance_conditions?.find(item => item.requirement_id === requirement.id && item.requirement_revision === requirement.revision);
+  const previousPhase = state.issuance_reviews?.find(item => item.requirement_id === requirement.id && item.requirement_revision === requirement.revision);
+  const [primaryLevel,setPrimaryLevel] = useState<''|'spo'|'vo'>(previousPhase?.evidence?.education_level ?? '');
   const evidence = state.evidence.filter(item => item.requirement_id === requirement.id);
   return <div className="rounded-xl border p-3 space-y-3"><div className="flex flex-wrap justify-between gap-2"><p className="font-medium text-sm">{requirement.label}</p><Badge variant="outline">{c.admissionRequirementLabels[requirement.current_state]}</Badge></div>
     {requirement.public_next_action && <p className="text-xs text-muted-foreground">{requirement.public_next_action}</p>}
     <AdmissionEvidenceSection controller={h} state={state} requirement={requirement}/>
     {state.capabilities.can_review && <div className="space-y-2"><select aria-label={`Применимость: ${requirement.label}`} className={fieldClass} value={applicability} disabled={disabled} onChange={event => setApplicability(event.target.value as typeof applicability)}><option value="unknown">Применимость не определена</option><option value="applicable">Применимо</option><option value="not_applicable">Не применимо с основанием</option></select>
       {evidence.map(item => <label key={item.id} className="flex gap-2 text-xs"><input type="checkbox" checked={selected.includes(item.id)} disabled={disabled} onChange={event => setSelected(previous => event.target.checked ? [...previous,item.id] : previous.filter(id => id !== item.id))}/>Учитывать версию от {stamp(item.captured_at)} · {item.byte_sha256.slice(0,12)}</label>)}
+      {phase?.condition.kind === 'primary_education_before_qualification' && <div className="rounded-lg border p-3 space-y-2">
+        <p className="text-sm font-medium">Подтверждение базового образования перед выдачей</p>
+        <select aria-label="Подтверждённое завершённое образование" className={fieldClass} disabled={disabled} value={primaryLevel} onChange={event => setPrimaryLevel(event.target.value as typeof primaryLevel)}><option value="">Завершённое образование пока не подтверждено</option><option value="spo">Завершённое СПО</option><option value="vo">Завершённое ВО</option></select>
+        <p className="text-xs text-muted-foreground">Учитываются только выбранные выше версии этого вопроса, принятые после проверки и доступные для чтения. Приём во время учёбы не подтверждает завершение СПО/ВО.</p>
+      </div>}
+      {phase?.condition.kind === 'no_separate_primary_education_condition' && <p className="text-xs text-muted-foreground">Проверенное условие для выдачи: {phase.condition.reason}</p>}
       <Textarea aria-label={`Основание: ${requirement.label}`} placeholder="Основание применимости и результат рассмотрения точных версий" maxLength={4000} value={reason} disabled={disabled} onChange={event => setReason(event.target.value)}/>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={exception} disabled={disabled} onChange={event => setException(event.target.checked)}/>Рассмотреть мотивированное исключение, предусмотренное проверенным актом</label>
       {exception && <Textarea aria-label="Основание исключения" placeholder="Основание исключения; обязательное неизвестное требование нельзя отменить отметкой" maxLength={4000} value={exceptionReason} disabled={disabled} onChange={event => setExceptionReason(event.target.value)}/>}
-      <Button size="sm" variant="outline" disabled={disabled || !reason.trim() || exception && (!exceptionReason.trim() || !selected.length)} onClick={() => void h.mutate({action:'review_requirement',case_id:state.id,expected_revision:state.revision,expected_program_ref:state.program_ref,requirement_id:requirement.id,expected_requirement_revision:requirement.revision,applicability,evidence_version_ids:selected,reason:reason.trim(),exception:exception ? {rule_id:requirement.rule_id,reason:exceptionReason.trim(),evidence_version_ids:selected} : null})}>Записать рассмотрение</Button>
+      <Button size="sm" variant="outline" disabled={disabled || !reason.trim() || exception && (!exceptionReason.trim() || !selected.length) || !!primaryLevel && (!evidence.some(item => selected.includes(item.id) && item.review === 'accepted' && item.availability === 'available' && item.can_read_bytes) || evidence.filter(item => selected.includes(item.id) && item.review === 'accepted' && item.availability === 'available' && item.can_read_bytes).length>20)} onClick={() => void h.mutate({action:'review_requirement',case_id:state.id,expected_revision:state.revision,expected_program_ref:state.program_ref,requirement_id:requirement.id,expected_requirement_revision:requirement.revision,applicability,evidence_version_ids:selected,reason:reason.trim(),...(phase ? {issuance_evidence:primaryLevel && phase.condition.kind === 'primary_education_before_qualification' ? {kind:'completed_primary_education' as const,education_level:primaryLevel,evidence_version_ids:evidence.filter(item => selected.includes(item.id) && item.review === 'accepted' && item.availability === 'available' && item.can_read_bytes).map(item => item.id)} : null} : {}),exception:exception ? {rule_id:requirement.rule_id,reason:exceptionReason.trim(),evidence_version_ids:selected} : null})}>Записать рассмотрение</Button>
     </div>}
   </div>;
 }
@@ -166,5 +177,26 @@ function DecisionForm({controller:h,state}:{controller:AdmissionCaseController;s
     {!ready && <p className="text-xs text-muted-foreground">Для допуска сначала рассмотрите применимость и точные доказательства всех текущих вопросов.</p>}
     <Textarea aria-label="Основание решения" placeholder="Мотивированное основание решения по этой группе и версии программы" maxLength={4000} value={reason} onChange={event => setReason(event.target.value)} disabled={h.busy || h.pending}/>
     <Button size="sm" disabled={h.busy || h.pending || !state.rule_set_id || !state.rule_set_digest || !reason.trim() || outcome === 'admitted' && !ready} onClick={() => state.rule_set_id && state.rule_set_digest && void h.mutate({action:'record_decision',case_id:state.id,expected_revision:state.revision,expected_program_ref:state.program_ref,rule_set_id:state.rule_set_id,rule_set_digest:state.rule_set_digest,requirements_digest:state.requirements_digest,evidence_version_ids:[...new Set(state.requirements.flatMap(requirement => requirement.evidence_version_ids))].sort(),outcome,reason:reason.trim()})}>Записать решение</Button>
+  </div>;
+}
+
+function IssuanceConditionFields({value,onChange,dpo,disabled}:{value?:AdmissionIssuanceCondition;onChange:(value:AdmissionIssuanceCondition|undefined)=>void;dpo:boolean;disabled:boolean}) {
+  return <div className="space-y-2 rounded-lg border p-3 text-sm">
+    <p className="font-medium">Условие для итогового документа</p>
+    <select aria-label="Условие выдачи по образованию" className={fieldClass} disabled={disabled} value={value?.kind ?? "unconfirmed"} onChange={event => {
+      if(event.target.value === "unconfirmed") onChange(undefined);
+      else if(event.target.value === "primary_education_before_qualification") onChange({kind:"primary_education_before_qualification",education_levels:["spo","vo"],concurrent_study_admission_allowed:false});
+      else onChange({kind:"no_separate_primary_education_condition",reason:""});
+    }}>
+      <option value="unconfirmed">Условие ещё не рассмотрено</option>
+      <option value="primary_education_before_qualification">Завершённое СПО или ВО до выдачи</option>
+      {!dpo && <option value="no_separate_primary_education_condition">Отдельное условие о базовом образовании не установлено</option>}
+    </select>
+    {value?.kind === "primary_education_before_qualification" && <label className="flex items-start gap-2 text-xs">
+      <input type="checkbox" checked={value.concurrent_study_admission_allowed} disabled={disabled} onChange={event => onChange({...value,concurrent_study_admission_allowed:event.target.checked})}/>
+      Локальные правила допускают приём во время получения СПО/ВО. Для выдачи итогового документа всё равно нужно подтвердить завершённое базовое образование.
+    </label>}
+    {value?.kind === "no_separate_primary_education_condition" && <Textarea aria-label="Основание отсутствия отдельного условия" placeholder="Основание применимости к этой программе профессионального обучения" maxLength={1000} value={value.reason} disabled={disabled} onChange={event => onChange({...value,reason:event.target.value})}/>}
+    {dpo && <p className="text-xs text-muted-foreground">Для ДПО отсутствие отдельного условия не заменяет подтверждение завершённого СПО или ВО перед выдачей.</p>}
   </div>;
 }

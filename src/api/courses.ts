@@ -1,3 +1,4 @@
+import { deleteUnusedCourses } from "./courseDeletion";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import type { Course, CourseCategory, Enrollment } from "@/types";
@@ -183,25 +184,8 @@ export async function updateCourse(courseId: string, updates: Partial<Course>): 
 }
 
 export async function deleteCourse(courseId: string): Promise<boolean> {
-  // Delete lessons first
-  await supabase
-    .from("lessons")
-    .delete()
-    .eq("course_id", courseId);
-
-  // Delete enrollments
-  await supabase
-    .from("enrollments")
-    .delete()
-    .eq("course_id", courseId);
-
-  // Delete course
-  const { error } = await supabase
-    .from("courses")
-    .delete()
-    .eq("id", courseId);
-
-  return !error;
+  try { await deleteUnusedCourses([courseId]); return true; }
+  catch { return false; }
 }
 
 export async function publishCourse(courseId: string, isPublished: boolean): Promise<boolean> {

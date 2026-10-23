@@ -5,6 +5,7 @@ import { logStudentDeletion } from "@/utils/logStudentDeletion";
 import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
 import { insertEnrollmentsVerified } from "@/api/enrollments";
 import { cancelCourseAssignment, courseAssignmentCancellationError } from "@/api/courseAssignmentCancellation";
+import type { PreparedIssuanceMutation } from "@/lib/educationIssuance/client";
 
 // ============= Students API =============
 
@@ -342,9 +343,9 @@ async function resolveCancellationOrganization(enrollmentId: string, organizatio
   return course.organization_id;
 }
 
-export async function unenrollStudent(enrollmentId: string, organizationId?: string | null): Promise<boolean> {
+export async function unenrollStudent(enrollmentId: string, organizationId?: string | null, operation?: PreparedIssuanceMutation): Promise<boolean> {
   try {
-    await cancelCourseAssignment({ enrollmentId, organizationId: await resolveCancellationOrganization(enrollmentId, organizationId) });
+    await cancelCourseAssignment({ enrollmentId, organizationId: await resolveCancellationOrganization(enrollmentId, organizationId), operation });
     return true;
   } catch {
     return false;
@@ -367,22 +368,17 @@ export async function bulkEnrollStudents(userIds: string[], courseId: string): P
   return { success, failed };
 }
 
-export async function bulkUnenrollStudents(enrollmentIds: string[], organizationId?: string | null): Promise<{ success: number; failed: number; errors: string[] }> {
-  let success = 0;
-  let failed = 0;
-  const errors: string[] = [];
-
-  for (const enrollmentId of new Set(enrollmentIds)) {
-    try {
-      await cancelCourseAssignment({ enrollmentId, organizationId: await resolveCancellationOrganization(enrollmentId, organizationId) });
-      success++;
-    } catch (error) {
-      failed++;
-      errors.push(courseAssignmentCancellationError(error));
-    }
-  }
-
-  return { success, failed, errors };
+export async function bulkUnenrollStudents(enrollmentIds: string[], organizationId?: string | null, operation?: PreparedIssuanceMutation): Promise<{ success: number; failed: number; errors: string[] }> {
+  const ids = [...new Set(enrollmentIds)];
+  if (!operation || operation.action.action !== 'withdraw_enrollments' || !organizationId ||
+      operation.action.intent.enrollment_ids.length !== ids.length || operation.action.intent.enrollment_ids.some(id => !ids.includes(id)))
+    return { success: 0, failed: ids.length, errors: [courseAssignmentCancellationError(new Error('withdrawal_confirmation_required'))] };
+  try {
+    const result = await operation.run();
+    if (result.organization_id !== organizationId || result.withdrawals.length !== ids.length ||
+        result.withdrawals.some(row => row.ref.organization_id !== organizationId || !ids.includes(row.ref.enrollment_id) || row.state !== 'withdrawn')) throw new Error('Не подтверждён точный состав прекращённых обучений.');
+    return { success: result.withdrawals.length, failed: 0, errors: [] };
+  } catch (error) { return { success: 0, failed: ids.length, errors: [courseAssignmentCancellationError(error)] }; }
 }
 
 export async function updateStudentCompany(userId: string, companyId: string | null): Promise<boolean> {

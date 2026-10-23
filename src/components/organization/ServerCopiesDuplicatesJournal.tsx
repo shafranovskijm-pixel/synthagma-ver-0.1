@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Archive, ArrowLeft, Calendar as CalendarIcon, Copy, Download, FileSpreadsheet, FileText, History, Pencil, Plus, RotateCw, Search, Truck, Upload, User } from 'lucide-react';
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -176,6 +177,7 @@ function CopyRegistryWorkspace({ model, onClose }: { model: CopyRegistryModel; o
   if (!caps?.can_read) return <div className="space-y-6">{header}<p role="alert" className="text-sm text-muted-foreground">{copyRegistryMessages[model.error ?? 'ACCESS_DENIED']}</p></div>;
   return <div className="space-y-6">
     {header}
+    <div className="rounded-xl border p-3 text-sm space-y-2"><p>Это общий реестр копий документов. Запись в нём не оформляет выдачу документа об образовании или его дубликата и не резервирует их номера.</p><Link className="text-primary underline" to={model.registryScope.kind==='group'?'/organization?tab=journals&journalView=auto&journalType=education_documents&groupId='+encodeURIComponent(model.registryScope.group_id)+'&returnToGroupId='+encodeURIComponent(model.registryScope.group_id):'/organization?tab=documents&documentView=journals&journal=education_documents'}>Оформить документ об образовании или связанный дубликат</Link></div>
     {(model.error || model.mutationError) && <div role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"><p className="text-sm">{copyRegistryMessages[model.mutationError ?? model.error!]}</p>{model.pending && <div className="flex gap-2"><Button variant="outline" onClick={retry} disabled={model.saving}>Повторить тот же запрос</Button>{model.mutationError === 'REVISION_CONFLICT' && <Button variant="ghost" onClick={() => { if (model.cancelRejected()) { setEditor(null); setImportOpen(false); } }}>Отменить отклонённый запрос</Button>}</div>}</div>}
     {!caps.can_create && <p className="text-sm text-muted-foreground">Добавление записи требует права вести реестр и доступа к сохранённой версии оригинала. Доступ к файлам не предоставляется автоматически.</p>}
     {auxError && <p role="alert" className="text-sm text-muted-foreground">{auxError}</p>}

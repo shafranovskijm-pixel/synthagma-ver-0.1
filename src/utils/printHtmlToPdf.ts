@@ -1,15 +1,15 @@
 import { captureDocumentOutputFence } from '@/lib/documents/outputFence';
 import { HtmlPrintError, preparePrintHtml } from './printHtmlSafety';
 
-function capturePrintFence(): () => void {
+function capturePrintFence(assertOwnerCurrent?: () => void): () => void {
   const current = captureDocumentOutputFence();
-  return () => { try { current(); } catch { throw new HtmlPrintError('ACCESS_CHANGED'); } };
+  return () => { try { current(); assertOwnerCurrent?.(); } catch { throw new HtmlPrintError('ACCESS_CHANGED'); } };
 }
 
 export interface SafePrintFrame { iframe: HTMLIFrameElement; document: Document; window: Window; dispose: () => void }
 /** Inert derived HTML, ready images/fonts, one bounded load and explicit cleanup. */
-export async function createSafePrintFrame(html: string, title?: string, options?: { rasterImages?: boolean }): Promise<SafePrintFrame> {
-  const assertCurrent = capturePrintFence(); assertCurrent();
+export async function createSafePrintFrame(html: string, title?: string, options?: { rasterImages?: boolean; assertCurrent?: () => void }): Promise<SafePrintFrame> {
+  const assertCurrent = capturePrintFence(options?.assertCurrent); assertCurrent();
   const marker = crypto.randomUUID(), safeHtml = preparePrintHtml(html, title, marker, options?.rasterImages);
   const iframe = document.createElement('iframe');
   iframe.setAttribute('sandbox', 'allow-same-origin allow-modals');
@@ -53,9 +53,9 @@ export async function createSafePrintFrame(html: string, title?: string, options
   });
 }
 /** Resolve after invoking browser print; this never confirms a saved PDF. */
-export async function printHtmlContent(html: string, title?: string): Promise<void> {
-  const assertCurrent = capturePrintFence(); assertCurrent();
-  const frame = await createSafePrintFrame(html, title);
+export async function printHtmlContent(html: string, title?: string, options?: { assertCurrent?: () => void }): Promise<void> {
+  const assertCurrent = capturePrintFence(options?.assertCurrent); assertCurrent();
+  const frame = await createSafePrintFrame(html, title, options);
   let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
   const cleanup = () => { if (cleanupTimer) clearTimeout(cleanupTimer); frame.window.removeEventListener('afterprint', cleanup); frame.dispose(); };
   try {

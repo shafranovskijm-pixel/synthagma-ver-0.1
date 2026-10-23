@@ -44,11 +44,11 @@ export function PepSignatureStamp({
       <div className="flex items-center gap-2 mb-3 pb-2 border-b" style={{ borderColor: "hsl(var(--primary) / 0.3)" }}>
         <CheckCircle2 className="w-5 h-5 text-primary" />
         <div className="font-bold text-sm uppercase tracking-wide text-primary">
-          Документ подписан
+          Подтверждение в журнале
         </div>
         <ShieldCheck className="w-4 h-4 ml-auto text-primary opacity-70" />
       </div>
-      <div className="text-xs text-muted-foreground mb-2">Простой электронной подписью (63-ФЗ)</div>
+      <div className="text-xs text-muted-foreground mb-2">Вид подписи, идентификация и основание применения проверяются по отдельным материалам.</div>
       <dl className="text-xs space-y-1.5">
         <div className="grid grid-cols-[110px_1fr] gap-2">
           <dt className="text-muted-foreground">ФИО:</dt>

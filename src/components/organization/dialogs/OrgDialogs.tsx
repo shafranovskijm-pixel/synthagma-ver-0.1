@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { WithdrawalDialog } from "../education-issuance/WithdrawalDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,30 +47,26 @@ export function ImportStudentsDialog({ open, onOpenChange, organizationId, cours
           <DialogTitle className="font-display">Импорт учеников</DialogTitle>
           <DialogDescription>Загрузите файл Excel или CSV со списком учеников</DialogDescription>
         </DialogHeader>
-        <ImportStudentsForm 
-          organizationId={organizationId} 
-          courses={courses.filter(c => c.is_published)} 
-          companies={companies} 
-          onSuccess={() => { onOpenChange(false); window.location.reload(); }} 
+        <ImportStudentsForm
+          organizationId={organizationId}
+          courses={courses.filter(c => c.is_published)}
+          companies={companies}
+          onSuccess={() => { onOpenChange(false); window.location.reload(); }}
         />
       </DialogContent>
     </Dialog>
   );
 }
 
-// Unenroll Confirmation Dialog
+// The server retains the enrollment, its results and documents.
 interface UnenrollConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  selectedCount: number;
-  isUnenrolling: boolean;
-  onConfirm: () => void;
-  preparation?: { rows: { enrollment_id: string; user_id: string; course_id: string; student_name: string; course_title: string; status: string | null; progress: number | null }[] } | null;
-  onOpenGroups?: () => void;
+  open: boolean; onOpenChange: (open: boolean) => void; organizationId: string | null;
+  enrollmentIds: string[]; onWithdrawn: () => void;
 }
-
-export function UnenrollConfirmDialog({ open, onOpenChange, selectedCount, isUnenrolling, onConfirm, preparation, onOpenGroups }: UnenrollConfirmDialogProps) {
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle className="font-display text-destructive">Подготовить отчисление</DialogTitle><DialogDescription>{preparation ? 'Выбранные зачисления проверены. Это подготовка: ученики продолжают обучение, результаты и история сохранены. Приказ и событие отчисления не создавались.' : 'Проверить выбранные зачисления (' + selectedCount + ') и сохранить их контекст для подготовки? Удаление зачислений и автоматический приказ не выполняются.'}</DialogDescription></DialogHeader>{preparation && <div className="space-y-3"><div className="rounded-xl border border-border p-3 space-y-2">{preparation.rows.map(row => <div key={row.enrollment_id}><p className="text-sm font-medium">{row.student_name} · {row.course_title}</p><p className="text-xs text-muted-foreground">Состояние: {row.status ?? 'не указано'} · прогресс: {row.progress ?? 0}%</p><details className="text-xs text-muted-foreground"><summary>Точное зачисление</summary><p className="break-all">{row.enrollment_id}</p></details></div>)}</div><p className="text-sm text-muted-foreground">Откройте «Ученики → Группы», выберите фактическую группу и её документы. Сведения нужно проверить перед оформлением. Перевод зачисления в состояние отчисления требует отдельного подтверждённого рабочего процесса.</p></div>}<div className="flex flex-wrap gap-3 justify-end pt-4"><Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)} disabled={isUnenrolling}>{preparation ? 'Закрыть' : 'Отмена'}</Button>{preparation ? onOpenGroups && <Button className="rounded-xl" onClick={onOpenGroups}>Открыть группы</Button> : <Button variant="destructive" className="rounded-xl" onClick={onConfirm} disabled={isUnenrolling}>{isUnenrolling ? <><SigmaSpinner size="sm" className="mr-2" />Проверка...</> : <><XCircle className="w-4 h-4 mr-2" />Проверить выбор</>}</Button>}</div></DialogContent></Dialog>;
+export function UnenrollConfirmDialog(props: UnenrollConfirmDialogProps) {
+  if (!props.organizationId) return null;
+  return <WithdrawalDialog open={props.open} onOpenChange={props.onOpenChange} organizationId={props.organizationId}
+    enrollmentIds={props.enrollmentIds} onWithdrawn={props.onWithdrawn} />;
 }
 
 // Category Dialog

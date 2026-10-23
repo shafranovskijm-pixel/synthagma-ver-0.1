@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({ getDeletionPreview: vi.fn(), confirmAccountDeletion: vi.fn() }));
 vi.mock("../accountDeletion", async importOriginal => ({ ...(await importOriginal<typeof import("../accountDeletion")>()), ...api }));
-import { AccountDeletionError, type DeletionPreview } from "../accountDeletion";
+import { AccountDeletionError, educationArtifactRetentionReviewCode, type DeletionPreview } from "../accountDeletion";
 import { AccountDeletionPanel } from "../AccountDeletionPanel";
 
 const preview: DeletionPreview = { revision: "account-deletion-v2", consentVersion: "full-personal-data-v1", warning: "Будут удалены аккаунт и перечисленные личные данные.", canDelete: true, planToken: "plan", requestId: "request-1", statusToken: "opaque-capability", expiresAt: "2099-01-01T00:00:00Z", categories: [{ key: "profile", label: "Личный профиль", count: 1, action: "delete" }], blockers: [] };
@@ -137,6 +137,24 @@ describe("account deletion confirmation", () => {
     expect(screen.getByRole("button", { name: "Удалить мой аккаунт" })).toBeDisabled();
     expect(onDeleted).not.toHaveBeenCalled();
     expect(api.confirmAccountDeletion).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates the old plan on an education artifact retention refusal and shows the exact fresh blocker without claiming deletion", async () => {
+    const message = "Сначала требуется решение по сохранённому документу об обучении";
+    api.confirmAccountDeletion.mockRejectedValue(new AccountDeletionError(educationArtifactRetentionReviewCode, message));
+    const onDeleted = show(); await confirm();
+    expect(await screen.findByText(message)).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", {name: "Продолжить удаление"})).not.toBeInTheDocument();
+    expect(screen.queryByText("Удаление ещё не подтверждено")).not.toBeInTheDocument();
+    expect(localStorage.getItem("sintagma-account-deletion-pending-v1")).toBeNull();
+    api.getDeletionPreview.mockResolvedValueOnce({...preview, canDelete: false, planToken: null, requestId: null, statusToken: null,
+      categories: [{key: "education_artifacts", label: "Сохранённые документы об обучении", count: 1, action: "block"}],
+      blockers: [{code: educationArtifactRetentionReviewCode, message}]});
+    fireEvent.click(screen.getByRole("button", {name: "Обновить проверку"}));
+    expect(await screen.findByRole("button", {name: "Продолжить удаление"})).toBeDisabled();
+    expect(screen.getByText(message)).toBeVisible(); expect(screen.getByText("Требует решения до удаления")).toBeVisible();
+    expect(api.confirmAccountDeletion).toHaveBeenCalledTimes(1); expect(onDeleted).not.toHaveBeenCalled();
   });
 
   it.each(["cleanup", "network"])("does not claim success or offer another destructive attempt on %s uncertainty", async mode => {

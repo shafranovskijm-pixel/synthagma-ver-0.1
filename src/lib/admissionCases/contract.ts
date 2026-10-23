@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { admissionIssuanceConditionSchema, admissionIssuanceEvidenceSchema, admissionIssuanceReviewSnapshotSchema } from './issuanceCondition';
 
 export const admissionUuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 export const admissionRevision = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -40,13 +41,16 @@ export const admissionCapabilitiesSchema = z.object({can_initialize: z.boolean()
 export const admissionStaffCaseSchema = z.object({id: admissionUuid, scope: admissionScopeSchema, revision: positiveRevision, program_ref: admissionProgramRefSchema, program_title: text(),
   program_type: z.enum(['dpo_upskilling','dpo_retraining','professional_training','internal_nonformal']), responsible_id: admissionUuid.nullable(), rule_set_id: admissionUuid.nullable(),
   requirements: z.array(admissionRequirementSchema).max(50), evidence: z.array(admissionEvidenceSchema).max(100), tasks: z.array(admissionTaskSchema).max(50), decision: admissionDecisionSchema.nullable(),
-  prerequisites: z.array(admissionPrerequisiteSchema).max(20), capabilities: admissionCapabilitiesSchema, rule_set_digest: admissionSha256.nullable(), requirements_digest: admissionSha256}).strict();
+  prerequisites: z.array(admissionPrerequisiteSchema).max(20), capabilities: admissionCapabilitiesSchema, rule_set_digest: admissionSha256.nullable(), requirements_digest: admissionSha256,
+  issuance_reviews: z.array(admissionIssuanceReviewSnapshotSchema).max(50).optional(),
+  issuance_conditions: z.array(z.object({ requirement_id: admissionUuid, requirement_revision: positiveRevision, condition: admissionIssuanceConditionSchema }).strict()).max(50).optional()}).strict();
 export const admissionLearnerTaskSchema = z.object({id: admissionUuid, public_label: text(160), next_action: z.enum(['upload_own_attachment','contact_staff']), status: z.enum(['open','resolved','superseded'])}).strict();
 export const admissionLearnerCaseSchema = z.object({id: admissionUuid, scope: admissionScopeSchema, revision: positiveRevision, program_title: text(),
   outcome: z.enum(['not_reviewed','needs_information','admitted','not_admitted']), outcome_recorded_at: admissionTime.nullable(), later_review_required: z.boolean(), tasks: z.array(admissionLearnerTaskSchema).max(50)}).strict();
 export const admissionLocalActRefSchema = z.object({document_id: admissionUuid, version_id: admissionUuid, review_id: admissionUuid}).strict();
 export const admissionLocalRequirementInputSchema = z.object({key: z.string().regex(/^[a-z0-9_]{1,64}$/), kind: z.enum(['education_basis','application','contract_or_funding','other_reviewed']),
-  staff_label: text(160), source_version_ids: ids(1,3), provision: text(1000), exception_policy: z.enum(['not_defined','local_reasoned_exception'])}).strict();
+  staff_label: text(160), source_version_ids: ids(1,3), provision: text(1000), exception_policy: z.enum(['not_defined','local_reasoned_exception']),
+  issuance_condition: admissionIssuanceConditionSchema.optional()}).strict().refine(row => !row.issuance_condition || row.kind === 'education_basis');
 export const admissionResponsibleOptionSchema = z.object({user_id: admissionUuid, display_name: text(160)}).strict();
 export const admissionLocalActOptionSchema = admissionLocalActRefSchema.extend({type: z.enum(['admission_rules','edu_relations','paid_services']), label: text(160),
   approval: z.object({number: text(), date, recorded_at: admissionTime, recorded_by: admissionUuid}).strict()}).strict();
@@ -65,7 +69,7 @@ export const admissionCaseActionSchema = z.discriminatedUnion('action', [
   z.object({action: z.literal('assign_responsible'), ...caseCommon, responsible_id: admissionUuid, reason: text()}).strict(),
   z.object({action: z.literal('review_local_rules'), ...caseCommon, sources: z.array(admissionLocalActRefSchema).min(1).max(3), requirements: z.array(admissionLocalRequirementInputSchema).min(3).max(50), review_reason: text()}).strict(),
   z.object({action: z.literal('review_requirement'), ...caseCommon, requirement_id: admissionUuid, expected_requirement_revision: positiveRevision,
-    applicability: z.enum(['applicable','not_applicable','unknown']), evidence_version_ids: ids(), reason: text(), exception: z.object({rule_id: admissionUuid, reason: text(), evidence_version_ids: ids(1)}).strict().nullable()}).strict(),
+    applicability: z.enum(['applicable','not_applicable','unknown']), evidence_version_ids: ids(), reason: text(), issuance_evidence: admissionIssuanceEvidenceSchema.nullable().optional(), exception: z.object({rule_id: admissionUuid, reason: text(), evidence_version_ids: ids(1)}).strict().nullable()}).strict(),
   z.object({action: z.literal('review_evidence'), ...caseCommon, requirement_id: admissionUuid, expected_requirement_revision: positiveRevision, evidence_version_id: admissionUuid,
     byte_sha256: admissionSha256, outcome: z.enum(['accepted','rejected']), reason: text()}).strict(),
   z.object({action: z.literal('record_decision'), ...caseCommon, rule_set_id: admissionUuid, rule_set_digest: admissionSha256, requirements_digest: admissionSha256,
@@ -92,7 +96,8 @@ export const admissionPreparationSchema = z.object({schema_version: z.literal(1)
 export const admissionActionKind = z.enum(['initialize','assign_responsible','review_local_rules','review_requirement','review_evidence','record_decision','evidence_committed']);
 export const admissionEventPayloadSchema = z.object({reason: text().nullable(), program_ref: admissionProgramRefSchema, rule_set_id: admissionUuid.nullable(), rule_set_digest: admissionSha256.nullable(),
   responsible_id: admissionUuid.nullable(), requirements_digest: admissionSha256, requirements: z.array(admissionRequirementSchema).max(50), evidence_version_ids: ids(), evidence: z.array(admissionEvidenceSchema).max(100), tasks: z.array(admissionTaskSchema).max(50), decision: admissionDecisionSchema.nullable(),
-  local_sources: z.array(admissionLocalActRefSchema).max(3), local_requirements: z.array(admissionLocalRequirementInputSchema).max(50)}).strict();
+  local_sources: z.array(admissionLocalActRefSchema).max(3), local_requirements: z.array(admissionLocalRequirementInputSchema).max(50),
+  issuance_reviews: z.array(admissionIssuanceReviewSnapshotSchema).max(50).optional()}).strict();
 export const admissionEventSchema = z.object({id: admissionUuid, case_id: admissionUuid, case_revision: positiveRevision, kind: admissionActionKind, recorded_at: admissionTime,
   actor_id: admissionUuid.nullable(), payload: admissionEventPayloadSchema}).strict();
 export const admissionReceiptSchema = z.object({schema_version: z.literal(1), request_id: admissionUuid, case_id: admissionUuid, revision: positiveRevision,

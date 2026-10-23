@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   emptyFactualData,
@@ -12,7 +12,9 @@ import {
   resolveFinalAttestationFacts,
   resolveFinalTestLessonId,
 } from "@/lib/group-docs/factualResolvers";
-import { getOksmName } from "@/constants/oksm";
+import { useEducationIssuanceScope } from '@/hooks/useEducationIssuance';
+import { issuanceScopeCurrent, type EducationIssuanceScope } from '@/lib/educationIssuance/client';
+import { readActiveIssuanceSources,activeSourceMessages } from '@/lib/educationIssuance/activeSources';
 
 /**
  * Снимок ФАКТИЧЕСКИХ данных Синтагмы для документов группы.
@@ -26,25 +28,33 @@ export function useGroupFactualData(
   organizationId: string | null,
   courseId: string | null,
   userIds: string[],
+  groupId?: string | null,
 ) {
   const [data, setData] = useState<GroupFactualData>(emptyFactualData());
   const [loading, setLoading] = useState(false);
 
   const key = userIds.slice().sort().join(",");
+  const capture=useEducationIssuanceScope(organizationId,groupId,JSON.stringify([courseId,key]));
+  const epoch=useRef(0);
+  const [dataScope,setDataScope]=useState<EducationIssuanceScope|null>(null);
 
   const load = useCallback(async () => {
+    const run=++epoch.current;setDataScope(null);setData(emptyFactualData());
     const ids = key ? key.split(",") : [];
     if (!organizationId || ids.length === 0) {
-      setData(emptyFactualData());
+      setData(emptyFactualData());setLoading(false);
       return;
     }
     // Курс не привязан — честно пустой snapshot с предупреждением.
     if (!courseId) {
-      setData(emptyFactualData([NO_COURSE_WARNING]));
+      setData(emptyFactualData([NO_COURSE_WARNING]));setLoading(false);
       return;
     }
     setLoading(true);
+    let scope:EducationIssuanceScope;
     try {
+      scope=capture();
+      const current=()=>run===epoch.current&&issuanceScopeCurrent(scope);
       const warnings: string[] = [];
       /** Fail-closed: любая ошибка источника — явное предупреждение, а не тихий пропуск. */
       const failClosed = (label: string, error: unknown) => {
@@ -58,7 +68,7 @@ export function useGroupFactualData(
         .select("id, course_id, title, type, order_index")
         .eq("course_id", courseId);
       if (lessonsError) {
-        setData(emptyFactualData(["Не удалось прочитать уроки курса — данные не подставляются."]));
+        if(current()){setDataScope(scope);setData(emptyFactualData(["Не удалось прочитать уроки курса — данные не подставляются."]));}
         return;
       }
       const lessonRows = (lessons || []) as any[];
@@ -68,10 +78,10 @@ export function useGroupFactualData(
       );
 
       if (lessonIds.length === 0) {
-        setData({
+        if(current()){setDataScope(scope);setData({
           ...emptyFactualData(["В курсе группы нет уроков — собирать нечего."]),
           courseLinked: true,
-        });
+        });}
         return;
       }
 
@@ -124,53 +134,22 @@ export function useGroupFactualData(
       if (enrollmentsError) failClosed("зачисления на курс", enrollmentsError);
       const enrollmentRows = (enrollmentsError ? [] : enrollments || []) as any[];
       const enrollmentIds = enrollmentRows.map((e) => e.id);
-      const byEnrollment = new Map<string, string>(
-        enrollmentRows.map((e) => [e.id, e.user_id]),
-      );
 
       let registration: RegistrationFact[] = [];
       if (enrollmentIds.length === 0) {
         if (!enrollmentsError) warnings.push("Ученики группы не зачислены на привязанный курс.");
       } else {
-        const [recordsRes, frdoRes] = await Promise.all([
-          supabase
-            .from("education_document_records")
-            .select(
-              "enrollment_id, full_name, birth_date, document_type, document_series, document_number, reg_number, issue_date, order_number, order_date, specialty_name",
-            )
-            .eq("organization_id", organizationId)
-            .in("enrollment_id", enrollmentIds)
-            .is("deleted_at", null),
-          supabase
-            .from("student_frdo_data")
-            .select(
-              "user_id, last_name, first_name, middle_name, birth_date, gender, citizenship_code, passport_series, passport_number",
-            )
-            .eq("organization_id", organizationId)
-            .in("user_id", ids),
-        ]);
-
-        if (recordsRes.error) failClosed("выданные документы об образовании", recordsRes.error);
-        if (frdoRes.error) failClosed("данные ФРДО", frdoRes.error);
-
-        const frdoByUser = new Map<string, any>(
-          ((frdoRes.error ? [] : (frdoRes.data as any[])) || []).map((r) => [
-            r.user_id,
-            { ...r, citizenship: getOksmName(r.citizenship_code) },
-          ]),
-        );
-
-        registration = ((recordsRes.error ? [] : (recordsRes.data as any[])) || []).map((r) => {
-          const userId = r.enrollment_id ? byEnrollment.get(r.enrollment_id) || null : null;
-          return normalizeRegistrationFact(
-            { ...r, user_id: userId },
-            userId ? frdoByUser.get(userId) : null,
-            null,
-          );
-        });
+        try {
+          const sources=await readActiveIssuanceSources(scope,enrollmentRows.map(row=>({enrollmentId:row.id,courseId:row.course_id,userId:row.user_id})));
+          for(const enrollment of enrollmentRows){const source=sources.get(enrollment.id);
+            if(!source||source.kind!=='confirmed'){warnings.push('Книга регистрации · '+enrollment.id.slice(0,8)+': '+(source?.kind==='unavailable'?activeSourceMessages[source.reason]:'источник недоступен')+'. Данные не подставляются.');continue;}
+            registration.push(normalizeRegistrationFact(source.record.official,null,null));
+          }
+        }catch(error){failClosed('проверяемые действующие документы об образовании',error);}
       }
 
-      setData({
+      if(!current())return;
+      setDataScope(scope);setData({
         lessonCompletions,
         attestation,
         registration,
@@ -180,16 +159,17 @@ export function useGroupFactualData(
         warnings,
       });
     } catch {
-      setData(emptyFactualData(["Не удалось загрузить фактические данные."]));
+      if(run===epoch.current&&scope&&issuanceScopeCurrent(scope)){setDataScope(scope);setData(emptyFactualData(["Не удалось загрузить фактические данные."]));}
     } finally {
-      setLoading(false);
+      if(run===epoch.current)setLoading(false);
     }
 
-  }, [organizationId, courseId, key]);
+  }, [organizationId, courseId, key, groupId, capture]);
 
   useEffect(() => {
-    load();
+    void load();
+    return()=>{++epoch.current;};
   }, [load]);
 
-  return { factual: data, loading, refresh: load };
+  return { factual: !organizationId?emptyFactualData():!courseId?emptyFactualData([NO_COURSE_WARNING]):dataScope&&issuanceScopeCurrent(dataScope)?data:emptyFactualData(), loading, refresh: load };
 }

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OrgDocumentWorkflowPanel } from "./OrgDocumentWorkflowPanel";
 import { ids, workflow, workflowComment, workflowEnvelope, workflowCandidates, workflowId } from "@/lib/__tests__/orgDocumentWorkflow.fixture";
-const mocks = vi.hoisted(() => ({ hook: vi.fn(), transition: vi.fn(), draft: vi.fn(), comment: vi.fn(), resolve: vi.fn(), reload: vi.fn(), content: vi.fn(), review: vi.fn(), openFile: vi.fn() }));
+const mocks = vi.hoisted(() => ({ hook: vi.fn(), transition: vi.fn(), draft: vi.fn(), comment: vi.fn(), resolve: vi.fn(), reload: vi.fn(), content: vi.fn(), review: vi.fn(), openFile: vi.fn(), downloadFile: vi.fn() }));
 vi.mock("@/hooks/useOrgDocumentWorkflow", () => ({ useOrgDocumentWorkflow: mocks.hook }));
 vi.mock("@/lib/orgDocumentReviewContent", () => ({ loadOrgDocumentReviewContent: mocks.content }));
-vi.mock("@/utils/storageHelpers", () => ({ openPrivateFile: mocks.openFile }));
+vi.mock("@/utils/storageHelpers", () => ({ openPrivateFile: mocks.openFile, downloadPrivateFile: mocks.downloadFile }));
 vi.mock("@/components/signing/ReviewableDocument", () => ({ ReviewableDocument: (props: any) => { mocks.review(props); return <div>Содержимое для проверки</div>; } }));
 let state: any;
 const mount = () => render(<OrgDocumentWorkflowPanel organizationId={ids.org} documentId={ids.doc} currentVersionId={ids.version} />);
@@ -69,6 +69,13 @@ describe("internal review card", () => {
     expect(mocks.review).toHaveBeenCalledWith(expect.objectContaining({ proposalsOnly: true, documentHtml: "<p>Проверяемая версия</p>", canComment: true }));
     expect(mocks.transition).not.toHaveBeenCalled(); expect(mocks.draft).not.toHaveBeenCalled();
   });
+  it("downloads template HTML without any signed-source opening or automatic approval", async () => {
+    state.data.document.file_name = "Шаблон.html"; mocks.downloadFile.mockResolvedValue(true); const assertCurrent=vi.fn(),controller=new AbortController();
+    render(<OrgDocumentWorkflowPanel organizationId={ids.org} documentId={ids.doc} currentVersionId={ids.version} sourceOpenMode="download" sourceDownloadAssertCurrent={assertCurrent} sourceDownloadSignal={controller.signal} />);
+    fireEvent.click(screen.getByRole("button", { name: "Скачать исходный файл" }));
+    await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalledWith("org-documents", state.data.document.file_path || state.data.document.file_url, "Шаблон.html", expect.objectContaining({assertCurrent,signal:expect.any(AbortSignal)})));
+    expect(assertCurrent).toHaveBeenCalled(); expect(mocks.openFile).not.toHaveBeenCalled(); expect(screen.queryByRole("button", { name: "Открыть исходный файл" })).toBeNull(); expect(mocks.transition).not.toHaveBeenCalled();
+  });
   it("opens a historical approved cycle without presenting its approval as the new file's approval", async () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
     const previous = workflow({ id: workflowId(30), version_id: workflowId(31), state: "approved", responsible_name: "Иван Петров", reviewer_name: "Ольга Иванова",
@@ -86,4 +93,21 @@ describe("internal review card", () => {
     expect(screen.getByRole("button", { name: "Открыть файл этой версии" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Утвердить эту версию/ })).not.toBeInTheDocument(); expect(mocks.transition).not.toHaveBeenCalled();
   });
+
+  it("forwards the same scoped signer and BOTH template/transport guards to inline HTML reads",async()=>{
+    state.data.document.file_name="Template.html";mocks.content.mockResolvedValue("<p>Scoped content</p>");const templateGuard=vi.fn(),transportGuard=vi.fn(),signUrl=vi.fn();
+    const transport={key:"template-owner",assertCurrent:transportGuard,signUrl,rpc:vi.fn(),readDocument:vi.fn(),readVersions:vi.fn(),saveUpload:vi.fn(),restore:vi.fn()};
+    render(<OrgDocumentWorkflowPanel organizationId={ids.org} documentId={ids.doc} currentVersionId={ids.version} sourceOpenMode="download" sourceDownloadAssertCurrent={templateGuard} transport={transport}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Показать содержимое для проверки"}));await waitFor(()=>expect(mocks.content).toHaveBeenCalledOnce());
+    expect(mocks.content).toHaveBeenCalledWith(state.data.document.file_path||state.data.document.file_url,"Template.html",expect.any(AbortSignal),expect.objectContaining({signUrl,assertCurrent:expect.any(Function)}));
+    mocks.content.mock.calls[0][3].assertCurrent();expect(templateGuard).toHaveBeenCalled();expect(transportGuard).toHaveBeenCalled();expect(mocks.openFile).not.toHaveBeenCalled();
+  });
+  it("does not expose a deferred inline HTML result after its template transport is no longer current",async()=>{
+    state.data.document.file_name="Template.html";let live=true,release!:(value:string)=>void;mocks.content.mockReturnValueOnce(new Promise(done=>{release=done;}));
+    const transport={key:"old-template",assertCurrent:()=>{if(!live)throw Error("old scope");},signUrl:vi.fn(),rpc:vi.fn(),readDocument:vi.fn(),readVersions:vi.fn(),saveUpload:vi.fn(),restore:vi.fn()};
+    render(<OrgDocumentWorkflowPanel organizationId={ids.org} documentId={ids.doc} currentVersionId={ids.version} sourceOpenMode="download" transport={transport}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Показать содержимое для проверки"}));await waitFor(()=>expect(mocks.content).toHaveBeenCalledOnce());live=false;await act(async()=>release("<p>Private late source</p>"));
+    expect(mocks.review).not.toHaveBeenCalled();expect(screen.queryByText("Содержимое для проверки")).not.toBeInTheDocument();expect(mocks.transition).not.toHaveBeenCalled();
+  });
+
 });

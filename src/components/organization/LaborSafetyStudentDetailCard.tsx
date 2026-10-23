@@ -117,7 +117,8 @@ export function LaborSafetyStudentDetailCard({ isOpen, onOpenChange, record, org
                       setSelectedCourseIds={s.setSelectedCourseIds}
                       isEnrolling={s.isEnrolling}
                       handleEnrollToCourse={s.handleEnrollToCourse}
-                      handleRemoveEnrollment={s.handleRemoveEnrollment}
+                      organizationId={organizationId}
+                      onEnrollmentChanged={s.refreshEnrollments}
                       handleResetProgress={s.handleResetProgress}
                     />
                   </TabsContent>

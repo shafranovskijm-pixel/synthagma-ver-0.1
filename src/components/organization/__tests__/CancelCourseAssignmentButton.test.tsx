@@ -1,59 +1,45 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const state = vi.hoisted(() => ({ cancel: vi.fn(), success: vi.fn(), changed: vi.fn(), allowed: true }));
-vi.mock("sonner", () => ({ toast: { success: state.success } }));
-vi.mock("@/hooks/useStaffPermissions", () => ({ useStaffPermissions: () => ({ loading: false, can: () => state.allowed }) }));
-vi.mock("@/api/courseAssignmentCancellation", async (original) => ({
-  ...await original<typeof import("@/api/courseAssignmentCancellation")>(), cancelCourseAssignment: state.cancel,
-}));
-import { CancelCourseAssignmentButton } from "@/components/organization/CancelCourseAssignmentButton";
-
-const props = { enrollmentId: "enrollment-1", organizationId: "org-1", courseTitle: "Тестовый курс", onCancelled: state.changed };
-beforeEach(() => { vi.clearAllMocks(); state.allowed = true; state.cancel.mockResolvedValue({ cancelled: true }); });
-
-describe("course assignment cancellation dialog", () => {
-  it("requires confirmation and refreshes the parent only after confirmed cancellation", async () => {
-    render(<CancelCourseAssignmentButton {...props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Отменить назначение" }));
-    expect(state.cancel).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Подтвердить отмену" }));
-    await waitFor(() => expect(state.changed).toHaveBeenCalledTimes(1));
-    expect(state.cancel).toHaveBeenCalledWith({ enrollmentId: "enrollment-1", organizationId: "org-1" });
-    expect(state.success).toHaveBeenCalledWith("Назначение курса отменено");
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { org,course,pupil,enrollment,caps,source,withdrawal,mutation } from "@/lib/educationIssuance/__tests__/fixtures";
+const mock=vi.hoisted(()=>({allowed:true,current:true,ready:true,read:vi.fn(),prepare:vi.fn(),run:vi.fn()}));
+vi.mock("@/hooks/useStaffPermissions",()=>({useStaffPermissions:()=>({loading:false,can:()=>mock.allowed})}));
+vi.mock("@/hooks/useEducationIssuance",()=>({useEducationIssuanceScope:()=>capture}));
+vi.mock("@/lib/educationIssuance/client",async original=>({...await original<typeof import("@/lib/educationIssuance/client")>(),issuanceScopeCurrent:()=>mock.current,readEducationIssuance:mock.read,prepareEducationIssuanceMutation:mock.prepare}));
+vi.mock("@/components/organization/education-issuance/SourcePicker",()=>({IssuanceSourcePicker:({onChange,disabled}:any)=><button disabled={disabled} onClick={()=>onChange(source)}>Выбрать основание</button>}));
+vi.mock("sonner",()=>({toast:{success:vi.fn(),error:vi.fn()}}));
+import { CancelCourseAssignmentButton } from "../CancelCourseAssignmentButton";
+import { EducationIssuanceError } from "@/lib/educationIssuance/client";
+const scope={actorId:pupil,accessRevision:1,organizationId:org,issuanceScope:{kind:"organization" as const},current:()=>true};
+const capture=()=>scope;
+const props={enrollmentId:enrollment,organizationId:org,courseTitle:"Фактический курс",progress:100,timeSpent:3600,status:"completed",hasTestAttempts:true,onCancelled:vi.fn()};
+beforeEach(()=>{vi.clearAllMocks();mock.allowed=true;mock.current=true;mock.ready=true;mock.run.mockResolvedValue(mutation());
+  mock.prepare.mockImplementation((_scope,action)=>({requestId:"stable-request",action,run:mock.run}));
+  mock.read.mockImplementation(async(_scope,query)=>({schema_version:1,organization_id:org,scope:{kind:"organization"},capabilities:caps,...(query.kind==="withdrawal"?{kind:"withdrawal",state:withdrawal()}:{kind:"withdrawal_preview",preview:{intent:query.intent,preview_hash:"a".repeat(64),items:[{...withdrawal(),can_withdraw:mock.ready}],ready:mock.ready}})}));
+});
+afterEach(cleanup);
+async function preview(){
+  fireEvent.click(screen.getByRole("button",{name:"Прекратить обучение"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Выбрать основание"}));
+  fireEvent.change(screen.getByLabelText("Пункт или реквизиты основания"),{target:{value:"Заявление №1"}});
+  fireEvent.change(screen.getByLabelText("Причина решения"),{target:{value:"Фактическое заявление"}});
+  fireEvent.click(screen.getByRole("button",{name:"Проверить на сервере"}));
+  await screen.findByText(/Сохраняется: completed, 100%/);
+}
+describe("retained withdrawal operator flow",()=>{
+  it("does not expose a mutation to read-only staff",()=>{mock.allowed=false;render(<CancelCourseAssignmentButton {...props}/>);expect(screen.queryByRole("button",{name:"Прекратить обучение"})).toBeNull();});
+  it("allows explicit withdrawal of a progressed assignment while retaining results and requiring preview then confirmation",async()=>{
+    render(<CancelCourseAssignmentButton {...props}/>);await preview();expect(mock.prepare).not.toHaveBeenCalled();expect(mock.run).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"Подтвердить прекращение"}));await waitFor(()=>expect(props.onCancelled).toHaveBeenCalledTimes(1));
+    expect(mock.prepare).toHaveBeenCalledWith(scope,expect.objectContaining({action:"withdraw_enrollments",intent:expect.objectContaining({enrollment_ids:[enrollment]})}));
   });
-  it("retains the dialog and does not claim cancellation when the server rejects historical data", async () => {
-    state.cancel.mockRejectedValue({ message: "assignment_has_dependent_records" });
-    render(<CancelCourseAssignmentButton {...props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Отменить назначение" }));
-    fireEvent.click(screen.getByRole("button", { name: "Подтвердить отмену" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("документы"));
-    expect(state.changed).not.toHaveBeenCalled();
-    expect(state.success).not.toHaveBeenCalled();
+  it("does not save a server-blocked preview",async()=>{
+    mock.ready=false;render(<CancelCourseAssignmentButton {...props}/>);await preview();
+    expect(screen.getByRole("button",{name:"Подтвердить прекращение"})).toBeDisabled();expect(mock.run).not.toHaveBeenCalled();
   });
-  it.each([{ progress: 1 }, { timeSpent: 1 }, { status: "completed" }, { hasTestAttempts: true }])(
-    "explains and blocks an already-started course: %j", async (history) => {
-      render(<CancelCourseAssignmentButton {...props} {...history} />);
-      fireEvent.click(screen.getByRole("button", { name: "Отменить назначение" }));
-      expect(screen.getByRole("button", { name: "Подтвердить отмену" })).toBeDisabled();
-      expect(screen.getByRole("alert")).toHaveTextContent("Обучение уже начато");
-      expect(state.cancel).not.toHaveBeenCalled();
-    },
-  );
-  it("prevents duplicate submissions while a cancellation is pending", async () => {
-    let resolve!: () => void;
-    state.cancel.mockReturnValue(new Promise<void>(done => { resolve = done; }));
-    render(<CancelCourseAssignmentButton {...props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Отменить назначение" }));
-    fireEvent.click(screen.getByRole("button", { name: "Подтвердить отмену" }));
-    fireEvent.click(screen.getByRole("button", { name: "Отмена назначения..." }));
-    expect(state.cancel).toHaveBeenCalledTimes(1);
-    resolve();
-    await waitFor(() => expect(state.changed).toHaveBeenCalledTimes(1));
-  });
-  it("hides the action without students.write permission", () => {
-    state.allowed = false;
-    render(<CancelCourseAssignmentButton {...props} />);
-    expect(screen.queryByRole("button", { name: "Отменить назначение" })).toBeNull();
+  it("keeps the same prepared request after an unknown result",async()=>{
+    mock.run.mockRejectedValueOnce(new EducationIssuanceError("DEPENDENCY_UNAVAILABLE",true)).mockResolvedValueOnce(mutation(true));
+    render(<CancelCourseAssignmentButton {...props}/>);await preview();fireEvent.click(screen.getByRole("button",{name:"Подтвердить прекращение"}));
+    fireEvent.click(await screen.findByRole("button",{name:"Повторить тот же запрос"}));await waitFor(()=>expect(props.onCancelled).toHaveBeenCalledTimes(1));
+    expect(mock.prepare).toHaveBeenCalledTimes(1);expect(mock.run).toHaveBeenCalledTimes(2);
   });
 });

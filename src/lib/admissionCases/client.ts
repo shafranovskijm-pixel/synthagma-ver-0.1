@@ -68,6 +68,11 @@ function assertUnique(ids: string[]) { if (new Set(ids).size !== ids.length) thr
 function assertStaffState(scope: AdmissionActorScope,state: c.AdmissionStaffCase) {
   assertAdmissionScope(scope,state.scope);
   assertUnique(state.requirements.map(value => value.id)); assertUnique(state.evidence.map(value => value.id)); assertUnique(state.tasks.map(value => value.id));
+  const conditions=state.issuance_conditions??[],reviews=state.issuance_reviews??[];
+  assertUnique(conditions.map(value=>value.requirement_id));assertUnique(reviews.map(value=>value.requirement_id));
+  if(conditions.some(value=>!state.requirements.some(requirement=>requirement.id===value.requirement_id&&requirement.revision===value.requirement_revision))
+    ||reviews.some(value=>!state.requirements.some(requirement=>requirement.id===value.requirement_id&&value.requirement_revision<=requirement.revision)
+      ||value.evidence?.evidence_version_ids.some(id=>!state.evidence.some(evidence=>evidence.id===id&&evidence.requirement_id===value.requirement_id))))throw new AdmissionError();
   if ((state.rule_set_id === null) !== (state.rule_set_digest === null)
     || state.requirements.some(requirement => requirement.rule_set_id !== state.rule_set_id || requirement.rule_set_digest !== state.rule_set_digest)
     || state.evidence.some(evidence => evidence.case_id !== state.id || evidence.case_revision_created > state.revision)

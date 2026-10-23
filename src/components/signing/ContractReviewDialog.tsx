@@ -12,6 +12,8 @@ import { ReviewableDocument, type ReviewComment } from "@/components/signing/Rev
 import { DocxRenderer } from "@/components/signing/DocxRenderer";
 import { useAuth } from "@/hooks/useAuth";
 import { getSignatureTokenFile, getAuthenticatedSignatureFile, isHistoricalSignatureFileError, downloadSignatureRevisionFile } from "@/lib/signatureTokenFile";
+import { SignatureReadScopeProvider, useSignatureReadScope } from '@/hooks/useSignatureReadScope';
+import { captureSignatureRead, signatureAuthorization } from '@/lib/signatureClientScope';
 
 interface Props {
   open: boolean;
@@ -49,45 +51,60 @@ interface Revision {
   created_at: string;
 }
 
-export function ContractReviewDialog({ open, onOpenChange, signatureToken, readOnly = false }: Props) {
+export function ContractReviewDialog(props: Props) {
+  const owner = useSignatureReadScope([props.open, props.signatureToken, props.readOnly], props.open);
+  return <SignatureReadScopeProvider value={owner.capture()}><ScopedContractReviewDialog key={owner.key} {...props} /></SignatureReadScopeProvider>;
+}
+function ScopedContractReviewDialog({ open, onOpenChange, signatureToken, readOnly = false }: Props) {
   const { user } = useAuth();
+  const scope = useSignatureReadScope([open, signatureToken, readOnly], open);
   const [loading, setLoading] = useState(false);
   const [sig, setSig] = useState<SigData | null>(null);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [comments, setComments] = useState<ReviewComment[]>([]);
-  const [convertedHtml, setConvertedHtml] = useState<string | null>(null);
+  const [convertedState, setConvertedState] = useState<{ owner: string; html: string } | null>(null);
   const [requestText, setRequestText] = useState("");
   const [requesting, setRequesting] = useState(false);
   const [pdfComment, setPdfComment] = useState("");
   const [authorName, setAuthorName] = useState("");
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileState, setFileState] = useState<{ owner: string; url: string } | null>(null);
 
   const currentRevision = revisions.find(r => r.id === sig?.current_revision_id) || revisions[revisions.length - 1] || null;
   const rawFileUrl = currentRevision?.file_url || null;
   const fileMime = currentRevision?.file_mime || "";
   const isPdf = fileMime.includes("pdf") || rawFileUrl?.toLowerCase().split("?")[0].endsWith(".pdf");
   const isDocx = fileMime.includes("wordprocessingml") || rawFileUrl?.toLowerCase().split("?")[0].endsWith(".docx");
+  const fileScope = useSignatureReadScope([scope.key, sig?.id, sig?.organization_id, currentRevision?.id, rawFileUrl], open);
+  const fileUrl = fileState?.owner === fileScope.key ? fileState.url : null;
+  const convertedHtml = convertedState?.owner === fileScope.key ? convertedState.html : null;
+  const assertFileCurrent = fileScope.capture();
+  const setFileUrl = (url: string | null) => setFileState(url ? { owner: fileScope.key, url } : null);
+  const setConvertedHtml = (html: string | null) => { assertFileCurrent(); setConvertedState(html ? { owner: fileScope.key, html } : null); };
   const documentHtml = sig?.document_html || currentRevision?.document_html || convertedHtml || null;
 
   useEffect(() => {
     let cancelled = false; setFileUrl(null);
+    const controller = new AbortController(), current = fileScope.capture();
+    const options = { assertCurrent: current, signal: controller.signal };
     if (open && rawFileUrl && signatureToken && sig?.id && currentRevision?.id) {
-      getSignatureTokenFile({ token: signatureToken, signatureId: sig.id, kind: "revision", revisionId: currentRevision.id })
-        .catch(error => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(rawFileUrl, sig.organization_id); })
-        .then(url => { if (!cancelled) setFileUrl(url); })
+      getSignatureTokenFile({ token: signatureToken, signatureId: sig.id, kind: "revision", revisionId: currentRevision.id, ...options })
+        .catch(error => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(rawFileUrl, sig.organization_id, 'external-contracts', options); })
+        .then(url => { if (!cancelled) { current(); setFileUrl(url); } })
         .catch(() => { if (!cancelled) toast.error("Файл требует проверки привязки отправителем"); });
     }
-    return () => { cancelled = true; };
-  }, [open,rawFileUrl,signatureToken,sig?.id,sig?.organization_id,currentRevision?.id]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [fileScope.key]);
 
   const loadAll = async (token: string) => {
+    const current = scope.capture(), read = captureSignatureRead({ assertCurrent: current });
     setLoading(true);
     try {
-      const [sigRes, revRes, comRes] = await Promise.all([
-        supabase.rpc("get_signature_by_token", { p_token: token }),
-        (supabase as any).rpc("get_signature_revisions_by_token", { p_token: token }),
-        (supabase as any).rpc("get_signature_comments_by_token", { p_token: token }),
-      ]);
+      const { bearer } = await signatureAuthorization(read, false); read.active();
+      const [sigRes, revRes, comRes] = await read.wait(Promise.all([
+        supabase.rpc("get_signature_by_token", { p_token: token }).setHeader('Authorization', bearer),
+        (supabase as any).rpc("get_signature_revisions_by_token", { p_token: token }).setHeader('Authorization', bearer),
+        (supabase as any).rpc("get_signature_comments_by_token", { p_token: token }).setHeader('Authorization', bearer),
+      ]));
       if (sigRes.error || !sigRes.data?.length) throw new Error("Не удалось загрузить договор");
       const row = sigRes.data[0] as SigData;
       setSig(row);
@@ -95,9 +112,10 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
       setComments((comRes.data as ReviewComment[]) || []);
       setAuthorName(user?.email || row.recipient_name || "Получатель");
     } catch (e: any) {
+      try { current(); } catch { return; }
       toast.error(e.message || "Ошибка загрузки");
     } finally {
-      setLoading(false);
+      try { current(); setLoading(false); } catch { /* old invitation */ }
     }
   };
 
@@ -107,12 +125,13 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
       loadAll(signatureToken);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, signatureToken]);
+  }, [scope.key]);
 
   const downloadCurrentFile = async () => {
     if (!sig || !signatureToken || !currentRevision?.id || !rawFileUrl) return;
-    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId: sig.id, organizationId: sig.organization_id, revisionId: currentRevision.id, locator: rawFileUrl, fileName: currentRevision.file_name || "document" }); }
-    catch { toast.error("Не удалось скачать файл; обновите документ или проверьте привязку у отправителя"); }
+    const current = fileScope.capture();
+    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId: sig.id, organizationId: sig.organization_id, revisionId: currentRevision.id, locator: rawFileUrl, fileName: currentRevision.file_name || "document", assertCurrent: current }); }
+    catch { try { current(); toast.error("Не удалось скачать файл; обновите документ или проверьте привязку у отправителя"); } catch { /* old invitation */ } }
   };
   const reloadComments = async () => {
     if (!signatureToken) return;
@@ -259,6 +278,8 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
               {/* DOCX -> HTML rendering */}
               {isDocx && fileUrl && !documentHtml && (
                 <DocxRenderer
+                  key={fileScope.key}
+                  readOptions={{ assertCurrent: assertFileCurrent }}
                   fileUrl={fileUrl}
                   cachedHtml={currentRevision?.document_html}
                   revisionId={currentRevision?.id}
@@ -322,7 +343,7 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
                 </Button>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">Подписание ПЭП открывается в отдельной вкладке для соблюдения требований 63-ФЗ.</p>
+            <p className="text-[10px] text-muted-foreground text-center">Подтверждение открывается в отдельной вкладке. Вид подписи и основание её применения проверяются отдельно.</p>
           </div>
         )}
       </DialogContent>

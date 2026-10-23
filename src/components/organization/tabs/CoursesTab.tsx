@@ -1,3 +1,4 @@
+import { deleteUnusedCourses } from "@/api/courseDeletion";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
@@ -366,30 +367,22 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setIsDeletingCourses(true);
     try {
       const courseIds = Array.from(selectedCourseIds);
-      await supabase.from("enrollments").delete().in("course_id", courseIds);
-      await supabase.from("lessons").delete().in("course_id", courseIds);
-      await supabase.from("course_documents").delete().in("course_id", courseIds);
-      const { error } = await supabase.from("courses").delete().in("id", courseIds);
-      if (error) throw error;
+      await deleteUnusedCourses(courseIds);
       toast.success(`Удалено курсов: ${courseIds.length}`);
       setSelectedCourseIds(new Set()); setShowBulkDeleteConfirm(false); refresh(); onCoursesDeleted?.();
-    } catch { toast.error("Ошибка удаления курсов"); }
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Ошибка удаления курсов"); }
     finally { setIsDeletingCourses(false); }
   };
 
   const handleSingleDelete = useCallback(async (courseId: string) => {
     try {
-      await supabase.from("enrollments").delete().eq("course_id", courseId);
-      await supabase.from("lessons").delete().eq("course_id", courseId);
-      await supabase.from("course_documents").delete().eq("course_id", courseId);
-      const { error } = await supabase.from("courses").delete().eq("id", courseId);
-      if (error) throw error;
+      await deleteUnusedCourses([courseId]);
       toast.success("Курс удалён");
       refresh();
       onCoursesDeleted?.();
     } catch (e) {
       console.error("Delete course error:", e);
-      toast.error("Ошибка удаления курса");
+      toast.error(e instanceof Error ? e.message : "Ошибка удаления курса");
     }
   }, [refresh, onCoursesDeleted]);
 

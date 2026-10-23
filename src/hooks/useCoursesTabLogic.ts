@@ -1,3 +1,4 @@
+import { deleteUnusedCourses } from "@/api/courseDeletion";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -276,16 +277,12 @@ export function useCoursesTabLogic(organizationId: string) {
     setIsDeletingCourses(true);
     try {
       const courseIds = Array.from(selectedCourseIds);
-      await supabase.from("enrollments").delete().in("course_id", courseIds);
-      await supabase.from("lessons").delete().in("course_id", courseIds);
-      await supabase.from("course_documents").delete().in("course_id", courseIds);
-      const { error } = await supabase.from("courses").delete().in("id", courseIds);
-      if (error) throw error;
+      await deleteUnusedCourses(courseIds);
       toast.success(`Удалено курсов: ${courseIds.length}`);
       setSelectedCourseIds(new Set()); setShowBulkDeleteConfirm(false); refresh();
     } catch (error) {
       console.error("Error deleting courses:", error);
-      toast.error("Ошибка удаления курсов");
+      toast.error(error instanceof Error ? error.message : "Ошибка удаления курсов");
     } finally {
       setIsDeletingCourses(false);
     }
