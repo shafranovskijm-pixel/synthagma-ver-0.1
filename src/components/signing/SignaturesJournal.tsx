@@ -1,3 +1,5 @@
+import{OrganizationSignaturePolicies}from'@/components/organization/OrganizationSignaturePolicies';
+import {SignatureEvidencePanel}from'@/components/organization/SignatureEvidencePanel';
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -540,6 +542,8 @@ function ScopedSignaturesJournal({ organizationId, initialStatus }: Props) {
         />
       )}
 
+      {organizationId&&<OrganizationSignaturePolicies organizationId={organizationId}/>}
+
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -587,6 +591,8 @@ function ScopedSignaturesJournal({ organizationId, initialStatus }: Props) {
                   </div>
                 </div>
               )}
+
+              <SignatureEvidencePanel key={selected.id}organizationId={selected.organization_id}signatureId={selected.id}/>
 
               {selected.document_html && (
                 <div className="border rounded-lg overflow-hidden bg-white">

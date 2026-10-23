@@ -36,7 +36,7 @@ function buildEmailHtml(orgName: string, recipientName: string, docTitle: string
     </div>
     <p style="color:#888;font-size:13px;text-align:center;">Ссылка действительна до <strong>${exp}</strong></p>
     <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-    <p style="color:#999;font-size:12px;line-height:1.5;">Подписание происходит в соответствии с Федеральным законом 63-ФЗ «Об электронной подписи». Перед подписанием вам будет предложено ознакомиться с Соглашением о ПЭП. Если вы получили это письмо по ошибке — просто проигнорируйте его.</p>
+    <p style="color:#999;font-size:12px;line-height:1.5;">На странице документа указаны способ подтверждения, применяемые правила и их ограничения. Вид подтверждения и его правовое основание проверяются отдельно. Если вы получили это письмо по ошибке — просто проигнорируйте его.</p>
   </div></body></html>`;
 }
 

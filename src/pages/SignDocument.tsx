@@ -1,3 +1,4 @@
+import {InvitationAssurancePanel}from'@/components/signing/InvitationAssurancePanel';
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -39,7 +40,8 @@ interface SigData {
 
 type Step = "loading" | "identity" | "agreement" | "review" | "sign" | "done" | "error" | "expired" | "already-signed" | "revoked" | "review-mode";
 
-export default function SignDocument() {
+export default function SignDocument(){const{token}=useParams<{token:string}>();return token?<InvitationAssurancePanel key={token}token={token}legacyFallback={<LegacySignDocument/>}/>:<LegacySignDocument/>;}
+function LegacySignDocument() {
   const { token } = useParams<{ token: string }>();
   const [step, setStep] = useState<Step>("loading");
   const [sig, setSig] = useState<SigData | null>(null);

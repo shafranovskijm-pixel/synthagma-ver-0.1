@@ -1,0 +1,11 @@
+import {z} from 'npm:zod@3.25.76';
+import {signatureVerificationAddressSchema,signatureFileTupleSchema,signatureStorageObjectSnapshotSchema,SIGNATURE_SOURCE_MAX_BYTES} from '../signature-controlled-source-verification/contract.ts';
+export {SIGNATURE_SOURCE_MAX_BYTES,signatureFileTupleSchema};
+const uuid=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),sha=z.string().regex(/^[a-f0-9]{64}$/),size=z.number().int().min(1).max(SIGNATURE_SOURCE_MAX_BYTES),mime=z.string().min(3).max(200).regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/);
+export const protectedFileRequestSchema=z.object({version:z.literal(1),action:z.literal('read_file'),address:signatureVerificationAddressSchema,file_kind:z.enum(['source','scan']),binding_id:uuid.nullable(),event_revision:z.number().int().min(1).max(2147483647).nullable(),expected_document_revision_id:uuid.nullable(),document_html_sha256:sha}).strict().refine(v=>v.file_kind!=='source'||v.event_revision===null);
+const scope={organization_id:uuid,signature_id:uuid,chosen_party:z.enum(['sender','recipient']),document_revision_id:uuid.nullable(),document_html_sha256:sha,binding_id:uuid.nullable()};
+export const protectedFileAbsentSchema=z.object({version:z.literal(1),ok:z.literal(true),kind:z.literal('file_absent'),...scope}).strict();
+export const protectedFileContextSchema=z.object({version:z.literal(1),ok:z.literal(true),kind:z.literal('protected_file_context'),source:signatureFileTupleSchema,object:signatureStorageObjectSnapshotSchema,binding_id:uuid.nullable(),event_revision:z.number().int().positive().nullable(),expected_sha256:sha.nullable(),expected_bytes:size.nullable(),expected_mime:mime.nullable()}).strict().superRefine((v,c)=>{const fail=(message:string)=>c.addIssue({code:'custom',message});if(v.source.bucket!==v.object.bucket||v.source.path!==v.object.path)fail('Wrong canonical object');if((v.expected_sha256===null)!==(v.expected_bytes===null)||(v.expected_sha256===null)!==(v.expected_mime===null))fail('Partial expected file');if(v.source.purpose==='source'&&v.event_revision!==null)fail('Wrong source event');});
+export type ProtectedFileRequest=z.infer<typeof protectedFileRequestSchema>;
+export type ProtectedFileContext=z.infer<typeof protectedFileContextSchema>;
+export type ProtectedFileAbsent=z.infer<typeof protectedFileAbsentSchema>;
