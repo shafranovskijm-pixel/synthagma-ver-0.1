@@ -137,6 +137,7 @@ export function useStudentDashboard() {
   const [branding, setBranding] = useState<Branding | null>(null);
   const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<{generation:number;kind:'unavailable'}|null>(null);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
   const [isPreviewMode] = useState(false);
@@ -165,11 +166,12 @@ export function useStudentDashboard() {
 
   const effectiveUserId = targetUserId || user?.id || null;
   const mode = isAdminView ? 'preview' as const : 'learner' as const;
-  const { data: snapshot, accessDenied: snapshotAccessDenied, unconfirmed: snapshotUnconfirmed } = useStudentDashboardSnapshot(authLoading ? null : effectiveUserId, authLoading ? null : user?.id);
+  const { data: snapshot, accessDenied: snapshotAccessDenied, unconfirmed: snapshotUnconfirmed, refetch: refreshSnapshot } = useStudentDashboardSnapshot(authLoading ? null : effectiveUserId, authLoading ? null : user?.id);
   const identityKey = JSON.stringify([user?.id, effectiveUserId, mode, !!authLoading, captureOfflineActor(user?.id), !!snapshotAccessDenied, !!snapshotUnconfirmed]);
   const identityRef = useRef({ key: identityKey, generation: 0 });
   if (identityRef.current.key !== identityKey) identityRef.current = { key: identityKey, generation: identityRef.current.generation + 1 };
   const requestRef = useRef(0);
+  const loadControllerRef = useRef<AbortController|null>(null);
   const [loadedGeneration, setLoadedGeneration] = useState(-1);
   const [settledGeneration, setSettledGeneration] = useState(-1);
   const privateVisible = !!user && !authLoading && !snapshotAccessDenied && !snapshotUnconfirmed && loadedGeneration === identityRef.current.generation;
@@ -259,7 +261,7 @@ export function useStudentDashboard() {
     setTotalTimeSpent(0); setTotalCompletedLessons(0); setIsVideoIdentified(false);
     setDocumentsProgress({ completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
     setShowOnboarding(false); setShowVideoIdentification(false); setShowDocumentsUpload(false); setShowConsentForm(false);
-    setMessages(initialMessages); setInputValue(''); setIsAiLoading(false); setLoadedGeneration(-1); setSettledGeneration(-1);
+    setMessages(initialMessages); setInputValue(''); setIsAiLoading(false); setLoadedGeneration(-1); setSettledGeneration(-1); setLoadError(null);
     if ((snapshotAccessDenied || snapshotUnconfirmed) && user && effectiveUserId) forgetOfflineScope(user.id, effectiveUserId, mode, 'dashboard');
     if (effectiveUserId && user && !authLoading && !snapshotAccessDenied && !snapshotUnconfirmed) { void loadData(); }
     else { setLoading(false); setSettledGeneration(identityRef.current.generation); }
@@ -268,7 +270,7 @@ export function useStudentDashboard() {
       trackUserVisit();
       checkNewAchievements();
     }
-    return () => { requestRef.current += 1; };
+    return () => { requestRef.current += 1; loadControllerRef.current?.abort(); };
   }, [identityKey]);
 
   const trackUserVisit = () => {
@@ -313,21 +315,32 @@ export function useStudentDashboard() {
     if (revision === null) return;
     const generation = identityRef.current.generation;
     const request = ++requestRef.current;
-    const current = () => generation === identityRef.current.generation && request === requestRef.current && isOfflineActorCurrent(actorId, revision);
+    const active = () => generation === identityRef.current.generation && request === requestRef.current && isOfflineActorCurrent(actorId, revision);
+    loadControllerRef.current?.abort();
+    const controller = new AbortController();
+    loadControllerRef.current = controller;
+    const current = () => active() && !controller.signal.aborted;
+    const boundedQuery = <T,>(query:T):T => typeof (query as {abortSignal?:unknown}).abortSignal === 'function' ? (query as T & {abortSignal:(signal:AbortSignal)=>T}).abortSignal(controller.signal) : query;
     setLoading(true);
+    setLoadError(null);
 
 
-    // Safety timeout: never show spinner for more than 15 seconds
+    // Bound presentation even when a network promise never settles. Late results lose this request identity.
     const safetyTimer = setTimeout(() => {
-      if (current()) setLoading(false);
+      if (!active()) return;
+      controller.abort();
+      requestRef.current += 1;
+      setLoadError({generation,kind:'unavailable'});
+      setLoading(false);
+      setSettledGeneration(generation);
     }, 15000);
 
     try {
       // Параллельно: профиль + labor_safety + enrollments — независимые источники данных
       const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
-        supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle(),
-        supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid).or("status.is.null,status.neq.cancelled"),
+        boundedQuery(supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid)).maybeSingle(),
+        boundedQuery(supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1)).maybeSingle(),
+        boundedQuery(supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid).or("status.is.null,status.neq.cancelled")),
       ]);
       if (!current()) return;
       if (profileRes.error) throw profileRes.error;
@@ -549,9 +562,11 @@ export function useStudentDashboard() {
           documentsProgress: cachedDocumentsProgress,
         }).catch(() => {});
       }
-      if (current()) setLoadedGeneration(generation);
+      if (current()) { setLoadedGeneration(generation); return true; }
+      return false;
     } catch (error) {
       if (!current()) return;
+      setLoadError({generation,kind:'unavailable'});
       console.error("Error loading data:", error);
       
       // Try loading from cache as fallback
@@ -580,7 +595,7 @@ export function useStudentDashboard() {
           toast.error('Подключитесь к Интернету, чтобы подтвердить доступ к кабинету');
         }
       }
-    } finally { clearTimeout(safetyTimer); if (current()) { setLoading(false); setSettledGeneration(generation); } }
+    } finally { clearTimeout(safetyTimer); if (current()) { setLoading(false); setSettledGeneration(generation); } controller.abort(); }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
@@ -608,7 +623,8 @@ export function useStudentDashboard() {
 
   const handleRefresh = useCallback(async () => {
     const current = captureUiContext(); if (!current()) return;
-    await loadData(); if (current()) toast.success("Данные обновлены");
+    if (snapshotAccessDenied || snapshotUnconfirmed) { await refreshSnapshot?.(); return; }
+    const loaded = await loadData(); if (current() && loaded) toast.success("Данные обновлены");
   }, [identityKey]);
   const { ref: pullToRefreshRef, pullDistance, isRefreshing, canRefresh } = usePullToRefresh<HTMLElement>({ onRefresh: handleRefresh, threshold: 80, maxPull: 120 });
 
@@ -639,6 +655,7 @@ export function useStudentDashboard() {
     profile: privateVisible ? profile : null, branding: privateVisible ? branding : null,
     dashboardSettings: privateVisible ? dashboardSettings : { showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: 'catalog' as const, studentTheme: null },
     loading: !!user && (!!authLoading || loading || settledGeneration !== identityRef.current.generation),
+    loadError: loadError?.generation === identityRef.current.generation || snapshotAccessDenied || snapshotUnconfirmed ? 'unavailable' as const : null,
     totalTimeSpent: privateVisible ? totalTimeSpent : 0, totalCompletedLessons: privateVisible ? totalCompletedLessons : 0,
     totalProgress: privateVisible ? totalProgress : 0, firstName: privateVisible ? firstName : '', formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,

@@ -1,3 +1,4 @@
+import { AccountLoadError } from '@/components/auth/AccountLoadError';
 import { RetainedResultsButton } from "@/components/student/RetainedResultsButton";
 import { useState, useEffect } from "react";
 import { Capacitor } from '@capacitor/core';
@@ -248,7 +249,7 @@ function LearnerDashboard() {
   const {
     user, navigate, theme, setTheme,
     activeTab, setActiveTab: setActiveTabRaw, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
-    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
+    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading, loadError,
     totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
@@ -347,6 +348,7 @@ function LearnerDashboard() {
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
+  if (loadError) return <AccountLoadError title="Не удалось загрузить курсы" onRetry={handleRefresh} />;
 
   const handleCourseClick = async (courseId: string, isEnrolled: boolean) => {
     if (isEnrolled) {

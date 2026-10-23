@@ -11,6 +11,8 @@ interface AuthContextType {
   session: Session | null;
   userRole: 'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null;
   loading: boolean;
+  authError: 'SESSION_UNAVAILABLE' | 'ROLE_UNAVAILABLE' | null;
+  retryAuth: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -37,17 +39,19 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const cachedRole = localStorage.getItem('user_role') as AuthContextType['userRole'];
-  
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null>(cachedRole);
+  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<AuthContextType['authError']>(null);
+  const initializationAttempt = useRef(0);
   
   const roleFetchInFlight = useRef<{
     userId: string;
     revision: number;
     promise: Promise<AuthContextType['userRole']>;
+    controller: AbortController;
+    active: boolean;
   } | null>(null);
   const authInitialized = useRef(false);
   const authUserId = useRef<string | null>(null);
@@ -61,7 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (authUserId.current !== nextUserId) {
       authRevision.current += 1;
       authUserId.current = nextUserId;
+      if (roleFetchInFlight.current) { roleFetchInFlight.current.active = false; roleFetchInFlight.current.controller.abort(); }
       roleFetchInFlight.current = null;
+      setAuthError(null);
       setUserRole(null);
       localStorage.removeItem('user_role');
       void clearPrivateRuntimeCaches();
@@ -84,30 +90,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId,
       revision,
       promise: Promise.resolve(null) as Promise<AuthContextType['userRole']>,
+      controller: new AbortController(),
+      active: true,
     };
     roleFetchInFlight.current = request;
     request.promise = (async () => {
       try {
-        const { data, error } = await supabase.rpc('get_user_role', { _user_id: userId });
-        if (!mounted.current || authRevision.current !== revision || authUserId.current !== userId) return null;
+        const query = supabase.rpc('get_user_role', { _user_id: userId });
+        const abortable = typeof query.abortSignal === 'function' ? query.abortSignal(request.controller.signal) : query;
+        const { data, error } = await withTimeout(Promise.resolve(abortable), AUTH_REQUEST_TIMEOUT_MS, 'role_timeout');
+        if (!request.active || roleFetchInFlight.current !== request || !mounted.current || authRevision.current !== revision || authUserId.current !== userId) return null;
         if (data && !error) {
+          if (!['admin', 'organization', 'student', 'sales_manager', 'company'].includes(data)) throw new Error('role_unconfirmed');
           const role = data as AuthContextType['userRole'];
+          setAuthError(null);
           clearDisallowedAdminPreviews(role ?? '');
           observeOfflineAccess(userId, `server-role:${role}`);
           setUserRole(role);
           localStorage.setItem('user_role', role!);
           return role;
         }
-        // A failed lookup must not silently downgrade organization registration.
+        // Preserve an already confirmed same-actor role; never infer a role on failure.
+        setAuthError('ROLE_UNAVAILABLE');
         return null;
       } catch {
+        if (request.active && mounted.current && authRevision.current === revision && authUserId.current === userId) setAuthError('ROLE_UNAVAILABLE');
         return null;
       } finally {
+        request.active = false;
+        request.controller.abort();
         if (roleFetchInFlight.current === request) roleFetchInFlight.current = null;
       }
     })();
     return request.promise;
   }, []);
+
+  const retryAuth = useCallback(async () => {
+    const attempt = ++initializationAttempt.current;
+    const revision = authRevision.current;
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const { data: { session: nextSession }, error } = await withTimeout(
+        supabase.auth.getSession(), AUTH_REQUEST_TIMEOUT_MS, 'auth_timeout',
+      );
+      if (!mounted.current || attempt !== initializationAttempt.current || revision !== authRevision.current) return;
+      if (error) throw error;
+      applySession(nextSession);
+      authInitialized.current = true;
+      if (nextSession?.user) await fetchUserRole(nextSession.user.id);
+    } catch {
+      if (mounted.current && attempt === initializationAttempt.current && revision === authRevision.current) setAuthError('SESSION_UNAVAILABLE');
+    } finally {
+      if (mounted.current && attempt === initializationAttempt.current) { authInitialized.current = true; setLoading(false); }
+    }
+  }, [applySession, fetchUserRole]);
 
   useEffect(() => {
     mounted.current = true;
@@ -142,10 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sync role across tabs via storage events
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'user_role' && authUserId.current) {
-        const newRole = e.newValue as AuthContextType['userRole'];
-        // A cross-tab role hint may invalidate old access, never validate a tenant.
-        observeOfflineAccess(authUserId.current, `role-hint:${newRole}`);
-        setUserRole(newRole);
+        // Storage is only an invalidation hint. It cannot grant a server role.
+        observeOfflineAccess(authUserId.current, `role-hint:${e.newValue}`);
+        void fetchUserRole(authUserId.current);
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -181,6 +217,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_OUT') {
           authRevision.current += 1;
           applySession(null);
+          setAuthError(null);
+          setLoading(false);
           return;
         }
         
@@ -198,37 +236,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Check for existing session
-    const initializeAuth = async () => {
-      const revision = authRevision.current;
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (disposed || revision !== authRevision.current) return;
-        applySession(session);
-        authInitialized.current = true;
-
-        if (session?.user) {
-          await fetchUserRole(session.user.id);
-        } else {
-          localStorage.removeItem('user_role');
-          setUserRole(null);
-        }
-      } catch {
-      } finally {
-        if (!disposed) {
-          authInitialized.current = true;
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
+    // Check for existing session (the SDK lock remains intact; only the UI wait is bounded).
+    void retryAuth();
 
     return () => {
       disposed = true;
       setOfflineAuthActor(null);
       mounted.current = false;
       authRevision.current += 1;
+      initializationAttempt.current += 1;
+      if (roleFetchInFlight.current) { roleFetchInFlight.current.active = false; roleFetchInFlight.current.controller.abort(); }
       roleFetchInFlight.current = null;
       for (const timer of roleTimers) clearTimeout(timer);
       subscription.unsubscribe();
@@ -236,7 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', refreshRoleOnReturn);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [applySession, fetchUserRole]);
+  }, [applySession, fetchUserRole, retryAuth]);
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await withTimeout(
@@ -327,7 +344,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, 
       session, 
       userRole, 
-      loading, 
+      loading,
+      authError,
+      retryAuth,
       signIn, 
       signUp, 
       signOut,

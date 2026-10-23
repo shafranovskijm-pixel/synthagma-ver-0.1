@@ -98,6 +98,15 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const boundedQuery = <T,>(query:T):T => typeof (query as {abortSignal?:unknown}).abortSignal === 'function' ? (query as T & {abortSignal:(signal:AbortSignal)=>T}).abortSignal(controller.signal) : query;
+    const deadline = setTimeout(() => {
+      if (cancelled || !userId) return;
+      cancelled = true;
+      controller.abort();
+      setCoursesError('Не удалось подтвердить загрузку данных. Повторите загрузку.');
+      setIsLoadingCourses(false);
+    }, 15000);
 
     const fetchData = async () => {
       if (!userId) {
@@ -156,7 +165,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
         // The scoped core projection is available to active staff without
         // granting settings.read or SELECT access to the full organization row.
-        const { data: coreData } = await supabase.rpc("get_organization_core", { p_org_id: orgId });
+        const { data: coreData } = await boundedQuery(supabase.rpc("get_organization_core", { p_org_id: orgId }));
+        if (cancelled) return;
         const selectedOrgData = coreData as { name: string | null; frdo_enabled: boolean | null } | null;
 
         if (selectedOrgData && !cancelled) {
@@ -168,27 +178,27 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         // (categories / companies) must never hide the courses list.
         const [coursesResult, categoriesResult, companiesResult] = await Promise.allSettled([
           retryQuery(
-            () => supabase
+            () => boundedQuery(supabase
               .from("courses")
               .select("id, title, description, is_published, created_at, system_key, category_id, duration, frdo_duration_hours, training_form, cover_image_url, skip_video_identification, require_final_test_photo, sequential_lessons, allow_video_seek, price")
               .eq("organization_id", orgId!)
-              .order("created_at", { ascending: false }),
+              .order("created_at", { ascending: false })),
             "courses"
           ),
           retryQuery(
-            () => supabase
+            () => boundedQuery(supabase
               .from("course_categories")
               .select("*")
               .eq("organization_id", orgId!)
-              .order("name"),
+              .order("name")),
             "categories"
           ),
           retryQuery(
-            () => supabase
+            () => boundedQuery(supabase
               .from("companies")
               .select("id, name, inn")
               .eq("organization_id", orgId!)
-              .order("name"),
+              .order("name")),
             "companies"
           ),
         ]);
@@ -265,6 +275,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           },
         });
       } finally {
+        clearTimeout(deadline);
         if (!cancelled) {
           setIsLoadingCourses(false);
         }
@@ -273,7 +284,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
     fetchData();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(deadline); controller.abort(); };
   }, [userId, refreshKey, onCategoriesLoaded]);
 
   return {
