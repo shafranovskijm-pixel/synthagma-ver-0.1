@@ -1,5 +1,5 @@
 /** UC012 original-caller evidence boundary. No public locator, legal or admission inference. */
-export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261023-v2";
+export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261023-v3";
 export const ADMISSION_EVIDENCE_BUCKET = "admission-case-evidence";
 export const ADMISSION_MAX_BYTES = 20 * 1024 * 1024;
 export const ADMISSION_OPERATION_MS = 60_000;
