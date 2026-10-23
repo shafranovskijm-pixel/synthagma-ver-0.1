@@ -8,7 +8,7 @@ export interface AdmissionActorScope {
   contextKey?: string;
 }
 export class AdmissionError extends Error {
-  constructor(public code: c.AdmissionErrorCode = 'DEPENDENCY_UNAVAILABLE') { super(code); this.name = 'AdmissionError'; }
+  constructor(public code: c.AdmissionErrorCode = 'DEPENDENCY_UNAVAILABLE', public readonly uploadHttpStatus?: number) { super(code); this.name = 'AdmissionError'; }
 }
 export const admissionErrorMessages: Record<c.AdmissionErrorCode,string> = {
   ACCESS_DENIED: 'Доступ к личному делу не подтверждён. Обновите права или выберите другое зачисление.',
@@ -166,10 +166,23 @@ export async function captureAdmissionEvidence(scope: AdmissionActorScope,state:
   const prepared = await prepare(scope,state,parsedSource,prepareRequest,bearer);
   if (prepared.upload_slot && file) {
     const {StorageClient} = await import('@supabase/storage-js'); requireCurrent(scope);
-    const storage = new StorageClient(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1`,{Authorization:bearer,apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY},window.fetch.bind(window));
-    try { await storage.from(prepared.upload_slot.bucket).upload(prepared.upload_slot.path,file,{contentType:file.type,upsert:false}); }
-    catch { /* An uncertain upload is reconciled only by the exact server source proof. */ }
+    let uploadStatus: number | undefined, uploadError: unknown;
+    const uploadFetch: typeof fetch = async (input,init) => {
+      const response = await window.fetch(input,init); uploadStatus = response.status; return response;
+    };
+    const storage = new StorageClient(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1`,{Authorization:bearer,apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY},uploadFetch);
+    try { uploadError = (await storage.from(prepared.upload_slot.bucket).upload(prepared.upload_slot.path,file,{contentType:file.type,upsert:false})).error; }
+    catch (error) { uploadError = error; }
     requireCurrent(scope);
+    const providerCode = (uploadError as {statusCode?:unknown}|null)?.statusCode;
+    // A timeout, duplicate, server error or lost reply can follow an accepted upload.
+    // Reconcile those only through the unchanged exact server source proof.
+    if (uploadStatus !== undefined && uploadStatus >= 400 && uploadStatus < 500 && ![408,409].includes(uploadStatus) && !(uploadStatus === 400 && providerCode === '409')) {
+      const code: c.AdmissionErrorCode = [401,403].includes(uploadStatus) ? 'ACCESS_DENIED'
+        : uploadStatus === 413 ? 'LIMIT_REACHED' : uploadStatus === 429 ? 'DEPENDENCY_UNAVAILABLE'
+        : [400,422].includes(uploadStatus) ? 'INVALID_INPUT' : 'SOURCE_UNAVAILABLE';
+      throw new AdmissionError(code,uploadStatus);
+    }
   }
   return commit(scope,prepared,parsedSource,commitRequest,bearer);
 }

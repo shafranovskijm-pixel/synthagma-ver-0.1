@@ -47,13 +47,13 @@ export function AdmissionCaseCard({organizationId,studentUserId,enabled=true,obs
         </div>}
       </>}
       {controller.loading && <p role="status" className="text-sm text-muted-foreground">Загружаем выбранное личное дело…</p>}
-      {controller.error && <ErrorBox code={controller.error} onRetry={() => void controller.refresh()}/>}
+      {controller.error && <ErrorBox code={controller.error} uploadHttpStatus={controller.operationUploadHttpStatus} onRetry={() => void controller.refresh()}/>}
       {controller.data && <CasePanel key={controller.viewKey} controller={controller} onUploadOwn={onUploadOwn}/>}
     </CardContent>
   </Card>;
 }
-function ErrorBox({code,onRetry}:{code:c.AdmissionErrorCode;onRetry?:()=>void}) {
-  return <div role="alert" className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm"><p>{admissionErrorMessages[code]}</p>
+function ErrorBox({code,uploadHttpStatus,onRetry}:{code:c.AdmissionErrorCode;uploadHttpStatus?:number;onRetry?:()=>void}) {
+  return <div role="alert" className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">{Number.isInteger(uploadHttpStatus) && uploadHttpStatus! >= 400 && uploadHttpStatus! < 500 && <p>Не удалось загрузить файл (HTTP {uploadHttpStatus}).</p>}<p>{admissionErrorMessages[code]}</p>
     {onRetry && <Button size="sm" variant="outline" className="gap-2" onClick={onRetry}><RefreshCw className="h-3.5 w-3.5"/>Повторить проверку</Button>}</div>;
 }
 function CasePanel({controller:h,onUploadOwn}:{controller:AdmissionCaseController;onUploadOwn?:()=>void}) {
@@ -75,7 +75,7 @@ function CasePanel({controller:h,onUploadOwn}:{controller:AdmissionCaseControlle
     {data.prerequisites.some(item => item.next_action === 'open_programme_confirmation') && <Button size="sm" variant="outline" asChild><a href={groupFolderPath(data.scope.group_id)}>Открыть папку группы для проверки программы</a></Button>}
     {!state && <><p className="text-sm text-muted-foreground">Открытие личного дела закрепит подтверждённую версию программы. Оно не создаёт зачисление или решение о допуске.</p>
       <Button size="sm" disabled={!data.capabilities.can_initialize || !data.program_ref || h.busy || h.pending} onClick={() => data.program_ref && void h.mutate({action:'initialize',group_id:data.scope.group_id,enrollment_id:data.scope.enrollment_id,expected_revision:0,expected_program_ref:data.program_ref})}>Открыть личное дело</Button></>}
-    {h.operationError && <ErrorBox code={h.operationError}/>}
+    {h.operationError && <ErrorBox code={h.operationError} uploadHttpStatus={h.operationUploadHttpStatus}/>}
     {h.pending && <div className="rounded-xl border p-3 text-sm space-y-2"><p>Результат сохранения пока не подтверждён. Повтор будет отправлен с тем же номером запроса.</p><Button size="sm" variant="outline" disabled={h.busy} onClick={() => void h.retryPending()}>Повторить сохранение</Button></div>}
     {state && <StaffCasePanel key={state.id} controller={h} state={state}/>}
   </div>;
