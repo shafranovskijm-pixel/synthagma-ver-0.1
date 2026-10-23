@@ -1,5 +1,5 @@
 import {z} from 'npm:zod@3.25.76';
-import {signatureVerificationAddressSchema,signatureFileTupleSchema,signatureStorageObjectSnapshotSchema,SIGNATURE_SOURCE_MAX_BYTES} from '../signature-controlled-source-verification/contract.ts';
+import {signatureVerificationAddressSchema,signatureFileTupleSchema,signatureStorageObjectSnapshotSchema,SIGNATURE_SOURCE_MAX_BYTES} from './controlled-source/contract.ts';
 export {SIGNATURE_SOURCE_MAX_BYTES,signatureFileTupleSchema};
 const uuid=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),sha=z.string().regex(/^[a-f0-9]{64}$/),size=z.number().int().min(1).max(SIGNATURE_SOURCE_MAX_BYTES),mime=z.string().min(3).max(200).regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/);
 export const protectedFileRequestSchema=z.object({version:z.literal(1),action:z.literal('read_file'),address:signatureVerificationAddressSchema,file_kind:z.enum(['source','scan']),binding_id:uuid.nullable(),event_revision:z.number().int().min(1).max(2147483647).nullable(),expected_document_revision_id:uuid.nullable(),document_html_sha256:sha}).strict().refine(v=>v.file_kind!=='source'||v.event_revision===null);
