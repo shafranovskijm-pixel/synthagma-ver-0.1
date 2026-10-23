@@ -27,5 +27,5 @@ export function canonicalJson(value:unknown,maxBytes:number=BOUNDS.inputBytes):s
   else{append('{');Object.keys(v).sort().forEach((key,i)=>{if(i)append(',');utf8(key,maxBytes);append(JSON.stringify(key));append(':');visit((v as Record<string,unknown>)[key],depth+1);});append('}');}active.delete(v);
  };visit(value,0);return chunks.join('');
 }
-export async function sha256(value:string|Uint8Array):Promise<string>{const bytes=new Uint8Array(typeof value==='string'?utf8(value,BOUNDS.inflatedBytes):value);return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.buffer)),v=>v.toString(16).padStart(2,'0')).join('');}
+export async function sha256(value:string|Uint8Array):Promise<string>{const bytes=typeof value==='string'?utf8(value,BOUNDS.inflatedBytes):new Uint8Array(value);return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.buffer)),v=>v.toString(16).padStart(2,'0')).join('');}
 export function deepFreeze<T>(value:T):T{if(value&&typeof value==='object'){Object.freeze(value);Object.values(value).forEach(deepFreeze);}return value;}
