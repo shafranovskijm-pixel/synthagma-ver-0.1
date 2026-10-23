@@ -1,3 +1,4 @@
+import { SELF_EXAMINATION_SERVICE_PRICE } from "@/lib/selfExaminationPrice";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -368,7 +369,7 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
         organization_id: organizationId,
         service_id: "self_examination_report_auto",
         service_title: "Автоформирование отчёта о результатах самообследования",
-        service_price: "1 000 ₽",
+        service_price: SELF_EXAMINATION_SERVICE_PRICE.label,
         notes: JSON.stringify(quizData),
         status: "pending",
       });
