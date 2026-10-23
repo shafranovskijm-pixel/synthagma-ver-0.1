@@ -1,0 +1,2 @@
+import{fileURLToPath}from'node:url';
+export default{root:fileURLToPath(new URL('.',import.meta.url)),envDir:fileURLToPath(new URL('./unused-offline-recovery-env',import.meta.url)),resolve:{alias:{'@':fileURLToPath(new URL('./src',import.meta.url))}},esbuild:{jsx:'automatic'},test:{globals:true,environment:'jsdom',setupFiles:['./src/test/setup.ts'],maxWorkers:1,fileParallelism:false,include:["src/hooks/__tests__/useStudentDashboard.offlineRecovery.test.tsx"]}};

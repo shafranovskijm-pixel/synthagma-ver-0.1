@@ -249,7 +249,7 @@ function LearnerDashboard() {
   const {
     user, navigate, theme, setTheme,
     activeTab, setActiveTab: setActiveTabRaw, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
-    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading, loadError,
+    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading, loadError, offlineCopy,
     totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
@@ -348,7 +348,7 @@ function LearnerDashboard() {
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
-  if (loadError) return <AccountLoadError title="Не удалось загрузить курсы" onRetry={handleRefresh} />;
+  if (loadError && !offlineCopy) return <AccountLoadError title="Не удалось загрузить курсы" onRetry={handleRefresh} />;
 
   const handleCourseClick = async (courseId: string, isEnrolled: boolean) => {
     if (isEnrolled) {
@@ -489,6 +489,8 @@ function LearnerDashboard() {
           className="flex-1 overflow-y-auto overflow-x-hidden md:pt-0 flex flex-col pb-20 md:pb-0 w-full max-w-full"
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
+
+          {loadError && offlineCopy && <div role="status" className="m-4 md:m-6 rounded-lg border bg-muted/40 p-4 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Показана сохранённая копия кабинета</p><p className="text-sm text-muted-foreground">Сейчас не удалось подтвердить обновления. Данные могут быть устаревшими.</p></div><Button variant="outline" onClick={() => void handleRefresh()}>Повторить загрузку</Button></div>}
 
           {(currentTab === "catalog" || currentTab === "chat") && (
             <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto w-full flex-1">
