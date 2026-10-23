@@ -216,7 +216,7 @@ describe("actual installed SDK entry adapters", () => {
         return json((await (name.includes("attest") ? f.attest(name, args) : f.rpc(name, args))).data);
       }
       if (request.url.includes("/storage/v1/object/info/")) return json({id: sealedId, name: f.sealedPath, bucket_id: ADMISSION_EVIDENCE_BUCKET,
-        updated_at: time, created_at: time, size: pdf.length, content_type: "application/pdf", metadata: {size: pdf.length, mimetype: "application/pdf"}});
+        last_modified: time, created_at: time, size: pdf.length, content_type: "application/pdf", metadata: null});
       if (request.method === "POST") {expect(new Uint8Array(await request.arrayBuffer())).toEqual(pdf); expect(request.headers.get("x-upsert")).toBe("false"); return json({Id: sealedId, Key: `${ADMISSION_EVIDENCE_BUCKET}/${f.sealedPath}`});}
       return new Response(pdf, {headers: {"Content-Type": "application/pdf"}});
     });
