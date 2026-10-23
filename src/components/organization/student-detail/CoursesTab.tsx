@@ -44,7 +44,8 @@ export function formatEnrollmentAccessLabel(accessDays: number | null | undefine
   return `Доступ: ${accessDays} дн.`;
 }
 
-export function CoursesTab({ enrollments, h, organizationId, studentUserId, onAddCourse, isAddingCourse = false }: CoursesTabProps) {
+export function CoursesTab({ enrollments: allEnrollments, h, organizationId, studentUserId, onAddCourse, isAddingCourse = false }: CoursesTabProps) {
+  const enrollments = allEnrollments.filter(enrollment => enrollment.status !== "cancelled");
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");

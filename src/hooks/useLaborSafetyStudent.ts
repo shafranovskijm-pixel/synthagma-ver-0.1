@@ -10,7 +10,7 @@ import { identificationScopeCurrent } from '@/lib/identification/client';
 import { toast } from "sonner";
 import {
   EnrollmentPersistenceError,
-  insertEnrollmentsVerified,
+  ensureEnrollmentVerified,
 } from "@/api/enrollments";
 
 interface LaborSafetyRecord {
@@ -243,15 +243,15 @@ export function useLaborSafetyStudent(
     try {
       let enrolledCount = 0, alreadyCount = 0;
       for (const courseId of selectedCourseIds) {
-        const { data: existing, error: existingError } = await supabase.from("enrollments").select("id").eq("user_id", profile.user_id).eq("course_id", courseId).maybeSingle();
+        const { data: existing, error: existingError } = await supabase.from("enrollments").select("id, status").eq("user_id", profile.user_id).eq("course_id", courseId).maybeSingle();
         if (existingError) throw existingError;
-        if (existing) { alreadyCount++; continue; }
-        await insertEnrollmentsVerified([{
+        if (existing && existing.status !== "cancelled") { alreadyCount++; continue; }
+        await ensureEnrollmentVerified({
           user_id: profile.user_id,
           course_id: courseId,
           status: "active",
           progress: 0,
-        }]);
+        });
         enrolledCount++;
       }
       if (enrolledCount > 0) toast.success(`Зачислен на ${enrolledCount} курс(ов)`);
@@ -298,7 +298,7 @@ export function useLaborSafetyStudent(
   };
 
   const latestVerification = verifications[0] || null;
-  const enrolledCourseIds = new Set(enrollments.map(e => e.course_id));
+  const enrolledCourseIds = new Set(enrollments.filter(e => e.status !== "cancelled").map(e => e.course_id));
   const coursesToEnroll = availableCourses.filter(c => !enrolledCourseIds.has(c.id));
 
   const checklistItems = [
