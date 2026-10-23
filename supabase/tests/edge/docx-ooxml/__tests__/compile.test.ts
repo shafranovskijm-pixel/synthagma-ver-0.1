@@ -21,6 +21,7 @@ import { formatMoneyRu, moneyToWordsRu, shortNameRu, numberToWordsRu, formatRuss
 import { findUnresolvedTokens } from "../../../../functions/_shared/docx-ooxml/xml";
 
 const TPL_DIR = path.resolve(__dirname, "../../../../functions/_shared/contract-templates/goreltech/company/v1");
+const RAW_TEMPLATE_DIR = path.resolve(__dirname, "../../../../../assets/document-templates/contract-templates/goreltech/company/v1");
 const CLIENT_SOURCE_PATH = path.resolve(
   __dirname,
   "../../../../../docs/group-documents/client-templates/goreltech-group-package-v1/source/company_contract.source.doc",
@@ -30,7 +31,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(TPL_DIR, "manifest.json"),
 const CURRICULUM = "Техническое обслуживание, монтаж, эксплуатация и ремонт взрывозащищенного электрооборудования";
 
 async function templateDocumentXml(): Promise<string> {
-  const zip = await JSZip.loadAsync(fs.readFileSync(path.join(TPL_DIR, "template.docx")));
+  const zip = await JSZip.loadAsync(fs.readFileSync(path.join(RAW_TEMPLATE_DIR, "template.docx")));
   return zip.file("word/document.xml")!.async("string");
 }
 
@@ -155,7 +156,7 @@ describe("реальный шаблон ГОРЭЛТЕХ (docx_ooxml)", () => {
   });
 
   it("контрольная сумма исходного DOCX совпадает с манифестом", async () => {
-    const bytes = fs.readFileSync(path.join(TPL_DIR, "template.docx"));
+    const bytes = fs.readFileSync(path.join(RAW_TEMPLATE_DIR, "template.docx"));
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
     expect(hex.toLowerCase()).toBe(String(manifest.template_sha256).toLowerCase());
@@ -221,7 +222,7 @@ describe("реальный шаблон ГОРЭЛТЕХ (docx_ooxml)", () => {
   });
 
   it("результат остаётся валидным DOCX ZIP без токенов", async () => {
-    const zip = await JSZip.loadAsync(fs.readFileSync(path.join(TPL_DIR, "template.docx")));
+    const zip = await JSZip.loadAsync(fs.readFileSync(path.join(RAW_TEMPLATE_DIR, "template.docx")));
     const res = compileDocumentXml({ documentXml: await zip.file("word/document.xml")!.async("string"), manifest, snapshot: baseSnapshot() });
     zip.file("word/document.xml", res.documentXml);
     const out = await zip.generateAsync({ type: "uint8array" });

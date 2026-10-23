@@ -6,7 +6,7 @@
 - SHA-256 исходника: `F22A2C6C5D0368C19FE744041BDAAC1702574AAE6FE69264141D5C52BF3729B1`.
 - Исходный файл остаётся источником текста, фирменной шапки и стилей.
 - Подтверждённая правка Telemost имеет приоритет над исходной геометрией: журнал формируется на A4 в книжной ориентации.
-- Рабочий шаблон: `supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1/template.docx`.
+- Рабочий шаблон: `assets/document-templates/group-doc-templates/goreltech/class-journal/v1/template.docx`.
 - Генератор меняет только `word/document.xml`; остальные части OOXML сохраняются байт-в-байт.
 
 ## Поля СИНТАГМЫ

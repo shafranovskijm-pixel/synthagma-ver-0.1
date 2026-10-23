@@ -22,7 +22,10 @@ const outputDir = path.join(
   repoRoot,
   "supabase/functions/_shared/group-doc-templates/goreltech/group-package/v1",
 );
-const templateDir = path.join(outputDir, "templates");
+const templateDir = path.join(
+  repoRoot,
+  "assets/document-templates/group-doc-templates/goreltech/group-package/v1/templates",
+);
 const manifestDir = path.join(outputDir, "manifests");
 const VERSION = "1.1.0-client-source";
 

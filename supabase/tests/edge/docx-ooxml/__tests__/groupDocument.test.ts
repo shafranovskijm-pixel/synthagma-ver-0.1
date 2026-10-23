@@ -26,6 +26,10 @@ const ROOT = path.resolve(
   __dirname,
   "../../../../functions/_shared/group-doc-templates/goreltech/group-package/v1",
 );
+const RAW_TEMPLATE_ROOT = path.resolve(
+  __dirname,
+  "../../../../../assets/document-templates/group-doc-templates/goreltech/group-package/v1",
+);
 const SOURCE_ROOT = path.resolve(
   __dirname,
   "../../../../../docs/group-documents/client-templates/goreltech-group-package-v1/source",
@@ -53,7 +57,7 @@ async function loadGroupTemplate(docType: string) {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(ROOT, "manifests", `${docType}.json`), "utf8"),
   ) as GroupDocumentManifest;
-  const template = fs.readFileSync(path.join(ROOT, "templates", `${docType}.docx`));
+  const template = fs.readFileSync(path.join(RAW_TEMPLATE_ROOT, "templates", `${docType}.docx`));
   const zip = await JSZip.loadAsync(template);
   const documentXml = await zip.file("word/document.xml")!.async("string");
   return { manifest, template, zip, documentXml };
@@ -375,7 +379,7 @@ describe("групповые DOCX Beta", () => {
         fs.readFileSync(path.join(ROOT, "manifests", filename), "utf8"),
       ) as GroupDocumentManifest;
       const template = fs.readFileSync(
-        path.join(ROOT, "templates", filename.replace(/\.json$/, ".docx")),
+        path.join(RAW_TEMPLATE_ROOT, "templates", filename.replace(/\.json$/, ".docx")),
       );
       const zip = await JSZip.loadAsync(template);
       const xml = await zip.file("word/document.xml")!.async("string");
@@ -569,7 +573,7 @@ describe("групповые DOCX Beta", () => {
         : "";
       const rows = parseGeneratedHtmlRows(rowHtml, manifest.row_tokens);
       const template = fs.readFileSync(
-        path.join(ROOT, "templates", filename.replace(/\.json$/, ".docx")),
+        path.join(RAW_TEMPLATE_ROOT, "templates", filename.replace(/\.json$/, ".docx")),
       );
       const zip = await JSZip.loadAsync(template);
       const xml = await zip.file("word/document.xml")!.async("string");
@@ -622,7 +626,7 @@ describe("групповые DOCX Beta", () => {
       ) as GroupDocumentManifest;
       const sourceBytes = fs.readFileSync(path.join(SOURCE_ROOT, manifest.source_filename));
       const templateBytes = fs.readFileSync(
-        path.join(ROOT, "templates", filename.replace(/\.json$/, ".docx")),
+        path.join(RAW_TEMPLATE_ROOT, "templates", filename.replace(/\.json$/, ".docx")),
       );
       expect(sha256(sourceBytes), `${manifest.template_id}: source hash`).toBe(
         manifest.source_sha256,
@@ -671,7 +675,7 @@ describe("групповые DOCX Beta", () => {
 
     const headerSourceZip = await JSZip.loadAsync(headerSourceBytes);
     const templateZip = await JSZip.loadAsync(
-      fs.readFileSync(path.join(ROOT, "templates", "registration_book.docx")),
+      fs.readFileSync(path.join(RAW_TEMPLATE_ROOT, "templates", "registration_book.docx")),
     );
     expect(await zipPart(templateZip, "word/header1.xml")).not.toBeNull();
     expect(sha256((await zipPart(templateZip, "word/_rels/header1.xml.rels"))!)).toBe(
@@ -690,7 +694,7 @@ describe("групповые DOCX Beta", () => {
 
   it("сохраняет разнесение даты и номера в ведомости итоговой аттестации", async () => {
     const templateZip = await JSZip.loadAsync(
-      fs.readFileSync(path.join(ROOT, "templates", "attestation_sheet.docx")),
+      fs.readFileSync(path.join(RAW_TEMPLATE_ROOT, "templates", "attestation_sheet.docx")),
     );
     const documentXml = await templateZip.file("word/document.xml")!.async("string");
     const line = Array.from(documentXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g))

@@ -14,8 +14,10 @@ const assetDir = path.join(
   "v1",
 );
 
+const rawTemplateDir = path.join(root, "assets/document-templates/contract-templates/goreltech/company/v1");
+
 const [template, manifest] = await Promise.all([
-  readFile(path.join(assetDir, "template.docx")),
+  readFile(path.join(rawTemplateDir, "template.docx")),
   readFile(path.join(assetDir, "manifest.json"), "utf8"),
 ]);
 

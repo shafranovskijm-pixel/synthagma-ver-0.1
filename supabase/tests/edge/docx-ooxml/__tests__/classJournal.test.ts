@@ -17,6 +17,10 @@ const TEMPLATE_DIR = path.resolve(
   __dirname,
   "../../../../functions/_shared/group-doc-templates/goreltech/class-journal/v1",
 );
+const RAW_TEMPLATE_DIR = path.resolve(
+  __dirname,
+  "../../../../../assets/document-templates/group-doc-templates/goreltech/class-journal/v1",
+);
 const manifest = JSON.parse(
   fs.readFileSync(path.join(TEMPLATE_DIR, "manifest.json"), "utf8"),
 ) as ClassJournalManifest;
@@ -58,7 +62,7 @@ function xmlText(xml: string): string {
 }
 
 async function loadTemplate() {
-  const bytes = fs.readFileSync(path.join(TEMPLATE_DIR, "template.docx"));
+  const bytes = fs.readFileSync(path.join(RAW_TEMPLATE_DIR, "template.docx"));
   const zip = await JSZip.loadAsync(bytes);
   const documentXml = await zip.file("word/document.xml")!.async("string");
   return { bytes, zip, documentXml };
