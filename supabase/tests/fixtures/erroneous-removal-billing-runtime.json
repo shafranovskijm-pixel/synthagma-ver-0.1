@@ -1,0 +1,732 @@
+{
+  "status": "ACTUAL_READ_ONLY_METADATA_CAPTURE",
+  "project_id": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "customerRowsRead": false,
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "arguments": "p_organization_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public._organization_monthly_course_limits(p_organization_id uuid)\n RETURNS TABLE(subscription_plan text, max_students integer, max_trainings integer, student_limit_source text, training_limit_source text)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE o record;\nBEGIN\n  SELECT x.subscription_plan::text AS plan,x.custom_max_students,x.custom_max_trained_per_month\n  INTO o FROM public.organizations x WHERE x.id=p_organization_id;\n  IF NOT FOUND THEN RAISE EXCEPTION 'organization not found' USING ERRCODE='P0002';END IF;\n  subscription_plan:=o.plan;\n  max_students:=coalesce(o.custom_max_students,CASE lower(coalesce(o.plan,'free'))\n    WHEN 'start' THEN 100 WHEN 'standard' THEN 200 WHEN 'professional' THEN -1 WHEN 'maximum' THEN -1 ELSE 10 END);\n  max_trainings:=coalesce(o.custom_max_trained_per_month,CASE lower(coalesce(o.plan,'free'))\n    WHEN 'start' THEN 60 WHEN 'standard' THEN 100 WHEN 'professional' THEN -1 WHEN 'maximum' THEN -1 ELSE 10 END);\n  student_limit_source:=CASE WHEN o.custom_max_students IS NULL THEN 'plan' ELSE 'custom' END;\n  training_limit_source:=CASE WHEN o.custom_max_trained_per_month IS NULL THEN 'plan' ELSE 'custom' END;\n  IF EXISTS(SELECT 1 FROM public.organization_billing_agreements a WHERE a.organization_id=p_organization_id\n    AND a.effective_from<=(statement_timestamp() AT TIME ZONE 'Europe/Moscow')::date\n    AND (a.effective_to IS NULL OR a.effective_to>(statement_timestamp() AT TIME ZONE 'Europe/Moscow')::date)) THEN\n    max_students:=-1;max_trainings:=-1;student_limit_source:='postpaid';training_limit_source:='postpaid';\n  END IF;\n  RETURN NEXT;\nEND;$function$\n",
+      "identity_arguments": "p_organization_id uuid",
+      "owner": "postgres",
+      "proargmodes": "{i,t,t,t,t,t}",
+      "proargnames": [
+        "p_organization_id",
+        "subscription_plan",
+        "max_students",
+        "max_trainings",
+        "student_limit_source",
+        "training_limit_source"
+      ],
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "_organization_monthly_course_limits",
+      "pronargdefaults": 0,
+      "pronargs": 1,
+      "proparallel": "u",
+      "proretset": true,
+      "prorows": "1000",
+      "prosecdef": true,
+      "prosrc_md5": "acf1fc5f690e37684461c1a616fe8445",
+      "provolatile": "s",
+      "return_type": "record"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "arguments": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.capture_postpaid_study_activity()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE n jsonb:=to_jsonb(NEW); o jsonb; learner uuid; course uuid; org uuid; meaningful boolean:=false;\nBEGIN\n IF TG_OP='UPDATE' THEN o:=to_jsonb(OLD); ELSE o:='{}'::jsonb; END IF;\n learner:=COALESCE((n->>'user_id')::uuid,(n->>'student_id')::uuid);\n -- A teacher review, administrative import or backdated payload is not a\n -- learner interaction. Imported historical evidence is reviewed separately.\n IF auth.uid() IS NULL OR learner IS DISTINCT FROM auth.uid() OR NOT public.account_deletion_access_allowed() THEN RETURN NEW; END IF;\n IF TG_TABLE_NAME='lesson_progress' THEN\n  meaningful:=(COALESCE((n->>'completed')::boolean,false) AND NOT COALESCE((o->>'completed')::boolean,false))\n    OR COALESCE((n->>'time_spent')::numeric,0)>COALESCE((o->>'time_spent')::numeric,0)\n    OR COALESCE((n->>'video_position')::numeric,0)>COALESCE((o->>'video_position')::numeric,0);\n ELSIF TG_TABLE_NAME='enrollments' THEN\n  meaningful:=COALESCE((n->>'progress')::numeric,0)>COALESCE((o->>'progress')::numeric,0)\n   OR COALESCE((n->>'time_spent')::numeric,0)>COALESCE((o->>'time_spent')::numeric,0)\n   OR (n->>'status'='completed' AND COALESCE(o->>'status','')<>'completed');\n ELSIF TG_TABLE_NAME='homework_submissions' THEN\n  meaningful:=TG_OP='INSERT' AND (length(btrim(COALESCE(n->>'content','')))>0 OR COALESCE(n->'attachments','[]'::jsonb)<>'[]'::jsonb);\n ELSE meaningful:=TG_OP='INSERT'; END IF;\n IF NOT meaningful THEN RETURN NEW; END IF;\n course:=(n->>'course_id')::uuid;\n IF course IS NULL THEN SELECT course_id INTO course FROM public.lessons WHERE id=(n->>'lesson_id')::uuid; END IF;\n SELECT c.organization_id INTO org FROM public.courses c JOIN public.profiles p ON p.organization_id=c.organization_id AND p.user_id=learner\n WHERE c.id=course AND EXISTS(SELECT 1 FROM public.enrollments e WHERE e.course_id=c.id AND e.user_id=learner) AND public.can_access_course_as_learner(c.id);\n IF org IS NOT NULL THEN PERFORM public.postpaid_append_event(org,'study',learner,course,TG_TABLE_NAME,n->>'id',clock_timestamp()); END IF;\n RETURN NEW;\nEND $function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proargmodes": null,
+      "proargnames": null,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "capture_postpaid_study_activity",
+      "pronargdefaults": 0,
+      "pronargs": 0,
+      "proparallel": "u",
+      "proretset": false,
+      "prorows": "0",
+      "prosecdef": true,
+      "prosrc_md5": "9218784cb72e4590ee847e71c9000c12",
+      "provolatile": "v",
+      "return_type": "trigger"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "arguments": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.enforce_organization_monthly_course_quota()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE\n  v_org uuid;v_month date:=(date_trunc('month',statement_timestamp() AT TIME ZONE 'Europe/Moscow'))::date;\n  v_assigned boolean:=false;v_completed boolean:=false;v_limits record;v_usage record;\nBEGIN\n  IF TG_OP='INSERT' THEN\n    v_assigned:=true;\n    v_completed:=(NEW.status='completed');\n  ELSE\n    v_assigned:=NEW.user_id IS DISTINCT FROM OLD.user_id OR NEW.course_id IS DISTINCT FROM OLD.course_id\n      OR (OLD.expires_at IS NOT NULL AND (OLD.started_at IS NOT NULL OR NEW.access_days IS DISTINCT FROM OLD.access_days)\n        AND (NEW.expires_at IS NULL OR NEW.expires_at>OLD.expires_at))\n      OR (OLD.started_at IS NOT NULL AND NEW.started_at>OLD.started_at)\n      OR (OLD.status IN ('expired','cancelled','revoked') AND NEW.status='active');\n    v_completed:=NEW.status='completed' AND\n      (OLD.status IS DISTINCT FROM 'completed' OR NEW.user_id IS DISTINCT FROM OLD.user_id OR NEW.course_id IS DISTINCT FROM OLD.course_id);\n  END IF;\n  IF NOT v_assigned AND NOT v_completed THEN RETURN NEW;END IF;\n  SELECT c.organization_id INTO v_org FROM public.courses c WHERE c.id=NEW.course_id;\n  IF v_org IS NULL OR NOT public.is_student_profile(NEW.user_id,v_org) THEN RETURN NEW;END IF;\n  -- The subject fence already takes this lock for enrollment writes. Taking it\n  -- here as well keeps erasure/registration serialized in one documented order.\n  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.user_id::text,42007));\n  PERFORM pg_advisory_xact_lock(hashtextextended(v_org::text,42));\n  SELECT * INTO v_limits FROM public._organization_monthly_course_limits(v_org);\n  INSERT INTO public.organization_monthly_course_usage(organization_id,month_start)\n  VALUES(v_org,v_month) ON CONFLICT DO NOTHING;\n  SELECT * INTO v_usage FROM public.organization_monthly_course_usage\n    WHERE organization_id=v_org AND month_start=v_month FOR UPDATE;\n  IF v_assigned AND NOT EXISTS(SELECT 1 FROM public.organization_monthly_student_assignments\n    WHERE organization_id=v_org AND month_start=v_month AND user_id=NEW.user_id) THEN\n    IF v_limits.max_students<>-1 AND v_usage.assigned_students>=v_limits.max_students THEN\n      RAISE EXCEPTION USING ERRCODE='P0001',\n        MESSAGE='Достигнут месячный лимит учеников с назначенными курсами. Личные дела можно создавать и хранить без ограничений.',\n        DETAIL='STUDENT_ASSIGNMENT_LIMIT_EXCEEDED';\n    END IF;\n    INSERT INTO public.organization_monthly_student_assignments\n      (organization_id,month_start,user_id,first_assigned_at,source)\n    VALUES(v_org,v_month,NEW.user_id,statement_timestamp(),'assignment');\n    UPDATE public.organization_monthly_course_usage SET assigned_students=assigned_students+1\n      WHERE organization_id=v_org AND month_start=v_month;\n  END IF;\n  IF v_completed AND NOT EXISTS(SELECT 1 FROM public.organization_monthly_training_completions\n    WHERE organization_id=v_org AND month_start=v_month AND enrollment_id=NEW.id) THEN\n    IF v_limits.max_trainings<>-1 AND v_usage.completed_trainings>=v_limits.max_trainings THEN\n      RAISE EXCEPTION USING ERRCODE='P0001',\n        MESSAGE='Достигнут месячный лимит завершённых обучений. Обратитесь к администратору организации.',\n        DETAIL='TRAINING_COMPLETION_LIMIT_EXCEEDED';\n    END IF;\n    INSERT INTO public.organization_monthly_training_completions\n      (organization_id,month_start,enrollment_id,user_id,first_completed_at,source)\n    VALUES(v_org,v_month,NEW.id,NEW.user_id,statement_timestamp(),'completion');\n    UPDATE public.organization_monthly_course_usage SET completed_trainings=completed_trainings+1\n      WHERE organization_id=v_org AND month_start=v_month;\n  END IF;\n  RETURN NEW;\nEND;$function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proargmodes": null,
+      "proargnames": null,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "enforce_organization_monthly_course_quota",
+      "pronargdefaults": 0,
+      "pronargs": 0,
+      "proparallel": "u",
+      "proretset": false,
+      "prorows": "0",
+      "prosecdef": true,
+      "prosrc_md5": "4316014b31033b92ef72fcfe28ff301e",
+      "provolatile": "v",
+      "return_type": "trigger"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "arguments": "_target_user_id uuid, _org_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_student_profile(_target_user_id uuid, _org_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _target_user_id IS NOT NULL\n    AND _org_id IS NOT NULL\n    AND NOT EXISTS (\n      SELECT 1 FROM public.user_roles\n      WHERE user_id = _target_user_id\n        AND role IN ('admin', 'organization', 'company', 'sales_manager')\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.org_staff\n      WHERE user_id = _target_user_id\n        AND organization_id = _org_id\n        AND (expires_at IS NULL OR expires_at > now())\n    );\n$function$\n",
+      "identity_arguments": "_target_user_id uuid, _org_id uuid",
+      "owner": "postgres",
+      "proargmodes": null,
+      "proargnames": [
+        "_target_user_id",
+        "_org_id"
+      ],
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "is_student_profile",
+      "pronargdefaults": 0,
+      "pronargs": 2,
+      "proparallel": "u",
+      "proretset": false,
+      "prorows": "0",
+      "prosecdef": true,
+      "prosrc_md5": "84081e97d17f223d9e2ffa4145bf8949",
+      "provolatile": "s",
+      "return_type": "boolean"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "arguments": "p_org uuid, p_feature text, p_learner uuid, p_course uuid, p_source text, p_key text, p_when timestamp with time zone, p_evidence text DEFAULT NULL::text, p_bytes bigint DEFAULT NULL::bigint",
+      "definition": "CREATE OR REPLACE FUNCTION public.postpaid_append_event(p_org uuid, p_feature text, p_learner uuid, p_course uuid, p_source text, p_key text, p_when timestamp with time zone, p_evidence text DEFAULT NULL::text, p_bytes bigint DEFAULT NULL::bigint)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE inserted integer;\nBEGIN\n -- Platform-owned instructions (for example the welcome course) are not\n -- customer training. Check at capture time; later deletion/reclassification\n -- must not erase an already recorded legitimate training event.\n IF p_feature='study' AND NOT EXISTS(SELECT 1 FROM public.courses WHERE id=p_course AND organization_id=p_org AND system_key IS NULL) THEN RETURN false; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.organization_billing_agreements WHERE organization_id=p_org\n AND effective_from<=(p_when AT TIME ZONE 'Europe/Moscow')::date AND (effective_to IS NULL OR effective_to>(p_when AT TIME ZONE 'Europe/Moscow')::date)) THEN RETURN false; END IF;\n INSERT INTO public.postpaid_usage_events(organization_id,feature,learner_id,course_id,occurred_at,month_start,source_table,source_key,evidence,bytes,recorded_by)\n VALUES(p_org,p_feature,p_learner,p_course,p_when,date_trunc('month',p_when AT TIME ZONE 'Europe/Moscow')::date,p_source,p_key,p_evidence,p_bytes,auth.uid())\n ON CONFLICT(organization_id,source_table,source_key,month_start) DO NOTHING;\n GET DIAGNOSTICS inserted=ROW_COUNT; RETURN inserted>0;\nEND $function$\n",
+      "identity_arguments": "p_org uuid, p_feature text, p_learner uuid, p_course uuid, p_source text, p_key text, p_when timestamp with time zone, p_evidence text, p_bytes bigint",
+      "owner": "postgres",
+      "proargmodes": null,
+      "proargnames": [
+        "p_org",
+        "p_feature",
+        "p_learner",
+        "p_course",
+        "p_source",
+        "p_key",
+        "p_when",
+        "p_evidence",
+        "p_bytes"
+      ],
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "postpaid_append_event",
+      "pronargdefaults": 2,
+      "pronargs": 9,
+      "proparallel": "u",
+      "proretset": false,
+      "prorows": "0",
+      "prosecdef": true,
+      "prosrc_md5": "ea7d0f797c51ba8360ea1039a2d0ea32",
+      "provolatile": "v",
+      "return_type": "boolean"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "arguments": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.postpaid_immutable_record()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN RAISE EXCEPTION 'Postpaid usage and confirmation evidence are immutable' USING ERRCODE='42501'; END $function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proargmodes": null,
+      "proargnames": null,
+      "proconfig": [
+        "search_path=pg_catalog"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "postpaid_immutable_record",
+      "pronargdefaults": 0,
+      "pronargs": 0,
+      "proparallel": "u",
+      "proretset": false,
+      "prorows": "0",
+      "prosecdef": false,
+      "prosrc_md5": "9dc7303455df59b4f676b3e32db70f5c",
+      "provolatile": "v",
+      "return_type": "trigger"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "arguments": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.postpaid_is_admin()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND public.has_role('admin'::public.app_role,auth.uid())\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proargmodes": null,
+      "proargnames": null,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": "100",
+      "proisstrict": false,
+      "prokind": "f",
+      "proleakproof": false,
+      "proname": "postpaid_is_admin",
+      "pronargdefaults": 0,
+      "pronargs": 0,
+      "proparallel": "u",
+      "proretset": false,
+      "prorows": "0",
+      "prosecdef": true,
+      "prosrc_md5": "534d4adb43f59db0ab92f28172835806",
+      "provolatile": "s",
+      "return_type": "boolean"
+    }
+  ],
+  "relations": [
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+        "sandbox_exec=ar/postgres",
+        "authenticated=r/postgres",
+        "service_role=r/postgres"
+      ],
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'postpaid'::text",
+          "generated": "",
+          "identity": "",
+          "name": "billing_mode",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "effective_from",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "effective_to",
+          "not_null": false,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "contract_reference",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "customer_confirmation",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'59-09-26-v1'::text",
+          "generated": "",
+          "identity": "",
+          "name": "terms_version",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'2026-12-31'::date",
+          "generated": "",
+          "identity": "",
+          "name": "contract_through",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": "true",
+          "generated": "",
+          "identity": "",
+          "name": "annual_renewal",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "'Europe/Moscow'::text",
+          "generated": "",
+          "identity": "",
+          "name": "billing_timezone",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "clock_timestamp()",
+          "generated": "",
+          "identity": "",
+          "name": "recording_started_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "created_by",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "clock_timestamp()",
+          "generated": "",
+          "identity": "",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "clock_timestamp()",
+          "generated": "",
+          "identity": "",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (billing_mode = 'postpaid'::text)",
+          "name": "organization_billing_agreements_billing_mode_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (billing_timezone = 'Europe/Moscow'::text)",
+          "name": "organization_billing_agreements_billing_timezone_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (effective_to > effective_from)",
+          "name": "organization_billing_agreements_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (length(btrim(contract_reference)) >= 3 AND length(btrim(contract_reference)) <= 500)",
+          "name": "organization_billing_agreements_contract_reference_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (length(btrim(customer_confirmation)) >= 10 AND length(btrim(customer_confirmation)) <= 4000)",
+          "name": "organization_billing_agreements_customer_confirmation_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id)",
+          "name": "organization_billing_agreements_organization_id_fkey",
+          "referenced": "organizations",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id)",
+          "name": "organization_billing_agreements_organization_id_key",
+          "referenced": "-",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "organization_billing_agreements_pkey",
+          "referenced": "-",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK (terms_version = '59-09-26-v1'::text)",
+          "name": "organization_billing_agreements_terms_version_check",
+          "referenced": "-",
+          "type": "c"
+        }
+      ],
+      "force_rls": false,
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "r",
+          "name": "postpaid_admin_read",
+          "permissive": true,
+          "qual": "postpaid_is_admin()",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": null
+        }
+      ],
+      "relname": "organization_billing_agreements",
+      "rls": true,
+      "triggers": null
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "month_start",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": "0",
+          "generated": "",
+          "identity": "",
+          "name": "assigned_students",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "generated": "",
+          "identity": "",
+          "name": "completed_trainings",
+          "not_null": true,
+          "type": "integer"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (assigned_students >= 0)",
+          "name": "organization_monthly_course_usage_assigned_students_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (completed_trainings >= 0)",
+          "name": "organization_monthly_course_usage_completed_trainings_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (EXTRACT(day FROM month_start) = 1::numeric)",
+          "name": "organization_monthly_course_usage_month_start_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "organization_monthly_course_usage_organization_id_fkey",
+          "referenced": "organizations",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (organization_id, month_start)",
+          "name": "organization_monthly_course_usage_pkey",
+          "referenced": "-",
+          "type": "p"
+        }
+      ],
+      "force_rls": false,
+      "owner": "postgres",
+      "policies": null,
+      "relname": "organization_monthly_course_usage",
+      "rls": true,
+      "triggers": null
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+        "sandbox_exec=ar/postgres",
+        "authenticated=r/postgres",
+        "service_role=r/postgres"
+      ],
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "feature",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "learner_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "course_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "occurred_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "clock_timestamp()",
+          "generated": "",
+          "identity": "",
+          "name": "recorded_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "source_table",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "source_key",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "month_start",
+          "not_null": true,
+          "type": "date"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "evidence",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "bytes",
+          "not_null": false,
+          "type": "bigint"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "recorded_by",
+          "not_null": false,
+          "type": "uuid"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (feature = 'study'::text AND learner_id IS NOT NULL AND course_id IS NOT NULL OR feature <> 'study'::text)",
+          "name": "postpaid_usage_events_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "CHECK (feature = ANY (ARRAY['study'::text, 'crm'::text, 'webinar'::text, 'videoserviceplus'::text, 'frdoplus'::text]))",
+          "name": "postpaid_usage_events_feature_check",
+          "referenced": "-",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id)",
+          "name": "postpaid_usage_events_organization_id_fkey",
+          "referenced": "organizations",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id, source_table, source_key, month_start)",
+          "name": "postpaid_usage_events_organization_id_source_table_source_k_key",
+          "referenced": "-",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "postpaid_usage_events_pkey",
+          "referenced": "-",
+          "type": "p"
+        }
+      ],
+      "force_rls": false,
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "r",
+          "name": "postpaid_admin_read",
+          "permissive": true,
+          "qual": "postpaid_is_admin()",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": null
+        }
+      ],
+      "relname": "postpaid_usage_events",
+      "rls": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER postpaid_event_immutable BEFORE DELETE OR UPDATE ON public.postpaid_usage_events FOR EACH ROW EXECUTE FUNCTION postpaid_immutable_record()",
+          "function": "postpaid_immutable_record",
+          "name": "postpaid_event_immutable"
+        }
+      ]
+    }
+  ],
+  "indexes": [
+    {
+      "definition": "CREATE UNIQUE INDEX organization_billing_agreements_organization_id_key ON public.organization_billing_agreements USING btree (organization_id)",
+      "name": "organization_billing_agreements_organization_id_key",
+      "table": "public.organization_billing_agreements"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX organization_billing_agreements_pkey ON public.organization_billing_agreements USING btree (id)",
+      "name": "organization_billing_agreements_pkey",
+      "table": "public.organization_billing_agreements"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX organization_monthly_course_usage_pkey ON public.organization_monthly_course_usage USING btree (organization_id, month_start)",
+      "name": "organization_monthly_course_usage_pkey",
+      "table": "public.organization_monthly_course_usage"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX postpaid_usage_events_organization_id_source_table_source_k_key ON public.postpaid_usage_events USING btree (organization_id, source_table, source_key, month_start)",
+      "name": "postpaid_usage_events_organization_id_source_table_source_k_key",
+      "table": "public.postpaid_usage_events"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX postpaid_usage_events_pkey ON public.postpaid_usage_events USING btree (id)",
+      "name": "postpaid_usage_events_pkey",
+      "table": "public.postpaid_usage_events"
+    },
+    {
+      "definition": "CREATE INDEX postpaid_usage_period ON public.postpaid_usage_events USING btree (organization_id, occurred_at)",
+      "name": "postpaid_usage_period",
+      "table": "public.postpaid_usage_events"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER capture_postpaid_study AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION capture_postpaid_study_activity()",
+      "function": "capture_postpaid_study_activity",
+      "name": "capture_postpaid_study",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER enforce_organization_monthly_course_quota AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION enforce_organization_monthly_course_quota()",
+      "function": "enforce_organization_monthly_course_quota",
+      "name": "enforce_organization_monthly_course_quota",
+      "table": "enrollments"
+    }
+  ]
+}

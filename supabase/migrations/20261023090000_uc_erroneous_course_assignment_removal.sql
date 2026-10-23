@@ -686,7 +686,7 @@ BEGIN
  v_org:=p.organization_id;
  IF v_org IS NOT NULL THEN v_owner:=public.is_org_owner(p_user_id,v_org); END IF;
  SELECT count(*) INTO v_learning FROM public.enrollments WHERE user_id=p_user_id;
- SELECT count(*)INTO v_count FROM public.uc_course_assignment_removal_events r WHERE r.user_id=p_user_id OR r.actor_id=p_user_id;
+ SELECT count(*)INTO v_count FROM public.uc_course_assignment_removal_events removal_event WHERE removal_event.user_id=p_user_id OR removal_event.actor_id=p_user_id;
  IF v_count>0 THEN
   v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','RETENTION_POLICY_REQUIRED','message','Сохранена история отмены или повторного назначения курса. До удаления нужна отдельная проверка этих записей; назначение не удаляется физически.'));
   v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','retained_assignment_removals','label','История отмен и повторных назначений: требуется проверка хранения','count',v_count,'action','retain'));

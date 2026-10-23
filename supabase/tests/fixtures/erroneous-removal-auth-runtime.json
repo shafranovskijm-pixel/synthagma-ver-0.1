@@ -1,0 +1,458 @@
+{
+  "status": "ACTUAL_CURRENT622_READ_ONLY_METADATA_CAPTURE",
+  "tool": "lovable.query_database",
+  "project_id": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "sql": "SELECT jsonb_build_object('captured_at',clock_timestamp(),'auth_functions',(SELECT jsonb_agg(jsonb_build_object('signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),'owner',pg_get_userbyid(p.proowner),'security_definer',p.prosecdef,'volatility',p.provolatile,'config',p.proconfig,'acl',p.proacl)ORDER BY p.proname)FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='auth'AND p.proname IN('uid','role','jwt')AND p.pronargs=0),'storage_select_policies',(SELECT jsonb_agg(jsonb_build_object('name',pol.polname,'command',pol.polcmd,'permissive',pol.polpermissive,'roles',(SELECT jsonb_agg(CASE WHEN r=0 THEN 'PUBLIC'ELSE pg_get_userbyid(r)END ORDER BY r)FROM unnest(pol.polroles)r),'using',pg_get_expr(pol.polqual,pol.polrelid),'check',pg_get_expr(pol.polwithcheck,pol.polrelid))ORDER BY pol.polname)FROM pg_policy pol JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='storage'AND c.relname='objects'AND pol.polcmd IN('r','*')),'storage_table',(SELECT jsonb_build_object('row_security',c.relrowsecurity,'force_row_security',c.relforcerowsecurity,'owner',pg_get_userbyid(c.relowner),'acl',c.relacl)FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='storage'AND c.relname='objects')) AS metadata",
+  "result": {
+    "rows": [
+      {
+        "metadata": {
+          "auth_functions": [
+            {
+              "acl": [
+                "=X/supabase_auth_admin",
+                "postgres=X/supabase_auth_admin",
+                "supabase_auth_admin=X/supabase_auth_admin",
+                "dashboard_user=X/supabase_auth_admin"
+              ],
+              "config": null,
+              "definition": "CREATE OR REPLACE FUNCTION auth.jwt()\n RETURNS jsonb\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n    coalesce(\n        nullif(current_setting('request.jwt.claim', true), ''),\n        nullif(current_setting('request.jwt.claims', true), '')\n    )::jsonb\n$function$\n",
+              "owner": "supabase_auth_admin",
+              "security_definer": false,
+              "signature": "auth.jwt()",
+              "volatility": "s"
+            },
+            {
+              "acl": [
+                "=X/supabase_auth_admin",
+                "supabase_auth_admin=X/supabase_auth_admin",
+                "dashboard_user=X/supabase_auth_admin"
+              ],
+              "config": null,
+              "definition": "CREATE OR REPLACE FUNCTION auth.role()\n RETURNS text\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n  coalesce(\n    nullif(current_setting('request.jwt.claim.role', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')\n  )::text\n$function$\n",
+              "owner": "supabase_auth_admin",
+              "security_definer": false,
+              "signature": "auth.role()",
+              "volatility": "s"
+            },
+            {
+              "acl": [
+                "=X/supabase_auth_admin",
+                "supabase_auth_admin=X/supabase_auth_admin",
+                "dashboard_user=X/supabase_auth_admin"
+              ],
+              "config": null,
+              "definition": "CREATE OR REPLACE FUNCTION auth.uid()\n RETURNS uuid\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n  coalesce(\n    nullif(current_setting('request.jwt.claim.sub', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')\n  )::uuid\n$function$\n",
+              "owner": "supabase_auth_admin",
+              "security_definer": false,
+              "signature": "auth.uid()",
+              "volatility": "s"
+            }
+          ],
+          "captured_at": "2026-10-23T06:42:09.099217+00:00",
+          "storage_select_policies": [
+            {
+              "check": null,
+              "command": "*",
+              "name": "Admins can manage all org documents",
+              "permissive": true,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id = 'org-documents'::text) AND has_role('admin'::app_role, auth.uid()))"
+            },
+            {
+              "check": "((bucket_id = 'signed-documents'::text) AND has_role('admin'::app_role, auth.uid()))",
+              "command": "*",
+              "name": "Admins can manage signed-documents",
+              "permissive": true,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id = 'signed-documents'::text) AND has_role('admin'::app_role, auth.uid()))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Avatars list own only",
+              "permissive": true,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id = 'avatars'::text) AND ((auth.uid() IS NOT NULL) AND ((storage.foldername(name))[1] = (auth.uid())::text)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Demo assets list by admin only",
+              "permissive": true,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id = 'demo-assets'::text) AND has_role('admin'::app_role, auth.uid()))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Org branding list by org members",
+              "permissive": true,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id = 'org-branding'::text) AND (auth.uid() IS NOT NULL))"
+            },
+            {
+              "check": "((bucket_id = 'signed-documents'::text) AND ((storage.foldername(name))[1] = (current_organization_id())::text))",
+              "command": "*",
+              "name": "Org can manage own signed-documents",
+              "permissive": true,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id = 'signed-documents'::text) AND ((storage.foldername(name))[1] = (current_organization_id())::text))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Org members read own external contracts",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'external-contracts'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[1] = ( SELECT (profiles.organization_id)::text AS organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())\n LIMIT 1))))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Org members read own incoming docs",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'incoming-documents'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[1] = (current_organization_id())::text)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Org users can read frdo docs",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'frdo-documents'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[1] = (current_organization_id())::text)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Org users can read own billing docs",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'billing-documents'::text) AND (has_role(auth.uid(), 'admin'::app_role) OR can_access_organization(\nCASE\n    WHEN (((storage.foldername(name))[1] = 'organizations'::text) AND ((storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text)) THEN ((storage.foldername(name))[2])::uuid\n    WHEN ((storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) THEN ((storage.foldername(name))[1])::uuid\n    ELSE NULL::uuid\nEND, 'documents.read'::text)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Org users can read program files",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'program-files'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[2] = (current_organization_id())::text)))"
+            },
+            {
+              "check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+              "command": "*",
+              "name": "account_deletion_no_revoked_access",
+              "permissive": false,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "chat_attachments_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'chat-attachments'::text) AND ((((storage.foldername(name))[2] = (auth.uid())::text) AND (current_organization_id() IS NOT NULL) AND ((storage.foldername(name))[1] = (current_organization_id())::text)) OR can_access_organization(storage_try_uuid((storage.foldername(name))[1]), 'students.read'::text)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "course_files_tenant_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'course-files'::text) AND can_read_course_file_object(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "csz_signed_intake_admin_read",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'csz-signed-intake'::text) AND csz_signed_intake_is_admin())"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "csz_signed_intake_read_guard",
+              "permissive": false,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_is_admin())"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "external_contracts_signed_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'external-contracts'::text) AND ((storage.foldername(name))[1] = 'signed'::text) AND can_access_signed_contract_object(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "final_test_photos_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'final-test-photos'::text) AND can_read_final_test_photo(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "final_test_photos_select_guard",
+              "permissive": false,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id <> 'final-test-photos'::text) OR can_read_final_test_photo(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "goreltech_issued_objects_read_guard",
+              "permissive": false,
+              "roles": [
+                "anon",
+                "authenticated"
+              ],
+              "using": "(bucket_id <> 'goreltech-issued-documents'::text)"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "library_files_private_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'library-files'::text) AND can_read_library_file_object(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "library_files_restrictive_select",
+              "permissive": false,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id <> 'library-files'::text) OR can_read_library_file_object(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "org_documents_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'org-documents'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[1]), 'documents.read'::text))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "org_stamps_read",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'org-stamps'::text) AND ((get_admin_staff_role(auth.uid()) IS NOT NULL) OR has_org_staff_permission(auth.uid(), ((storage.foldername(name))[2])::uuid, 'documents.view'::text)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "presentation_tenant_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = ANY (ARRAY['presentations'::text, 'presentation-files'::text])) AND can_read_course_file_object(name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "signed_documents_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'signed-documents'::text) AND (has_role(auth.uid(), 'admin'::app_role) OR ((storage.foldername(name))[1] = (auth.uid())::text) OR ((current_organization_id() IS NOT NULL) AND ((storage.foldername(name))[1] = (current_organization_id())::text))))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_admission_select_guard",
+              "permissive": false,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id <> 'admission-case-evidence'::text) OR uc_admission_stage_allowed(bucket_id, name, false))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_admission_stage_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'admission-case-evidence'::text) AND uc_admission_stage_allowed(bucket_id, name, false))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_document_assigned_storage_read",
+              "permissive": false,
+              "roles": [
+                "anon",
+                "authenticated"
+              ],
+              "using": "uc_document_storage_scope(bucket_id, name)"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_document_objects_read_guard",
+              "permissive": false,
+              "roles": [
+                "anon",
+                "authenticated"
+              ],
+              "using": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, false))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_document_objects_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, false))"
+            },
+            {
+              "check": "(bucket_id <> 'education-issuance-staging'::text)",
+              "command": "*",
+              "name": "uc_education_staging_private_boundary",
+              "permissive": false,
+              "roles": [
+                "anon",
+                "authenticated"
+              ],
+              "using": "(bucket_id <> 'education-issuance-staging'::text)"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_identification_media_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'student-identification-media'::text) AND uc_identification_storage_allowed(bucket_id, name, false))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_identification_media_select_guard",
+              "permissive": false,
+              "roles": [
+                "PUBLIC"
+              ],
+              "using": "((bucket_id <> 'student-identification-media'::text) OR uc_identification_storage_allowed(bucket_id, name, false))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_program_legacy_read_boundary",
+              "permissive": false,
+              "roles": [
+                "anon",
+                "authenticated"
+              ],
+              "using": "((bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text])) OR ((bucket_id = 'program-files'::text) AND (split_part(name, '/'::text, 1) = 'programs'::text) AND (split_part(name, '/'::text, 3) <> ''::text) AND uc_document_action_allowed(storage_try_uuid(split_part(name, '/'::text, 2)), 'read'::text, NULL::uuid, NULL::uuid)))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_signature_file_participant_read",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = ANY (ARRAY['signed-documents'::text, 'external-contracts'::text])) AND uc_signature_storage_read(bucket_id, name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "uc_signature_file_read_boundary",
+              "permissive": false,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR uc_signature_storage_read(bucket_id, name))"
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "webinar_recordings_select",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "((bucket_id = 'webinar-recordings'::text) AND can_read_webinar_recording_object(name))"
+            }
+          ],
+          "storage_table": {
+            "acl": [
+              "supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin",
+              "service_role=arwdDxtm/supabase_storage_admin",
+              "authenticated=arwd/supabase_storage_admin",
+              "anon=arwd/supabase_storage_admin",
+              "postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin",
+              "sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres",
+              "sandbox_exec=ar/postgres"
+            ],
+            "force_row_security": false,
+            "owner": "supabase_storage_admin",
+            "row_security": true
+          }
+        }
+      }
+    ]
+  }
+}

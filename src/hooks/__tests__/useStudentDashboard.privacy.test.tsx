@@ -7,7 +7,7 @@ import { useStudentDashboard } from '../useStudentDashboard';
 import { setOfflineAuthActor, getOfflineScope } from '@/utils/courseCache';
 import { offlineMemoryStorage } from '@/test/offlineMemoryStorage';
 const mocks = vi.hoisted(() => ({ user: { id: 'a' } as {id: string} | null, from: vi.fn(), rpc: vi.fn(), invoke: vi.fn(),
-  profiles: [] as Promise<any>[], achievements: [] as any[], identityDocs: [] as any[], liveSnapshot: false, refresh: null as null | (() => Promise<void>),
+  profiles: [] as Promise<any>[], enrollments: [] as any[], catalog: [] as any[], enrollmentFilter: vi.fn(), libraryShell: vi.fn(), achievements: [] as any[], identityDocs: [] as any[], liveSnapshot: false, refresh: null as null | (() => Promise<void>),
   snapshotResponse: null as any, toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() } }));
 vi.mock('@/hooks/useAuth', () => ({useAuth: () => ({user: mocks.user, loading: false, signOut: vi.fn()})}));
 vi.mock('@/hooks/use-mobile', () => ({useIsMobile: () => false}));
@@ -17,6 +17,7 @@ vi.mock('@/hooks/useStudentDashboardSnapshot', async original => {
   const actual = await original<typeof import('../useStudentDashboardSnapshot')>();
   return {useStudentDashboardSnapshot: (...args: Parameters<typeof actual.useStudentDashboardSnapshot>) => mocks.liveSnapshot ? actual.useStudentDashboardSnapshot(...args) : {data: undefined}};
 });
+vi.mock('@/api/courseLibrary', () => ({fetchCourseLibraryShell: mocks.libraryShell}));
 vi.mock('@/utils/safeInvoke', () => ({safeInvoke: mocks.invoke}));
 vi.mock('@/integrations/supabase/client', () => ({supabase: {from: mocks.from, rpc: mocks.rpc}}));
 vi.mock('sonner', () => ({toast: mocks.toast}));
@@ -25,11 +26,13 @@ const pending = () => {let resolve!: (value: any) => void; const promise = new P
 class Query {
   private mutation = false;
   constructor(private table: string) {}
-  select() {return this;} eq() {return this;} order() {return this;} limit() {return this;} in() {return this;}
+  select() {return this;} or(filter: string) {if (this.table === 'enrollments') mocks.enrollmentFilter(filter); return this;} eq() {return this;} order() {return this;} limit() {return this;} in() {return this;}
   update() {this.mutation = true; return this;}
   response(): Promise<any> {
     if (this.mutation) return Promise.resolve({data: null, error: null});
     if (this.table === 'profiles') return mocks.profiles.shift() || Promise.resolve(profile(mocks.user?.id || 'none'));
+    if (this.table === 'enrollments') return Promise.resolve({data: mocks.enrollments, error: null});
+    if (this.table === 'courses') return Promise.resolve({data: mocks.catalog, error: null});
     return Promise.resolve({data: this.table === 'labor_safety_profiles' || this.table === 'video_identifications' ? null : this.table === 'user_achievements' ? mocks.achievements : this.table === 'student_identity_documents' ? mocks.identityDocs : [], error: null});
   }
   maybeSingle() {return this.response();} single() {return this.response();} then(resolve: any, reject: any) {return this.response().then(resolve, reject);}
@@ -37,7 +40,7 @@ class Query {
 let client: QueryClient;
 const wrapper = ({children}: {children: ReactNode}) => createElement(QueryClientProvider, {client}, createElement(MemoryRouter, {initialEntries: ['/student']}, children));
 beforeEach(() => {vi.clearAllMocks(); localStorage.clear(); setOfflineAuthActor(null); setOfflineAuthActor('a'); mocks.user = {id: 'a'}; mocks.profiles = []; mocks.achievements = [];
-  mocks.liveSnapshot = false; mocks.refresh = null; mocks.snapshotResponse = {data: {profile: {user_id: 'a', full_name: 'a', organization_id: 'org'}, enrollments: []}, error: null};
+  mocks.liveSnapshot = false; mocks.refresh = null; mocks.enrollments = []; mocks.catalog = []; mocks.libraryShell.mockResolvedValue(null); mocks.snapshotResponse = {data: {profile: {user_id: 'a', full_name: 'a', organization_id: 'org'}, enrollments: []}, error: null};
   client = new QueryClient({defaultOptions: {queries: {retry: false, retryDelay: 0}}});
   mocks.identityDocs = []; mocks.from.mockImplementation(table => new Query(table));
   mocks.rpc.mockImplementation(async (name: string) => name === 'get_student_dashboard_snapshot' ? mocks.snapshotResponse : {data: null, error: null});
@@ -123,4 +126,40 @@ describe('actual dashboard private presentation transition', () => {
     await act(async () => {await mocks.refresh!();});
     expect(hook.result.current.profile).toBeNull(); expect(getOfflineScope('a', 'a', 'learner', 'dashboard')).toBeNull();
   });
+  it('fast snapshot hides technically cancelled assignments and counters while preserving NULL legacy status', async () => {
+    mocks.liveSnapshot = true; const hold = pending(); mocks.profiles = [hold.promise];
+    mocks.snapshotResponse = {data: {profile: {user_id: 'a', full_name: 'a', organization_id: 'org'}, enrollments: [
+      {course_id: 'removed', title: 'Removed', status: 'cancelled', time_spent: 1000, completed_lessons: 9},
+      {course_id: 'active', title: 'Active', status: 'active', time_spent: 60, completed_lessons: 1},
+      {course_id: 'legacy', title: 'Legacy', status: null, time_spent: 30, completed_lessons: 2},
+    ]}, error: null};
+    const hook = renderHook(() => useStudentDashboard(), {wrapper});
+    await waitFor(() => expect(hook.result.current.courses.map(c => c.id)).toEqual(['active', 'legacy']));
+    expect(hook.result.current.totalTimeSpent).toBe(90); expect(hook.result.current.totalCompletedLessons).toBe(3);
+    await act(async () => {hold.resolve(profile('a'));});
+  });
+  it('fallback and public catalog exclude cancelled membership, keeping legacy NULL and avoiding a cancelled library fetch', async () => {
+    const course = (id: string) => ({id, title: id, is_published: true});
+    mocks.enrollments = [
+      {id: 'removed-row', course_id: 'removed', status: 'cancelled', time_spent: 1000, courses: course('removed')},
+      {id: 'hidden-row', course_id: 'hidden-removed', status: 'cancelled', time_spent: 900, courses: null},
+      {id: 'active-row', course_id: 'active', status: 'active', time_spent: 60, courses: course('active')},
+      {id: 'legacy-row', course_id: 'legacy', status: null, time_spent: 30, courses: course('legacy')},
+    ]; mocks.catalog = [course('removed'), course('active'), course('legacy')];
+    const hook = renderHook(() => useStudentDashboard(), {wrapper});
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    expect(hook.result.current.courses.map(c => c.id)).toEqual(['active', 'legacy']); expect(hook.result.current.totalTimeSpent).toBe(90);
+    expect(hook.result.current.catalogCourses.find(c => c.id === 'removed')).toMatchObject({is_enrolled: false, status: 'not_enrolled'});
+    expect(hook.result.current.catalogCourses.find(c => c.id === 'legacy')).toMatchObject({is_enrolled: true});
+    expect(mocks.enrollmentFilter).toHaveBeenCalledWith('status.is.null,status.neq.cancelled'); expect(mocks.libraryShell).not.toHaveBeenCalled();
+  });
+  it('refresh shows the same retained assignment after ordinary reassignment changes cancelled to active', async () => {
+    const course = {id: 'restored', title: 'Restored', is_published: true};
+    mocks.enrollments = [{id: 'same-enrollment', course_id: course.id, status: 'cancelled', courses: course, time_spent: 0}]; mocks.catalog = [course];
+    const hook = renderHook(() => useStudentDashboard(), {wrapper}); await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    expect(hook.result.current.courses).toEqual([]); expect(hook.result.current.catalogCourses[0]).toMatchObject({is_enrolled: false});
+    mocks.enrollments = [{...mocks.enrollments[0], status: 'active'}]; await act(async () => {await hook.result.current.handleRefresh();});
+    expect(hook.result.current.courses.map(c => c.id)).toEqual(['restored']); expect(hook.result.current.catalogCourses[0]).toMatchObject({is_enrolled: true, status: 'in_progress'});
+  });
+
 });

@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "status": "ACTUAL_NATIVE_V9_PASS_NOT_PRODUCTION_ACCEPTANCE",
+  "suite": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.native.ts",
+  "expectedCases": 1,
+  "expectedFacts": 40,
+  "files": [
+    {
+      "repository": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.fixture.ts",
+      "canonical": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.fixture.ts",
+      "bytes": 6553,
+      "sha256": "710b642eda2042299992eb1d69df264007cff4d54a186faf67a5f224c2ad8123",
+      "gitBlobSHA": "5a0702e59576ac2ac96edc58d6844eb6b14612b1"
+    },
+    {
+      "repository": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.native.ts",
+      "canonical": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.native.ts",
+      "bytes": 19103,
+      "sha256": "471a7737f9de80adb143310104fbd12051864951e4447fa359eb4bcff7cb6d10",
+      "gitBlobSHA": "a19c7549d7f143b2d5a6b7d3f53f296a19171b35"
+    },
+    {
+      "repository": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-readers.ts",
+      "canonical": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-readers.ts",
+      "bytes": 5143,
+      "sha256": "4805db43da53f8164bc304e172fb623155f1c1736c22d0e4a245d611129c5a4f",
+      "gitBlobSHA": "d3e3c15b1dcbc3a25644249c3e9a942f0944f53b"
+    },
+    {
+      "repository": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-billing.ts",
+      "canonical": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-billing.ts",
+      "bytes": 10317,
+      "sha256": "55a6dbcb3e596ab8f74d50d4e5a611bf27eb915bb5049e35d27bffaddbbe6483",
+      "gitBlobSHA": "9db0709db271838670a5e78e327d9fa9250a8f06"
+    },
+    {
+      "repository": "supabase/tests/native/erroneous-course-removal/projections/frdo-packets.actual-runtime.ts",
+      "canonical": "supabase/tests/native/frdo-packets/frdo-packets.actual-runtime.ts",
+      "bytes": 10129,
+      "sha256": "271b47d948752b91336d18bec1973688c954f865a27fd214cae7941df35cc853",
+      "gitBlobSHA": "54d302e41b341f06658448226c2954fd82954b3b"
+    },
+    {
+      "repository": "supabase/tests/native/erroneous-course-removal/projections/uc-group-education-facts.fixture.ts",
+      "canonical": "supabase/functions/_shared/uc-group-education-facts.fixture.ts",
+      "bytes": 16213,
+      "sha256": "e9bf150c0a559d617f1908ca442810b31b5bd23fcfc53e0b39bb5e41a23652c8",
+      "gitBlobSHA": "50b5f6ab159a71a6f3ccaa949e4721b9c36bddaf"
+    },
+    {
+      "repository": "supabase/tests/fixtures/erroneous-removal-reader-runtime.json",
+      "canonical": "native-input/REMOVAL_READER_RUNTIME_METADATA.json",
+      "bytes": 40704,
+      "sha256": "4779ccd5f1f48884c487977b9793790ceb647caa893a8d50e660bc4affde7184",
+      "gitBlobSHA": "ee52e7039ce483787149d45a5e45062abffd4834"
+    },
+    {
+      "repository": "supabase/tests/fixtures/erroneous-removal-billing-runtime.json",
+      "canonical": "native-input/REMOVAL_BILLING_RUNTIME_METADATA.json",
+      "bytes": 32337,
+      "sha256": "241434b067a22d83b2b388f1e59840bc1f2780cb045ee20b85d192e47dc2be5c",
+      "gitBlobSHA": "d2cb89290eebdfd3ae7f08fe9b6b7d1c9834a93d"
+    },
+    {
+      "repository": "supabase/tests/fixtures/erroneous-removal-auth-runtime.json",
+      "canonical": "native-input/CURRENT622_AUTH_STORAGE_SELECT_METADATA.json",
+      "bytes": 20634,
+      "sha256": "d62581deeef07ead77df970fbecbd3692ba7a0ca372c95520ce98c47f0fb22ca",
+      "gitBlobSHA": "eed944aa86f2da1289ace826501f070ef8a7ac4d"
+    },
+    {
+      "repository": "supabase/tests/fixtures/erroneous-removal-auth-helpers.json",
+      "canonical": "native-input/CURRENT622_AUTH_STORAGE_HELPERS_METADATA.json",
+      "bytes": 18837,
+      "sha256": "ecbbaf0f64fd203532d86c4a2fb6c78c9ce98561b10dbac1e978684b7ad78d9f",
+      "gitBlobSHA": "03cf4553974381855ce915eaa6c0c9393f680c53"
+    }
+  ],
+  "requiredProductSource": {
+    "canonical": "native-input/ERRONEOUS_ASSIGNMENT_REMOVAL_PROPOSED_NO_LEDGER.sql",
+    "bytes": 80475,
+    "sha256": "e98111f9ee94b94574b8f00162d467bc34fe2f4bc13e21afdb83ce6b53f2c23b"
+  },
+  "projectionContract": "Repository files are copied byte-for-byte to canonical paths only inside an isolated reviewed native source mirror. The original repository helper is never overwritten by this source package.",
+  "existingDependencies": [
+    "supabase/tests/native/education-issuance/education-issuance.fixture.ts",
+    "supabase/tests/native/education-issuance/education-issuance.scenario.ts",
+    "supabase/tests/native/document-registry",
+    "supabase/tests/native/full-cycle",
+    "supabase/tests/fixtures/uc019-actual621-dependencies.json"
+  ],
+  "noMachineBinariesOrCredentialsIncluded": true,
+  "nativeAcceptance": {
+    "manifestSHA256": "354e3a983e1476b8ba6adde0110a620841730bc79470cb21212c586d7284bcb1",
+    "resultSHA256": "647aba24db8ca66f7214e9ede83c1bd49d550991a3be976a6a46efec74b856eb",
+    "actualTests": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "domainFactsPassed": 40,
+    "mandatoryChecksPassed": 16,
+    "sqlSourceSHA256": "e98111f9ee94b94574b8f00162d467bc34fe2f4bc13e21afdb83ce6b53f2c23b",
+    "caseSourceSHA256": "471a7737f9de80adb143310104fbd12051864951e4447fa359eb4bcff7cb6d10",
+    "oldRowsetsAndAuthorityPreserved": true,
+    "nodeAndPGStopped": true,
+    "linuxPortClosed": true,
+    "windowsForwardingDiagnostic": false,
+    "windowsForwardingRequired": false,
+    "historicalV1ThroughV8RemainFailOrInvalidated": true,
+    "foundation": "Genuine622K plus captured currentAuth/readers/billing; not a623admissionStorageguardtest.",
+    "productionAcceptance": false
+  }
+}
