@@ -221,7 +221,8 @@ export function useStudentDashboard() {
     }
     if (snapshot.org?.subscription_plan) setOrgPlan(snapshot.org.subscription_plan);
     if (snapshot.enrollments && snapshot.enrollments.length >= 0) {
-      const mapped: StudentCourse[] = snapshot.enrollments.map((e) => ({
+      const visibleEnrollments = snapshot.enrollments.filter(e => e.status !== "cancelled");
+      const mapped: StudentCourse[] = visibleEnrollments.map((e) => ({
         id: e.course_id,
         title: e.title,
         description: e.description,
@@ -235,7 +236,7 @@ export function useStudentDashboard() {
       }));
       setCourses(mapped);
       setTotalCompletedLessons(mapped.reduce((sum, c) => sum + c.completedLessons, 0));
-      setTotalTimeSpent(snapshot.enrollments.reduce((sum, e) => sum + (e.time_spent || 0), 0));
+      setTotalTimeSpent(visibleEnrollments.reduce((sum, e) => sum + (e.time_spent || 0), 0));
     }
     if (snapshot.documents) {
       setDocumentsProgress({
@@ -326,7 +327,7 @@ export function useStudentDashboard() {
       const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
         supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle(),
         supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid),
+        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid).or("status.is.null,status.neq.cancelled"),
       ]);
       if (!current()) return;
       if (profileRes.error) throw profileRes.error;
@@ -381,7 +382,7 @@ export function useStudentDashboard() {
       let cachedCompletedLessonsTotal = 0;
       let cachedDocumentsProgress: DocumentsProgress = { completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES };
 
-      const enrollments = enrollmentsRes.data;
+      const enrollments = enrollmentsRes.data?.filter(e => e.status !== "cancelled");
       if (enrollments) {
         // Collect all course IDs first for batch queries (eliminates N+1 problem)
         const validEnrollments = enrollments.filter(e => e.courses);

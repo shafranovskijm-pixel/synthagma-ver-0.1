@@ -34,10 +34,11 @@ interface LSCoursesTabProps {
 }
 
 export function LSCoursesTab({
-  hasProfile, enrollments, coursesToEnroll, isAddingCourse, setIsAddingCourse,
+  hasProfile, enrollments: allEnrollments, coursesToEnroll, isAddingCourse, setIsAddingCourse,
   selectedCourseIds, setSelectedCourseIds, isEnrolling,
   handleEnrollToCourse, organizationId, onEnrollmentChanged, handleResetProgress,
 }: LSCoursesTabProps) {
+  const enrollments = allEnrollments.filter(enrollment => enrollment.status !== "cancelled");
   if (!hasProfile) {
     return <div className="text-center py-12 text-muted-foreground"><GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Сначала создайте учётную запись</p></div>;
   }

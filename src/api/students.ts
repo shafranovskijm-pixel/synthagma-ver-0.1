@@ -3,7 +3,7 @@ import { fetchAllRows } from "@/utils/retryFetch";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { logStudentDeletion } from "@/utils/logStudentDeletion";
 import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
-import { insertEnrollmentsVerified } from "@/api/enrollments";
+import { ensureEnrollmentVerified, insertEnrollmentsVerified } from "@/api/enrollments";
 import { cancelCourseAssignment, courseAssignmentCancellationError } from "@/api/courseAssignmentCancellation";
 import type { PreparedIssuanceMutation } from "@/lib/educationIssuance/client";
 
@@ -23,6 +23,7 @@ export async function fetchStudents(
           .from("enrollments")
           .select("id, user_id, course_id, progress, status, started_at, completed_at, time_spent")
           .in("course_id", courseIds)
+          .or("status.is.null,status.neq.cancelled")
           .range(from, to)
           .then(r => ({ data: r.data as any[] | null, error: r.error }))
       )
@@ -198,7 +199,7 @@ export async function fetchStudentEnrollments(userId: string): Promise<StudentEn
       time_spent,
       courses (title)
     `)
-    .eq("user_id", userId);
+    .eq("user_id", userId).or("status.is.null,status.neq.cancelled");
 
   if (error) {
     console.error("Error fetching student enrollments:", error);
@@ -304,7 +305,7 @@ export async function enrollStudent(userId: string, courseId: string): Promise<{
   // Check if already enrolled
   const { data: existing, error: existingError } = await supabase
     .from("enrollments")
-    .select("id")
+    .select("id, status")
     .eq("user_id", userId)
     .eq("course_id", courseId)
     .maybeSingle();
@@ -313,18 +314,21 @@ export async function enrollStudent(userId: string, courseId: string): Promise<{
     return { success: false, error: existingError.message };
   }
 
-  if (existing) {
+  if (existing && existing.status !== "cancelled") {
     return { success: false, error: "Ученик уже зачислен на этот курс" };
   }
 
   try {
-    const [confirmed] = await insertEnrollmentsVerified([{
+    const assignment = {
       user_id: userId,
       course_id: courseId,
       status: "active",
       progress: 0,
       time_spent: 0
-    }]);
+    };
+    const confirmed = existing
+      ? await ensureEnrollmentVerified(assignment)
+      : (await insertEnrollmentsVerified([assignment]))[0];
     return { success: true, enrollmentId: confirmed.id };
   } catch (error) {
     return {
@@ -465,7 +469,7 @@ export interface FetchOrgStudentsPageInput {
 }
 
 function toStudentFromServerRow(r: any): Student {
-  const enrollmentsRaw = Array.isArray(r.enrollments) ? r.enrollments : [];
+  const enrollmentsRaw = Array.isArray(r.enrollments) ? r.enrollments.filter((e: any) => e.status !== "cancelled") : [];
   const enrollments: StudentEnrollment[] = enrollmentsRaw.map((e: any) => ({
     id: e.id,
     course_id: e.course_id,
