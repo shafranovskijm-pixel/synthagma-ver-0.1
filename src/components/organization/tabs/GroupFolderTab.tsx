@@ -1,6 +1,6 @@
 import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useUrlNavigation, useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, UserPlus, Calendar, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -30,7 +30,7 @@ import {
   type ProofStatus,
 } from "@/lib/groups/releaseReadiness";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
-import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath, type GroupContextParams } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -1182,6 +1182,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                 <FolderContents
                   folder={openFolder}
                   students={students}
+                  studentContext={{ groupId, department: departmentFilter, participantSearch }}
                   viewMode={viewMode}
                   onBack={() => setOpenFolder(null)}
                   showBackButton={false}
@@ -1308,9 +1309,10 @@ function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: Folde
   );
 }
 
-function FolderContents({ folder, students, viewMode, onBack, showBackButton = true }: { folder: FolderKey; students: StudentRow[]; viewMode: ViewMode; onBack: () => void; showBackButton?: boolean }) {
+function FolderContents({ folder, students, studentContext, viewMode, onBack, showBackButton = true }: { folder: FolderKey; students: StudentRow[]; studentContext: GroupContextParams; viewMode: ViewMode; onBack: () => void; showBackButton?: boolean }) {
   const meta = FOLDER_META[folder];
   const Icon = meta.icon;
+  const studentPath = (s: StudentRow) => `${studentDetailsPath(s.user_id, studentContext)}&studentSection=${folder === "exams" ? "testing" : "documents"}`;
 
   const getCount = (s: StudentRow) =>
     folder === "contracts" ? s.contracts_count
@@ -1365,7 +1367,7 @@ function FolderContents({ folder, students, viewMode, onBack, showBackButton = t
           {students.map(s => {
             const count = getCount(s);
             return (
-              <div key={s.user_id} className="p-3 rounded-xl border border-border bg-card hover:shadow-sm transition-shadow">
+              <Link key={s.user_id} to={studentPath(s)} className="p-3 rounded-xl border border-border bg-card hover:shadow-sm transition-shadow">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
                   <Folder className="w-5 h-5" />
                 </div>
@@ -1374,7 +1376,7 @@ function FolderContents({ folder, students, viewMode, onBack, showBackButton = t
                 <Badge variant={count > 0 ? "default" : "outline"} className="mt-2 rounded-full text-xs">
                   {count > 0 ? `${count} шт.` : "нет"}
                 </Badge>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -1383,7 +1385,7 @@ function FolderContents({ folder, students, viewMode, onBack, showBackButton = t
           {students.map(s => {
             const count = getCount(s);
             return (
-              <div key={s.user_id} className="p-4 flex items-center justify-between gap-3">
+              <Link key={s.user_id} to={studentPath(s)} className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-medium truncate">{s.full_name}</div>
                   <div className="text-xs text-muted-foreground truncate">{s.email || s.login || "—"}</div>
@@ -1391,7 +1393,7 @@ function FolderContents({ folder, students, viewMode, onBack, showBackButton = t
                 <Badge variant={count > 0 ? "default" : "outline"} className="rounded-full shrink-0">
                   {count > 0 ? `${count} шт.` : "нет"}
                 </Badge>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -1409,7 +1411,7 @@ function FolderContents({ folder, students, viewMode, onBack, showBackButton = t
               const count = getCount(s);
               return (
                 <tr key={s.user_id} className="hover:bg-muted/40">
-                  <td className="px-4 py-2.5 font-medium">{s.full_name}</td>
+                  <td className="px-4 py-2.5 font-medium"><Link to={studentPath(s)}>{s.full_name}</Link></td>
                   <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell">{s.email || s.login || "—"}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{count}</td>
                 </tr>
