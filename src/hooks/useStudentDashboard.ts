@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminStudentPreview } from "@/hooks/useAdminStudentPreview";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
@@ -139,20 +140,9 @@ export function useStudentDashboard() {
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
   const [isPreviewMode] = useState(false);
-  const [isAdminView, setIsAdminView] = useState(() => {
-    const adminView = localStorage.getItem('adminViewAsStudent');
-    if (adminView) {
-      try { JSON.parse(adminView); return true; } catch { return false; }
-    }
-    return false;
-  });
-  const [adminViewStudentName, setAdminViewStudentName] = useState(() => {
-    const adminView = localStorage.getItem('adminViewAsStudent');
-    if (adminView) {
-      try { return JSON.parse(adminView).name || ''; } catch { return ''; }
-    }
-    return '';
-  });
+  const adminPreview = useAdminStudentPreview();
+  const isAdminView = adminPreview !== null;
+  const adminViewStudentName = adminPreview?.name ?? "";
   const [showVideoIdentification, setShowVideoIdentification] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
@@ -171,17 +161,7 @@ export function useStudentDashboard() {
     if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("user_id", user.id);
   };
 
-  const [targetUserId, setTargetUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const adminView = localStorage.getItem('adminViewAsStudent');
-    if (adminView) {
-      try {
-        const data = JSON.parse(adminView);
-        if (data.userId) setTargetUserId(data.userId);
-      } catch (e) { /* ignore */ }
-    }
-  }, []);
+  const targetUserId = adminPreview?.userId ?? null;
 
   const effectiveUserId = targetUserId || user?.id || null;
   const mode = isAdminView ? 'preview' as const : 'learner' as const;

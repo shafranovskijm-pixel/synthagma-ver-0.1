@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getBaseUrl } from '@/utils/getBaseUrl';
 import { setOfflineAuthActor, observeOfflineAccess } from '@/utils/courseCache';
 import { clearPrivateRuntimeCaches } from '@/utils/privateRuntimeCacheCleanup';
+import { clearAdminPreviewContexts, clearDisallowedAdminPreviews, resetAdminPreviewForAuth } from '@/utils/adminPreviewSession';
 
 interface AuthContextType {
   user: User | null;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applySession = useCallback((nextSession: Session | null) => {
     const nextUserId = nextSession?.user.id ?? null;
+    resetAdminPreviewForAuth(authUserId.current, nextUserId, authInitialized.current);
     setOfflineAuthActor(nextUserId);
     if (authUserId.current !== nextUserId) {
       authRevision.current += 1;
@@ -90,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted.current || authRevision.current !== revision || authUserId.current !== userId) return null;
         if (data && !error) {
           const role = data as AuthContextType['userRole'];
+          clearDisallowedAdminPreviews(role ?? '');
           observeOfflineAccess(userId, `server-role:${role}`);
           setUserRole(role);
           localStorage.setItem('user_role', role!);
@@ -257,6 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('is_user_blocked check failed:', e);
       }
 
+      clearAdminPreviewContexts();
       applySession(data.session);
       
       await fetchUserRole(data.user.id);
