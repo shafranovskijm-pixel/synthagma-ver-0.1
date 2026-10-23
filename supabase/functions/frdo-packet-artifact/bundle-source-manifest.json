@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "kind": "frdo_same_source_hosted_bundle",
+  "esbuild": "0.25.12",
+  "entry": "nativeEntry.ts",
+  "output": {
+    "path": "runtime.bundle.js",
+    "bytes": 1382664,
+    "sha256": "ca96de17e4628ebfc363980fdd7009f0f573e4844c08d403cbc9f71eda2a5609"
+  },
+  "index": {
+    "path": "index.ts",
+    "bytes": 124,
+    "sha256": "a3b12ae110a262dbf3939665876cc9be3a89821814324ebb74d3da48866f579c"
+  },
+  "xml_integrity": "sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==",
+  "sources": [
+    {
+      "id": "node_modules/jszip/dist/jszip.min.js",
+      "bytes": 97630,
+      "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
+    },
+    {
+      "id": "node_modules/zod/index.js",
+      "bytes": 105,
+      "sha256": "6419c4ac0e637ff08463083e31886d10354f74cbcc4e584400b2b837e39ac881"
+    },
+    {
+      "id": "node_modules/zod/v3/ZodError.js",
+      "bytes": 4349,
+      "sha256": "f5ac9e86b92e201d41e294d7aa35986a2aa28829e1bcc8ac25f7c8dce0674b99"
+    },
+    {
+      "id": "node_modules/zod/v3/errors.js",
+      "bytes": 243,
+      "sha256": "d40831f478288d76e82bbbcc3b7e95c8513b6e76471f2d49a37c979bc57d492d"
+    },
+    {
+      "id": "node_modules/zod/v3/external.js",
+      "bytes": 205,
+      "sha256": "5d26d2e47e2352def36f89a3e8bf8581da22b7f857e07ef3114cd52cf4813445"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/errorUtil.js",
+      "bytes": 300,
+      "sha256": "68589c0cf44c8b4ad19b77418f53caad2cd1dbc8d714f526e1876ebdee4828c5"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/parseUtil.js",
+      "bytes": 3601,
+      "sha256": "b57484013bb360bac2e334d58fcd5f6cbfa63ffcc7d8ff3dbbb3380ca659b956"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/typeAliases.js",
+      "bytes": 11,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/util.js",
+      "bytes": 4055,
+      "sha256": "906ef685e5853d496e293ee8f8a2bb8b1ed2d078a1bcdfedb2dfd61d75b6330c"
+    },
+    {
+      "id": "node_modules/zod/v3/locales/en.js",
+      "bytes": 5602,
+      "sha256": "51a6dcc5d4bd52a64da127c012c6c963395c1d9a343ad75d4a8eca662fc8b205"
+    },
+    {
+      "id": "node_modules/zod/v3/types.js",
+      "bytes": 131212,
+      "sha256": "9763a2938f0e7f983363ef4bf6530e7583e3f2d54f8a4a6684efad58febc6e8e"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/conventions.js",
+      "bytes": 13399,
+      "sha256": "da57fbe2b07f5a4aaee9217b49778936c11a1108da1761b2f24f356a900ff124"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/dom-parser.js",
+      "bytes": 20276,
+      "sha256": "4188e24b953e2c70b66150306c66547495ad968d040e31dd65f22a7b3485da28"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/dom.js",
+      "bytes": 133234,
+      "sha256": "bea9ba89adfec227e9e572ee934a48223a170c5cf96b7087d7e3d3023ac47be3"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/entities.js",
+      "bytes": 44533,
+      "sha256": "ef333b680379392e8ee120e1cc77e0a8ff99a135e3b365b048f69c0df5f571f9"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/errors.js",
+      "bytes": 6817,
+      "sha256": "3e97f9c4f0a189346e2621b29c7c5a3899cd7375d1d15cbfbddd044fb781cb9f"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/grammar.js",
+      "bytes": 23776,
+      "sha256": "144f27b46adfb4a139adeb7483820def568b3940a6893194c03f5a71a94babc0"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/index.js",
+      "bytes": 1595,
+      "sha256": "418c42598a45290498f4350b6b6f531ceeb25e8d4d9a107db2448a1c0b5b784e"
+    },
+    {
+      "id": "npm:@xmldom/xmldom@0.9.12/lib/sax.js",
+      "bytes": 32465,
+      "sha256": "324e8a0c7b475c645efcd1736b634733e133150849bff741fa0e2215e7017d02"
+    },
+    {
+      "id": "src/lib/admissionCases/contract.ts",
+      "bytes": 19935,
+      "sha256": "82981a749464ea96044e1dfeaa5f47b9077106632a22de787aa444c31bdd0f08"
+    },
+    {
+      "id": "src/lib/admissionCases/issuanceCondition.ts",
+      "bytes": 1454,
+      "sha256": "04ff1b10b209143bf48df5eed1ea5d068f220a9de0f34a7497561deb74296df4"
+    },
+    {
+      "id": "src/lib/educationIssuance/contract.ts",
+      "bytes": 32656,
+      "sha256": "18b8b98c0885f11bb5a5980053676890cb691711e384b5d88cf369016802245d"
+    },
+    {
+      "id": "src/lib/frdoFoundation/contract.ts",
+      "bytes": 23900,
+      "sha256": "b52310e42b3931df6bba96bb27c23223d9a56d40c8263fedbcca1751d0c1951a"
+    },
+    {
+      "id": "src/lib/frdoFoundation/dictionaries.ts",
+      "bytes": 1889,
+      "sha256": "60819c2ae00943929cdf5bbf0d2aa5a8f38d41a7c0f8456dba9ffcaf74a01852"
+    },
+    {
+      "id": "src/lib/frdoFoundation/hash.ts",
+      "bytes": 3553,
+      "sha256": "d3a0e829d95c7b485ffdf11e8de659d7014bef0fbb1dac5b691f8a26c9affc60"
+    },
+    {
+      "id": "src/lib/frdoFoundation/mapper.ts",
+      "bytes": 23397,
+      "sha256": "8b6aeaf1b237db79a055268e3c701d7e4a281184235141341cebd7b996ecbc23"
+    },
+    {
+      "id": "src/lib/frdoFoundation/nativeData.ts",
+      "bytes": 503028,
+      "sha256": "44bf9d97c49e98cdc88c22acae338d6d1c2ca8649827f84e764f6dda87f918b0"
+    },
+    {
+      "id": "src/lib/frdoFoundation/officialMetadata.ts",
+      "bytes": 18630,
+      "sha256": "60a7b2ba39439c450afdf82f20fc96df2d1443f34f0f20372d6275cf82544142"
+    },
+    {
+      "id": "src/lib/frdoFoundation/ooxml.ts",
+      "bytes": 9714,
+      "sha256": "735bed19646a66050af774647250f43956cf8dc1ce6c426a725ac49d601e7564"
+    },
+    {
+      "id": "src/lib/frdoFoundation/sealedBatch.ts",
+      "bytes": 2088,
+      "sha256": "c5bcea1c542d9d6516a3b9646646134f883b4bee62e1032ef33379c92f313d53"
+    },
+    {
+      "id": "src/lib/frdoFoundation/template.ts",
+      "bytes": 7893,
+      "sha256": "8928d72eb3c48a6e3bb0a62398d0a20ac0078cb6d4c874f8191f5840e5f06701"
+    },
+    {
+      "id": "src/lib/frdoFoundation/xmlRuntime.ts",
+      "bytes": 1157,
+      "sha256": "8f7817fbcbef3143acae34717b08d4cf04519347f8f684aaf97db5ec894ed4f6"
+    },
+    {
+      "id": "src/lib/frdoFoundation/zip.ts",
+      "bytes": 5874,
+      "sha256": "77a4f512e1b1766e282aebefa973798b0e8387320880f11edfafb7374563774b"
+    },
+    {
+      "id": "src/lib/frdoPackets/canonicalCapture.ts",
+      "bytes": 3999,
+      "sha256": "a732a93428028d4e18131cd23edff330c0da3b9e7c3f76942da529b1e46c7255"
+    },
+    {
+      "id": "src/lib/frdoPackets/contract.ts",
+      "bytes": 16217,
+      "sha256": "0ab52da7d647ad53bd6059cd7eead7674e11ea986809c4c7e76fd5d2b84be690"
+    },
+    {
+      "id": "src/lib/frdoPackets/invariants.ts",
+      "bytes": 10185,
+      "sha256": "3e7ed01bd2083c656d8fdd64c927030c720a5bfcb5ae9592c0be2f4538decaa1"
+    },
+    {
+      "id": "src/lib/frdoPackets/issuerReview.ts",
+      "bytes": 3768,
+      "sha256": "9de499674089b8315f18f4f139e9b4cc889ed016509b9f566e7cdbe390a728ea"
+    },
+    {
+      "id": "src/lib/frdoPackets/runtimeContract.ts",
+      "bytes": 8571,
+      "sha256": "f461cbc9b9bd8a5ebe6cc8feea9925b7db65f2c1dad8acfc8497236ce8cc8fdd"
+    },
+    {
+      "id": "src/lib/frdoPackets/trustedFreeze.ts",
+      "bytes": 2479,
+      "sha256": "521e401432208af332f03ae98034f8d26d1ff01a15b773cae45efa7a208f6d1a"
+    },
+    {
+      "id": "src/lib/learningOutcomes/contract.ts",
+      "bytes": 14784,
+      "sha256": "608699fa37e4b4a98919530489039f6cbaaed00a328da1af5a5f0d527799258b"
+    },
+    {
+      "id": "supabase/build/frdo-packet-artifact/ownedDonors.ts",
+      "bytes": 567815,
+      "sha256": "6c12fb5cc882bc50726f7b6b2055b6333ecc9af4074c735a3004199f38e1b898"
+    },
+    {
+      "id": "supabase/functions/frdo-packet-artifact/handler.ts",
+      "bytes": 8985,
+      "sha256": "41151ace10bafd121c04ea98e353be08fb5491171c684c9512a84aec90aa3eab"
+    },
+    {
+      "id": "supabase/functions/frdo-packet-artifact/nativeEntry.ts",
+      "bytes": 863,
+      "sha256": "1367d524d36052efdbd67439ac021d295d13901387e69dec9b01c80d1ebde2d3"
+    },
+    {
+      "id": "supabase/functions/frdo-packet-artifact/restTransport.ts",
+      "bytes": 10641,
+      "sha256": "1527f5f3ccaf26ba604335fa2aa640da5d171d4855faa3f3c74b969363386919"
+    },
+    {
+      "id": "supabase/functions/frdo-packet-artifact/trustedService.ts",
+      "bytes": 19309,
+      "sha256": "8bc7667ce8584c996def22ce5f15855e118d22ef689f94aca57a96ff098ac3f3"
+    },
+    {
+      "id": "supabase/functions/frdo-packet-artifact/xmlRuntime.ts",
+      "bytes": 615,
+      "sha256": "18fc81da031d850afabd8a51e4bf0a58355c8a7f587be2808b0e824930eb2b93"
+    }
+  ],
+  "contains_external_imports": false,
+  "external_network_at_build": false,
+  "signature_verified": false,
+  "legal_policy_verified": false,
+  "provider_acceptance": false
+}

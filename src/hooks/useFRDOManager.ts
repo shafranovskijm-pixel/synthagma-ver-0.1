@@ -65,7 +65,6 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   const [selectedStudentForExport, setSelectedStudentForExport] = useState<Student | null>(null);
   const [selectedEnrollmentForExport, setSelectedEnrollmentForExport] = useState<EnrollmentData | null>(null);
   const [visibleCount, setVisibleCount] = useState(5);
-  const [isUploading, setIsUploading] = useState(false);
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
 
   useEffect(() => { setSelectedStudents(new Set()); setShowExportDialog(false); setExistingExport(null); setDataScope(null); setStudents([]); setCourses([]); setFrdoDataMap(new Map()); setEnrollmentsMap(new Map()); if(canExport)void loadData(); else setIsLoading(false); return()=>{++loadEpoch.current;}; }, [organizationId, groupId, contextCourseId, capture, canExport]);
@@ -186,52 +185,6 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
 
   const handleLoadMore = (count: number) => setVisibleCount(prev => prev + count);
 
-  const handleUploadSigned = async (file: File) => {
-    setIsUploading(true);
-    try {
-      const filePath = `${organizationId}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("frdo-documents").upload(filePath, file);
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("frdo-documents").getPublicUrl(filePath);
-      await supabase.from("frdo_signed_documents").insert({
-        organization_id: organizationId,
-        uploaded_by: (await supabase.auth.getUser()).data.user?.id,
-        file_url: urlData.publicUrl,
-        file_name: file.name,
-        status: "uploaded",
-      });
-      toast.success("Файл загружен");
-    } catch (error) { console.error(error); toast.error("Ошибка загрузки файла"); }
-    finally { setIsUploading(false); }
-  };
-
-  const handleSendToAdmin = async () => {
-    try {
-      const { data: docs } = await supabase.from("frdo_signed_documents").select("*").eq("organization_id", organizationId).eq("status", "uploaded");
-      if (!docs || docs.length === 0) { toast.error("Нет загруженных файлов для отправки"); return; }
-      const { data: org } = await supabase.from("organizations").select("name").eq("id", organizationId).single();
-      for (const doc of docs) {
-        await supabase.from("admin_org_messages").insert({
-          organization_id: organizationId,
-          sender_user_id: (await supabase.auth.getUser()).data.user!.id,
-          sender_role: "organization",
-          content: `📄 Подписанный документ ФРДО: ${doc.file_name}`,
-          attachment_url: doc.file_url,
-          attachment_name: doc.file_name,
-          attachment_type: "application/octet-stream",
-        });
-        await supabase.from("frdo_signed_documents").update({ status: "sent", sent_to_admin_at: new Date().toISOString() }).eq("id", doc.id);
-      }
-      await supabase.from("admin_notifications").insert({
-        title: `ФРДО: документы от ${org?.name || "организации"}`,
-        message: `Организация отправила ${docs.length} подписанных документов ФРДО`,
-        type: "frdo",
-        related_entity_id: organizationId,
-      });
-      toast.success(`Отправлено ${docs.length} документов администратору`);
-    } catch (error) { console.error(error); toast.error("Ошибка отправки"); }
-  };
-
   return {
     canExport, existingExport, setExistingExport, groupId,
     isLoading, students:scopedStudents, courses:currentData?courses:[], searchQuery, setSearchQuery,
@@ -241,7 +194,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
     enrollmentsMap:currentData?enrollmentsMap:new Map<string,EnrollmentData[]>(), organizationId,
-    visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
+    visibleCount, handleLoadMore,
     refresh: loadData,
   };
 }
