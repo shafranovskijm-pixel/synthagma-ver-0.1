@@ -2,5 +2,5 @@
 const amountRub = 3500;
 export const SELF_EXAMINATION_SERVICE_PRICE = Object.freeze({
   amountRub,
-  label: new Intl.NumberFormat("ru-RU").format(amountRub).replaceAll("\u00a0", " ") + " ₽",
+  label: new Intl.NumberFormat("ru-RU").format(amountRub).replace(/\u00a0/g, " ") + " ₽",
 });
