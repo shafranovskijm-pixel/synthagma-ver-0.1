@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { SmartLoadingFallback } from '@/components/SmartLoadingFallback';
 
+import { AccountLoadError } from '@/components/auth/AccountLoadError';
 import { loginWithNext } from '@/utils/authReturn';
 
 const ROLE_LOADING_TIMEOUT = 8000; // 8 seconds
@@ -17,7 +18,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const location = useLocation();
   const loginTarget = loginWithNext(location.pathname + location.search + location.hash);
-  const { user, userRole, loading, refreshUserRole } = useAuth();
+  const { user, userRole, loading, authError, retryAuth, refreshUserRole } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
@@ -45,6 +46,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   if (loading) {
     return <SmartLoadingFallback timeoutSec={8} label="Загрузка..." />;
   }
+
+  if (authError) return <AccountLoadError onRetry={retryAuth} />;
 
   if (!user) {
     return <Navigate to={loginTarget} replace />;
