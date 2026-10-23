@@ -274,3 +274,7 @@ verify_jwt = false
 [functions.admission-case-evidence-file]
 verify_jwt = false
 
+# UC020 packets authenticate the original bearer with auth.getUser and fixed
+# current-scope SQL operations before any service commit or private file access.
+[functions.frdo-packet-artifact]
+verify_jwt = false

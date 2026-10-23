@@ -38,11 +38,7 @@ function ordered<T>(rows: T[], id: (row: T) => string, after: string | null, nex
 }
 function recordContext(scope: DocumentRegistryScope, rows: c.RegistryRecord[]) {
   for (const row of rows) {
-    if (row.context_binding.organization_id !== scope.organizationId || row.context_binding.kind !== row.data.context.kind) throw new DocumentRegistryError();
-    // Captured factual group visibility is server-authorized, including owner records whose input group_id is null.
-    // Never replace that authority with issuer IDs, pupil-name matching or client filtering of a whole-organization list.
-    if (row.data.context.kind === 'enrollment' || row.data.context.kind === 'enrollment_contract') if (row.context_binding.enrollment_id !== row.data.context.enrollment_id) throw new DocumentRegistryError();
-    if (row.data.context.kind === 'contract' || row.data.context.kind === 'enrollment_contract') if (row.context_binding.contract_id !== row.data.context.contract_id) throw new DocumentRegistryError();
+    if (!c.registryBindingMatches(row.data, row.context_binding, scope.organizationId) || row.data.source.kind === 'frdo_packet_artifact' && row.can_correct) throw new DocumentRegistryError();
   }
 }
 export async function readDocumentRegistry(scope: DocumentRegistryScope, query: c.RegistryQuery): Promise<c.RegistryRead> {
@@ -73,7 +69,7 @@ export async function readDocumentRegistry(scope: DocumentRegistryScope, query: 
   if (result.kind === 'detail' && q.kind === 'detail') { if (result.record.id !== q.record_id) throw new DocumentRegistryError(); recordContext(scope, [result.record]); }
   if (result.kind === 'history' && q.kind === 'history') {
     let previous = q.after_revision;
-    for (const row of result.history) { if (row.record_id !== q.record_id || row.revision !== previous + 1 || row.snapshot.context_binding.organization_id !== scope.organizationId) throw new DocumentRegistryError(); previous = row.revision; }
+    for (const row of result.history) { if (row.record_id !== q.record_id || row.revision !== previous + 1 || !c.registryBindingMatches(row.snapshot.data, row.snapshot.context_binding, scope.organizationId)) throw new DocumentRegistryError(); previous = row.revision; }
     if (result.next_after_revision !== null && (!result.history.length || result.next_after_revision !== previous)) throw new DocumentRegistryError();
   }
   if (result.kind === 'sources' && q.kind === 'sources') ordered(result.sources, row => row.source.version_id, q.after_id, result.next_after_id);
@@ -97,7 +93,8 @@ export async function readDocumentRegistry(scope: DocumentRegistryScope, query: 
       || (context.kind === 'enrollment' || context.kind === 'enrollment_contract') && value.context_binding.enrollment_id !== context.enrollment_id
       || (context.kind === 'contract' || context.kind === 'enrollment_contract') && value.context_binding.contract_id !== context.contract_id) throw new DocumentRegistryError();
   }
-  if (result.kind === 'file' && result.file.kind !== 'org_document_version') throw new DocumentRegistryError();
+  if (result.kind === 'file' && result.file.kind !== 'org_document_version' && result.file.kind !== 'frdo_packet_artifact') throw new DocumentRegistryError();
+  if (result.kind === 'incoming_file' && result.file.kind === 'frdo_packet_artifact') throw new DocumentRegistryError();
   if (result.kind === 'incoming_file' && q.kind === 'incoming_file' && result.file.kind === 'legacy_incoming_object' && result.file.incoming_document_id !== q.incoming_document_id) throw new DocumentRegistryError();
   if ((result.kind === 'file' || result.kind === 'incoming_file') && !result.file.path.startsWith(scope.organizationId + '/')) throw new DocumentRegistryError();
   requireRegistryScope(scope); return result;

@@ -1,14 +1,15 @@
 import { ExistingIssuanceExportDialog } from "./education-issuance/ExistingExportDialog";
+import { FrdoPacketWorkbenchDialog } from "./frdo-packets/Workbench";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Send, Wrench } from "lucide-react";
+import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Wrench } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { FrdoFileSanitizerDialog } from "./FrdoFileSanitizerDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { GroupContextBanner } from "./GroupContextBanner";
 
 export function FRDOManager({
@@ -29,18 +30,12 @@ export function FRDOManager({
     selectedStudentForExport, selectedEnrollmentForExport,
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
-    visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
+    visibleCount, handleLoadMore,
     refresh,
   } = useFRDOManager(organizationId, { groupId, courseId });
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showSanitizer, setShowSanitizer] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleUploadSigned(file);
-    e.target.value = "";
-  };
+  const [showPackets, setShowPackets] = useState(false);
 
   if (isLoading) return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
 
@@ -54,16 +49,10 @@ export function FRDOManager({
       <div className="flex items-center justify-between">
         <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Управление данными</p></div>
         <div className="flex items-center gap-2 flex-wrap">
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept=".xlsx,.xls,.pdf,.zip" />
           <Button variant="outline" onClick={() => setShowSanitizer(true)} className="rounded-xl gap-2">
             <Wrench className="w-4 h-4" />Устранить ошибки ФРДО
           </Button>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl gap-2" disabled={isUploading}>
-            {isUploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}Загрузить подписанный
-          </Button>
-          <Button variant="outline" onClick={handleSendToAdmin} className="rounded-xl gap-2">
-            <Send className="w-4 h-4" />Отправить в ФРДО
-          </Button>
+          <Button variant="outline" onClick={() => setShowPackets(true)} className="rounded-xl gap-2" disabled={!canExport}><FileSpreadsheet className="w-4 h-4" />Пакеты ФРДО</Button>
           <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={!canExport || isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Факты для ДПО</Button>
           {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={!canExport || isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Факты для ПО</Button>}
         </div>
@@ -107,16 +96,16 @@ export function FRDOManager({
                   <Shield className="w-6 h-6 text-primary" />
                   Автоматизируйте отчётность в ФИС ФРДО
                 </h3>
-                <p className="text-muted-foreground text-sm mt-1">Зачислите студентов на курсы — данные для выгрузки появятся автоматически</p>
+                <p className="text-muted-foreground text-sm mt-1">Сохраните сведения учеников, оформите выдачу документов и подготовьте проверенный пакет отдельно</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
-                  { icon: FileSpreadsheet, title: "Шаблоны ДПО и ПО", desc: "Готовые Excel-шаблоны на 35 и 41 колонку по стандарту ФИС ФРДО" },
+                  { icon: FileSpreadsheet, title: "Шаблоны ДПО и ПО", desc: "Официальные шаблоны: ДПО — 40 колонок, ПО — 35 колонок" },
                   { icon: BarChart3, title: "Статусы заполнения", desc: "Мгновенный контроль: «Заполнено», «Частично», «Не заполнено»" },
-                  { icon: Upload, title: "Автозаполнение данных", desc: "ФИО, паспортные данные и СНИЛС подтягиваются из профиля автоматически" },
+                  { icon: Upload, title: "Автозаполнение данных", desc: "Личные сведения проверяются отдельно; пакет формируется из сохранённого снимка выдачи" },
                   { icon: ClipboardCheck, title: "Контроль недостающих полей", desc: "Система покажет, каких именно данных не хватает у каждого студента" },
                   { icon: BookOpen, title: "Привязка к курсам", desc: "Данные группируются по курсам для удобной пакетной выгрузки" },
-                  { icon: Download, title: "Пакетный экспорт", desc: "Выгрузка всех студентов разом в формате, готовом для загрузки в ФРДО" },
+                  { icon: Download, title: "Пакетный экспорт", desc: "Проверка точных строк, формирование файла и отдельный учёт внешней квитанции" },
                 ].map((f, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -156,6 +145,7 @@ export function FRDOManager({
       <FRDOExportDialog isOpen={showExportDialog} onOpenChange={setShowExportDialog} student={selectedStudentForExport ? { id: selectedStudentForExport.user_id, user_id: selectedStudentForExport.user_id, name: selectedStudentForExport.name, email: selectedStudentForExport.email } : null} organizationId={organizationId} groupId={groupId} enrollment={selectedEnrollmentForExport as any} onSaved={refresh} />
       {existingExport && <ExistingIssuanceExportDialog open onOpenChange={open => { if (!open) setExistingExport(null); }} organizationId={organizationId} groupId={groupId} assignments={existingExport.assignments} documentType={existingExport.documentType} />}
       <FrdoFileSanitizerDialog open={showSanitizer} onOpenChange={setShowSanitizer} />
+      <FrdoPacketWorkbenchDialog open={showPackets} onOpenChange={setShowPackets} organizationId={organizationId} groupId={groupId} />
     </div>
   );
 }
