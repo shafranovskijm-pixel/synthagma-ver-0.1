@@ -1,3 +1,4 @@
+import { SELF_EXAMINATION_SERVICE_PRICE } from "@/lib/selfExaminationPrice";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -120,7 +121,7 @@ export function SelfExaminationQuiz({ open, onOpenChange, onSubmit, isSubmitting
               {isSubmitting ? (
                 <><SigmaSpinner size="sm" />Отправка...</>
               ) : (
-                <><Sparkles className="w-4 h-4" />Заказать за 3 500 ₽</>
+                <><Sparkles className="w-4 h-4" />Заказать за {SELF_EXAMINATION_SERVICE_PRICE.label}</>
               )}
             </Button>
           )}
