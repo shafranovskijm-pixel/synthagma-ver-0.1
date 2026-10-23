@@ -1,5 +1,5 @@
 /** UC012 original-caller evidence boundary. No public locator, legal or admission inference. */
-export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261023-v4";
+export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261024-v5";
 export const ADMISSION_EVIDENCE_BUCKET = "admission-case-evidence";
 export const ADMISSION_MAX_BYTES = 20 * 1024 * 1024;
 export const ADMISSION_OPERATION_MS = 60_000;
@@ -263,10 +263,48 @@ const prerequisitesCheck: Check = value => {shape(value, {
   public_label: text(160), next_action: literal("select_exact_association", "contact_staff", "open_programme_confirmation", "review_rule_set"), persisted: literal(false),
 });};
 const capabilityCheck: Check = value => {shape(value, {can_initialize: bool, can_assign: bool, can_review: bool, can_decide: bool, can_prepare_evidence: bool, can_configure_rules: bool});};
-const staffCheck = (value: unknown): Record<string, unknown> => shape(value, {id: admissionUuid, scope: scopeCheck, revision: admissionRevision, program_ref: programCheck,
+// Exact mirror of the two optional UC019 issuance fields. Optionality does not
+// permit unknown staff keys or unvalidated nested conditions/reviews.
+const optionalShape = (value: unknown, required: Record<string, Check>, optional: Record<string, Check>): Record<string, unknown> => {
+  if (!admissionObject(value)) failSource();
+  const checks = {...required};
+  for (const key of Object.keys(optional)) if (Object.prototype.hasOwnProperty.call(value, key)) {
+    checks[key] = item => {if (item !== undefined) optional[key](item);};
+  }
+  return shape(value, checks);
+};
+const issuanceConditionCheck: Check = value => {
+  if (!admissionObject(value)) failSource();
+  if (value.kind === "primary_education_before_qualification") {
+    shape(value, {kind: literal("primary_education_before_qualification"), education_levels: levels => {
+      list(literal("spo", "vo"), 2, 2)(levels);
+      if ((levels as unknown[])[0] !== "spo" || (levels as unknown[])[1] !== "vo") failSource();
+    }, concurrent_study_admission_allowed: bool});
+  } else if (value.kind === "no_separate_primary_education_condition") {
+    shape(value, {kind: literal("no_separate_primary_education_condition"), reason: reason => {
+      // Frontend z.string().trim().min(1).max(1000) validates the trimmed text.
+      if (typeof reason !== "string" || reason.trim().length < 1 || reason.trim().length > 1000) failSource();
+    }});
+  } else failSource();
+};
+const issuanceEvidenceCheck: Check = value => {
+  shape(value, {kind: literal("completed_primary_education"), education_level: literal("spo", "vo"), evidence_version_ids: evidenceIds => {
+    list(admissionUuid, 20, 1)(evidenceIds);
+    if (new Set(evidenceIds as unknown[]).size !== (evidenceIds as unknown[]).length) failSource();
+  }});
+};
+const issuanceReviewCheck: Check = value => {
+  shape(value, {requirement_id: admissionUuid, requirement_revision: admissionRevision, event_id: admissionUuid,
+    actor_id: nullable(admissionUuid), condition: issuanceConditionCheck, evidence: nullable(issuanceEvidenceCheck)});
+};
+const issuanceRequirementConditionCheck: Check = value => {
+  shape(value, {requirement_id: admissionUuid, requirement_revision: admissionRevision, condition: issuanceConditionCheck});
+};
+const staffCheck = (value: unknown): Record<string, unknown> => optionalShape(value, {id: admissionUuid, scope: scopeCheck, revision: admissionRevision, program_ref: programCheck,
   program_title: text(), program_type: literal("dpo_upskilling", "dpo_retraining", "professional_training", "internal_nonformal"), responsible_id: nullable(admissionUuid),
   rule_set_id: nullable(admissionUuid), requirements: list(requirementCheck, 50), evidence: list(evidenceCheck), tasks: list(taskCheck, 50), decision: nullable(decisionCheck),
-  prerequisites: list(prerequisitesCheck, 20), capabilities: capabilityCheck, rule_set_digest: nullable(sha), requirements_digest: sha});
+  prerequisites: list(prerequisitesCheck, 20), capabilities: capabilityCheck, rule_set_digest: nullable(sha), requirements_digest: sha},
+  {issuance_reviews: list(issuanceReviewCheck, 50), issuance_conditions: list(issuanceRequirementConditionCheck, 50)});
 export type AdmissionMutation = {schema_version: 1; scope: AdmissionScope; receipt: Record<string, unknown>; replayed: boolean; state: Record<string, unknown>};
 /** Pure Deno mirror of the frozen strict frontend wire schema; nothing is stripped silently. */
 export function admissionMutation(raw: unknown, input: AdmissionCommitInput, scope: AdmissionScope, replayed?: boolean): AdmissionMutation {

@@ -1,0 +1,131 @@
+{
+  "capabilities": {
+    "can_assign": true,
+    "can_configure_rules": false,
+    "can_decide": true,
+    "can_initialize": false,
+    "can_prepare_evidence": true,
+    "can_review": true
+  },
+  "decision": null,
+  "evidence": [
+    {
+      "availability": "available",
+      "byte_sha256": "5a260bdfad618385f1a779b8cac8cf13b0f46eb66b0733c8fa88e180a5ef79cd",
+      "byte_size": 85818,
+      "can_read_bytes": true,
+      "captured_at": "2026-10-23T14:46:54.211117+00:00",
+      "case_id": "00000000-0000-4000-8000-000000000500",
+      "case_revision_created": 6,
+      "id": "00000000-0000-4000-8000-000000000501",
+      "mime_type": "application/pdf",
+      "requirement_id": "00000000-0000-4000-8000-000000000502",
+      "review": "unreviewed",
+      "review_event_id": null,
+      "source_kind": "upload",
+      "supersedes_id": null
+    }
+  ],
+  "id": "00000000-0000-4000-8000-000000000500",
+  "issuance_conditions": [
+    {
+      "condition": {
+        "concurrent_study_admission_allowed": false,
+        "education_levels": [
+          "spo",
+          "vo"
+        ],
+        "kind": "primary_education_before_qualification"
+      },
+      "requirement_id": "00000000-0000-4000-8000-000000000502",
+      "requirement_revision": 1
+    }
+  ],
+  "issuance_reviews": [],
+  "prerequisites": [],
+  "program_ref": {
+    "binding_id": "00000000-0000-4000-8000-000000000503",
+    "binding_revision": 1,
+    "enrollment_snapshot_id": "00000000-0000-4000-8000-000000000504",
+    "facts_hash": "550c3d05acc5783da01a4303dfa5371cfd8ee3ad66601c81f0281339436a5f79",
+    "file_document_id": "00000000-0000-4000-8000-000000000505",
+    "file_review_id": "00000000-0000-4000-8000-000000000506",
+    "file_version_id": "00000000-0000-4000-8000-000000000507",
+    "snapshot_hash": "9af31bcb109451912fc898c24e0704b90bfa20917bdc26dd23e06eabf6c6642a",
+    "version_id": "00000000-0000-4000-8000-000000000508"
+  },
+  "program_title": "Synthetic captured program_title",
+  "program_type": "dpo_upskilling",
+  "requirements": [
+    {
+      "applicability": "unknown",
+      "current_state": "unknown",
+      "evidence_version_ids": [
+        "00000000-0000-4000-8000-000000000501"
+      ],
+      "id": "00000000-0000-4000-8000-000000000502",
+      "label": "Synthetic captured label",
+      "public_next_action": "Synthetic captured public_next_action",
+      "review_event_id": null,
+      "revision": 1,
+      "rule_id": "00000000-0000-4000-8000-000000000509",
+      "rule_set_digest": "bbcdc8b99f6547667bccd05db008f82e59ac9002084757f84e5944b99b1c8287",
+      "rule_set_id": "00000000-0000-4000-8000-000000000510"
+    },
+    {
+      "applicability": "not_applicable",
+      "current_state": "satisfied",
+      "evidence_version_ids": [],
+      "id": "00000000-0000-4000-8000-000000000511",
+      "label": "Synthetic captured label",
+      "public_next_action": null,
+      "review_event_id": "00000000-0000-4000-8000-000000000512",
+      "revision": 1,
+      "rule_id": "00000000-0000-4000-8000-000000000513",
+      "rule_set_digest": "bbcdc8b99f6547667bccd05db008f82e59ac9002084757f84e5944b99b1c8287",
+      "rule_set_id": "00000000-0000-4000-8000-000000000510"
+    },
+    {
+      "applicability": "not_applicable",
+      "current_state": "satisfied",
+      "evidence_version_ids": [],
+      "id": "00000000-0000-4000-8000-000000000514",
+      "label": "Synthetic captured label",
+      "public_next_action": null,
+      "review_event_id": "00000000-0000-4000-8000-000000000515",
+      "revision": 1,
+      "rule_id": "00000000-0000-4000-8000-000000000516",
+      "rule_set_digest": "bbcdc8b99f6547667bccd05db008f82e59ac9002084757f84e5944b99b1c8287",
+      "rule_set_id": "00000000-0000-4000-8000-000000000510"
+    }
+  ],
+  "requirements_digest": "0ead304da5ab3f53ecbc2400e838b01fa42081ec08566a7a4ef670f6896e3d8e",
+  "responsible_id": "00000000-0000-4000-8000-000000000517",
+  "revision": 6,
+  "rule_set_digest": "bbcdc8b99f6547667bccd05db008f82e59ac9002084757f84e5944b99b1c8287",
+  "rule_set_id": "00000000-0000-4000-8000-000000000510",
+  "scope": {
+    "course_id": "00000000-0000-4000-8000-000000000518",
+    "enrollment_id": "00000000-0000-4000-8000-000000000519",
+    "group_id": "00000000-0000-4000-8000-000000000520",
+    "organization_id": "00000000-0000-4000-8000-000000000521",
+    "user_id": "00000000-0000-4000-8000-000000000522"
+  },
+  "tasks": [
+    {
+      "assignee_id": "00000000-0000-4000-8000-000000000517",
+      "deadline": {
+        "date": null,
+        "kind": "not_set",
+        "rule_id": null
+      },
+      "id": "00000000-0000-4000-8000-000000000523",
+      "key": "fe8aa147c0f0a1560186917a25ce430d3a4d2f7714ac176aae46e56e29d7f812",
+      "kind": "review_applicability",
+      "public_label": "Synthetic captured public_label",
+      "reason": null,
+      "requirement_id": "00000000-0000-4000-8000-000000000502",
+      "status": "open"
+    }
+  ]
+}
