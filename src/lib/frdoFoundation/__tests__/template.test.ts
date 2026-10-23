@@ -22,7 +22,7 @@ describe('UC020 actual official donor roundtrip and complete readback',()=>{
   const doc=parseXml(written.get(meta.sheet_path)!),strings=sharedStrings(written),row=elements(doc,'row').find(row=>row.getAttribute('r')==='2')!,cells=Array.from(row.children);expect(cells.map(cell=>cellValue(cell,strings))).toEqual(expected);expect(cells.map(cell=>cell.getAttribute('r'))).toEqual(meta.columns.map(c=>c.letter+'2'));expect(cells.filter(cell=>cell.getAttribute('t')==='inlineStr').length).toBeGreaterThan(15);expect(elements(doc,'f')).toEqual([]);expect(elements(doc,'hyperlink')).toEqual([]);expect(cellValue(cells[cells.length-1],strings)).toBeNull();const check=await verifyOfficialWorkbook(source,raw,out.bytes,guard);expect(check.byte_sha256).toBe(out.byte_sha256);expect(check.root_sha256).toBe(out.root_sha256);expect(check.parts).toEqual(out.parts);
  },20000);
  it('normalizes genuine foreign-realm encoder bytes only at the ZIP setter and preserves the complete workbook',async()=>{
-  const NativeEncoder=TextEncoder,foreignBytes=runInNewContext('(values)=>new Uint8Array(values)') as (values:Uint8Array)=>Uint8Array;
+  const NativeEncoder=TextEncoder,foreignBytes=runInNewContext('(values)=>new Uint8Array(values)') as (values:Uint8Array)=>Uint8Array<ArrayBuffer>;
   class ForeignEncoder extends NativeEncoder {override encode(value?:string){return foreignBytes(super.encode(value));}}
   const foreignProbe=new ForeignEncoder().encode('Синтагма');expect(Object.prototype.toString.call(foreignProbe)).toBe('[object Uint8Array]');expect(foreignProbe instanceof Uint8Array).toBe(false);
   const originalFile=JSZip.prototype.file,meta=OFFICIAL_TEMPLATES.dpo;let setterCalls=0,handedOff:Uint8Array|undefined;
