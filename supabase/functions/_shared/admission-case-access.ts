@@ -1,5 +1,5 @@
 /** UC012 original-caller evidence boundary. No public locator, legal or admission inference. */
-export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261019-v1";
+export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261023-v2";
 export const ADMISSION_EVIDENCE_BUCKET = "admission-case-evidence";
 export const ADMISSION_MAX_BYTES = 20 * 1024 * 1024;
 export const ADMISSION_OPERATION_MS = 60_000;
@@ -397,7 +397,15 @@ export async function admissionSealedInfo(service: AdmissionService, path: strin
   if (data.bucketId !== ADMISSION_EVIDENCE_BUCKET || data.name !== path || (data.size ?? metadata.size) !== bytes || (data.contentType ?? metadata.mimetype) !== mime
     || data.size !== undefined && metadata.size !== undefined && data.size !== metadata.size
     || data.contentType !== undefined && metadata.mimetype !== undefined && data.contentType !== metadata.mimetype) failSource();
-  try {return {object_id: admissionUuid(data.id), updated_at: admissionTime(data.updatedAt)};} catch {return failSource();}
+  try {
+    // InfoRenderer last_modified is storage.objects.updated_at, independently of
+    // the HTTP Last-Modified header. Keep the original database microseconds.
+    const times = [data.updatedAt, data.updated_at, data.lastModified, data.last_modified]
+      .filter(value => value !== undefined && value !== null).map(admissionTime);
+    const updatedAt = times[0];
+    if (updatedAt === undefined || times.some(value => value !== updatedAt)) failSource();
+    return {object_id: admissionUuid(data.id), updated_at: updatedAt!};
+  } catch {return failSource();}
 }
 export function admissionAttestation(raw: unknown, context: AdmissionEvidenceContext, proof: {sha256: string; bytes: Uint8Array}): void {
   try {
