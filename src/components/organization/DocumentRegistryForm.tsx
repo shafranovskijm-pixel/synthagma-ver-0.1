@@ -14,7 +14,13 @@ const partyKey = (party: RegistryParty) => party.kind === 'student' ? 'student:'
 const contextKey = (context: RegistryContext) => context.kind === 'enrollment' ? context.enrollment_id : context.kind === 'organization' ? 'organization' : context.contract_id;
 type Validation = Extract<RegistryRead, { kind: 'validate' | 'validate_incoming' }>['validation'];
 
-export function DocumentRegistryForm({ model, record = null, incoming = null, legacy = null, incomingOnly = false, onSaved, onCancel }: { model: DocumentRegistryModel; record?: RegistryRecord | null; incoming?: RegistryIncoming | null; legacy?: RegistryLegacy | null; incomingOnly?: boolean; onSaved: (result: RegistryMutation) => void; onCancel: () => void }) {
+type RegistryFormProps = { model: DocumentRegistryModel; record?: RegistryRecord | null; incoming?: RegistryIncoming | null; legacy?: RegistryLegacy | null; incomingOnly?: boolean; onSaved: (result: RegistryMutation) => void; onCancel: () => void };
+export function DocumentRegistryForm(props: RegistryFormProps) {
+  if (props.record?.data.source.kind === 'frdo_packet_artifact') return <div className="space-y-3"><p className="text-sm text-muted-foreground">Файл пакета ФРДО связан с точным снимком. Исправления создаются отдельным пакетом в разделе ФРДО; исходная регистрация сохраняется.</p><Button type="button" variant="outline" onClick={props.onCancel}>Закрыть</Button></div>;
+  const record = props.record ? { ...props.record, data: registryDataSchema.parse(props.record.data) as RegistryData } : null;
+  return <EditableDocumentRegistryForm {...props} record={record} />;
+}
+function EditableDocumentRegistryForm({ model, record = null, incoming = null, legacy = null, incomingOnly = false, onSaved, onCancel }: Omit<RegistryFormProps, 'record'> & { record?: (Omit<RegistryRecord, 'data'> & { data: RegistryData }) | null }) {
   const id = useId(), mounted = useRef(true), partyTicket = useRef(0), contextTicket = useRef(0), validationTicket = useRef(0);
   const ownParty: RegistryParty = { kind: 'organization', organization_id: model.organizationId };
   const initialDirection = record?.data.direction ?? (incoming || incomingOnly ? 'incoming' : 'outgoing');

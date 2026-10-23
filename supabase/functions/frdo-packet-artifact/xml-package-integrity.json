@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "name": "@xmldom/xmldom",
+  "version": "0.9.12",
+  "archive_sha256": "08245e18c248b957b4c6e07f8549ad5f55ae11b7a8abd4c1113a0fd61ddc67ee",
+  "integrity": "sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 69194,
+      "sha256": "5138fc1f8c15712ed7ede448a53f06fad0c15f1f94b57b4cb74ccfe694329c5a"
+    },
+    {
+      "path": "index.d.ts",
+      "bytes": 73605,
+      "sha256": "342163401aa45f329d6b07a70d878ec9d1dfbf1630ee389ac242309178833baf"
+    },
+    {
+      "path": "lib/.eslintrc.yml",
+      "bytes": 63,
+      "sha256": "8962d52a0bb86f17e764dfaf160d265eaa969ed3d67da747b59c1df6eb4833c2"
+    },
+    {
+      "path": "lib/conventions.js",
+      "bytes": 13399,
+      "sha256": "da57fbe2b07f5a4aaee9217b49778936c11a1108da1761b2f24f356a900ff124"
+    },
+    {
+      "path": "lib/dom-parser.js",
+      "bytes": 20276,
+      "sha256": "4188e24b953e2c70b66150306c66547495ad968d040e31dd65f22a7b3485da28"
+    },
+    {
+      "path": "lib/dom.js",
+      "bytes": 133234,
+      "sha256": "bea9ba89adfec227e9e572ee934a48223a170c5cf96b7087d7e3d3023ac47be3"
+    },
+    {
+      "path": "lib/entities.js",
+      "bytes": 44533,
+      "sha256": "ef333b680379392e8ee120e1cc77e0a8ff99a135e3b365b048f69c0df5f571f9"
+    },
+    {
+      "path": "lib/errors.js",
+      "bytes": 6817,
+      "sha256": "3e97f9c4f0a189346e2621b29c7c5a3899cd7375d1d15cbfbddd044fb781cb9f"
+    },
+    {
+      "path": "lib/grammar.js",
+      "bytes": 23776,
+      "sha256": "144f27b46adfb4a139adeb7483820def568b3940a6893194c03f5a71a94babc0"
+    },
+    {
+      "path": "lib/index.js",
+      "bytes": 1595,
+      "sha256": "418c42598a45290498f4350b6b6f531ceeb25e8d4d9a107db2448a1c0b5b784e"
+    },
+    {
+      "path": "lib/sax.js",
+      "bytes": 32465,
+      "sha256": "324e8a0c7b475c645efcd1736b634733e133150849bff741fa0e2215e7017d02"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1298,
+      "sha256": "4da724fc305d81606b245b324d4d2586916b9d248b23d82183df753ace0fdf71"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2253,
+      "sha256": "b61c2dd342e0e1abb800302ec62c0b06ae7a07cd9b907c88428ff80100f64c6a"
+    },
+    {
+      "path": "readme.md",
+      "bytes": 13763,
+      "sha256": "5ee9af83f442f300bf14d6ba8a79a6708f4f721a68ce79ce6fb701bc9ccd2de7"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 3980,
+      "sha256": "a17b482b11a4f3ff0aa20bad116c49472c5ba9417223adf915eb739d194aceea"
+    }
+  ]
+}
