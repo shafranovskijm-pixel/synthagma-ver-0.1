@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ExistingStudentForCreation } from "@/api/studentCreationPreflight";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,9 @@ interface AddStudentDialogProps {
   groupsError?: boolean;
   onSubmit: (input: AddStudentInput) => void;
   isCreating: boolean;
+  contextKey?: string;
+  onCheckExisting?: (input: AddStudentInput, current: () => boolean) => Promise<ExistingStudentForCreation | null>;
+  onOpenExisting?: (userId: string) => void;
 }
 
 const NO_GROUP_VALUE = "__no_group__";
@@ -64,6 +68,7 @@ export function AddStudentDialog({
   groupsError = false,
   onSubmit,
   isCreating,
+  contextKey = "default", onCheckExisting, onOpenExisting,
 }: AddStudentDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -79,6 +84,14 @@ export function AddStudentDialog({
   const [birthDate, setBirthDate] = useState("");
   const [confirmIdentity, setConfirmIdentity] = useState(false);
   const [detailsError, setDetailsError] = useState("");
+  const [checkingExisting, setCheckingExisting] = useState(false);
+  const [existingConfirmation, setExistingConfirmation] = useState<{ student: ExistingStudentForCreation; input: AddStudentInput; key: string; context: string } | null>(null);
+  const lookupEpoch = useRef(0);
+  const intentKey = JSON.stringify([name, email, courseIds, companyId, groupId, login, password, department, jobPosition, snils, birthDate, confirmIdentity]);
+  const currentIntent = useRef({ open, key: intentKey, context: contextKey });
+  currentIntent.current = { open, key: intentKey, context: contextKey };
+  useEffect(() => { lookupEpoch.current++; setCheckingExisting(false); setExistingConfirmation(null); }, [open, contextKey]);
+  useEffect(() => { currentIntent.current.open = open; return () => { lookupEpoch.current++; currentIntent.current.open = false; }; }, []);
 
   useEffect(() => {
     if (open) {
@@ -92,6 +105,8 @@ export function AddStudentDialog({
   const filteredCourses = publishedCourses.filter(c => 
     c.title.toLowerCase().includes(courseSearch.toLowerCase())
   );
+
+  const selectedCourses = courseIds.map(id => courses.find(course => course.id === id) || { id, title: "Курс больше недоступен", is_published: false });
 
   const toggleCourse = (id: string) => {
     setCourseIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -109,23 +124,30 @@ export function AddStudentDialog({
     setPassword(pwd);
   };
 
-  const handleSubmit = () => {
-    if (login && !/^[a-zA-Z0-9._-]+$/.test(login)) {
-      alert("Логин может содержать только латинские буквы, цифры и знаки . _ -");
-      return;
-    }
-    if (password && password.length < 6) {
-      alert("Пароль должен быть не короче 6 символов");
-      return;
-    }
+  const handleSubmit = async (confirmed = false) => {
+    if (checkingExisting || isCreating) return;
+    if (login && !/^[a-zA-Z0-9._-]+$/.test(login)) { setDetailsError("Логин может содержать только латинские буквы, цифры и знаки . _ -"); return; }
+    if (password && password.length < 6) { setDetailsError("Пароль должен быть не короче 6 символов"); return; }
+    if (selectedCourses.some(course => !course.is_published)) { setDetailsError("Один из выбранных курсов больше недоступен. Уберите его из списка выбранных перед добавлением ученика."); return; }
+    const key = intentKey, context = contextKey, epoch = ++lookupEpoch.current;
+    const current = () => lookupEpoch.current === epoch && currentIntent.current.open && currentIntent.current.key === key && currentIntent.current.context === context;
     try {
       const details = normalizeStudentRegistrationDetails({ department, job_position: jobPosition, snils, birth_date: birthDate, confirm_identity: confirmIdentity });
-      setDetailsError("");
-      onSubmit({ name, email, courseIds, companyId, groupId, login, password, ...details });
+      const input = { name, email, courseIds: [...courseIds], companyId, groupId, login, password, ...details };
+      setDetailsError(""); setCheckingExisting(true);
+      const student = onCheckExisting ? await onCheckExisting(input, current) : null;
+      if (!current()) return;
+      if (student) {
+        const sameConfirmation = confirmed && existingConfirmation?.key === key && existingConfirmation.context === context && JSON.stringify(existingConfirmation.student) === JSON.stringify(student);
+        if (!sameConfirmation) { setExistingConfirmation({ student, input, key, context }); return; }
+      } else if (confirmed) { setExistingConfirmation(null); setDetailsError("Карточка ученика изменилась. Повторите проверку перед добавлением."); return; }
+      setExistingConfirmation(null);
+      await onSubmit(student?.login ? { ...input, login: student.login } : input);
     } catch (error) {
-      setDetailsError(error instanceof Error ? error.message : "Проверьте сведения ученика");
-    }
+      if (current()) setDetailsError(error instanceof Error ? error.message : "Не удалось проверить сведения ученика. Изменения не отправлены.");
+    } finally { if (lookupEpoch.current === epoch) setCheckingExisting(false); }
   };
+  const confirmation = existingConfirmation?.key === intentKey && existingConfirmation.context === contextKey ? existingConfirmation : null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
@@ -246,6 +268,16 @@ export function AddStudentDialog({
           </div>
           <div className="space-y-2">
             <Label>Курсы (необязательно) {courseIds.length > 0 && <span className="text-primary ml-1">({courseIds.length})</span>}</Label>
+            <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2" role="region" aria-label="Выбранные курсы">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Будут назначены: {selectedCourses.length}</p>
+                {selectedCourses.length > 0 && <Button type="button" variant="ghost" size="sm" className="rounded-lg" onClick={() => setCourseIds([])} disabled={isCreating}>Очистить выбор</Button>}
+              </div>
+              {selectedCourses.length === 0 ? <p className="text-xs text-muted-foreground">Без назначения курсов. Добавить их можно позже в карточке ученика.</p> : <ul className="space-y-1">
+                {selectedCourses.map(course => <li key={course.id} className="flex items-start justify-between gap-2 text-sm"><span>{course.title}{!course.is_published && " — больше недоступен"}</span><Button type="button" variant="ghost" size="sm" className="shrink-0 rounded-lg" aria-label={`Убрать курс: ${course.title}`} onClick={() => toggleCourse(course.id)} disabled={isCreating}>Убрать</Button></li>)}
+              </ul>}
+              <p className="text-xs text-muted-foreground">Поиск ниже меняет список на экране и сохраняет уже выбранные курсы. Перед добавлением проверьте этот список.</p>
+            </div>
             {publishedCourses.length > 5 && (
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -260,7 +292,7 @@ export function AddStudentDialog({
                   const checked = courseIds.includes(course.id);
                   return (
                     <label key={course.id} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/10' : 'hover:bg-secondary/50'}`}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleCourse(course.id)} className="h-4 w-4 rounded border-primary text-primary focus:ring-primary" />
+                      <input type="checkbox" checked={checked} disabled={isCreating} onChange={() => toggleCourse(course.id)} className="h-4 w-4 rounded border-primary text-primary focus:ring-primary" />
                       <span className="text-sm">{course.title}</span>
                     </label>
                   );
@@ -268,9 +300,20 @@ export function AddStudentDialog({
               )}
             </div>
           </div>
-          <Button className="w-full btn-gradient rounded-xl" onClick={handleSubmit} disabled={isCreating}>
-            {isCreating ? (<><SigmaSpinner size="sm" className="mr-2" />Добавление...</>) : "Добавить ученика"}
-          </Button>
+          {confirmation && <div role="region" aria-label="Подтверждение существующего ученика" className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+            <p className="font-medium">Этот ученик уже существует: {confirmation.student.full_name}{confirmation.student.login ? ` (${confirmation.student.login})` : ""}.</p>
+            <p className="text-sm">Его ранее назначенные курсы сохранятся. Выбранные сейчас курсы будут добавлены к ним; новая учётная запись не создаётся.</p>
+            <div className="text-sm"><p className="font-medium">Ранее назначенные курсы: {confirmation.student.courses.length}</p>{confirmation.student.courses.length > 0 ? <ul className="mt-1 list-disc pl-5 space-y-1">{confirmation.student.courses.map(course => <li key={course.id}>{course.title}</li>)}</ul> : <p>В этой организации курсы не найдены.</p>}</div>
+            <p className="text-sm">Выбрано сейчас: {selectedCourses.length}. Группа и заполненные сведения будут сохранены по текущей форме.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" className="rounded-xl" disabled={checkingExisting || isCreating} onClick={() => void handleSubmit(true)}>Подтвердить добавление к существующему</Button>
+              {onOpenExisting && <Button type="button" variant="outline" className="rounded-xl" disabled={checkingExisting || isCreating} onClick={() => { setExistingConfirmation(null); onOpenExisting(confirmation.student.user_id); }}>Открыть карточку ученика</Button>}
+              <Button type="button" variant="ghost" className="rounded-xl" disabled={checkingExisting || isCreating} onClick={() => setExistingConfirmation(null)}>Отмена</Button>
+            </div>
+          </div>}
+          {!confirmation && <Button className="w-full btn-gradient rounded-xl" onClick={() => void handleSubmit()} disabled={isCreating || checkingExisting}>
+            {isCreating || checkingExisting ? (<><SigmaSpinner size="sm" className="mr-2" />{isCreating ? "Добавление..." : "Проверяем ученика..."}</>) : "Добавить ученика"}
+          </Button>}
         </div>
       </DialogContent>
     </Dialog>
