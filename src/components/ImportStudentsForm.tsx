@@ -293,7 +293,8 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
           });
           const requestedCourseIds = Array.from(new Set(courseIds));
           missingCourseTitles = missing;
-          const fallbackCourse = selectedCourseId || null;
+          // A named but unknown file course must never become a different default course.
+          const fallbackCourse = row.course_titles.length === 0 ? selectedCourseId || null : null;
           const firstCourse = requestedCourseIds[0] || fallbackCourse;
 
           const { data, error } = await safeInvoke<any>("register-student", {
@@ -584,7 +585,9 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
                     <td className="p-2">{r.job_position || "—"}</td>
                     <td className="p-2">{r.snils || "—"} / {r.birth_date || "—"}{r.detailsError && <span className="block text-destructive">{r.detailsError}</span>}</td>
                     <td className="p-2">{r.confirm_identity ? "Подтвердить" : "Без изменения"}</td>
-                    <td className="p-2 text-muted-foreground">{r.course_titles.length}</td>
+                    <td className="p-2 text-muted-foreground max-w-sm">
+                      {r.course_titles.length > 0 ? <ul className="space-y-1">{r.course_titles.map((title, index) => <li key={index} className={courseByName.has(nkey(title)) ? "" : "text-destructive"}>{title}{!courseByName.has(nkey(title)) && " — не найден, не назначается"}</li>)}</ul> : selectedCourseId ? <span>{courses.find(course => course.id === selectedCourseId)?.title || "Выбранный курс недоступен"} (по умолчанию)</span> : "Без назначения курсов"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -640,6 +643,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
           </SelectContent>
         </Select>
+        <p className="text-xs text-muted-foreground">Все заполненные колонки «Курс» из файла назначаются вместе. Курс по умолчанию используется только для строк без указанных курсов; он не заменяет неизвестные названия.</p>
       </div>
 
       <Button

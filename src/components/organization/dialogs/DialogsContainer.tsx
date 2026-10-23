@@ -1,3 +1,4 @@
+import { checkExistingStudentForCreation } from "@/api/studentCreationPreflight";
 import { useUrlNavigation } from '@/hooks/useUrlNavigation';
 import { resolveTabParams } from '@/lib/groups/groupContext';
 import { 
@@ -72,6 +73,15 @@ export function DialogsContainer() {
           await d.studentManagement.createStudent(input);
         }}
         isCreating={d.studentManagement.isCreatingStudent}
+        contextKey={d.organizationId ?? "none"}
+        onCheckExisting={(input, current) => {
+          if (!d.organizationId) throw new Error("Организация не определена. Изменения не отправлены.");
+          return checkExistingStudentForCreation(d.organizationId, input, current);
+        }}
+        onOpenExisting={(userId) => {
+          d.studentManagement.setShowAddStudentDialog(false);
+          updateParams(prev => { const next = resolveTabParams(prev, "student-details"); next.set("studentId", userId); return next; });
+        }}
       />
 
       <EnrollDialog
