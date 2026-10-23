@@ -18,6 +18,14 @@ beforeEach(() => {
 });
 afterEach(() => { setOfflineAuthActor(null); frame?.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 describe('bounded browser print lifecycle', () => {
+  it('stops an old organization protocol while fonts wait even when the same actor remains logged in', async () => {
+    let ready!: () => void, organizationEpoch = 1; fontReady = new Promise<void>(resolve => { ready = resolve; });
+    const originalEpoch = organizationEpoch;
+    const pending = printHtmlContent('<p>Договор первой организации</p>', 'Протокол', { assertCurrent: () => { if (organizationEpoch !== originalEpoch) throw new Error('old organization'); } });
+    const outcome = expect(pending).rejects.toMatchObject({ code: 'ACCESS_CHANGED' }); await flush();
+    organizationEpoch++; ready(); await outcome;
+    expect(printed).not.toHaveBeenCalled(); expect(frame?.isConnected).toBe(false);
+  });
   it('blocks actor round trips while fonts are loading and disposes without opening print', async () => {
     let ready!: () => void; fontReady = new Promise<void>(resolve => { ready = resolve; });
     const pending = printHtmlContent('<p>Персональный договор</p>'); const outcome = expect(pending).rejects.toMatchObject({ code: 'ACCESS_CHANGED' }); await flush();

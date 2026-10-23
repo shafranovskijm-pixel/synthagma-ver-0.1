@@ -21,7 +21,7 @@ interface ProtocolData {
   rejectedAt?: string | null;
   rejectionReason?: string | null;
   expiresAt: string;
-  signatureToken: string;
+  signatureId: string;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -38,7 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Черновик",
   sent: "Отправлено получателю",
   viewed: "Просмотрено получателем",
-  signed: "Подписано простой электронной подписью",
+  signed: "Зафиксировано подтверждение получателя",
   rejected: "Отклонено получателем",
   expired: "Срок действия истёк",
 };
@@ -52,8 +52,9 @@ function fmt(s: string | null | undefined) {
 }
 
 export function buildProtocolHtml(input: ProtocolData): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.signatureId)) throw new Error('Не удалось подтвердить идентификатор записи.');
   const d = Object.fromEntries(Object.entries(input).map(([key, value]) => [key, typeof value === 'string' ? escapeDocumentHtml(value) : value])) as unknown as ProtocolData;
-  const protocolNumber = `ПЭП-${d.signatureToken.slice(0, 8).toUpperCase()}`;
+  const protocolNumber = `ЗАПИСЬ-${d.signatureId}`;
   return `<!DOCTYPE html>
 <html lang="ru"><head><meta charset="UTF-8"><title>Протокол подписания ${protocolNumber}</title>
 <style>
@@ -72,7 +73,7 @@ export function buildProtocolHtml(input: ProtocolData): string {
 </style></head><body>
 
 <h1>ПРОТОКОЛ ПОДПИСАНИЯ ДОКУМЕНТА</h1>
-<div class="sub">Простая электронная подпись (ст. 5, 6, 9 Федерального закона № 63-ФЗ «Об электронной подписи»)</div>
+<div class="sub">Сведения из журнала документа. Способ идентификации и основание применения подписи требуют отдельного подтверждения.</div>
 <div class="sub">№ ${protocolNumber} от ${fmt(d.createdAt)}</div>
 
 <div class="section">
@@ -114,36 +115,40 @@ export function buildProtocolHtml(input: ProtocolData): string {
 
 ${d.status === "signed" ? `
 <div class="stamp">
-  <div class="stamp-title">✓ ДОКАЗАТЕЛЬСТВА ПОДПИСАНИЯ ПРОСТОЙ ЭЛЕКТРОННОЙ ПОДПИСЬЮ</div>
+  <div class="stamp-title">СОХРАНЁННЫЕ СВЕДЕНИЯ О ПОДТВЕРЖДЕНИИ</div>
   <table>
-    <tr><td>Подписано:</td><td><strong>${fmt(d.signedAt)}</strong> (МСК)</td></tr>
+    <tr><td>Время в журнале:</td><td><strong>${fmt(d.signedAt)}</strong></td></tr>
     <tr><td>IP-адрес подписанта:</td><td class="hash">${d.signedIp || "—"}</td></tr>
     <tr><td>User-Agent (браузер/устройство):</td><td class="hash">${d.signedUserAgent || "—"}</td></tr>
-    <tr><td>Ключ ЭП подписанта:</td><td>Email: <strong>${d.recipientEmail}</strong> + пароль учётной записи</td></tr>
+    <tr><td>Способ и основание подписи:</td><td>Не подтверждены этим протоколом</td></tr>
     <tr><td>Хеш подписанного документа:</td><td class="hash">${d.documentHash || "—"}</td></tr>
   </table>
   <p style="margin-top:12px;font-size:12px;">
-    Настоящим подтверждается, что документ <strong>«${d.documentTitle}»</strong> был подписан получателем
-    <strong>${d.recipientName}</strong> простой электронной подписью в соответствии с
-    Федеральным законом № 63-ФЗ «Об электронной подписи». Подписант подтвердил свою личность
-    путём ввода пары «email + пароль», подтверждения OTP-кода (для гостей) и принятия
-    Соглашения о применении простой электронной подписи. Электронный документ имеет равную
-    юридическую силу с документом на бумажном носителе, подписанным собственноручной подписью.
+    Журнал содержит статус подтверждения документа <strong>«${d.documentTitle}»</strong>
+    для получателя <strong>${d.recipientName}</strong>. Эти сведения сами по себе не устанавливают
+    способ идентификации, принятие соглашения, вид электронной подписи или юридическую силу документа.
+    Проверяйте основание, участников и подтверждённую версию по отдельным материалам.
   </p>
 </div>
 ` : ""}
 
 <div class="footer">
   Протокол сформирован автоматически системой электронного документооборота.<br/>
-  Идентификатор подписания: <span class="hash">${d.signatureToken}</span>
+  Идентификатор записи: <span class="hash">${d.signatureId}</span>
 </div>
 
 </body></html>`;
 }
 
-export async function downloadSignatureProtocol(d: ProtocolData): Promise<void> {
-  try { await printHtmlContent(buildProtocolHtml(d), 'Протокол ПЭП ' + d.signatureToken.slice(0, 8)); }
-  catch (error) { toast.error(error instanceof Error ? error.message : 'Не удалось подготовить протокол для печати'); }
+export async function downloadSignatureProtocol(d: ProtocolData, options?: { assertCurrent?: () => void }): Promise<void> {
+  try {
+    options?.assertCurrent?.();
+    if (options) await printHtmlContent(buildProtocolHtml(d), 'Протокол ' + d.signatureId, options);
+    else await printHtmlContent(buildProtocolHtml(d), 'Протокол ' + d.signatureId);
+  } catch (error) {
+    try { options?.assertCurrent?.(); } catch { return; }
+    toast.error(error instanceof Error ? error.message : 'Не удалось подготовить протокол для печати');
+  }
 }
 
 export function exportSignaturesToCSV(rows: any[]) {

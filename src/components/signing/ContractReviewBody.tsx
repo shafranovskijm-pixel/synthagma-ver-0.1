@@ -26,6 +26,8 @@ import { applyAcceptedEdits } from "@/lib/applyAcceptedEdits";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { getSignatureTokenFile, getAuthenticatedSignatureFile, isHistoricalSignatureFileError, downloadSignatureRevisionFile } from "@/lib/signatureTokenFile";
+import { SignatureReadScopeProvider, useSignatureReadScope } from '@/hooks/useSignatureReadScope';
+import { captureSignatureRead, signatureAuthorization } from '@/lib/signatureClientScope';
 
 interface Props {
   signatureToken: string | null;
@@ -78,21 +80,26 @@ interface OrgComment extends ReviewComment {
   org_reply?: string | null;
 }
 
-export function ContractReviewBody({
+export function ContractReviewBody(props: Props) {
+  const owner = useSignatureReadScope([props.signatureToken, props.readOnly, props.viewerRole, props.embedded], !!props.signatureToken);
+  return <SignatureReadScopeProvider value={owner.capture()}><ScopedContractReviewBody key={owner.key} {...props} /></SignatureReadScopeProvider>;
+}
+function ScopedContractReviewBody({
   signatureToken,
   readOnly = false,
   viewerRole = "recipient",
   embedded = true,
 }: Props) {
   const { user } = useAuth();
+  const scope = useSignatureReadScope([signatureToken, readOnly, viewerRole, embedded], !!signatureToken);
   const isOrg = viewerRole === "organization" && !readOnly;
 
   const [loading, setLoading] = useState(false);
   const [sig, setSig] = useState<SigData | null>(null);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [comments, setComments] = useState<OrgComment[]>([]);
-  const [convertedHtml, setConvertedHtml] = useState<string | null>(null);
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [convertedState, setConvertedState] = useState<{ owner: string; html: string } | null>(null);
+  const [resolvedState, setResolvedState] = useState<{ owner: string; url: string } | null>(null);
   const [requestText, setRequestText] = useState("");
   const [requesting, setRequesting] = useState(false);
   const [pdfComment, setPdfComment] = useState("");
@@ -125,6 +132,12 @@ export function ContractReviewBody({
   const fileMime = currentRevision?.file_mime || "";
   const isPdf = fileMime.includes("pdf") || rawFileUrl?.toLowerCase().endsWith(".pdf");
   const isDocx = fileMime.includes("wordprocessingml") || rawFileUrl?.toLowerCase().endsWith(".docx");
+  const fileScope = useSignatureReadScope([scope.key, sig?.id, sig?.organization_id, currentRevision?.id, rawFileUrl], !!signatureToken);
+  const resolvedUrl = resolvedState?.owner === fileScope.key ? resolvedState.url : null;
+  const convertedHtml = convertedState?.owner === fileScope.key ? convertedState.html : null;
+  const assertFileCurrent = fileScope.capture();
+  const setResolvedUrl = (url: string | null) => setResolvedState(url ? { owner: fileScope.key, url } : null);
+  const setConvertedHtml = (html: string | null) => { assertFileCurrent(); setConvertedState(html ? { owner: fileScope.key, html } : null); };
   const documentHtml = sig?.document_html || currentRevision?.document_html || convertedHtml || null;
 
   // Merge accepted client edits into the HTML — used in the signed preview popup AND in the final PDF.
@@ -139,13 +152,15 @@ export function ContractReviewBody({
   const rejectedCount = comments.filter(c => c.resolution_status === "rejected").length;
 
   const loadAll = async (token: string) => {
+    const current = scope.capture(), read = captureSignatureRead({ assertCurrent: current });
     setLoading(true);
     try {
-      const [sigRes, revRes, comRes] = await Promise.all([
-        supabase.rpc("get_signature_by_token", { p_token: token }),
-        (supabase as any).rpc("get_signature_revisions_by_token", { p_token: token }),
-        (supabase as any).rpc("get_signature_comments_by_token", { p_token: token }),
-      ]);
+      const { bearer } = await signatureAuthorization(read, false); read.active();
+      const [sigRes, revRes, comRes] = await read.wait(Promise.all([
+        supabase.rpc("get_signature_by_token", { p_token: token }).setHeader('Authorization', bearer),
+        (supabase as any).rpc("get_signature_revisions_by_token", { p_token: token }).setHeader('Authorization', bearer),
+        (supabase as any).rpc("get_signature_comments_by_token", { p_token: token }).setHeader('Authorization', bearer),
+      ]));
       if (sigRes.error || !sigRes.data?.length) throw new Error("Не удалось загрузить договор");
       const row = sigRes.data[0] as SigData;
       setSig(row);
@@ -162,9 +177,10 @@ export function ContractReviewBody({
         setSignEmail(row.recipient_email || user?.email || "");
       }
     } catch (e: any) {
+      try { current(); } catch { return; }
       toast.error(e.message || "Ошибка загрузки");
     } finally {
-      setLoading(false);
+      try { current(); setLoading(false); } catch { /* old invitation */ }
     }
   };
 
@@ -174,26 +190,29 @@ export function ContractReviewBody({
       loadAll(signatureToken);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signatureToken]);
+  }, [scope.key]);
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController(), current = fileScope.capture();
+    const options = { assertCurrent: current, signal: controller.signal };
     setResolvedUrl(null);
     (async () => {
       if (!rawFileUrl || !signatureToken || !sig?.id || !currentRevision?.id) return;
       try {
-        const url = await getSignatureTokenFile({ token: signatureToken, signatureId: sig.id, kind: "revision", revisionId: currentRevision.id })
-          .catch((error) => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(rawFileUrl, sig.organization_id); });
-        if (!cancelled) setResolvedUrl(url);
+        const url = await getSignatureTokenFile({ token: signatureToken, signatureId: sig.id, kind: "revision", revisionId: currentRevision.id, ...options })
+          .catch((error) => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(rawFileUrl, sig.organization_id, 'external-contracts', options); });
+        if (!cancelled) { current(); setResolvedUrl(url); }
       } catch { if (!cancelled) toast.error("Для файла требуется проверка исторической привязки отправителем. Подписанные сведения не изменены."); }
     })();
-    return () => { cancelled = true; };
-  }, [rawFileUrl, signatureToken, sig?.id, sig?.organization_id, currentRevision?.id]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [fileScope.key]);
 
   const downloadCurrentFile = async () => {
     if (!sig || !signatureToken || !currentRevision?.id || !rawFileUrl) return;
-    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId: sig.id, organizationId: sig.organization_id, revisionId: currentRevision.id, locator: rawFileUrl, fileName: currentRevision.file_name || "document" }); }
-    catch { toast.error("Не удалось скачать файл; обновите документ или проверьте привязку у отправителя"); }
+    const current = fileScope.capture();
+    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId: sig.id, organizationId: sig.organization_id, revisionId: currentRevision.id, locator: rawFileUrl, fileName: currentRevision.file_name || "document", assertCurrent: current }); }
+    catch { try { current(); toast.error("Не удалось скачать файл; обновите документ или проверьте привязку у отправителя"); } catch { /* old invitation */ } }
   };
   const reloadComments = async () => {
     if (!signatureToken) return;
@@ -567,6 +586,8 @@ export function ContractReviewBody({
       {/* DOCX → HTML */}
       {isDocx && resolvedUrl && !documentHtml && (
         <DocxRenderer
+          key={fileScope.key}
+          readOptions={{ assertCurrent: assertFileCurrent }}
           fileUrl={resolvedUrl}
           storagePath={null}
           cachedHtml={currentRevision?.document_html}

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OrgDocumentWorkflowPanel } from "@/components/organization/documents/OrgDocumentWorkflowPanel";
-import { issuanceScopeCurrent, normalizeIssuanceError, prepareEducationIssuanceArtifacts, readEducationIssuance, type EducationIssuanceScope, type PreparedArtifactPreparation } from "@/lib/educationIssuance/client";
+import { issuanceScopeCurrent, requireIssuanceScope, normalizeIssuanceError, prepareEducationIssuanceArtifacts, readEducationIssuance, type EducationIssuanceScope, type PreparedArtifactPreparation } from "@/lib/educationIssuance/client";
+import { createScopedOrgDocumentTransport } from '@/lib/programFiles';
 import { useDocumentActionPermissions } from '@/hooks/useDocumentActionPermissions';
 import { IssuanceTemplateDialog } from './TemplateCreateDialog';
 import { sameCopyValue } from '@/lib/copyRegistry/value';
@@ -53,11 +54,11 @@ interface Props{scope:EducationIssuanceScope;draft:IssuancePlanDraft;preparation
 export function IssuanceArtifactPreparation(props:Props){
   const templatePermissions=useDocumentActionPermissions(props.scope.organizationId);
   const [templateDialog,setTemplateDialog]=useState(false);
-  const draftKey=JSON.stringify(props.draft),active=useRef({key:draftKey,revision:0});
-  if(active.current.key!==draftKey)active.current={key:draftKey,revision:active.current.revision+1};
+  const draftKey=JSON.stringify(props.draft),active=useRef({key:draftKey,scope:props.scope,revision:0});
+  if(active.current.key!==draftKey||active.current.scope!==props.scope)active.current={key:draftKey,scope:props.scope,revision:active.current.revision+1};
   const draftRevision=active.current.revision;
   const mounted=useRef(true);
-  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  useLayoutEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const scope=useMemo(()=>({...props.scope,current:()=>mounted.current&&active.current.revision===draftRevision&&issuanceScopeCurrent(props.scope)}),[props.scope,draftKey,draftRevision]);
   const [templates,setTemplates]=useState<{label:string;template:IssuanceTemplateRef}[]>([]),[nextTemplate,setNextTemplate]=useState<string|null>(null),[templateId,setTemplateId]=useState("");
   const [busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[reviewItem,setReviewItem]=useState<string|null>(null);
@@ -109,7 +110,27 @@ export function IssuanceArtifactPreparation(props:Props){
     }catch(cause){if(run===epoch.current&&issuanceScopeCurrent(scope))setError(normalizeIssuanceError(cause).message);}
     finally{if(run===epoch.current){flight.current=false;setLock(false);}}
   };
-  const review=prep?.items.find(item=>item.id===reviewItem)?.artifact;
+  const reviewedItem=prep?.items.find(item=>item.id===reviewItem),review=reviewedItem?.artifact;
+  const reviewAvailable=current&&!props.disabled&&!!review&&reviewedItem?.status!=="consumed"&&
+    prep?.organization_id===scope.organizationId&&sameCopyValue(prep.scope,scope.issuanceScope);
+  // A new preparation, output, version, permission state or open/close transition
+  // permanently invalidates callbacks captured by the previous review surface.
+  const reviewKey=JSON.stringify([scope.actorId,scope.organizationId,scope.accessRevision,scope.issuanceScope,draftRevision,
+    prep?.id,reviewItem,reviewedItem?.input_revision,reviewedItem?.status,review?.source,reviewAvailable,
+    templatePermissions.canIssue,templatePermissions.canSign,templatePermissions.canWrite,templatePermissions.canSalesWrite]);
+  const reviewOwner=useRef({key:reviewKey,revision:0});
+  if(reviewOwner.current.key!==reviewKey)reviewOwner.current={key:reviewKey,revision:reviewOwner.current.revision+1};
+  const reviewRevision=reviewOwner.current.revision;
+  const sourceDownload=useMemo(()=>({controller:new AbortController(),assertCurrent:()=>{
+    requireIssuanceScope(scope);
+    if(reviewOwner.current.revision!==reviewRevision||!reviewAvailable)
+      throw new Error('Выбранный итоговый файл изменился. Откройте его проверку заново.');
+  }}),[scope,reviewRevision]);
+  useLayoutEffect(()=>()=>sourceDownload.controller.abort(),[sourceDownload]);
+  const sourceTransport=useMemo(()=>createScopedOrgDocumentTransport({actorId:scope.actorId,organizationId:scope.organizationId,
+    accessRevision:scope.accessRevision,key:JSON.stringify(['issuance-output',reviewKey,reviewRevision]),
+    current:()=>{sourceDownload.assertCurrent();return true;},
+  },false),[scope,reviewKey,reviewRevision,sourceDownload]);
   return <div className="space-y-3 rounded-xl border p-4">
     <h3 className="font-medium">Итоговый файл перед выдачей</h3>
     <p className="text-sm text-muted-foreground">PDF формируется из выбранной утверждённой версии шаблона, сохраняется отдельной неизменяемой версией и проходит обычное внутреннее утверждение. Формирование файла ещё не означает выдачу или вручение.</p>
@@ -133,7 +154,8 @@ export function IssuanceArtifactPreparation(props:Props){
         {item.status==="consumed"&&item.final_record_id&&props.onOpenRecord&&<Button variant="outline" size="sm" onClick={()=>props.onOpenRecord!(item.final_record_id!)}>Открыть зарегистрированный документ</Button>}
         {item.status==="stale"&&<p className="text-xs text-muted-foreground">Прежний файл сохранён без новой выдачи. Проверьте источники и создайте новую подготовку.</p>}
       </div>)}
-      {review&&<OrgDocumentWorkflowPanel key={[scope.actorId,scope.accessRevision,prep.id,review.source.version_id].join(":")} organizationId={scope.organizationId} documentId={review.source.document_id} currentVersionId={review.source.version_id}/>}
+      {reviewAvailable&&review&&<OrgDocumentWorkflowPanel key={sourceTransport.key} organizationId={scope.organizationId} documentId={review.source.document_id} currentVersionId={review.source.version_id}
+        transport={sourceTransport} sourceOpenMode="download" sourceDownloadSignal={sourceDownload.controller.signal} sourceDownloadAssertCurrent={sourceDownload.assertCurrent}/>}
       <p className="text-xs text-muted-foreground">После утверждения нажмите «Проверить файлы и утверждение». Регистрация выдачи выполняется отдельным подтверждением.</p>
     </>}
     <IssuanceTemplateDialog open={templateDialog} onOpenChange={openTemplateDialog} scope={scope} canWrite={templatePermissions.canWrite} onReturnToTemplates={()=>void loadTemplates()}/>

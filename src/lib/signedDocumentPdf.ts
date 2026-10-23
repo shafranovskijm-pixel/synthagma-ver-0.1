@@ -9,9 +9,10 @@ import {
   type AcceptedEditSummary,
 } from "./pdfStampDrawer";
 import { appendHtmlAsRenderedPages } from "./htmlToPdfPages";
+import { captureSignatureRead, type SignatureReadOptions } from './signatureClientScope';
 
 
-interface BuildOptions {
+interface BuildOptions extends SignatureReadOptions {
   signatureId: string;
   documentTitle: string;
   /** HTML, уже с применёнными принятыми правками (или исходный, если правок нет). */
@@ -48,11 +49,11 @@ async function loadFonts(): Promise<{ regular: ArrayBuffer; bold: ArrayBuffer }>
   return cachedFonts;
 }
 
-async function fetchBytes(url: string): Promise<{ bytes: ArrayBuffer; contentType: string }> {
-  const res = await fetch(url);
+async function fetchBytes(url: string, read: ReturnType<typeof captureSignatureRead>, signal?: AbortSignal): Promise<{ bytes: ArrayBuffer; contentType: string }> {
+  read.active(); const res = await read.wait(fetch(url, { signal, credentials: 'omit', referrerPolicy: 'no-referrer' }));
   if (!res.ok) throw new Error(`Не удалось скачать файл (${res.status})`);
   const ct = res.headers.get("content-type") || "";
-  const bytes = await res.arrayBuffer();
+  const bytes = await read.wait(res.arrayBuffer());
   return { bytes, contentType: ct };
 }
 
@@ -71,6 +72,7 @@ function isImageMime(mime: string | null | undefined, url: string | null | undef
 
 /** Builds a local download copy. It never stores or replaces signing evidence. */
 export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: string; url: string; localCopy: true }> {
+  const read = captureSignatureRead(opts); read.active();
   const {
     signatureId,
     documentTitle,
@@ -90,14 +92,14 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   }
   if (signatureMethod === "handwritten_scan" && !scanFileUrl) throw new Error("Сохранённый скан отсутствует; копия не сформирована");
 
-  const { regular, bold } = await loadFonts();
+  const { regular, bold } = await read.wait(loadFonts());
 
   let pdf: PDFDocument;
   let isAttachedPdf = false;
 
   // === Сценарий 1: оригинальный документ — PDF ===
   if (attachedFileUrl && isPdfMime(attachedFileMime, attachedFileUrl)) {
-    const { bytes } = await fetchBytes(attachedFileUrl);
+    const { bytes } = await fetchBytes(attachedFileUrl, read, opts.signal);
     try {
       pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
       isAttachedPdf = true;
@@ -114,7 +116,7 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
 
   // === Сценарий 2: HTML-договор → рендерим через браузер (html2canvas) ===
   if (documentHtml && (!attachedFileUrl || !isPdfMime(attachedFileMime, attachedFileUrl))) {
-    await appendHtmlAsRenderedPages(pdf, documentHtml, documentTitle);
+    read.active(); await read.wait(appendHtmlAsRenderedPages(pdf, documentHtml, documentTitle));
   }
 
   // Запоминаем сколько страниц «тела документа» уже есть — на них пойдёт watermark
@@ -130,7 +132,7 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   // === Скан с собственноручной подписью ===
   if (scanFileUrl) {
     try {
-      const { bytes, contentType } = await fetchBytes(scanFileUrl);
+      const { bytes, contentType } = await fetchBytes(scanFileUrl, read, opts.signal);
       if (isPdfMime(scanFileMime || contentType, scanFileUrl)) {
         try {
           const scanPdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
@@ -170,8 +172,8 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   skip.add(pdf.getPageCount() - 1);
   applyWatermarkToAllPages(pdf, sender, recipient, font, fontBold, signatureMethod, skip);
 
-  const out = await pdf.save();
+  read.active(); const out = await read.wait(pdf.save());
   const blob = new Blob([out as BlobPart], { type: "application/pdf" });
 
-  return { path: "", url: URL.createObjectURL(blob), localCopy: true };
+  read.active(); return { path: "", url: URL.createObjectURL(blob), localCopy: true };
 }

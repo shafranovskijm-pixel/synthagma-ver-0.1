@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Send, User, Mail, Calendar, Loader2, Copy, ExternalLink, Building2, Pen
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sha256Hex } from "@/utils/documentHash";
+import { SignatureReadScopeProvider, useSignatureReadScope } from '@/hooks/useSignatureReadScope';
+import { captureSignatureRead, signatureAuthorization } from '@/lib/signatureClientScope';
 
 export type SigningRecipientType = "student" | "company" | "individual";
 
@@ -28,7 +30,13 @@ interface Props {
   recipients?: { id: string; name: string; email: string; type: SigningRecipientType }[];
 }
 
-export function SendForSigningDialog({ open, onOpenChange, payload, recipients = [] }: Props) {
+export function SendForSigningDialog(props: Props) {
+  const scope = useSignatureReadScope([props.open, props.payload, props.recipients ?? []], props.open);
+  return <SignatureReadScopeProvider value={scope.capture()}><ScopedSendForSigningDialog key={scope.key} {...props} /></SignatureReadScopeProvider>;
+}
+
+function ScopedSendForSigningDialog({ open, onOpenChange, payload, recipients = [] }: Props) {
+  const scope = useSignatureReadScope([open, payload, recipients], open);
   const [tab, setTab] = useState<"registered" | "external">(recipients.length > 0 ? "registered" : "external");
   const [mode, setMode] = useState<"sign" | "review">("sign");
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>("");
@@ -37,6 +45,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
   const [expiresDays, setExpiresDays] = useState("7");
   const [sending, setSending] = useState(false);
   const [resultLink, setResultLink] = useState<string | null>(null);
+  const pending = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -51,7 +60,9 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
   }, [open, recipients.length]);
 
   const handleSend = async () => {
-    if (!payload) return;
+    if (!payload || sending || pending.current) return;
+    const current = scope.capture();
+    const read = captureSignatureRead({ assertCurrent: current });
 
     let recipientName = "";
     let recipientEmail = "";
@@ -72,22 +83,27 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
       recipientType = "individual";
     }
 
-    setSending(true);
+    pending.current = true; setSending(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user, bearer } = await signatureAuthorization(read);
       if (!user) throw new Error("Нет авторизации");
 
-      const documentHash = await sha256Hex(payload.documentHtml);
+      const documentHash = await read.wait(sha256Hex(payload.documentHtml));
       const signatureToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
-      const expires = new Date(Date.now() + Number(expiresDays || 7) * 24 * 60 * 60 * 1000).toISOString();
+      const days = Number(expiresDays);
+      if (!Number.isInteger(days) || days < 1 || days > 90) throw new Error('Укажите срок от 1 до 90 дней.');
+      const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-      const { data: senderProfile } = await supabase
+      read.active();
+      const { data: senderProfile, error: profileError } = await read.wait(supabase
         .from("profiles")
         .select("full_name, email")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle().setHeader('Authorization', bearer));
+      if (profileError) throw new Error('Не удалось прочитать отправителя.');
 
-      const { data: inserted, error: insertErr } = await supabase
+      read.active();
+      const { data: inserted, error: insertErr } = await read.wait(supabase
         .from("document_signatures")
         .insert({
           document_type: payload.documentType,
@@ -109,14 +125,15 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
           sent_at: new Date().toISOString(),
         } as any)
         .select("id, signature_token")
-        .single();
+        .single().setHeader('Authorization', bearer));
 
-      if (insertErr) throw insertErr;
+      if (insertErr || !inserted?.id || inserted.signature_token !== signatureToken) throw new Error('Создание приглашения пока не подтверждено. Проверьте журнал перед повторной отправкой.');
 
       // Создаём первую ревизию для режима review
       if (mode === "review") {
         const sb: any = supabase;
-        const { data: rev } = await sb
+        read.active();
+        const { data: rev, error: revisionError } = await read.wait<any>(sb
           .from("signature_revisions")
           .insert({
             signature_id: inserted.id,
@@ -128,15 +145,18 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
             change_summary: "Первая версия документа",
           })
           .select("id")
-          .single();
-        if (rev?.id) {
-          await sb.from("document_signatures").update({ current_revision_id: rev.id }).eq("id", inserted.id);
-        }
+          .single().setHeader('Authorization', bearer));
+        if (revisionError || !rev?.id) throw new Error('Приглашение создано, но первая версия не подтверждена. Проверьте журнал.');
+        read.active();
+        const updated = await read.wait<any>(sb.from("document_signatures").update({ current_revision_id: rev.id }).eq("id", inserted.id).setHeader('Authorization', bearer));
+        if (updated.error) throw new Error('Приглашение создано, но выбор версии не подтверждён. Проверьте журнал.');
       }
 
       // Отправляем email (best-effort — если SMTP не настроен, просто покажем ссылку)
       try {
-        await supabase.functions.invoke("send-signing-email", {
+        read.active();
+        await read.wait(supabase.functions.invoke("send-signing-email", {
+          headers: { Authorization: bearer },
           body: {
             signatureId: inserted.id,
             recipientEmail,
@@ -144,26 +164,29 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
             documentTitle: payload.documentTitle,
             signatureToken: inserted.signature_token,
           },
-        });
-      } catch (e) {
-        console.warn("send-signing-email failed:", e);
+        }));
+      } catch {
+        read.active(); // A mail failure cannot revive a link for a different actor or document.
       }
 
       const link = `${window.location.origin}/sign/${inserted.signature_token}`;
+      read.active();
       setResultLink(link);
-      toast.success("Документ отправлен на подписание");
+      toast.success("Приглашение создано");
     } catch (error: any) {
-      console.error(error);
+      try { current(); } catch { return; }
       toast.error("Не удалось отправить: " + (error.message || "ошибка"));
     } finally {
-      setSending(false);
+      pending.current = false;
+      try { current(); setSending(false); } catch { /* old owner has no UI to update */ }
     }
   };
 
-  const copyLink = () => {
+  const copyLink = async () => {
     if (!resultLink) return;
-    navigator.clipboard.writeText(resultLink);
-    toast.success("Ссылка скопирована");
+    const current = scope.capture();
+    try { current(); await navigator.clipboard.writeText(resultLink); current(); toast.success("Ссылка скопирована"); }
+    catch { /* Do not expose a late result in another scope. */ }
   };
 
   return (
@@ -177,7 +200,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
           <DialogDescription>
             {payload?.documentTitle ? <span className="font-medium text-foreground">{payload.documentTitle}</span> : "Документ"}
             <br />
-            Получатель сможет ознакомиться, принять Соглашение о ПЭП и подписать документ простой электронной подписью.
+            Получатель сможет ознакомиться с документом и подтвердить действие. Способ подписи и основание его применения проверяются отдельно.
           </DialogDescription>
         </DialogHeader>
 
@@ -190,13 +213,13 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
               <Input value={resultLink} readOnly className="text-xs" />
               <Button variant="outline" size="icon" onClick={copyLink}><Copy className="w-4 h-4" /></Button>
               <Button variant="outline" size="icon" asChild>
-                <a href={resultLink} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" /></a>
+                <a href={resultLink} onClick={event => { try { scope.capture()(); } catch { event.preventDefault(); } }} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" /></a>
               </Button>
             </div>
             <Button className="w-full" onClick={() => onOpenChange(false)}>Готово</Button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <fieldset disabled={sending} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Цель отправки</Label>
               <RadioGroup value={mode} onValueChange={(v) => setMode(v as "sign" | "review")} className="grid grid-cols-2 gap-2">
@@ -204,7 +227,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
                   <RadioGroupItem value="sign" className="mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center gap-1.5 text-sm font-medium"><PenLine className="w-3.5 h-3.5" />На подпись</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Получатель подпишет ПЭП без правок</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Подтверждение без правок документа</div>
                   </div>
                 </label>
                 <label className={`flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${mode === "review" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
@@ -267,7 +290,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
               </Button>
             </DialogFooter>
           </Tabs>
-          </div>
+          </fieldset>
         )}
       </DialogContent>
     </Dialog>

@@ -27,6 +27,7 @@ import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubj
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
+import { useSignatureReadScope } from '@/hooks/useSignatureReadScope';
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AdmissionCaseCard } from "@/components/organization/student-detail/AdmissionCaseCard";
@@ -70,6 +71,7 @@ export function StudentDocumentsTab({
 }: StudentDocumentsTabProps) {
   const navigate = useNavigate();
   const inbox = useStudentSignatureInbox(userId);
+  const signatureReadScope = useSignatureReadScope([userId, organizationId, isAdminView]);
 
   // Status state for one-time tasks
   const identification = useIdentificationState(organizationId,userId);
@@ -148,9 +150,11 @@ export function StudentDocumentsTab({
   };
 
   const handleDownloadSigned = async (sig: InboxSignature) => {
+    const current = signatureReadScope.capture();
     try {
-      await downloadStoredSignatureArtifact({ token: sig.signature_token, signatureId: sig.id, organizationId: sig.organization_id, locator: sig.signed_document_path });
+      await downloadStoredSignatureArtifact({ token: sig.signature_token, signatureId: sig.id, organizationId: sig.organization_id, locator: sig.signed_document_path, assertCurrent: current });
     } catch (e: any) {
+      try { current(); } catch { return; }
       toast.error("Не удалось скачать", { description: e?.message || String(e) });
     }
   };

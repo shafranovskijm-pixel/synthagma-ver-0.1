@@ -56,7 +56,7 @@ export function drawSignatureWatermark(
   const y = marginB;
 
   const methodSuffix =
-    signatureMethod === "handwritten_scan" ? "Скан · подпись" : "ПЭП · 63-ФЗ";
+    signatureMethod === "handwritten_scan" ? "Загруженный скан" : "Подтверждение";
 
   for (const { label, party } of parties) {
     // Рамка
@@ -238,8 +238,8 @@ function drawStampBlock(
 
   // Заголовок
   const methodSuffix = signatureMethod === "handwritten_scan"
-    ? "Скан с подписью"
-    : "ПЭП (63-ФЗ)";
+    ? "Загруженный скан"
+    : "Сведения журнала";
   page.drawText(`${label} · ${methodSuffix}`, {
     x: x + padding,
     y: y - padding - 9,
@@ -305,8 +305,8 @@ export function appendStampPage(
   y -= 18;
 
   const methodLabel = signatureMethod === "handwritten_scan"
-    ? "Способ подписания: скан с собственноручной подписью и печатью"
-    : "Способ подписания: ПЭП (Простая электронная подпись, 63-ФЗ)";
+    ? "Материал: загруженный скан; подлинность проверяется отдельно"
+    : "Материал: подтверждение в журнале; вид подписи проверяется отдельно";
   page.drawText(methodLabel, { x: MARGIN, y, size: 9, font, color: MUTED });
   y -= 24;
 
@@ -323,7 +323,7 @@ export function appendStampPage(
   }
 
   // Футер
-  const footer = "Документ подписан в системе Синтагма. Подписи имеют юридическую силу, равную собственноручной (ст. 6 63-ФЗ).";
+  const footer = "Копия содержит сведения журнала. Идентификация, вид подписи и основание применения проверяются отдельно.";
   drawWrappedText(page, footer, MARGIN, MARGIN + 20, {
     font, size: 8, color: MUTED, maxWidth: blockWidth, lineHeight: 11,
   });
