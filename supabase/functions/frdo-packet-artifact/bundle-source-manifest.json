@@ -5,8 +5,8 @@
   "entry": "nativeEntry.ts",
   "output": {
     "path": "runtime.bundle.js",
-    "bytes": 1382664,
-    "sha256": "ca96de17e4628ebfc363980fdd7009f0f573e4844c08d403cbc9f71eda2a5609"
+    "bytes": 1385156,
+    "sha256": "413345606a4e022a34fea9ff32f2f7726832978b125bc3aa0cd3dab6e50fd357"
   },
   "index": {
     "path": "index.ts",
@@ -112,23 +112,28 @@
     },
     {
       "id": "src/lib/admissionCases/contract.ts",
-      "bytes": 19935,
-      "sha256": "82981a749464ea96044e1dfeaa5f47b9077106632a22de787aa444c31bdd0f08"
+      "bytes": 19787,
+      "sha256": "d15de8dcc0068c231cc6d02bf542b62e5d9bd8c8471dc938924fb87a0a238f7e"
     },
     {
       "id": "src/lib/admissionCases/issuanceCondition.ts",
-      "bytes": 1454,
-      "sha256": "04ff1b10b209143bf48df5eed1ea5d068f220a9de0f34a7497561deb74296df4"
+      "bytes": 1438,
+      "sha256": "28ced67247fafa8555167f47cca82cd57b254ef86f591951286bbfa5b97b2322"
     },
     {
       "id": "src/lib/educationIssuance/contract.ts",
-      "bytes": 32656,
-      "sha256": "18b8b98c0885f11bb5a5980053676890cb691711e384b5d88cf369016802245d"
+      "bytes": 32446,
+      "sha256": "007daea1a84aea11c33b3f9098ea93b8427a9f0897ae9151212d19fddb66bb1d"
     },
     {
       "id": "src/lib/frdoFoundation/contract.ts",
       "bytes": 23900,
       "sha256": "b52310e42b3931df6bba96bb27c23223d9a56d40c8263fedbcca1751d0c1951a"
+    },
+    {
+      "id": "src/lib/frdoFoundation/deadlineProjection.ts",
+      "bytes": 3742,
+      "sha256": "b9052e57ffb32283fa9411f889e90640bcbf364b62e6a6f466bbbb50e32ef09e"
     },
     {
       "id": "src/lib/frdoFoundation/dictionaries.ts",
@@ -138,7 +143,7 @@
     {
       "id": "src/lib/frdoFoundation/hash.ts",
       "bytes": 3553,
-      "sha256": "d3a0e829d95c7b485ffdf11e8de659d7014bef0fbb1dac5b691f8a26c9affc60"
+      "sha256": "b124c667c12c450935e04f6a67ada0490caea028b72e3ac6eb85044faf196d35"
     },
     {
       "id": "src/lib/frdoFoundation/mapper.ts",
@@ -212,8 +217,8 @@
     },
     {
       "id": "src/lib/learningOutcomes/contract.ts",
-      "bytes": 14784,
-      "sha256": "608699fa37e4b4a98919530489039f6cbaaed00a328da1af5a5f0d527799258b"
+      "bytes": 14586,
+      "sha256": "0e9af32d889ff3c86d74f69ee63751ff24476b6523c032a59dc9439efc010202"
     },
     {
       "id": "supabase/build/frdo-packet-artifact/ownedDonors.ts",
@@ -237,8 +242,8 @@
     },
     {
       "id": "supabase/functions/frdo-packet-artifact/trustedService.ts",
-      "bytes": 19309,
-      "sha256": "8bc7667ce8584c996def22ce5f15855e118d22ef689f94aca57a96ff098ac3f3"
+      "bytes": 19210,
+      "sha256": "c0b7612b8d9262ead2c2233233b6eeec2011f6cd113fc281c010afa2d62e8d21"
     },
     {
       "id": "supabase/functions/frdo-packet-artifact/xmlRuntime.ts",
