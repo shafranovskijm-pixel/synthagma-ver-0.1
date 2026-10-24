@@ -9,7 +9,7 @@
 import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
 import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
 import { ProgramFactsError, resolveGroupProgramGeneration, programGenerationScalars, programTrainingPeriod } from "../_shared/program-facts.ts";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/handler.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3.25.76";
 import JSZip from "npm:jszip@3.10.1";

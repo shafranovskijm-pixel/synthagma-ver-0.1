@@ -8,7 +8,7 @@ import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts"
 import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
 import { ProgramFactsError, resolveGroupProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE, programGenerationScalars, programTrainingPeriod, programGroupLabel, programDate } from "../_shared/program-facts.ts";
 import { GroupEducationArtifactError, hasEducationSource, parseEducationSource, resolveGroupEducationArtifact, educationArtifactDocumentSnapshot, educationArtifactRows, sameEducationValue, EDUCATION_ARTIFACT_NOTICE } from "../_shared/group-education-artifact.ts";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/handler.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
 import JSZip from "npm:jszip@3.10.1";
