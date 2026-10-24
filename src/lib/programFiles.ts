@@ -183,7 +183,8 @@ async function signProgramFile(scope: ProgramFileScope, input: PrivateDownloadSi
   active(scope, deadline);
   if (signal.aborted) throw new ProgramFileError('ACCESS_DENIED');
   if (response.status === 401 || response.status === 403) throw new ProgramFileError('ACCESS_DENIED');
-  if (!response.ok || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new ProgramFileError('DEPENDENCY_UNAVAILABLE');
+  const signingContentType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  if (!response.ok || !['application/json', 'text/plain'].includes(signingContentType ?? '')) throw new ProgramFileError('DEPENDENCY_UNAVAILABLE');
   const bytes = await readExactBody(response,deadline,scope,32768); active(scope,deadline);
   if (signal.aborted) throw new ProgramFileError('ACCESS_DENIED');
   let data: unknown;
