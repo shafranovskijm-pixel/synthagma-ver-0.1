@@ -17,6 +17,7 @@ import { evaluateRequirements } from "@/lib/uc-compliance/evaluate";
 import { EducationProfileDialog } from "./EducationProfileDialog";
 import { AssignedGroupDocumentsNotice } from "../AssignedGroupDocumentsNotice";
 import type { OrgDocument } from "@/hooks/useOrgDocumentsManager";
+import { compliancePreparation, groupDocumentSelectionPath, isGroupDocumentTask } from "@/lib/organization/complianceTaskNavigation";
 
 const DECISION_LABELS = { applicable: "Применяется", not_applicable: "Не применяется" };
 const dateLabel = (value: string) => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString("ru-RU") : "Дата не подтверждена";
@@ -77,7 +78,8 @@ function DecisionDialog({ task, current, decisions, canWrite, profileRevision, o
 
 interface Props {
   organizationId: string; organization: Record<string, unknown> | null; documents: OrgDocument[];
-  onUpload: (type: string) => void; onHistory: (document: OrgDocument) => void; onArchive: () => void; canWrite?: boolean;
+  onUpload: (type: string) => void; onHistory: (document: OrgDocument) => void; onArchive: () => void;
+  onSelfExamination?: () => void; canWrite?: boolean;
 }
 export function EducationCenterAssistant(props: Props) {
   const permissions = useStaffPermissions();
@@ -102,6 +104,7 @@ export function EducationCenterAssistant(props: Props) {
   }) : null;
   const selected = evaluation?.requirements.find(task => task.requirement.id === selectedTask);
   const canConfigure = permissions.canSeeOrgTab("settings") && permissions.can("settings.write");
+  const canOpenGroups = permissions.canSeeOrgTab("students") && permissions.can("students.read");
   const destinationAllowed = (destination: string) => destination === "journals" ? permissions.can("journals.read") : destination === "counterparties" ? permissions.can("companies.read") : true;
   const reload = () => { setSelectedTask(null); void profile.reload(); void decisions.reload(); };
   return <section className="space-y-4" aria-label="Что нужно моему центру">
@@ -138,8 +141,9 @@ export function EducationCenterAssistant(props: Props) {
             <p className="text-sm text-muted-foreground">Результат проверки фиксируется в документах центра. Помощник не назначает единый срок, не подтверждает выполнение этой задачи и не запускает удаление.</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" asChild><a href="#org-document-file-catalog" onClick={props.onArchive}>Показать архивные файлы</a></Button>
-              <Button size="sm" variant="outline" asChild><a href={taskHref("orders")}>Архив приказов</a></Button>
-              <Button size="sm" variant="outline" asChild><a href={taskHref("protocols")}>Архив протоколов</a></Button>
+              {canOpenGroups && <Button size="sm" variant="outline" asChild><a href={groupDocumentSelectionPath()}>Выбрать группу и документы</a></Button>}
+              <Button size="sm" variant="outline" asChild><a href={taskHref("orders")}>Загруженные копии приказов</a></Button>
+              <Button size="sm" variant="outline" asChild><a href={taskHref("protocols")}>Загруженные копии протоколов</a></Button>
             </div>
           </article>}
           {tasks.map(task => {
@@ -147,21 +151,26 @@ export function EducationCenterAssistant(props: Props) {
             const document = props.documents.find(row => row.id === task.documentId && !row.deleted_at)
               ?? props.documents.find(row => !row.deleted_at && [definition.typeId, ...definition.existingDocTypes].includes(row.type));
             const current = decisions.data?.find(row => row.requirement_id === definition.id);
+            const preparation = compliancePreparation(definition.id);
+            const groupTask = isGroupDocumentTask(definition.id);
             return <article key={definition.id} className="rounded-xl border border-border p-4 space-y-3" aria-label={definition.label}>
               <div className="flex flex-wrap gap-2 items-start justify-between"><h4 className="font-medium">{definition.label}</h4><Badge variant="outline">{task.applicability === "needs_information" ? "Нужно уточнить" : DECISION_LABELS[task.applicability]}</Badge></div>
               <p className="text-sm">{task.explanation}</p>
               {task.reviewStatus === "needs_legal_review" && <p className="text-sm text-amber-700">Нужна отдельная проверка применимых норм и обстоятельств центра.</p>}
               <dl className="grid gap-2 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">Кому</dt><dd>{definition.ownerRole}</dd></div><div><dt className="text-muted-foreground">Когда</dt><dd>{definition.deadline.description}</dd></div></dl>
               <p className="text-sm text-muted-foreground">{task.nextAction}</p>
-              <p className="text-sm">{task.evidence === "file_present" ? "Файл есть. Утверждение, содержание и период требуют отдельной проверки." : task.evidence === "inactive" ? "Есть прежний файл: проверьте архив, срок действия или наличие содержимого." : "Подтверждающий файл не найден в документах организации."}</p>
+              <p className="text-sm">{groupTask ? "Документы и фактические результаты группы открываются в её папке. Загруженная копия организации не заменяет эти записи." : task.evidence === "file_present" ? "Файл есть. Утверждение, содержание и период требуют отдельной проверки." : task.evidence === "inactive" ? "Есть прежний файл: проверьте архив, срок действия или наличие содержимого." : "Подтверждающий файл не найден в документах организации."}</p>
               {current && <p className="text-xs text-muted-foreground">{current.decision === null ? "Прежнее решение отозвано." : current.profile_revision !== profile.data?.revision || current.catalog_version !== COMPLIANCE_CATALOG_VERSION ? "Прежнее решение требует пересмотра после изменения профиля или каталога." : "Учтено мотивированное решение центра."}</p>}
               <div className="flex flex-wrap gap-2">
                 {definition.kind === "regular" && <Button size="sm" variant="outline" disabled={!canWrite || profile.saving || decisions.saving} onClick={() => props.onUpload(definition.typeId)}><FileText className="w-4 h-4 mr-2" />Загрузить файл</Button>}
                 {document && <Button size="sm" variant="outline" onClick={() => props.onHistory(document)}><History className="w-4 h-4 mr-2" />Файл и версии</Button>}
-                {destinationAllowed(definition.existingDestination) && definition.existingDestination !== "org" && <Button size="sm" variant="outline" asChild><a href={taskHref(definition.existingDestination)}>Открыть рабочий раздел</a></Button>}
-                {definition.kind === "regular" && canConfigure && <Button size="sm" variant="outline" asChild><a href={taskHref("constructor")}>Открыть конструктор</a></Button>}
+                {groupTask && canOpenGroups ? <Button size="sm" variant="outline" asChild><a href={groupDocumentSelectionPath()}>Выбрать группу и документы</a></Button>
+                  : destinationAllowed(definition.existingDestination) && definition.existingDestination !== "org" && <Button size="sm" variant="outline" asChild><a href={taskHref(definition.existingDestination)}>{groupTask ? "Загруженные копии" : "Открыть рабочий раздел"}</a></Button>}
+                {preparation && canConfigure && <Button size="sm" variant="outline" asChild><a href={preparation.href}>{preparation.label}</a></Button>}
+                {definition.id === "self_examination_report" && props.onSelfExamination && <Button size="sm" variant="outline" disabled={!canWrite || profile.saving || decisions.saving} onClick={props.onSelfExamination}>Открыть анкету самообследования</Button>}
                 <Button size="sm" variant="ghost" disabled={profile.saving || decisions.saving || decisions.loading} onClick={() => setSelectedTask(definition.id)}>{canWrite ? "Решение центра" : "История решений"}</Button>
               </div>
+              {groupTask && <p className="text-sm text-muted-foreground">{canOpenGroups ? "Выберите группу в списке, затем откройте «Документы группы»." : "Для папки группы нужен доступ к ученикам и документам; здесь доступны загруженные копии организации."}</p>}
               <details><summary className="text-sm cursor-pointer text-muted-foreground">Основания и способы подготовки</summary><div className="pt-2 space-y-2 text-sm">
                 <p>{definition.creationGuidance}</p><p>Что проверить: {definition.evidence.join("; ")}</p><p>Период: {definition.period.description}</p>
                 {definition.legalSources.map(source => <div key={source.id}><a className="text-primary underline" href={source.primaryUrl} target="_blank" rel="noopener noreferrer">{source.title}</a><p className="text-muted-foreground">{source.provision} · проверено {source.checkedOn}</p>{source.limitation && <p className="text-muted-foreground">{source.limitation}</p>}</div>)}

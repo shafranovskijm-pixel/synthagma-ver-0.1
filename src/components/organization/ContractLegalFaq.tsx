@@ -1,5 +1,6 @@
 import { Info, FileCheck, FileText, Wrench, ScrollText } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { LEGAL_SOURCES } from "@/lib/uc-compliance/catalog";
 
 export function ContractLegalFaq() {
   return (
@@ -8,9 +9,9 @@ export function ContractLegalFaq() {
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
           <div>
-            <h4 className="font-semibold text-sm text-destructive mb-1">Важно: договор без обязательных пунктов считается незаключённым</h4>
+            <h4 className="font-semibold text-sm text-destructive mb-1">Проверьте проект договора перед использованием</h4>
             <p className="text-xs text-muted-foreground">
-              Согласно ст. 54 Федерального закона от 29.12.2012 № 273-ФЗ и п. 13 Правил № 1441, отсутствие хотя бы одного существенного условия делает договор незаключённым. Используйте шаблон «273-ФЗ (полный)» для полного соответствия.
+              Шаблон помогает подготовить проект. Выбор шаблона не подтверждает правовую готовность договора: отдельно проверьте актуальные правила, состав сторон, программу, стоимость, реквизиты и полномочия.
             </p>
           </div>
         </div>
@@ -22,7 +23,7 @@ export function ContractLegalFaq() {
           <div>
             <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400 mb-1">Запрет ухудшения положения обучающихся</h4>
             <p className="text-xs text-muted-foreground">
-              Условия, ограничивающие права обучающихся по сравнению с законодательством об образовании, автоматически признаются недействительными (п. 6 ст. 54 273-ФЗ).
+              Перед утверждением сверяйте условия договора и ограничения ответственности с актуальными правилами и обстоятельствами обучения. Подсказки и автоподстановка не заменяют эту проверку.
             </p>
           </div>
         </div>
@@ -33,11 +34,12 @@ export function ContractLegalFaq() {
           <AccordionTrigger className="text-sm hover:no-underline">
             <span className="flex items-center gap-2">
               <FileCheck className="w-4 h-4 text-primary" />
-              Обязательные пункты договора (п. 13 Правил № 1441)
+              Поля для проверки проекта договора
             </span>
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-1.5 text-xs">
+              <p className="text-muted-foreground">Рабочий перечень для подготовки. Актуальный состав обязательных условий и применимость проверьте по первоисточникам.</p>
               {[
                 "Полное наименование и фирменное наименование Исполнителя",
                 "Место нахождения или место жительства Исполнителя",
@@ -75,11 +77,11 @@ export function ContractLegalFaq() {
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
                 <div className="font-semibold text-primary mb-1">273-ФЗ (полный) — рекомендуемый</div>
-                <p className="text-muted-foreground">Содержит все 15 обязательных пунктов п. 13 Правил № 1441. Включает разделы: предмет, стоимость, права/обязанности, ответственность, особые условия СДО, порядок расторжения, реквизиты. Подходит для юрлиц.</p>
+                <p className="text-muted-foreground">Развёрнутый проект с разделами о предмете, стоимости, правах и обязанностях, ответственности, условиях СДО, расторжении и реквизитах. Проверьте содержание для своего состава сторон и программы.</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="font-semibold mb-1">Для юр. лица — упрощённый</div>
-                <p className="text-muted-foreground">Базовый шаблон без расширенных разделов. Требует ручного добавления обязательных пунктов (лицензия, форма обучения, вид документа и др.).</p>
+                <p className="text-muted-foreground">Базовый проект. Сверьте его состав с актуальными требованиями и дополните подтверждёнными условиями конкретного обучения.</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="font-semibold mb-1">Для физ. лица</div>
@@ -134,17 +136,14 @@ export function ContractLegalFaq() {
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <div className="font-semibold mb-1">Федеральный закон от 29.12.2012 № 273-ФЗ</div>
-                <p className="text-muted-foreground">«Об образовании в Российской Федерации», статья 54 — «Договор об образовании»</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <div className="font-semibold mb-1">Постановление Правительства РФ от 15.09.2020 № 1441</div>
-                <p className="text-muted-foreground">«Об утверждении Правил оказания платных образовательных услуг» (действует до 31.12.2026)</p>
-              </div>
+              {[LEGAL_SOURCES.education, LEGAL_SOURCES.paid].map(source => <div key={source.id} className="p-3 rounded-lg bg-muted/50">
+                <a className="font-semibold text-primary underline" href={source.primaryUrl} target="_blank" rel="noopener noreferrer">{source.title}</a>
+                <p className="text-muted-foreground">Зафиксировано в каталоге: {source.checkedOn}. {source.reviewStatus === "needs_legal_review" ? "Актуальная редакция требует отдельной сверки." : "Проверенные положения и ограничения указаны ниже."}</p>
+                {source.limitation && <p className="text-muted-foreground">{source.limitation}</p>}
+              </div>)}
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="font-semibold mb-1">Закон РФ от 07.02.1992 № 2300-1</div>
-                <p className="text-muted-foreground">«О защите прав потребителей» — применяется к договорам с физическими лицами</p>
+                <p className="text-muted-foreground">Применимость и актуальный первоисточник требуют отдельной проверки; в этом каталоге подтверждённая ссылка для него не закреплена.</p>
               </div>
             </div>
           </AccordionContent>

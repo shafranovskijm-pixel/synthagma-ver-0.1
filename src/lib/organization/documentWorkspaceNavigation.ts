@@ -26,6 +26,27 @@ const COUNTERPARTY_VIEWS: ReadonlySet<CounterpartySubTab> = new Set([
   "history",
 ]);
 
+export type DocumentConstructorView = "requisites" | "contract" | "protocol" | "documents" | "consent" | "stamp" | "signatories" | "info";
+const CONSTRUCTOR_VIEWS: ReadonlySet<string> = new Set([
+  "requisites", "contract", "protocol", "documents", "consent", "stamp", "signatories", "info",
+]);
+
+/** Constructor shortcuts survive reload without reusing an unrelated local tab. */
+export function readConstructorView(params: URLSearchParams): DocumentConstructorView {
+  const value = params.get("constructorView");
+  return params.get("documentView") === "constructor" && value && CONSTRUCTOR_VIEWS.has(value)
+    ? value as DocumentConstructorView
+    : "requisites";
+}
+
+export function setConstructorViewParams(current: URLSearchParams, view: string): URLSearchParams {
+  const next = setDocumentViewParams(current, "constructor");
+  next.set("constructorView", CONSTRUCTOR_VIEWS.has(view) ? view : "requisites");
+  // A manual tab choice is a new context, not the task's original shortcut.
+  next.delete("documentRequirement");
+  return next;
+}
+
 const EDUCATION_DOCUMENT_JOURNAL = "education_documents";
 const EDUCATION_DOCUMENT_FOCUS_PARAMS = [
   "journal",
@@ -101,10 +122,16 @@ export function setDocumentViewParams(
   if (!documentView) {
     next.delete("documentView");
     next.delete("counterpartyView");
+    next.delete("constructorView");
+    next.delete("documentRequirement");
     return clearEducationDocumentsJournalFocusParams(next);
   }
 
   next.set("documentView", documentView);
+  if (documentView !== "constructor") {
+    next.delete("constructorView");
+    next.delete("documentRequirement");
+  }
   if (documentView === "counterparties") {
     if (counterpartyView && counterpartyView !== "contracts") {
       next.set("counterpartyView", counterpartyView);

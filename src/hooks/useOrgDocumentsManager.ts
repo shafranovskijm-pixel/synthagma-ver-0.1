@@ -32,8 +32,8 @@ export const REGULAR_CATEGORIES = [
     bgColor: "bg-blue-500/10",
     documents: [
       { type: "charter", label: "Устав организации", required: true },
-      { type: "license", label: "Лицензия на осуществление образовательной деятельности (с приложениями)", required: true },
-      { type: "registration", label: "Свидетельство о государственной регистрации юридического лица", required: true },
+      { type: "license", label: "Лицензия: реестровая запись или выписка", required: true },
+      { type: "registration", label: "Сведения о государственной регистрации", required: true },
     ],
   },
   {
