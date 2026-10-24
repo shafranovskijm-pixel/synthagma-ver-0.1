@@ -10,7 +10,7 @@ export type SignatureSourceFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'
 export class SignatureSourceError extends Error{
  constructor(readonly code:SignatureSourceFailure){super(code);this.name='SignatureSourceError';}
 }
-const fail=(code:SignatureSourceFailure):never=>{throw new SignatureSourceError(code);};
+function fail(code:SignatureSourceFailure):never{throw new SignatureSourceError(code);}
 export interface SignatureSourceServiceRequest{
  p_action:SignatureFileAction;p_observed_actor_user_id:string;p_request_ip:null;p_request_user_agent:null;
  p_original_proof:TrustedSignatureFileProof|null;p_scan_proof:null;
@@ -71,7 +71,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
 async function digest(bytes:Uint8Array):Promise<string>{
- const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
+ const hash=await crypto.subtle.digest('SHA-256',bytes.slice().buffer);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 /** Technical source verification ONLY. No caller PDF/proof, signature status/event, bind or finalizer. */
 export async function verifySignatureSource(input:unknown,deps:SignatureSourceDependencies,outerSignal?:AbortSignal):Promise<SignatureSourceVerificationResult>{
@@ -86,7 +86,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
   if(signal.aborted||!fresh||!uuid.test(fresh)||actor!==null&&fresh!==actor)fail('ACCESS_DENIED');actor=fresh;
  };
  const invoke=async(action:SignatureFileAction,proof:TrustedSignatureFileProof|null)=>{
-  await current();const result=await boundedAwait(deps.service({p_action:action,p_observed_actor_user_id:actor!,p_request_ip:null,p_request_user_agent:null,p_original_proof:proof,p_scan_proof:null},signal),signal);
+  await current();if(actor===null)fail('ACCESS_DENIED');const result=await boundedAwait(deps.service({p_action:action,p_observed_actor_user_id:actor,p_request_ip:null,p_request_user_agent:null,p_original_proof:proof,p_scan_proof:null},signal),signal);
   await current();return normalizeResponse(result);
  };
  const action={address:request.address,expected_document_revision_id:request.expected_document_revision_id,document_html_sha256:request.document_html_sha256,purpose:'source' as const,scan_path:null};
