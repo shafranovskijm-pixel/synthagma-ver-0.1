@@ -33,6 +33,7 @@ import { loadRealRequisites, getPreviewWithRealRequisites, type RealRequisites }
 import { Tabs as PreviewTabs, TabsContent as PreviewTabsContent, TabsList as PreviewTabsList, TabsTrigger as PreviewTabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { escapeDocumentHtml } from "@/utils/printHtmlSafety";
 
 interface ContractTemplateEditorProps {
   organizationId: string;
@@ -422,9 +423,9 @@ export function ContractTemplateEditor({
                       <div className="flex items-start gap-2 p-3 mb-3 rounded-xl border border-warning/30 bg-warning/5 text-xs">
                         <AlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
                         <div>
-                          <div className="font-medium text-warning mb-1">Не заполнены реквизиты:</div>
+                          <div className="font-medium text-warning mb-1">Не подтверждены сведения:</div>
                           <div className="text-muted-foreground">{missing.join(", ")}</div>
-                          <div className="text-muted-foreground mt-1">Заполните во вкладке «Реквизиты» — будут подставляться автоматически.</div>
+                          <div className="text-muted-foreground mt-1">Реквизиты берутся из профиля организации, номер и орган лицензии — из заявления центра в профиле деятельности. Дата выдачи в профиле пока не хранится: замените переменную даты лицензии фактической датой из документа. Программа и заказчик выбираются при формировании договора.</div>
                         </div>
                       </div>
                     )}
@@ -436,6 +437,7 @@ export function ContractTemplateEditor({
               })()}
             </PreviewTabsContent>
             <PreviewTabsContent value="demo" className="mt-3">
+              <p className="text-xs text-muted-foreground mb-3">Образец с вымышленными значениями. Это не реквизиты организации и не готовый договор.</p>
               <div className="bg-white text-black p-8 rounded-xl border shadow-inner">
                 <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">{getPreviewText(template)}</pre>
               </div>
@@ -444,10 +446,15 @@ export function ContractTemplateEditor({
           <div className="flex justify-end gap-2 mt-3">
             <Button variant="outline" className="rounded-xl" onClick={() => setShowPreview(false)}>Закрыть</Button>
             <Button className="rounded-xl gap-2" onClick={() => {
-              const text = previewMode === "real" ? getPreviewWithRealRequisites(template, realData).text : getPreviewText(template);
+              const realPreview = getPreviewWithRealRequisites(template, realData);
+              if (previewMode === "real" && realPreview.missing.length) {
+                toast.error("Не подтверждены сведения: " + realPreview.missing.join(", ") + ". Печать договора недоступна.");
+                return;
+              }
+              const text = previewMode === "real" ? realPreview.text : "Образец с вымышленными значениями. Не готовый договор.\n\n" + getPreviewText(template);
               const printWindow = window.open("", "_blank");
               if (printWindow) {
-                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${text}</pre></body></html>`);
+                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${escapeDocumentHtml(text)}</pre></body></html>`);
                 printWindow.document.close();
                 printWindow.print();
               }
