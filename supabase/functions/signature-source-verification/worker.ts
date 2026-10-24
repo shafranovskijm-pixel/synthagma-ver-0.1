@@ -57,7 +57,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
  if(rawLength!==null&&(!/^\d{1,12}$/.test(rawLength)||Number(rawLength)>SIGNATURE_SOURCE_MAX_BYTES))fail('LIMIT_EXCEEDED');
   const encoding=response.headers.get('content-encoding')?.trim().toLowerCase()??'identity';
   if(!['identity','gzip','br','deflate'].includes(encoding))fail('DEPENDENCY_UNAVAILABLE');
- const body=response.body;if(!body)fail('SOURCE_UNAVAILABLE');
+ const body=response.body;if(!body)throw new SignatureSourceError('SOURCE_UNAVAILABLE');
  const reader=body.getReader();let total=0;let complete=false;const parts:Uint8Array[]=[];
  try{
   for(;;){if(signal.aborted)fail('ACCESS_DENIED');const next=await boundedAwait(reader.read(),signal);if(signal.aborted)fail('ACCESS_DENIED');if(next.done)break;
