@@ -1,10 +1,13 @@
-Read-only diagnosis result (no changes proposed)
+# ocr-snils: проверка метаданных выпущенной функции (только чтение)
 
-Storage logs, 24.10.2026 06:15–06:25 UTC:
-- Exact output path (…/versions/68028f4c-…/1188533c-….pdf): 0 records.
-- Any org-documents request in 06:19–06:22:30: 0 records.
-- Aggregate count of all Storage requests in 06:15–06:25: no rows returned.
+## Результат
+- Единственный доступный инструмент метаданных (`supabase--project_info`) вернул только сведения о проекте: ref atxwvjxbqjgkbjlhsdch, Medium, не приостановлен, управляется Lovable.
+- Данных по отдельным функциям нет: ни verify_jwt, ни revision/version, ни времени выпуска, ни списка функций.
+- Поэтому текущий verify_jwt для ocr-snils в gateway **неизвестен**. По отсутствию блока в config.toml его не определяю.
+- Ранее функция выпускалась 18.10.2026 из bundle b143ad48 (revision `uc-ocr-scope-20261019-v1`). Это только запись в истории чата, а не платформенные метаданные.
 
-Conclusion: the logs cannot confirm an upload POST failure or a later info 404 for this path. The logs are empty for the whole window, which points to log ingestion lag or the window not being available yet. It does not show that no request happened.
+## Что не делалось
+Не выполнялись выпуски, правки, SQL и сборки. Функции не вызывались, config не менялся.
 
-Next step (root): repeat the same read-only query later, or rely on the function's own response code. No source, SQL, deploy or settings changes.
+## Следующий шаг (после подтверждения и получения bundle)
+Выпустить точный исходник только для ocr-snils, без добавления блока в config, проверив перед этим хэши.
