@@ -281,7 +281,7 @@ const issuanceConditionCheck: Check = value => {
       list(literal("spo", "vo"), 2, 2)(levels);
       if ((levels as unknown[])[0] !== "spo" || (levels as unknown[])[1] !== "vo") failSource();
     }, concurrent_study_admission_allowed: bool});
-  } else if (value.kind === "no_separate_primary_education_condition") {
+  } else if (condition.kind === "no_separate_primary_education_condition") {
     shape(value, {kind: literal("no_separate_primary_education_condition"), reason: reason => {
       // Frontend z.string().trim().min(1).max(1000) validates the trimmed text.
       if (typeof reason !== "string" || reason.trim().length < 1 || reason.trim().length > 1000) failSource();
