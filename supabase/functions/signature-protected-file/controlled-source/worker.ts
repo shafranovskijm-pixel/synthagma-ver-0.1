@@ -51,14 +51,14 @@ function boundedAwait<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
   operation.then(value=>{signal.removeEventListener('abort',abort);if(signal.aborted)reject(new SignatureSourceError('ACCESS_DENIED'));else resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
  });
 }
-async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array>{
+async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array<ArrayBuffer>>{
  if(!response.ok||response.redirected)fail(response.status===404?'SOURCE_UNAVAILABLE':'DEPENDENCY_UNAVAILABLE');
  const rawLength=response.headers.get('content-length');
  if(rawLength!==null&&(!/^\d{1,12}$/.test(rawLength)||Number(rawLength)>SIGNATURE_SOURCE_MAX_BYTES))fail('LIMIT_EXCEEDED');
   const encoding=response.headers.get('content-encoding')?.trim().toLowerCase()??'identity';
   if(!['identity','gzip','br','deflate'].includes(encoding))fail('DEPENDENCY_UNAVAILABLE');
- if(!response.body)fail('SOURCE_UNAVAILABLE');
- const reader=response.body.getReader();let total=0;let complete=false;const parts:Uint8Array[]=[];
+ const body=response.body;if(!body)fail('SOURCE_UNAVAILABLE');
+ const reader=body.getReader();let total=0;let complete=false;const parts:Uint8Array[]=[];
  try{
   for(;;){if(signal.aborted)fail('ACCESS_DENIED');const next=await boundedAwait(reader.read(),signal);if(signal.aborted)fail('ACCESS_DENIED');if(next.done)break;
    total+=next.value.byteLength;if(total>SIGNATURE_SOURCE_MAX_BYTES)fail('LIMIT_EXCEEDED');parts.push(next.value);
@@ -70,7 +70,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
   const bytes=new Uint8Array(total);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.byteLength;}complete=true;return bytes;
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
-async function digest(bytes:Uint8Array):Promise<string>{
+async function digest(bytes:Uint8Array<ArrayBuffer>):Promise<string>{
  const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 /** Technical source verification ONLY. No caller PDF/proof, signature status/event, bind or finalizer. */
@@ -103,7 +103,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
   // cannot create a new receipt. A missing UUID returns SOURCE_UNAVAILABLE, not a fake proof.
   try{return await finish(await invoke(attest,null),null);}catch(error){if(!(error instanceof SignatureSourceError)||error.code!=='SOURCE_UNAVAILABLE')throw error;}
   const parseContext=(value:unknown):SignatureFileContext=>{
-   const ctx=signatureFileContextSchema.safeParse(value);if(!ctx.success)fail('DEPENDENCY_UNAVAILABLE');
+   const ctx=signatureFileContextSchema.safeParse(value);if(!ctx.success||!ctx.data)fail('DEPENDENCY_UNAVAILABLE');
    if(!sameScope(ctx.data.source,request))fail('SOURCE_CHANGED');return ctx.data;
   };
   const context=parseContext(await invoke({action:'file_context',...action},null));
