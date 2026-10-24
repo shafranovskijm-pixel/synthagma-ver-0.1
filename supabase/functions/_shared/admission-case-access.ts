@@ -275,7 +275,8 @@ const optionalShape = (value: unknown, required: Record<string, Check>, optional
 };
 const issuanceConditionCheck: Check = value => {
   if (!admissionObject(value)) failSource();
-  if (value.kind === "primary_education_before_qualification") {
+  const condition = value as Record<string, unknown>;
+  if (condition.kind === "primary_education_before_qualification") {
     shape(value, {kind: literal("primary_education_before_qualification"), education_levels: levels => {
       list(literal("spo", "vo"), 2, 2)(levels);
       if ((levels as unknown[])[0] !== "spo" || (levels as unknown[])[1] !== "vo") failSource();

@@ -100,7 +100,7 @@ ${placeholdersList}
 
     let processedText = "";
     try {
-      const { text } = await callAI(
+      const { text: aiText } = await callAI(
         [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Обработай следующий текст договора. Замени ТОЛЬКО конкретные данные на переменные, сохранив весь остальной текст без изменений:\n\n${text}` },
