@@ -25782,6 +25782,18 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_observe_education_artifact_object: {
+        Args: {
+          p_actor_id: string
+          p_input_revision: number
+          p_item_id: string
+          p_kind: string
+          p_organization_id: string
+          p_preparation_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       uc_org_document_blob_committed: {
         Args: { p_bucket: string; p_path: string }
         Returns: boolean
