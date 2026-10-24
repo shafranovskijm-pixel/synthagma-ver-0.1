@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CONTRACT_PLACEHOLDERS } from "./contractTemplateHelpers";
+import { resolveContractFacts } from "@/lib/contracts/contractFacts";
 
 export interface RealRequisites {
   org_name?: string;
@@ -43,7 +44,11 @@ export async function loadRealRequisites(organizationId: string): Promise<RealRe
   const directorName = data.director_name || "";
   const gender = (data as any).director_gender === "female" ? "female" : "male";
 
+  const license = await resolveContractFacts(supabase as unknown as Parameters<typeof resolveContractFacts>[0],
+    organizationId, [], "{{org_license_number}} {{org_license_issuer}}").catch(() => null);
   return {
+    org_license_number: license?.org_license_number ?? "",
+    org_license_issuer: license?.org_license_issuer ?? "",
     org_name: orgName,
     org_inn: data.inn || "",
     org_kpp: data.kpp || "",
@@ -64,23 +69,16 @@ export function getPreviewWithRealRequisites(
   template: string,
   realData: RealRequisites
 ): { text: string; missing: string[] } {
-  let preview = template;
   const missing: string[] = [];
-
-  CONTRACT_PLACEHOLDERS.forEach((p) => {
-    const cleanKey = p.key.replace(/[{}]/g, "");
-    const real = (realData as Record<string, string | undefined>)[cleanKey];
-    if (real && real.trim()) {
-      preview = preview.split(p.key).join(real);
-    } else if (preview.includes(p.key)) {
-      // Используем example как мягкий fallback и подсветку
-      preview = preview.split(p.key).join(p.example || "_______________");
-      // Только реквизиты организации считаем «обязательными к заполнению»
-      if (cleanKey.startsWith("org_") && !missing.includes(p.label)) {
-        missing.push(p.label);
-      }
-    }
+  const labels = new Map(CONTRACT_PLACEHOLDERS.map(p => [p.key.replace(/[{}]/g, ""), p.label]));
+  const text = template.replace(/\{\{([^{}]*)\}\}/g, (_token, raw: string) => {
+    const key = raw.trim(), label = labels.get(key);
+    const real = realData[key as keyof RealRequisites];
+    if (label && typeof real === "string" && real.trim() && !real.includes("{{") && !real.includes("}}")) return real;
+    const missingLabel = label || "Неизвестная переменная";
+    if (!missing.includes(missingLabel)) missing.push(missingLabel);
+    return label ? `[Не подтверждено: ${label}]` : "[Неизвестная переменная]";
   });
-
-  return { text: preview, missing };
+  if ((text.includes("{{") || text.includes("}}")) && !missing.includes("Некорректная переменная")) missing.push("Некорректная переменная");
+  return { text, missing };
 }

@@ -8,7 +8,7 @@ export interface ContractTemplate {
 const TEMPLATE_273FZ = `ДОГОВОР № {{contract_number}}
 об оказании платных образовательных услуг
 
-г. ______________ «__» ___________ 202__ г.
+г. ______________ {{contract_date}}
 
 {{org_name}} (ОГРН {{org_ogrn}}, ИНН {{org_inn}}, место нахождения: {{org_address}}, лицензия на осуществление образовательной деятельности № {{org_license_number}} от {{org_license_date}}, выдана {{org_license_issuer}}), в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава, именуемое в дальнейшем «Исполнитель», с одной стороны,
 

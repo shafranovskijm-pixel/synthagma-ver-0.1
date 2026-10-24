@@ -1,6 +1,8 @@
 import { downloadHtmlWord } from "@/lib/documents/downloadHtmlWord";
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
-import { useState, useEffect } from "react";
+import { escapeDocumentHtml } from "@/utils/printHtmlSafety";
+import { useState, useEffect, useRef } from "react";
+import { ContractFactsError, assertContractOutput, contractFactsMessage, resolveContractFacts, substituteContractTemplate } from "@/lib/contracts/contractFacts";
 import { localDateIso, localDateIsoPlusMonths } from "@/lib/date/localDate";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -109,9 +111,25 @@ interface UseContractGeneratorProps {
 }
 
 export function useContractGenerator({ organizationId, isOpen, orgRequisites, preselectedCompany, onSave, onClose }: UseContractGeneratorProps) {
+  const currentScope = useRef({ organizationId, isOpen, epoch: 0 });
+  if (currentScope.current.organizationId !== organizationId || currentScope.current.isOpen !== isOpen) {
+    currentScope.current = { organizationId, isOpen, epoch: currentScope.current.epoch + 1 };
+  }
+  const scopeEpoch = currentScope.current.epoch;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; ++currentScope.current.epoch; };
+  }, []);
+  const assertCurrentScope = () => {
+    if (!mounted.current || currentScope.current.epoch !== scopeEpoch
+      || !currentScope.current.isOpen || currentScope.current.organizationId !== organizationId
+      || isLoading || loadedOrganizationId !== organizationId) throw new ContractFactsError("SOURCE_UNAVAILABLE", []);
+  };
   const [companies, setCompanies] = useState<Company[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedOrganizationId, setLoadedOrganizationId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -151,15 +169,21 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const [savedTemplate, setSavedTemplate] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     const loadData = async () => {
       if (!organizationId || !isOpen) return;
       setIsLoading(true);
+      setLoadedOrganizationId(null);
+      setSavedTemplate(null);
+      setCompanies([]); setCourses([]);
       try {
         const [companiesRes, coursesRes, orgRes] = await Promise.all([
           supabase.from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
           supabase.from("courses").select("id, title, duration, frdo_duration_hours").eq("organization_id", organizationId).eq("is_published", true).order("title"),
           supabase.from("organizations").select("branding").eq("id", organizationId).single(),
         ]);
+        if (!active) return;
+        if (orgRes.error || !orgRes.data) throw new ContractFactsError("SOURCE_UNAVAILABLE", []);
         if (companiesRes.error) throw companiesRes.error;
         if (coursesRes.error) throw coursesRes.error;
         setCompanies(companiesRes.data || []);
@@ -178,12 +202,14 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
         } else if (branding?.contractTemplate) {
           setSavedTemplate(branding.contractTemplate as string);
         }
+        setLoadedOrganizationId(organizationId);
         const today = new Date();
         setContractNumber(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`);
-      } catch (error) { console.error("Error loading data:", error); toast.error("Ошибка загрузки данных"); }
-      finally { setIsLoading(false); }
+      } catch (error) { if (active) { console.error("Error loading data:", error); toast.error("Ошибка загрузки данных"); } }
+      finally { if (active) setIsLoading(false); }
     };
     loadData();
+    return () => { active = false; };
   }, [organizationId, isOpen]);
 
   const selectedCompany = preselectedCompany || companies.find(c => c.id === selectedCompanyId);
@@ -221,7 +247,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       .join('\n');
   };
 
-  const generateContractHTML = (): string => {
+  const generateContractHTML = async (): Promise<string> => {
+    assertCurrentScope();
     const validPrograms = resolvedPrograms.filter(p => p.course);
     const counterparty = effectiveCounterparty;
     if (!counterparty || validPrograms.length === 0) return "";
@@ -325,11 +352,10 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{additional_terms}}': additionalTerms || '',
     };
 
-    // Perform variable substitution
-    let result = templateText;
-    for (const [key, value] of Object.entries(replacements)) {
-      result = result.split(key).join(value);
-    }
+    const facts = await resolveContractFacts(supabase as unknown as Parameters<typeof resolveContractFacts>[0],
+      organizationId, validPrograms.map(program => program.course!.id), templateText);
+    assertCurrentScope();
+    let result = substituteContractTemplate(templateText, replacements, facts, escapeDocumentHtml);
 
     // Fallback: remove any remaining "в лице ... Устава" for ИП after substitution
     if (orgIsIP) {
@@ -369,10 +395,10 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     const counterpartySignName = isIndividual ? individualData.fullName : '_________________ ';
     const signatureBlock = `<div class="section"><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${orgRequisites.director_name} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК${isIndividual ? ' (СЛУШАТЕЛЬ)' : ''}:</strong><br><br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / ${counterpartySignName} /</div></div></td></tr></table></div>`;
 
-    return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`;
+    return assertContractOutput(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`);
   };
 
-  const generateUnconfirmedDraft = () => generateContractHTML().replace(/<body>/i,
+  const generateUnconfirmedDraft = async () => (await generateContractHTML()).replace(/<body>/i,
     `<body><p data-sintagma-program-state="unconfirmed">${UNCONFIRMED_PROGRAM_NOTICE}</p>`);
   const hasValidCounterparty = counterpartyType === 'individual' ? !!individualData.fullName : !!selectedCompanyId;
 
@@ -382,19 +408,21 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (validPrograms.length === 0) { toast.error("Добавьте хотя бы одну программу с ценой"); return; }
     setIsGenerating(true);
     try {
-      const html = generateUnconfirmedDraft();
+      const html = await generateUnconfirmedDraft();
       await printHtmlContent(html, 'Договор '+contractNumber);
       toast.success("Договор сформирован");
-    } catch (error) { console.error("Error:", error); toast.error("Ошибка генерации"); }
+    } catch (error) { console.error("Error:", error); toast.error(contractFactsMessage(error, "Ошибка генерации")); }
     finally { setIsGenerating(false); }
   };
 
   const handleDownloadDOC = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId);
     if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
-    const html = generateUnconfirmedDraft();
-    const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || 'компания');
-    if (await downloadHtmlWord(html, `Договор_${contractNumber}_${counterpartyName}.docx`)) toast.success("Подготовлен DOCX договора");
+    try {
+      const html = await generateUnconfirmedDraft();
+      const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || 'компания');
+      if (await downloadHtmlWord(html, `Договор_${contractNumber}_${counterpartyName}.docx`)) toast.success("Подготовлен DOCX договора");
+    } catch (error) { toast.error(contractFactsMessage(error, "Ошибка формирования DOCX")); }
   };
 
   const handleSaveContract = async () => {
@@ -403,18 +431,21 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (!onSave) { toast.error("Сохранение недоступно"); return; }
     setIsSaving(true);
     try {
-      const html = generateUnconfirmedDraft();
+      const html = await generateUnconfirmedDraft();
       const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || '');
       await onSave(html, contractNumber, counterpartyName, validPrograms[0].courseId, totalPrice, totalStudents, contractDate);
       toast.success("Договор сохранён"); onClose();
-    } catch (error) { console.error("Error:", error); toast.error("Ошибка сохранения"); }
+    } catch (error) { console.error("Error:", error); toast.error(contractFactsMessage(error, "Ошибка сохранения")); }
     finally { setIsSaving(false); }
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price);
     if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
-    setPreviewHtml(generateUnconfirmedDraft()); setShowPreview(true);
+    try {
+      const html = await generateUnconfirmedDraft();
+      setPreviewHtml(html); setShowPreview(true);
+    } catch (error) { toast.error(contractFactsMessage(error, "Ошибка предпросмотра")); }
   };
 
   const hasValidPrograms = selectedPrograms.some(p => p.courseId && p.price && parseFloat(p.price) > 0);
