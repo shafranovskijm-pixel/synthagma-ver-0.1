@@ -7,7 +7,7 @@ import {prepareEducationHtml, EducationTemplateError} from './education-issuance
 import {validateFaithfulPdf, FaithfulPdfError, EDUCATION_PDF_MAX_BYTES, EDUCATION_RENDERER_REVISION} from './faithful-pdf.ts';
 
 export const EDUCATION_ARTIFACT_MS = 55_000;
-export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261024-v2';
+export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261024-v3';
 const codes = ['INVALID_INPUT', 'ACCESS_DENIED', 'REVISION_CONFLICT', 'REQUEST_CONFLICT', 'SOURCE_CHANGED', 'SOURCE_UNAVAILABLE',
   'PREREQUISITE_MISSING', 'REVIEW_REQUIRED', 'LIMIT_EXCEEDED', 'DEPENDENCY_UNAVAILABLE', 'NUMBER_PLAN_STALE',
   'ARTIFACT_UNAVAILABLE', 'ARTIFACT_REVIEW_REQUIRED', 'ARTIFACT_RENDER_FAILED'] as const;
@@ -201,13 +201,19 @@ function objectIdentity(value: ObjectInfo, expected: {object_id: string; updated
   same(value.object_id, expected.object_id); same(value.updated_at, admissionTime(expected.updated_at));
 }
 async function bytes(storage: EducationStorage, bucket: string, path: string, expected: ObjectInfo,
-  signal: AbortSignal, knownHash: string | null, fence: () => Promise<unknown>, observe?: RawObserver): Promise<{bytes: Uint8Array; sha256: string}> {
+  signal: AbortSignal, knownHash: string | null, fence: () => Promise<unknown>, observe?: RawObserver,
+  plainHtmlTemplateTransport = false): Promise<{bytes: Uint8Array; sha256: string}> {
   await fence();
   check(signal);
   const result = await storage.from(bucket).download(path); check(signal);
   await fence(); check(signal);
   if (result.error) {if (notFound(result.error)) fail('SOURCE_UNAVAILABLE'); return fail('DEPENDENCY_UNAVAILABLE');}
-  if (!result.data || result.data.size !== expected.size || result.data.type !== expected.mime) fail('SOURCE_UNAVAILABLE');
+  // The deployed private-object proxy returns this verified HTML source as text/plain.
+  // This transport exception is enabled only at the original-caller template call;
+  // SQL/info MIME and all PDF downloads retain their exact canonical checks.
+  const exactMime = result.data?.type === expected.mime;
+  const plainTemplate = plainHtmlTemplateTransport && expected.mime === 'text/html' && result.data?.type === 'text/plain';
+  if (!result.data || result.data.size !== expected.size || !exactMime && !plainTemplate) fail('SOURCE_UNAVAILABLE');
   const data = new Uint8Array(await result.data.arrayBuffer()); check(signal);
   if (data.length !== expected.size) fail();
   if (expected.mime === 'application/pdf') validateFaithfulPdf(data);
@@ -298,7 +304,7 @@ async function execute(request: Request, authorization: string, deps: EducationA
   const templateInfo = await info(caller.storage, template.bucket, template.path, signal, current, false, observeTemplate); context = await current();
   if (!templateInfo || templateInfo.size !== template.byte_size || templateInfo.mime !== 'text/html' || templateInfo.size > 1_048_576) fail();
   objectIdentity(templateInfo, template);
-  const templateProof = await bytes(caller.storage, template.bucket, template.path, templateInfo, signal, template.known_sha256, current, observeTemplate); context = await current();
+  const templateProof = await bytes(caller.storage, template.bucket, template.path, templateInfo, signal, template.known_sha256, current, observeTemplate, true); context = await current();
   const html = prepareEducationHtml(templateProof.bytes, context.variables);
   const htmlHash = await admissionHash(new TextEncoder().encode(html)); check(signal); context = await current();
   const expectedProvenance = {preparation_id: context.preparation_id, item_id: context.item_id, render_input_hash: context.render_input_hash,
