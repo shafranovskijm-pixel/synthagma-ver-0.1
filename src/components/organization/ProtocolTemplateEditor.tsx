@@ -9,6 +9,7 @@ import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "./DocumentPreview";
+import { DEFAULT_PROTOCOL_TEMPLATE, PROTOCOL_PLACEHOLDERS } from "@/lib/protocolTemplate";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CommissionMember {
@@ -20,43 +21,6 @@ interface CommissionMember {
 interface ProtocolTemplateEditorProps {
   organizationId: string;
 }
-
-const DEFAULT_PROTOCOL_TEMPLATE = `ПРОТОКОЛ ЗАСЕДАНИЯ АТТЕСТАЦИОННОЙ КОМИССИИ
-
-№ {{protocol_number}} от {{protocol_date}} г.
-
-{{org_name}}
-
-Программа обучения: {{course_name}}
-Объём программы: {{course_duration}}
-
-Состав комиссии:
-{{commission_members}}
-
-Повестка дня:
-Итоговая аттестация слушателей по результатам освоения дополнительной профессиональной программы.
-
-{{students_table}}
-
-РЕШИЛИ:
-Признать слушателей, указанных в таблице, успешно прошедшими итоговую аттестацию по дополнительной профессиональной программе «{{course_name}}».
-Выдать документы о квалификации установленного образца.
-
-Председатель комиссии: _________________ / {{chairman_name}} /
-Члены комиссии: _________________ / _________________ /`;
-
-const PROTOCOL_PLACEHOLDERS = [
-  { key: "{{protocol_number}}", label: "Номер протокола" },
-  { key: "{{protocol_date}}", label: "Дата протокола" },
-  { key: "{{org_name}}", label: "Название организации" },
-  { key: "{{director_name}}", label: "ФИО руководителя" },
-  { key: "{{director_position}}", label: "Должность руководителя" },
-  { key: "{{course_name}}", label: "Название курса" },
-  { key: "{{course_duration}}", label: "Объём программы (часы)" },
-  { key: "{{students_table}}", label: "Таблица слушателей (авто)" },
-  { key: "{{commission_members}}", label: "Состав комиссии (авто)" },
-  { key: "{{chairman_name}}", label: "ФИО председателя" },
-];
 
 export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEditorProps) {
   const [template, setTemplate] = useState(DEFAULT_PROTOCOL_TEMPLATE);
@@ -204,6 +168,7 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
         <HighlightedTemplateEditor
           value={template}
           onChange={setTemplate}
+          templateKind="protocol"
         />
       </div>
 
@@ -238,8 +203,9 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
           <AccordionContent>
             <DocumentPreview
               type="protocol"
+              protocolTemplate={template}
               data={{
-                commissionMembers: commissionMembers.filter(m => m.name) }}
+                commissionMembers }}
             />
           </AccordionContent>
         </AccordionItem>

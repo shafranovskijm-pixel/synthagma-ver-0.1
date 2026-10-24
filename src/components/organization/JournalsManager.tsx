@@ -302,7 +302,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
               { icon: ClipboardCheck, title: "Обязательные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов" },
               { icon: BarChart3, title: "Автоматическое заполнение", desc: "Данные из курсов подтягиваются автоматически" },
               { icon: BookOpen, title: "Электронные журналы онлайн", desc: "Ведите учёт прямо в браузере с еженедельной сеткой" },
-              { icon: Download, title: "Экспорт и шаблоны", desc: "Скачайте готовые шаблоны или выгрузите журналы в Excel" },
+              { icon: Download, title: "Экспорт данных", desc: "Выгрузка доступна в открытом журнале, если предусмотрена его режимом" },
               ...(inGroupContext ? [] : [{ icon: Settings, title: "Пользовательские журналы", desc: "Создавайте свои журналы с произвольными полями" }]),
               { icon: Camera, title: "Видеоидентификация", desc: "Верификация личности студентов с фотографиями" },
 
@@ -396,7 +396,7 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
         ) : (
           <Button variant="default" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
         )}
-        <Button variant="outline" size="sm" className="rounded-lg"><Download className="w-4 h-4 mr-2" />Шаблон</Button>
+        <span className="text-xs text-muted-foreground">Отдельный шаблон для скачивания пока недоступен.</span>
         {!journal.required && !inGroupContext && journal.id !== "copies_duplicates" && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { VARIABLE_CATEGORIES } from "./variableCategories";
+import { VARIABLE_CATEGORIES, type VariableCategory } from "./variableCategories";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ interface VariableContextMenuProps {
   y: number;
   onInsert: (variable: string) => void;
   onClose: () => void;
+  categories?: Record<string, VariableCategory>;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -19,7 +20,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   payment: "💰",
 };
 
-export function VariableContextMenu({ x, y, onInsert, onClose }: VariableContextMenuProps) {
+export function VariableContextMenu({ x, y, onInsert, onClose, categories = VARIABLE_CATEGORIES }: VariableContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [adjustedPos, setAdjustedPos] = useState({ x, y });
@@ -70,7 +71,7 @@ export function VariableContextMenu({ x, y, onInsert, onClose }: VariableContext
 
       {/* Categories */}
       <div className="py-1">
-        {Object.entries(VARIABLE_CATEGORIES).map(([catKey, category]) => (
+        {Object.entries(categories).map(([catKey, category]) => (
           <div
             key={catKey}
             className="relative"

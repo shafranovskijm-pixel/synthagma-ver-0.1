@@ -1,3 +1,4 @@
+import { renderProtocolTemplate } from "@/lib/protocolTemplate";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -18,6 +19,7 @@ interface DocumentPreviewData {
   regNumberFormat?: string;
   commissionMembers?: CommissionMember[];
   directorName?: string;
+  directorPosition?: string;
   inn?: string;
   ogrn?: string;
   address?: string;
@@ -27,6 +29,7 @@ interface DocumentPreviewData {
 interface DocumentPreviewProps {
   type: "certificate" | "diploma" | "protocol" | "consent";
   data?: DocumentPreviewData;
+  protocolTemplate?: string;
 }
 
 const defaults: DocumentPreviewData = {
@@ -243,15 +246,18 @@ function ConsentPreview({ d }: { d: DocumentPreviewData }) {
   );
 }
 
-export function DocumentPreview({ type, data }: DocumentPreviewProps) {
+export function DocumentPreview({ type, data, protocolTemplate }: DocumentPreviewProps) {
   const d = { ...defaults, ...data };
 
   return (
     <div className="max-w-md mx-auto">
+      {type === "protocol" && protocolTemplate !== undefined && <p className="text-xs text-muted-foreground mb-2">Пример на учебных данных. Не является оформленным протоколом.</p>}
       <div className="aspect-[210/297] bg-white dark:bg-card border border-border shadow-sm rounded-lg p-6 flex flex-col text-foreground font-serif leading-tight overflow-hidden">
         {type === "certificate" && <CertificatePreview d={d} />}
         {type === "diploma" && <DiplomaPreview d={d} />}
-        {type === "protocol" && <ProtocolPreview d={d} />}
+        {type === "protocol" && (protocolTemplate !== undefined
+          ? <div aria-label="Предпросмотр текста протокола" className="flex-1 min-h-0 overflow-y-auto whitespace-pre-wrap break-words text-[7px]">{renderProtocolTemplate(protocolTemplate, d)}</div>
+          : <ProtocolPreview d={d} />)}
         {type === "consent" && <ConsentPreview d={d} />}
       </div>
     </div>
