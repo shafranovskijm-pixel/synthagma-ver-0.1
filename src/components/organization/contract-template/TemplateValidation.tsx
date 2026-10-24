@@ -1,62 +1,18 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, AlertTriangle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
-import { ALL_KNOWN_KEYS, REQUIRED_KEYS, COUNTERPARTY_KEYS } from "./variableCategories";
+import { extractVariables, validateTemplateVariables, type ValidationResult, type TemplateKind } from "./templateValidationRules";
 
 interface TemplateValidationProps {
   value: string;
   compact?: boolean;
+  templateKind?: TemplateKind;
 }
 
-interface ValidationResult {
-  type: "error" | "warning" | "ok";
-  message: string;
-}
-
-function extractVariables(text: string): string[] {
-  const matches = text.match(/\{\{([a-zA-Z_]+)\}\}/g) || [];
-  return matches.map(m => m.replace(/\{\{|\}\}/g, ""));
-}
-
-export function TemplateValidation({ value, compact }: TemplateValidationProps) {
+export function TemplateValidation({ value, compact, templateKind = "contract" }: TemplateValidationProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const results = useMemo<ValidationResult[]>(() => {
-    if (!value.trim()) return [];
-    
-    const usedVars = extractVariables(value);
-    const uniqueVars = [...new Set(usedVars)];
-    const items: ValidationResult[] = [];
-
-    for (const key of REQUIRED_KEYS) {
-      if (!uniqueVars.includes(key)) {
-        items.push({ type: "error", message: `Обязательная переменная {{${key}}} отсутствует` });
-      }
-    }
-
-    const hasCounterparty = COUNTERPARTY_KEYS.some(k => uniqueVars.includes(k));
-    if (!hasCounterparty) {
-      items.push({ type: "warning", message: "Нет переменной контрагента ({{company_name}} или {{individual_name}})" });
-    }
-
-    for (const v of uniqueVars) {
-      if (!ALL_KNOWN_KEYS.includes(v)) {
-        items.push({ type: "warning", message: `Неизвестная переменная {{${v}}}` });
-      }
-    }
-
-    const hasPrice = uniqueVars.includes("price");
-    const hasTotalPrice = uniqueVars.includes("total_price");
-    if (hasPrice && !hasTotalPrice) {
-      items.push({ type: "warning", message: "Есть {{price}}, но нет {{total_price}}" });
-    }
-
-    if (items.length === 0) {
-      items.push({ type: "ok", message: `Шаблон корректен (${uniqueVars.length} переменных)` });
-    }
-
-    return items;
-  }, [value]);
+  const results = useMemo<ValidationResult[]>(() => validateTemplateVariables(value, templateKind), [value, templateKind]);
 
   if (results.length === 0) return null;
 
@@ -75,7 +31,7 @@ export function TemplateValidation({ value, compact }: TemplateValidationProps) 
       ? `${errCount} ошибок, ${warnCount} предупреждений`
       : hasWarnings
       ? `${warnCount} предупреждений`
-      : `Корректен (${uniqueVarsCount} перем.)`;
+      : (templateKind === "protocol" ? `Переменные проверены (${uniqueVarsCount})` : `Корректен (${uniqueVarsCount} перем.)`);
 
     return (
       <div className={cn(

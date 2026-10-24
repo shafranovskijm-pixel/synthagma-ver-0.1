@@ -2,18 +2,19 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, Variable } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { VARIABLE_CATEGORIES } from "./variableCategories";
+import { VARIABLE_CATEGORIES, type VariableCategory } from "./variableCategories";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface VariableInsertPanelProps {
   onInsert: (variable: string) => void;
   sidebarMode?: boolean;
+  categories?: Record<string, VariableCategory>;
 }
 
-export function VariableInsertPanel({ onInsert, sidebarMode }: VariableInsertPanelProps) {
+export function VariableInsertPanel({ onInsert, sidebarMode, categories = VARIABLE_CATEGORIES }: VariableInsertPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(Object.keys(VARIABLE_CATEGORIES)));
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(Object.keys(categories)));
 
   const toggleCat = (key: string) => {
     setExpandedCats(prev => {
@@ -25,7 +26,7 @@ export function VariableInsertPanel({ onInsert, sidebarMode }: VariableInsertPan
 
   const content = (
     <div className="space-y-2">
-      {Object.entries(VARIABLE_CATEGORIES).map(([catKey, category]) => (
+      {Object.entries(categories).map(([catKey, category]) => (
         <div key={catKey}>
           <button
             type="button"

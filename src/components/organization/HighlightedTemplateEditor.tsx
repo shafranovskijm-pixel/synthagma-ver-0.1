@@ -1,6 +1,13 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { VARIABLE_CATEGORIES, getVariableCategoryByKey } from "./contract-template/variableCategories";
+import { VARIABLE_CATEGORIES, type VariableCategory } from "./contract-template/variableCategories";
+import { PROTOCOL_PLACEHOLDERS } from "@/lib/protocolTemplate";
+import type { TemplateKind } from "./contract-template/templateValidationRules";
+
+const PROTOCOL_CATEGORIES: Record<string, VariableCategory> = {
+  protocol: { color: VARIABLE_CATEGORIES.contract.color, borderColor: VARIABLE_CATEGORIES.contract.borderColor, label: "Протокол",
+    keys: PROTOCOL_PLACEHOLDERS.map(item => ({ key: item.key.slice(2, -2), label: item.label })) },
+};
 import { VariableInsertPanel } from "./contract-template/VariableInsertPanel";
 import { TemplateValidation } from "./contract-template/TemplateValidation";
 import { VariableContextMenu } from "./contract-template/VariableContextMenu";
@@ -13,6 +20,7 @@ interface HighlightedTemplateEditorProps {
   showValidation?: boolean;
   showInsertPanel?: boolean;
   fullPage?: boolean;
+  templateKind?: TemplateKind;
 }
 
 function escapeHtml(text: string): string {
@@ -24,11 +32,11 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function highlightVariables(text: string): string {
+function highlightVariables(text: string, categories: Record<string, VariableCategory>): string {
   return escapeHtml(text).replace(
     /\{\{([a-zA-Z_]+)\}\}/g,
     (match, variableName) => {
-      const category = getVariableCategoryByKey(variableName);
+      const category = Object.values(categories).find(item => item.keys.some(key => key.key === variableName));
       if (category) {
         return `<span class="inline-block px-1.5 py-0.5 rounded-md font-medium text-xs ${category.color} border ${category.borderColor}" title="${category.label}: ${variableName}">{{${variableName}}}</span>`;
       }
@@ -45,7 +53,9 @@ export function HighlightedTemplateEditor({
   showValidation = true,
   showInsertPanel = true,
   fullPage = false,
+  templateKind = "contract",
 }: HighlightedTemplateEditorProps) {
+  const categories = templateKind === "protocol" ? PROTOCOL_CATEGORIES : VARIABLE_CATEGORIES;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,7 +111,7 @@ export function HighlightedTemplateEditor({
     setContextMenu({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const highlightedHtml = highlightVariables(value);
+  const highlightedHtml = highlightVariables(value, categories);
 
   return (
     <div className="space-y-2">
@@ -130,6 +140,7 @@ export function HighlightedTemplateEditor({
             {/* Textarea layer */}
             <textarea
               ref={textareaRef}
+              aria-label={templateKind === "protocol" ? "Текст шаблона протокола" : "Текст шаблона"}
               value={value}
               onChange={handleChange}
               onSelect={handleSelect}
@@ -148,12 +159,12 @@ export function HighlightedTemplateEditor({
           </div>
 
           {/* Compact validation + stats bar */}
-          {showValidation && <TemplateValidation value={value} compact />}
+          {showValidation && <TemplateValidation value={value} compact templateKind={templateKind} />}
 
           {/* Statistics + hint */}
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
             <span className="opacity-60">ПКМ — вставить переменную</span>
-            {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
+            {Object.entries(categories).map(([key, category]) => {
               const count = category.keys.reduce((acc, { key: varKey }) => {
                 const regex = new RegExp(`\\{\\{${varKey}\\}\\}`, "g");
                 return acc + (value.match(regex)?.length || 0);
@@ -177,7 +188,7 @@ export function HighlightedTemplateEditor({
         {/* Sidebar: variables panel (always visible on desktop, collapsible on mobile) */}
         {showInsertPanel && (
           <div className="lg:w-[280px] flex-shrink-0">
-            <VariableInsertPanel onInsert={insertVariable} sidebarMode />
+            <VariableInsertPanel onInsert={insertVariable} sidebarMode categories={categories} />
           </div>
         )}
       </div>
@@ -185,6 +196,7 @@ export function HighlightedTemplateEditor({
       {/* Context menu */}
       {contextMenu && (
         <VariableContextMenu
+          categories={categories}
           x={contextMenu.x}
           y={contextMenu.y}
           onInsert={(variable) => {
