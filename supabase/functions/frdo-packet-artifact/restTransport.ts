@@ -1,8 +1,8 @@
-import {canonicalJson,ensureCurrent}from'../../../src/lib/frdoFoundation/hash';
-import type{CurrentGuard,Stream}from'../../../src/lib/frdoFoundation/types';
-import type{XmlRuntime}from'../../../src/lib/frdoFoundation/xmlRuntime';
-import {uuid}from'../../../src/lib/frdoPackets/contract';
-import {sourceDescriptorSchema,type TrustedFrdoPorts}from'./trustedService';
+import {canonicalJson,ensureCurrent}from'../../../src/lib/frdoFoundation/hash.ts';
+import type{CurrentGuard,Stream}from'../../../src/lib/frdoFoundation/types.ts';
+import type{XmlRuntime}from'../../../src/lib/frdoFoundation/xmlRuntime.ts';
+import {uuid}from'../../../src/lib/frdoPackets/contract.ts';
+import {sourceDescriptorSchema,type TrustedFrdoPorts}from'./trustedService.ts';
 
 const MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const userNames=new Set(['uc_frdo_begin_freeze','uc_frdo_begin_correction','uc_frdo_read_inputs','uc_frdo_read_correction_selection','uc_frdo_action_sources','uc_frdo_request_file','uc_frdo_claim_file','uc_frdo_assert_file_claim','uc_frdo_fail_file','uc_frdo_candidate_object','read_frdo_packets','uc_frdo_mutation_result','uc_frdo_apply_direct','uc_frdo_abandon_correction','uc_frdo_pending_worker_request']);

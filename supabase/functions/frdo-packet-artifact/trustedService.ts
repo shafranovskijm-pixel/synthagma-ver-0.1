@@ -1,16 +1,16 @@
 import {z} from 'zod';
-import * as foundation from '../../../src/lib/frdoFoundation/contract';
-import {canonicalJson,ensureCurrent,sha256} from '../../../src/lib/frdoFoundation/hash';
-import type {CurrentGuard,Stream} from '../../../src/lib/frdoFoundation/types';
-import type {XmlRuntime} from '../../../src/lib/frdoFoundation/xmlRuntime';
-import {generateMappedOfficialWorkbook,verifyMappedOfficialWorkbook} from '../../../src/lib/frdoFoundation/template';
-import * as held from '../../../src/lib/frdoPackets/contract';
-import * as runtime from '../../../src/lib/frdoPackets/runtimeContract';
-import {captureReviewedPacket,withReviewedIssuerRegime} from '../../../src/lib/frdoPackets/issuerReview';
-import {mapFrozenProjections} from '../../../src/lib/frdoFoundation/mapper';
-import {projectPendingFrdoDeadline} from '../../../src/lib/frdoFoundation/deadlineProjection';
-import {reviewedPreviewHash,verifyTrustedFreezeCurrent} from '../../../src/lib/frdoPackets/trustedFreeze';
-import {PacketInvariantError,verifyFrozenCapture} from '../../../src/lib/frdoPackets/invariants';
+import * as foundation from '../../../src/lib/frdoFoundation/contract.ts';
+import {canonicalJson,ensureCurrent,sha256} from '../../../src/lib/frdoFoundation/hash.ts';
+import type {CurrentGuard,Stream} from '../../../src/lib/frdoFoundation/types.ts';
+import type {XmlRuntime} from '../../../src/lib/frdoFoundation/xmlRuntime.ts';
+import {generateMappedOfficialWorkbook,verifyMappedOfficialWorkbook} from '../../../src/lib/frdoFoundation/template.ts';
+import * as held from '../../../src/lib/frdoPackets/contract.ts';
+import * as runtime from '../../../src/lib/frdoPackets/runtimeContract.ts';
+import {captureReviewedPacket,withReviewedIssuerRegime} from '../../../src/lib/frdoPackets/issuerReview.ts';
+import {mapFrozenProjections} from '../../../src/lib/frdoFoundation/mapper.ts';
+import {projectPendingFrdoDeadline} from '../../../src/lib/frdoFoundation/deadlineProjection.ts';
+import {reviewedPreviewHash,verifyTrustedFreezeCurrent} from '../../../src/lib/frdoPackets/trustedFreeze.ts';
+import {PacketInvariantError,verifyFrozenCapture} from '../../../src/lib/frdoPackets/invariants.ts';
 
 /** SOURCE ONLY: the deployment adapter must bundle these SAME canonical J modules.
  * No second mapper, user supplied mapped cells, source paths, actor or capabilities.
