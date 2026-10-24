@@ -9,9 +9,9 @@
 import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
 import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
 import { ProgramFactsError, resolveGroupProgramGeneration, programGenerationScalars, programTrainingPeriod } from "../_shared/program-facts.ts";
-import { corsHeaders } from "../_shared/handler.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { z } from "npm:zod@3.25.76";
+import { z } from "npm:zod@3.23.8";
 import JSZip from "npm:jszip@3.10.1";
 import { compileDocumentXml, numberStudents, validateSnapshot, type TemplateManifest } from "../_shared/docx-ooxml/compile.ts";
 import { formatMoneyRu, moneyToWordsRu } from "../_shared/docx-ooxml/money.ts";
@@ -54,7 +54,7 @@ const toStrings = (row: Record<string, unknown>): Record<string, string> =>
   Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v === null || v === undefined ? "" : String(v)]));
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 

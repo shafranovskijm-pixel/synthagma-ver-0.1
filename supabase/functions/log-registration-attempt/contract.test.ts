@@ -6,7 +6,7 @@ import {
   parseRegistrationAttemptPayload,
   readRegistrationAttemptBody,
   REGISTRATION_ATTEMPT_BODY_MAX_BYTES,
-} from "./contract.ts";
+} from "./contract";
 
 describe("log-registration-attempt contract", () => {
   it("accepts the known browser fields for JSON and sendBeacon text payloads", async () => {
