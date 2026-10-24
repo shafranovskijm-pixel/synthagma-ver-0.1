@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 function actualHandler(missingKey = false) {
   const removed = vi.fn(async () => ({ error: null }));
-  const deleted = vi.fn(async (..._args: any[]) => ({ error: null }));
+  const deleted = vi.fn(async () => ({ error: null }));
   const bucket = vi.fn(() => ({ remove: removed }));
   const from = vi.fn((table: string) => {
     // If org_documents enters this generic purge again, these legacy/versioned

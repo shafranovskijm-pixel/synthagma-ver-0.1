@@ -48,13 +48,13 @@ const identityRequirement=z.enum(['declared','account_control']),authorityRequir
 const basisFields={kind:z.enum(['law','agreement','local_act','combined']),explanation:text(),sources:z.array(legalSourceReference).max(20)};
 const policyFields={version:z.literal(1),classification,method:supportedMethod,purpose:z.enum(['factual_only','account_pep','paper_scan_record']),identity_requirement:identityRequirement,authority_requirement:authorityRequirement,
   agreement:canonicalTerms.nullable(),consent:canonicalTerms.nullable(),limitations:text()};
-function checkPolicy(value:{method?:z.infer<typeof supportedMethod>;purpose?:string;identity_requirement?:string;agreement?:z.infer<typeof canonicalTerms>|null;consent?:z.infer<typeof canonicalTerms>|null;classification:z.infer<typeof classification>},ctx:z.RefinementCtx){
+function checkPolicy(value:{method?:z.infer<typeof supportedMethod>;purpose?:string;identity_requirement?:string;agreement?:z.infer<typeof canonicalTerms>|null;consent?:z.infer<typeof canonicalTerms>|null;classification?:z.infer<typeof classification>},ctx:z.RefinementCtx){
   const invalid=value.method==='graphic_asset'&&value.purpose!=='factual_only'
     ||value.method==='bearer_invitation_confirmation'&&(value.purpose!=='factual_only'||value.identity_requirement!=='declared')
     ||value.method==='scan_received'&&value.purpose!=='paper_scan_record'
     ||value.purpose==='account_pep'&&(value.method!=='authenticated_account_confirmation'||value.identity_requirement!=='account_control'||value.agreement?.kind!=='pep_agreement')
     ||value.method==='authenticated_account_confirmation'&&value.classification.document_type==='consent'&&value.consent?.kind!=='personal_data_consent'
-    ||value.agreement!=null&&value.agreement.kind!=='pep_agreement'||value.consent!=null&&value.consent.kind!=='personal_data_consent';
+    ||value.agreement!==null&&value.agreement.kind!=='pep_agreement'||value.consent!==null&&value.consent.kind!=='personal_data_consent';
   if(invalid)ctx.addIssue({code:'custom',message:'Method and purpose cannot claim unsupported assurance'});
 }
 export const policyBody=z.object({...policyFields,basis:z.object({...basisFields,document_references:z.array(exactDocumentSelection).max(20)}).strict()}).strict().superRefine(checkPolicy);

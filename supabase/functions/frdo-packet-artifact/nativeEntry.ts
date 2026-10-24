@@ -1,7 +1,7 @@
-import{createFrdoHandler}from'./handler.ts';
-import{createRestFrdoPorts}from'./restTransport.ts';
-import{ownedFrdoDonor}from'../../build/frdo-packet-artifact/ownedDonors.ts';
-import{trustedFrdoXmlRuntime}from'./xmlRuntime.ts';
+import{createFrdoHandler}from'./handler';
+import{createRestFrdoPorts}from'./restTransport';
+import{ownedFrdoDonor}from'../../build/frdo-packet-artifact/ownedDonors';
+import{trustedFrdoXmlRuntime}from'./xmlRuntime';
 
 /** Bundle entry, not a second implementation. The native package must include
  * this same canonical J source closure, exact donors and pinned XML parser.

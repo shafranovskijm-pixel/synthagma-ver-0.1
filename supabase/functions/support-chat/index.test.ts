@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import * as contacts from "../_shared/platform-support-contacts.ts";
+import * as contacts from "../_shared/platform-support-contacts";
 
 function actualHandler(options: { aiText?: string; omitCurrent?: boolean; human?: boolean } = {}) {
   const inserted: any[] = [], delivered: any[] = [], orders: any[] = [];
