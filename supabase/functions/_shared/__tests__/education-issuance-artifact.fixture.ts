@@ -88,6 +88,16 @@ export async function fixture() {
   });
   const serviceRpc = vi.fn(async (name: string, args: Record<string, unknown>): Promise<{data: unknown; error: unknown}> => {
     events.push(name);
+    if (name === 'uc_observe_education_artifact_object') {
+      const kind = args.p_kind, stored = kind === 'staging' ? stage : output;
+      if (kind !== 'staging' && kind !== 'output') throw new Error('Unexpected observation slot');
+      const bucket = kind === 'staging' ? state.staging.bucket : 'org-documents';
+      const path = kind === 'staging' ? state.staging.path : state.output.file_path;
+      return {data: {schema_version: 1, ...input, actor_id: actor, render_input_hash: state.render_input_hash, kind,
+        object: stored ? {bucket, path, object_id: stored.id, updated_at: stamp, byte_size: stored.bytes.length,
+          mime_type: 'application/pdf', storage_metadata: {size: stored.bytes.length, mimetype: 'application/pdf', eTag: stored.id},
+          user_metadata: structuredClone(stored.metadata)} : null}, error: null};
+    }
     const p = args.p_proof as Record<string, any>;
     let object: Stored;
     if (name === 'uc_attest_education_issuance_staging') {

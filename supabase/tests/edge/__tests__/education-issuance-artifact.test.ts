@@ -46,7 +46,12 @@ describe('UC019 actual-byte artifact boundary (synthetic storage, no legal or re
 
   it('uncertain stage attestation never reaches caller output until same-request replay confirms the stored proof', async () => {
     const f = await fixture(), original = f.serviceRpc.getMockImplementation()!;
-    f.serviceRpc.mockImplementationOnce(async (name, args) => {await original(name, args); return {data: null, error: {code: 'NETWORK'}};});
+    let lost = false;
+    f.serviceRpc.mockImplementation(async (name, args) => {
+      const result = await original(name, args);
+      if (name === 'uc_attest_education_issuance_staging' && !lost) {lost = true; return {data: null, error: {code: 'NETWORK'}};}
+      return result;
+    });
     expect((await f.run()).status).toBe(503); expect(f.callerUpload).not.toHaveBeenCalled();
     expect((await f.run()).status).toBe(200); expect(f.render).toHaveBeenCalledTimes(1);
     expect(f.serviceRpc.mock.calls.filter(call => call[0] === 'uc_attest_education_issuance_staging')).toHaveLength(1);
@@ -98,7 +103,7 @@ describe('UC019 actual-byte artifact boundary (synthetic storage, no legal or re
     const f = await fixture();
     f.render.mockImplementationOnce(async () => {f.getUser.mockResolvedValue({data: {user: {id: id(99)}}, error: null}); return pdf();});
     expect((await f.run()).status).toBe(403);
-    expect(f.serviceUpload).not.toHaveBeenCalled(); expect(f.serviceRpc).not.toHaveBeenCalled(); expect(f.callerUpload).not.toHaveBeenCalled();
+    expect(f.serviceUpload).not.toHaveBeenCalled(); expect(f.serviceRpc.mock.calls.filter(call => call[0].startsWith('uc_attest_'))).toHaveLength(0); expect(f.callerUpload).not.toHaveBeenCalled();
   });
 
   it('immutable programme/scalar change after rendering fails before stage upload', async () => {
@@ -115,7 +120,7 @@ describe('UC019 actual-byte artifact boundary (synthetic storage, no legal or re
   it('actual reread byte corruption cannot be attested from metadata alone', async () => {
     const f = await fixture();
     f.serviceDownload.mockImplementationOnce(async () => ({data: new Blob([Uint8Array.from(pdf('CORRUPT')).buffer], {type: 'application/pdf'}), error: null}));
-    expect((await f.run()).status).not.toBe(200); expect(f.serviceRpc).not.toHaveBeenCalled(); expect(f.callerUpload).not.toHaveBeenCalled();
+    expect((await f.run()).status).not.toBe(200); expect(f.serviceRpc.mock.calls.filter(call => call[0].startsWith('uc_attest_'))).toHaveLength(0); expect(f.callerUpload).not.toHaveBeenCalled();
   });
 
   it('55-second deadline stops a late renderer from uploading, attesting or saving', async () => {
@@ -126,7 +131,7 @@ describe('UC019 actual-byte artifact boundary (synthetic storage, no legal or re
     await vi.advanceTimersByTimeAsync(EDUCATION_ARTIFACT_MS);
     expect((await running).status).toBe(503);
     resolve(pdf()); await Promise.resolve(); await Promise.resolve();
-    expect(f.serviceUpload).not.toHaveBeenCalled(); expect(f.serviceRpc).not.toHaveBeenCalled(); expect(f.callerUpload).not.toHaveBeenCalled();
+    expect(f.serviceUpload).not.toHaveBeenCalled(); expect(f.serviceRpc.mock.calls.filter(call => call[0].startsWith('uc_attest_'))).toHaveLength(0); expect(f.callerUpload).not.toHaveBeenCalled();
   });
 
   it('strict shared schema refuses incoherent proof/mode/final tuples and preserves metadata hash vs byte hash distinction', async () => {
