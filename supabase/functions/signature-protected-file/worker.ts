@@ -28,7 +28,7 @@ function boundedAwait<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
   operation.then(value=>{signal.removeEventListener('abort',abort);if(signal.aborted)reject(new ProtectedFileError('ACCESS_DENIED'));else resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
  });
 }
-async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array>{
+async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array<ArrayBuffer>>{
  if(!response.ok||response.redirected)fail(response.status===404?'SOURCE_UNAVAILABLE':'DEPENDENCY_UNAVAILABLE');
  const rawLength=response.headers.get('content-length');
  if(rawLength!==null&&(!/^\d{1,12}$/.test(rawLength)||Number(rawLength)>SIGNATURE_SOURCE_MAX_BYTES))fail('LIMIT_EXCEEDED');
@@ -47,7 +47,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
   const bytes=new Uint8Array(total);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.byteLength;}complete=true;return bytes;
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
-async function digest(bytes:Uint8Array):Promise<string>{
+async function digest(bytes:Uint8Array<ArrayBuffer>):Promise<string>{
  const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 
