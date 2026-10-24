@@ -7,7 +7,7 @@ import {prepareEducationHtml, EducationTemplateError} from './education-issuance
 import {validateFaithfulPdf, FaithfulPdfError, EDUCATION_PDF_MAX_BYTES, EDUCATION_RENDERER_REVISION} from './faithful-pdf.ts';
 
 export const EDUCATION_ARTIFACT_MS = 55_000;
-export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261024-v3';
+export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261024-v4';
 const codes = ['INVALID_INPUT', 'ACCESS_DENIED', 'REVISION_CONFLICT', 'REQUEST_CONFLICT', 'SOURCE_CHANGED', 'SOURCE_UNAVAILABLE',
   'PREREQUISITE_MISSING', 'REVIEW_REQUIRED', 'LIMIT_EXCEEDED', 'DEPENDENCY_UNAVAILABLE', 'NUMBER_PLAN_STALE',
   'ARTIFACT_UNAVAILABLE', 'ARTIFACT_REVIEW_REQUIRED', 'ARTIFACT_RENDER_FAILED'] as const;
@@ -196,6 +196,19 @@ async function info(storage: EducationStorage, bucket: string, path: string, sig
   return {object_id: id!, updated_at: updated!, size, mime, metadata: userMetadata,
     raw_metadata: before?.storage_metadata ? {storage_metadata: before.storage_metadata, user_metadata: before.user_metadata} : undefined};
 }
+
+// Keep upload diagnostics inside this worker. Public responses contain fixed codes
+// only; neither provider messages nor nested payloads are logged or forwarded.
+function outputUploadFailure(error: unknown): Code {
+  if (!record(error)) return 'DEPENDENCY_UNAVAILABLE';
+  try {
+    const message = typeof error.message === 'string' && error.message.length <= 8192 ? error.message : '';
+    if (/(?:^|[^A-Za-z0-9_])prepared_education_output_context_unavailable(?:$|[^A-Za-z0-9_])/.test(message)) return 'ACCESS_DENIED';
+    if (/(?:^|[^A-Za-z0-9_])prepared_education_output_metadata_mismatch(?:$|[^A-Za-z0-9_])/.test(message)) return 'SOURCE_CHANGED';
+    if ([error.statusCode, error.status].some(value => value === 403 || value === '403')) return 'ACCESS_DENIED';
+  } catch { /* An unreadable error object is an uncertain dependency failure. */ }
+  return 'DEPENDENCY_UNAVAILABLE';
+}
 function identity(value: ObjectInfo): unknown {return {object_id: value.object_id, updated_at: value.updated_at, size: value.size, mime: value.mime, metadata: value.metadata, raw_metadata: value.raw_metadata};}
 function objectIdentity(value: ObjectInfo, expected: {object_id: string; updated_at: string}): void {
   same(value.object_id, expected.object_id); same(value.updated_at, admissionTime(expected.updated_at));
@@ -351,14 +364,19 @@ async function execute(request: Request, authorization: string, deps: EducationA
   // Stage CAS is confirmed before any original-caller UC006 upload or commit.
   if (!context.output.source) {
     await current(); check(signal);
+    let uploadError: unknown = null;
     try {
-      await caller.storage.from('org-documents').upload(context.output.file_path, Uint8Array.from(staged.bytes).buffer,
+      const uploaded = await caller.storage.from('org-documents').upload(context.output.file_path, Uint8Array.from(staged.bytes).buffer,
         {contentType: 'application/pdf', upsert: false, cacheControl: '0'});
-      check(signal);
-    } catch {check(signal);}
+      check(signal); uploadError = uploaded.error;
+    } catch (error) {check(signal); uploadError = error;}
     context = await current();
-    const uploadedInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current, false, observeOutput); context = await current();
-    if (!uploadedInfo || uploadedInfo.size !== staged.bytes.length || uploadedInfo.mime !== 'application/pdf') fail();
+    // A lost acknowledgement may still have committed the immutable winner.
+    // Only an exact raw+SDK absence may report the retained upload failure;
+    // every present winner still passes the unchanged bytes/hash/source fences.
+    const uploadedInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current, true, observeOutput); context = await current();
+    if (!uploadedInfo) fail(outputUploadFailure(uploadError));
+    if (uploadedInfo.size !== staged.bytes.length || uploadedInfo.mime !== 'application/pdf') fail();
     await bytes(caller.storage, 'org-documents', context.output.file_path, uploadedInfo, signal, staged.sha256, current, observeOutput); context = await current();
     check(signal);
     db(await caller.rpc('commit_org_document_version', {p_document_id: context.output.document_id,
