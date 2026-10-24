@@ -92,7 +92,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
  const action={address:request.address,expected_document_revision_id:request.expected_document_revision_id,document_html_sha256:request.document_html_sha256,purpose:'source' as const,scan_path:null};
  const attest={action:'attest_file' as const,...action,verification_request_id:request.verification_request_id};
  const finish=async(value:unknown,proof:TrustedSignatureFileProof|null)=>{
-  const receipt=signatureFileVerificationReceiptSchema.safeParse(value);if(!receipt.success)fail('DEPENDENCY_UNAVAILABLE');const r=receipt.data;
+  const receipt=signatureFileVerificationReceiptSchema.safeParse(value);if(!receipt.success)fail('DEPENDENCY_UNAVAILABLE');const r=receipt.data!;
   if(r.verification_request_id!==request.verification_request_id||!sameScope(r.source,request))fail('SOURCE_CHANGED');
   if(proof===null&&r.outcome!=='replayed')fail('DEPENDENCY_UNAVAILABLE');
   if(proof&&(!same(r.source,proof.source)||!same(r.object,proof.object_after)||!same(r.file,proof.file)))fail('SOURCE_CHANGED');
