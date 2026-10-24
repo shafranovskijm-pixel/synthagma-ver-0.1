@@ -12,7 +12,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
 import JSZip from "npm:jszip@3.10.1";
-import { z } from "npm:zod@3.23.8";
+import { z } from "npm:zod@3.25.76";
 import {
   compileClassJournalXml,
   formatJournalDate,
