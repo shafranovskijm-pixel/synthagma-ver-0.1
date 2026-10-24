@@ -116,7 +116,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
   const checked=trustedSignatureFileProofSchema.safeParse({assurance:'trusted_service_reread',source:context.source,object_before:context.object,file:{bucket:context.source.bucket,path:context.source.path,sha256:sha,bytes:bytes.byteLength,mime:declaredMime},object_after:after.object});
   if(!checked.success)fail('SOURCE_CHANGED');
   const proof=checked.data;return await finish(await invoke(attest,proof),proof);
- }catch(error){if(error instanceof SignatureSourceError)throw error;fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
+ }catch(error){if(error instanceof SignatureSourceError)throw error;return fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
  finally{clearTimeout(timer);outerSignal?.removeEventListener('abort',abort);controller.abort();}
 }
 
