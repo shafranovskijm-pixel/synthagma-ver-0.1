@@ -219,7 +219,7 @@ export function admissionFetch(network: typeof fetch, signal: AbortSignal): type
 }
 
 type Check = (value: unknown) => void;
-function failSource(): never {throw new AdmissionError("SOURCE_UNAVAILABLE");}
+const failSource = (): never => {throw new AdmissionError("SOURCE_UNAVAILABLE");};
 const literal = (...values: unknown[]): Check => value => {if (!values.includes(value)) failSource();};
 const bool: Check = value => {if (typeof value !== "boolean") failSource();};
 const sha: Check = value => {if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value)) failSource();};
