@@ -10,7 +10,7 @@ export type SignatureSourceFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'
 export class SignatureSourceError extends Error{
  constructor(readonly code:SignatureSourceFailure){super(code);this.name='SignatureSourceError';}
 }
-const fail=(code:SignatureSourceFailure):never=>{throw new SignatureSourceError(code);};
+function fail(code:SignatureSourceFailure):never{throw new SignatureSourceError(code);}
 export interface SignatureSourceServiceRequest{
  p_action:SignatureFileAction;p_observed_actor_user_id:string;p_request_ip:null;p_request_user_agent:null;
  p_original_proof:TrustedSignatureFileProof|null;p_scan_proof:null;
