@@ -62,7 +62,7 @@ function OrgDocumentsManagerContent({ organizationId, canWrite = false }: OrgDoc
   return (
     <div className="space-y-6">
       {!h.activeCategory && <EducationCenterAssistant organizationId={organizationId} organization={h.organizationData ?? null}
-        documents={h.documents ?? []} onUpload={h.openUploadDialog} onHistory={h.setVersionsDocument} onArchive={() => { h.setSearchQuery(""); h.setExpiryFilter("archived"); }} canWrite={canWrite} />}
+        documents={h.documents ?? []} onUpload={h.openUploadDialog} onHistory={h.setVersionsDocument} onArchive={() => { h.setSearchQuery(""); h.setExpiryFilter("archived"); }} onSelfExamination={() => h.setShowQuiz(true)} canWrite={canWrite} />}
       {!h.activeCategory ? (
         <OverviewContent h={h} />
       ) : (

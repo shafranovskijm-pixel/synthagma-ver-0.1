@@ -34,10 +34,13 @@ import { canAccessDocumentSubTab } from "@/lib/organization/documentNavigationPe
 import {
   clearEducationDocumentsJournalFocusParams,
   readCounterpartyView,
+  readConstructorView,
   readDocumentView,
   readEducationDocumentsJournalFocus,
   setDocumentViewParams,
+  setConstructorViewParams,
 } from "@/lib/organization/documentWorkspaceNavigation";
+import { readCompliancePreparation } from "@/lib/organization/complianceTaskNavigation";
 import type { CounterpartySubTab } from "@/hooks/useDocumentsTab";
 import {
   DropdownMenu,
@@ -130,6 +133,8 @@ function DocumentsTabContent({
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedDocumentView = readDocumentView(searchParams);
   const requestedCounterpartyView = readCounterpartyView(searchParams);
+  const requestedConstructorView = readConstructorView(searchParams);
+  const preparation = readCompliancePreparation(searchParams);
   const requestedEducationDocumentFocus = readEducationDocumentsJournalFocus(searchParams);
 
   const canOpenDocumentView = useCallback((tab: DocumentSubTab) => {
@@ -524,11 +529,17 @@ function DocumentsTabContent({
             </Suspense>
           )}
           {h.activeTab === "constructor" && (
+            <div className="space-y-4">
+            {preparation && <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <p className="text-sm font-medium">{preparation.label}</p>
+              <p className="text-sm text-muted-foreground">{preparation.help}</p>
+              <a className="text-sm text-primary underline" href="/organization?tab=documents&documentView=org">Вернуться к задачам центра</a>
+            </div>}
             <ConstructorSection
               organizationId={organizationId}
               organizationName={organizationName}
-              constructorTab={h.constructorTab}
-              setConstructorTab={h.setConstructorTab}
+              constructorTab={requestedConstructorView}
+              setConstructorTab={(view) => setSearchParams(current => setConstructorViewParams(current, view))}
               stampUrl={h.stampUrl}
               signatureUrl={h.signatureUrl}
               onStampUpload={h.handleStampUpload}
@@ -537,6 +548,7 @@ function DocumentsTabContent({
               onSignatureRemove={h.handleSignatureRemove}
               onOpenContractEditor={() => h.d.tabNavigation.setActiveTab("contract-editor" as any)}
             />
+            </div>
           )}
           {h.activeTab === "org" && <OrgDocumentsManager organizationId={organizationId} canWrite={canWriteDocuments} />}
           {h.activeTab === "orders" && isOrdersEnabled && <DocumentArchiveView canWrite={canWriteDocuments} organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} />}
