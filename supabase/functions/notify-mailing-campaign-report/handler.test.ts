@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMailingReportHandler } from "./handler";
+import { createMailingReportHandler } from "./handler.ts";
 
 const campaignId = "11111111-1111-4111-8111-111111111111";
 const eventId = "22222222-2222-4222-8222-222222222222";
@@ -98,7 +98,7 @@ describe("mailing report handler factory, no real HTTP or Telegram calls", () =>
     {}, { Authorization: "Bearer wrong" }, { "X-Cron-Secret": "wrong" },
     { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.fixture-signature" },
     { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.fixture-signature" },
-  ])("rejects unauthorized request before creating DB client", async (headers) => {
+  ] as Record<string, string>[])("rejects unauthorized request before creating DB client", async (headers) => {
     const f = fixture();
     expect((await f.run({}, { headers })).status).toBe(401);
     expect(f.createAdmin).not.toHaveBeenCalled();
