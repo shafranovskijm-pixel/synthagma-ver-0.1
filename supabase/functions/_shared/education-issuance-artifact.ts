@@ -1,5 +1,5 @@
 import {educationArtifactRequestSchema, educationArtifactContextSchema, educationArtifactAttestationSchema,
-  educationArtifactWorkerResultSchema, educationStagingAttestProofSchema, educationOutputAttestProofSchema,
+  educationArtifactWorkerResultSchema, educationStagingAttestProofSchema, educationOutputAttestProofSchema, educationArtifactObjectObservationSchema,
   type EducationArtifactRequest, type EducationArtifactContext, type EducationStagingProof} from './education-issuance-artifact-contract.ts';
 import {admissionSame, admissionHash, admissionTime, admissionUuid, readAdmissionBody, requireAdmissionActor,
   AdmissionError} from './admission-case-access.ts';
@@ -7,7 +7,7 @@ import {prepareEducationHtml, EducationTemplateError} from './education-issuance
 import {validateFaithfulPdf, FaithfulPdfError, EDUCATION_PDF_MAX_BYTES, EDUCATION_RENDERER_REVISION} from './faithful-pdf.ts';
 
 export const EDUCATION_ARTIFACT_MS = 55_000;
-export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261023-v1';
+export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261024-v2';
 const codes = ['INVALID_INPUT', 'ACCESS_DENIED', 'REVISION_CONFLICT', 'REQUEST_CONFLICT', 'SOURCE_CHANGED', 'SOURCE_UNAVAILABLE',
   'PREREQUISITE_MISSING', 'REVIEW_REQUIRED', 'LIMIT_EXCEEDED', 'DEPENDENCY_UNAVAILABLE', 'NUMBER_PLAN_STALE',
   'ARTIFACT_UNAVAILABLE', 'ARTIFACT_REVIEW_REQUIRED', 'ARTIFACT_RENDER_FAILED'] as const;
@@ -120,7 +120,26 @@ function parseContext(raw: unknown, input: EducationArtifactRequest, actor: stri
   return context;
 }
 
-type ObjectInfo = {object_id: string; updated_at: string; size: number; mime: string; metadata: Record<string, unknown> | null};
+type RawObjectInfo = {object_id: string; updated_at: string; size: number; mime: string; storage_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> | null};
+type RawObserver = () => Promise<RawObjectInfo | null>;
+type ObjectInfo = {object_id: string; updated_at: string; size: number; mime: string; metadata: Record<string, unknown> | null; raw_metadata?: unknown};
+// SDK timestamps may be serialized Dates. Their observed digits only cross-check
+// transport; every identity and SQL attestation retains the original PG microseconds.
+function sdkTimeMatchesRaw(raw: unknown, exact: string): void {
+  const observed = admissionTime(raw), fraction = (raw as string).match(/\.(\d{1,6})(?:Z|\+00:00)$/)?.[1] || '';
+  const end = fraction.length ? 20 + fraction.length : 19;
+  same(observed.slice(0, end), exact.slice(0, end));
+}
+function metadataTransport(value: Record<string, unknown> | null): unknown {
+  if (!value || !Object.keys(value).length) return null;
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(value)) {
+    const canonical = provenanceKeys.find(candidate => candidate === key || camel(candidate) === key);
+    if (!canonical || typeof value[key] !== 'string' || canonical in out) fail();
+    out[canonical] = value[key];
+  }
+  return out;
+}
 const notFound = (error: unknown) => record(error) && [error.statusCode, error.status, error.code].some(value => String(value) === '404' || value === 'NoSuchKey' || value === 'not_found');
 function selectEqual<T>(values: unknown[], parser: (value: unknown) => T): T {
   const available = values.filter(value => value !== undefined && value !== null);
@@ -129,17 +148,21 @@ function selectEqual<T>(values: unknown[], parser: (value: unknown) => T): T {
   return parsed[0];
 }
 async function info(storage: EducationStorage, bucket: string, path: string, signal: AbortSignal,
-  fence: () => Promise<unknown>, absent = false): Promise<ObjectInfo | null> {
+  fence: () => Promise<unknown>, absent = false, observe?: RawObserver): Promise<ObjectInfo | null> {
   await fence();
   check(signal);
+  const before = observe ? await observe() : undefined; check(signal);
   const result = await storage.from(bucket).info(path); check(signal);
   await fence(); check(signal);
+  const after = observe ? await observe() : undefined; check(signal);
+  same(before, after);
   if (result.error) {
-    if (notFound(result.error)) {if (absent) return null; return fail('SOURCE_UNAVAILABLE');}
+    if (notFound(result.error)) {if (absent && (before === undefined || before === null)) return null; return fail('SOURCE_UNAVAILABLE');}
     if (record(result.error) && [result.error.statusCode, result.error.status].some(value => String(value) === '403')) fail('ACCESS_DENIED');
     return fail('DEPENDENCY_UNAVAILABLE');
   }
   if (!record(result.data)) fail('SOURCE_UNAVAILABLE');
+  if (observe && !before) fail();
   const value = result.data;
   if ((value.bucketId ?? value.bucket_id) !== bucket || value.name !== path) fail();
   for (const key of ['owner', 'ownerId', 'owner_id']) if (bucket === 'education-issuance-staging' && value[key] !== undefined && value[key] !== null && value[key] !== '') fail();
@@ -153,21 +176,32 @@ async function info(storage: EducationStorage, bucket: string, path: string, sig
     return raw;
   });
   let updated: string, id: string;
-  try {updated = selectEqual([value.updatedAt, value.updated_at, value.lastModified, value.last_modified], admissionTime); id = admissionUuid(value.id);}
+  try {
+    const aliases = [value.updatedAt, value.updated_at, value.lastModified, value.last_modified].filter(v => v !== undefined && v !== null);
+    if (!aliases.length) fail('SOURCE_UNAVAILABLE');
+    id = admissionUuid(value.id);
+    if (before) {
+      updated = admissionTime(before.updated_at);
+      for (const alias of aliases) sdkTimeMatchesRaw(alias, updated);
+      same(id, before.object_id); same(size, before.size); same(mime, before.mime);
+    } else updated = selectEqual(aliases, admissionTime);
+  }
   catch {return fail('SOURCE_UNAVAILABLE');}
   const explicit = value.userMetadata ?? value.user_metadata;
   if (explicit !== undefined && explicit !== null && !record(explicit)) fail();
   // Current Storage InfoRenderer exposes user_metadata as metadata; older APIs
   // expose userMetadata separately. The SQL attestation checks actual DB ownership.
   const userMetadata = record(explicit) ? explicit : metadata && ('preparationId' in metadata || 'preparation_id' in metadata) ? metadata : null;
-  return {object_id: id!, updated_at: updated!, size, mime, metadata: userMetadata};
+  if (before && 'user_metadata' in before) same(metadataTransport(userMetadata), metadataTransport(before.user_metadata ?? null));
+  return {object_id: id!, updated_at: updated!, size, mime, metadata: userMetadata,
+    raw_metadata: before?.storage_metadata ? {storage_metadata: before.storage_metadata, user_metadata: before.user_metadata} : undefined};
 }
-function identity(value: ObjectInfo): unknown {return {object_id: value.object_id, updated_at: value.updated_at, size: value.size, mime: value.mime, metadata: value.metadata};}
+function identity(value: ObjectInfo): unknown {return {object_id: value.object_id, updated_at: value.updated_at, size: value.size, mime: value.mime, metadata: value.metadata, raw_metadata: value.raw_metadata};}
 function objectIdentity(value: ObjectInfo, expected: {object_id: string; updated_at: string}): void {
   same(value.object_id, expected.object_id); same(value.updated_at, admissionTime(expected.updated_at));
 }
 async function bytes(storage: EducationStorage, bucket: string, path: string, expected: ObjectInfo,
-  signal: AbortSignal, knownHash: string | null, fence: () => Promise<unknown>): Promise<{bytes: Uint8Array; sha256: string}> {
+  signal: AbortSignal, knownHash: string | null, fence: () => Promise<unknown>, observe?: RawObserver): Promise<{bytes: Uint8Array; sha256: string}> {
   await fence();
   check(signal);
   const result = await storage.from(bucket).download(path); check(signal);
@@ -180,7 +214,7 @@ async function bytes(storage: EducationStorage, bucket: string, path: string, ex
   const sha256 = await admissionHash(data); check(signal);
   await fence(); check(signal);
   if (knownHash && sha256 !== knownHash) fail();
-  const after = await info(storage, bucket, path, signal, fence); same(identity(expected), after && identity(after));
+  const after = await info(storage, bucket, path, signal, fence, false, observe); same(identity(expected), after && identity(after));
   return {bytes: data, sha256};
 }
 const provenanceKeys = ['preparation_id', 'item_id', 'render_input_hash', 'template_byte_sha256', 'html_sha256', 'byte_sha256', 'renderer', 'renderer_revision'] as const;
@@ -233,19 +267,44 @@ async function execute(request: Request, authorization: string, deps: EducationA
   const service = deps.createService(signal);
   const serviceArgs = {p_actor_id: actor, ...args};
 
+  const observeTemplate: RawObserver = async () => {
+    check(signal);
+    if (!previous) fail('DEPENDENCY_UNAVAILABLE');
+    const value = previous.template.storage;
+    return {object_id: value.object_id, updated_at: admissionTime(value.updated_at), size: value.byte_size, mime: value.mime_type};
+  };
+  const observeSlot = (kind: 'staging' | 'output'): RawObserver => async () => {
+    check(signal);
+    if (!previous) fail('DEPENDENCY_UNAVAILABLE');
+    const live = previous; // info() has just refreshed the original-caller fence.
+    const raw = db(await service.rpc('uc_observe_education_artifact_object', {...serviceArgs, p_kind: kind})); check(signal);
+    const parsed = educationArtifactObjectObservationSchema.safeParse(raw);
+    if (!parsed.success) fail('SOURCE_UNAVAILABLE');
+    const value = parsed.data;
+    for (const key of Object.keys(input) as (keyof EducationArtifactRequest)[]) same(value[key], input[key]);
+    same(value.actor_id, actor); same(value.render_input_hash, live.render_input_hash); same(value.kind, kind);
+    if (!value.object) return null;
+    const bucket = kind === 'staging' ? live.staging.bucket : 'org-documents';
+    const path = kind === 'staging' ? live.staging.path : live.output.file_path;
+    same(value.object.bucket, bucket); same(value.object.path, path);
+    return {object_id: value.object.object_id, updated_at: value.object.updated_at, size: value.object.byte_size,
+      mime: value.object.mime_type, storage_metadata: value.object.storage_metadata, user_metadata: value.object.user_metadata};
+  };
+  const observeStage = observeSlot('staging'), observeOutput = observeSlot('output');
+
   // Template bytes are distinct from the UC006 metadata content_hash.
   const template = context.template.storage;
   await current();
-  const templateInfo = await info(caller.storage, template.bucket, template.path, signal, current); context = await current();
+  const templateInfo = await info(caller.storage, template.bucket, template.path, signal, current, false, observeTemplate); context = await current();
   if (!templateInfo || templateInfo.size !== template.byte_size || templateInfo.mime !== 'text/html' || templateInfo.size > 1_048_576) fail();
   objectIdentity(templateInfo, template);
-  const templateProof = await bytes(caller.storage, template.bucket, template.path, templateInfo, signal, template.known_sha256, current); context = await current();
+  const templateProof = await bytes(caller.storage, template.bucket, template.path, templateInfo, signal, template.known_sha256, current, observeTemplate); context = await current();
   const html = prepareEducationHtml(templateProof.bytes, context.variables);
   const htmlHash = await admissionHash(new TextEncoder().encode(html)); check(signal); context = await current();
   const expectedProvenance = {preparation_id: context.preparation_id, item_id: context.item_id, render_input_hash: context.render_input_hash,
     template_byte_sha256: templateProof.sha256, html_sha256: htmlHash, renderer: 'browserless', renderer_revision: EDUCATION_RENDERER_REVISION};
 
-  let stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, current, true); context = await current();
+  let stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, current, true, observeStage); context = await current();
   if (!stagedInfo) {
     if (context.staging.proof) fail();
     // Render only in the absence of an immutable service-owned winner. PDF bytes
@@ -262,11 +321,11 @@ async function execute(request: Request, authorization: string, deps: EducationA
       // exact immutable winner below may recover it; no overwrite or deletion.
     } catch {check(signal);}
     context = await current();
-    stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, current); context = await current();
+    stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, current, false, observeStage); context = await current();
     if (!stagedInfo || uploadedId !== undefined && uploadedId !== stagedInfo.object_id) fail();
   }
   const stageMetadata = provenance(stagedInfo, expectedProvenance);
-  const staged = await bytes(service.storage, context.staging.bucket, context.staging.path, stagedInfo, signal, stageMetadata.byte_sha256, current); context = await current();
+  const staged = await bytes(service.storage, context.staging.bucket, context.staging.path, stagedInfo, signal, stageMetadata.byte_sha256, current, observeStage); context = await current();
   const stageProof: EducationStagingProof = {object_id: stagedInfo.object_id, updated_at: stagedInfo.updated_at,
     byte_sha256: staged.sha256, byte_size: staged.bytes.length, template_byte_sha256: templateProof.sha256,
     html_sha256: htmlHash, renderer: 'browserless', renderer_revision: EDUCATION_RENDERER_REVISION};
@@ -292,9 +351,9 @@ async function execute(request: Request, authorization: string, deps: EducationA
       check(signal);
     } catch {check(signal);}
     context = await current();
-    const uploadedInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current); context = await current();
+    const uploadedInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current, false, observeOutput); context = await current();
     if (!uploadedInfo || uploadedInfo.size !== staged.bytes.length || uploadedInfo.mime !== 'application/pdf') fail();
-    await bytes(caller.storage, 'org-documents', context.output.file_path, uploadedInfo, signal, staged.sha256, current); context = await current();
+    await bytes(caller.storage, 'org-documents', context.output.file_path, uploadedInfo, signal, staged.sha256, current, observeOutput); context = await current();
     check(signal);
     db(await caller.rpc('commit_org_document_version', {p_document_id: context.output.document_id,
       p_organization_id: context.organization_id, p_request_id: context.output.upload_request_id, p_expected_revision: 0,
@@ -304,10 +363,10 @@ async function execute(request: Request, authorization: string, deps: EducationA
     check(signal); context = await current();
   }
   if (!context.output.source || !context.output.object) fail();
-  const outputInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current); context = await current();
+  const outputInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current, false, observeOutput); context = await current();
   if (!outputInfo || outputInfo.size !== staged.bytes.length || outputInfo.mime !== 'application/pdf') fail();
   objectIdentity(outputInfo, context.output.object!);
-  await bytes(caller.storage, 'org-documents', context.output.file_path, outputInfo, signal, staged.sha256, current); context = await current();
+  await bytes(caller.storage, 'org-documents', context.output.file_path, outputInfo, signal, staged.sha256, current, observeOutput); context = await current();
   if (!context.output.artifact) {
     const proof = educationOutputAttestProofSchema.parse({render_input_hash: context.render_input_hash,
       staged_object_id: stagedInfo.object_id, staged_updated_at: stagedInfo.updated_at, source: context.output.source,

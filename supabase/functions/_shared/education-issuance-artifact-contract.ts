@@ -36,6 +36,12 @@ export const educationArtifactContextSchema=z.object({schema_version:z.literal(1
 });
 export const educationStagingAttestProofSchema=z.object({render_input_hash:hash,template_source_hash:hash,template_object_id:uuid,template_updated_at:stamp,template_byte_sha256:hash,html_sha256:hash,staged_object_id:uuid,staged_updated_at:stamp,byte_sha256:hash,byte_size:size,mime_type:z.literal('application/pdf'),...renderer}).strict();
 export const educationOutputAttestProofSchema=z.object({render_input_hash:hash,staged_object_id:uuid,staged_updated_at:stamp,source,output_object_id:uuid,output_updated_at:stamp,byte_sha256:hash,byte_size:size,mime_type:z.literal('application/pdf'),...renderer}).strict();
+// Raw PostgreSQL metadata is an observation, never an artifact attestation.
+const observedStorageObject=z.object({bucket:z.enum(['education-issuance-staging','org-documents']),path:nonempty(1000),object_id:uuid,
+ updated_at:z.string().regex(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/),byte_size:size,mime_type:z.literal('application/pdf'),
+ storage_metadata:z.record(z.unknown()),user_metadata:z.record(z.unknown()).nullable()}).strict();
+export const educationArtifactObjectObservationSchema=z.object({schema_version:z.literal(1),...requestFields,actor_id:uuid,
+ render_input_hash:hash,kind:z.enum(['staging','output']),object:observedStorageObject.nullable()}).strict();
 export const educationArtifactAttestationSchema=z.object({schema_version:z.literal(1),kind:z.enum(['staging_attested','artifact_attested']),organization_id:uuid,preparation_id:uuid,item_id:uuid,input_revision:positive,render_input_hash:hash,byte_sha256:hash,byte_size:size,object_id:uuid,updated_at:stamp}).strict();
 export const educationArtifactWorkerResultSchema=z.object({schema_version:z.literal(1),...requestFields,status:z.enum(['rendered_unissued','consumed']),final_record_id:uuid.nullable(),artifact:preparedArtifact}).strict().refine(v=>(v.status==='consumed')===(v.final_record_id!==null),'Unconfirmed worker consumption');
 export type EducationArtifactRequest=z.infer<typeof educationArtifactRequestSchema>;
