@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,9 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import JSZip from "jszip";
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { generatedPdfPath } from "@/lib/documents/generatedPdf";
+import { captureDocumentOutputFence } from "@/lib/documents/outputFence";
+import { captureOfflineContext } from "@/utils/courseCache";
+import { bulkRegistryRequest, BulkRegistryError, persistBulkRegistryRequest, type BulkRegistryRequest } from "@/lib/documents/bulkRegistryPersistence";
 import {
   renderTemplate,
   buildOrgVariables,
@@ -88,6 +91,12 @@ interface GenerationResult {
   error?: string;
 }
 
+interface PreparedBulkDocument {
+  organizationId: string; recipientId: string; recipientName: string; number: string;
+  html: string; storagePath: string; fileName: string; registry: BulkRegistryRequest;
+  pdfReady: boolean; submitted: boolean; uncertain: boolean;
+}
+
 export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkDocumentGeneratorProps) {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"setup" | "preview" | "running" | "done">("setup");
@@ -119,6 +128,29 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<GenerationResult[]>([]);
   const cancelRef = useRef(false);
+  const submitLock = useRef(false), scopeEpoch = useRef(0);
+  const liveScope = useRef({ organizationId, isOpen }); liveScope.current = { organizationId, isOpen };
+  const prepared = useRef(new Map<string, PreparedBulkDocument>());
+  const batchActorId = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    ++scopeEpoch.current; cancelRef.current = true;
+    setTemplates([]); setSelectedTemplateId(""); setOrgRequisites(null); setCompanies([]); setStudents([]); setSelectedIds(new Set());
+    const unresolved = [...prepared.current.values()].filter(job => job.organizationId === organizationId && job.uncertain);
+    setResults(isOpen ? unresolved.map(job => ({ recipientId: job.recipientId, recipientName: job.recipientName, status: "error" as const, error: "Прежняя запись пока не подтверждена. Повторите тот же запрос." })) : []);
+    setStep(isOpen && unresolved.length ? "done" : "setup");
+    return () => { ++scopeEpoch.current; };
+  }, [organizationId, isOpen]);
+  const hasUncertainRequest = () => [...prepared.current.values()].some(job => job.uncertain);
+  const runFence = (epoch: number, access: () => void) => {
+    const actorId = batchActorId.current;
+    return () => { access(); if (!actorId || captureOfflineContext()?.actorId !== actorId || epoch !== scopeEpoch.current || !liveScope.current.isOpen || liveScope.current.organizationId !== organizationId) throw Error('Доступ к текущему пакету изменился.'); };
+  };
+  function showUnconfirmedRun(epoch: number) {
+    if (epoch !== scopeEpoch.current || !liveScope.current.isOpen || liveScope.current.organizationId !== organizationId) return;
+    const sameActor = !!batchActorId.current && captureOfflineContext()?.actorId === batchActorId.current;
+    setResults(sameActor ? [...prepared.current.values()].filter(job => job.organizationId === organizationId).map(job => ({ recipientId: job.recipientId, recipientName: job.recipientName, status: "error" as const, error: "Прежний запрос не подтверждён с текущим доступом. Повторите его после восстановления доступа." })) : []);
+    setStep("done"); toast.error("Пакет не подтверждён с текущим доступом.");
+  }
   const [duplicateNumbers, setDuplicateNumbers] = useState<string[]>([]);
 
   const selectedTemplate = useMemo(
@@ -132,6 +164,8 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
   }, [isOpen, organizationId]);
 
   async function loadInitialData() {
+    const epoch = scopeEpoch.current, checkAccess = captureDocumentOutputFence();
+    const loadCurrent = () => { checkAccess(); return epoch === scopeEpoch.current && liveScope.current.isOpen && liveScope.current.organizationId === organizationId; };
     setLoading(true);
     try {
       const [tplRes, orgRes, compRes, studRes] = await Promise.all([
@@ -160,6 +194,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
           .order("full_name"),
       ]);
 
+      if (!loadCurrent()) return;
       const tpls = (tplRes.data || []) as Template[];
       setTemplates(tpls);
       if (tpls.length > 0) {
@@ -171,10 +206,9 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
       setCompanies((compRes.data || []) as Company[]);
       setStudents((studRes.data || []) as Student[]);
     } catch (e: any) {
-      console.error("BulkDocumentGenerator load error", e);
-      toast.error("Не удалось загрузить данные");
+      if (epoch === scopeEpoch.current && liveScope.current.isOpen) toast.error("Не удалось загрузить данные с текущим доступом");
     } finally {
-      setLoading(false);
+      if (epoch === scopeEpoch.current && liveScope.current.isOpen) setLoading(false);
     }
   }
 
@@ -282,128 +316,105 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     setStep("preview");
   }
 
-  async function generateOne(
-    index: number,
-    recipientId: string
-  ): Promise<GenerationResult> {
+  function prepareOne(index: number, recipientId: string): PreparedBulkDocument {
     const recipient = filteredRecipients.find(r => r.id === recipientId)
       || (recipientType === "companies"
         ? companies.find(c => c.id === recipientId) && { id: recipientId, name: companies.find(c => c.id === recipientId)!.name }
         : students.find(s => s.user_id === recipientId) && { id: recipientId, name: students.find(s => s.user_id === recipientId)!.full_name || students.find(s => s.user_id === recipientId)!.email || "—" })
       || { id: recipientId, name: "—" };
+    const variables = buildVariables(index, recipientId), requestId = crypto.randomUUID();
+    const html = wrapAsPrintableDocument(renderTemplate(selectedTemplate!.body_html, variables), selectedTemplate!.name + " — " + recipient.name);
+    const safeName = selectedTemplate!.name.replace(/[^\w\u0400-\u04FF\s.-]/g, "_");
+    const fileName = safeName + "_" + variables.contract_number + ".pdf";
+    const storagePath = organizationId + "/bulk/" + documentDate.slice(0, 7) + "/" + requestId + "_" + index + "_" + fileName;
+    const registry = recipientType === "companies" ? bulkRegistryRequest('company_documents', {
+      id: requestId, company_id: recipientId, name: selectedTemplate!.name + " № " + variables.contract_number,
+      type: "contract", contract_number: String(variables.contract_number), contract_date: documentDate,
+      amount: perStudentPrice * studentsPerCompany, students_count: studentsPerCompany, file_path: storagePath,
+    }) : bulkRegistryRequest('document_issuance_log', {
+      id: requestId, organization_id: organizationId, user_id: recipientId, user_name: recipient.name,
+      document_type: "contract", document_name: selectedTemplate!.name + " № " + variables.contract_number,
+      reg_number: String(variables.contract_number), file_url: storagePath, send_method: "bulk_generation",
+    });
+    return { organizationId, recipientId, recipientName: recipient.name, number: String(variables.contract_number), html, storagePath, fileName, registry, pdfReady: false, submitted: false, uncertain: false };
+  }
 
+  async function generateOne(recipientId: string, current: () => void): Promise<GenerationResult> {
+    const job = prepared.current.get(recipientId);
+    const previousUncertain = job?.uncertain === true;
     try {
-      const variables = buildVariables(index, recipientId);
-      const html = renderTemplate(selectedTemplate!.body_html, variables);
-      const fullDoc = wrapAsPrintableDocument(html, `${selectedTemplate!.name} — ${recipient.name}`);
-      const safeName = selectedTemplate!.name.replace(/[^\w\u0400-\u04FF\s.-]/g, "_");
-      const fileName = `${safeName}_${variables.contract_number}.pdf`;
-      const yearMonth = documentDate.slice(0, 7);
-      const storagePath = `${organizationId}/bulk/${yearMonth}/${Date.now()}_${index}_${fileName}`;
-
-      const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
-        body: { html: fullDoc, fileName, storagePath },
-      });
-      if (pdfErr) throw pdfErr;
-      const pdfPath = generatedPdfPath(pdfRes);
-
-      if (recipientType === "companies") {
-        const totalAmount = perStudentPrice * studentsPerCompany;
-        const { error: registryError } = await supabase.from("company_documents").insert({
-          company_id: recipientId,
-          name: `${selectedTemplate!.name} № ${variables.contract_number}`,
-          type: "contract",
-          contract_number: String(variables.contract_number),
-          contract_date: documentDate,
-          amount: totalAmount,
-          students_count: studentsPerCompany,
-          file_path: pdfPath,
+      current();
+      if (!job || job.organizationId !== organizationId) throw Error('Прежний пакет относится к другой организации.');
+      if (!job.pdfReady) {
+        const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
+          body: { html: job.html, fileName: job.fileName, storagePath: job.storagePath },
         });
-        if (registryError) throw registryError;
-      } else {
-        const { error: registryError } = await supabase.from("document_issuance_log").insert({
-          organization_id: organizationId,
-          user_id: recipientId,
-          user_name: recipient.name,
-          document_type: "contract",
-          document_name: `${selectedTemplate!.name} № ${variables.contract_number}`,
-          reg_number: String(variables.contract_number),
-          file_url: pdfPath,
-          send_method: "bulk_generation",
-        });
-        if (registryError) throw registryError;
+        current();
+        if (pdfErr) throw pdfErr;
+        if (generatedPdfPath(pdfRes) !== job.storagePath) throw Error('PDF не совпал с подготовленным запросом. Документ не зарегистрирован.');
+        job.pdfReady = true;
       }
-
-      return {
-        recipientId,
-        recipientName: recipient.name,
-        status: "success",
-        documentName: String(variables.contract_number),
-        filePath: pdfPath,
-        fileName,
-      };
+      await persistBulkRegistryRequest(supabase, job.registry, current, () => { job.submitted = true; job.uncertain = true; });
+      job.uncertain = false;
+      current();
+      return { recipientId, recipientName: job.recipientName, status: "success", documentName: job.number, filePath: job.storagePath, fileName: job.fileName };
     } catch (e: any) {
-      console.error("Bulk gen error for", recipientId, e);
-      return {
-        recipientId,
-        recipientName: recipient.name,
-        status: "error",
-        error: e?.message || "Ошибка",
-      };
+      if (job) job.uncertain = previousUncertain || job.submitted && (!(e instanceof BulkRegistryError) || e.uncertain);
+      return { recipientId, recipientName: job?.recipientName || "—", status: "error", error: e?.message || "Ошибка" };
     }
   }
 
   async function handleGenerate() {
-    if (!selectedTemplate || selectedIds.size === 0) return;
-    cancelRef.current = false;
-    setStep("running");
-    setProgress(0);
-    setResults([]);
-    const ids = Array.from(selectedIds);
-    const localResults: GenerationResult[] = [];
-
-    for (let i = 0; i < ids.length; i++) {
-      if (cancelRef.current) {
-        toast.info(`Остановлено. Готово: ${localResults.length} из ${ids.length}`);
-        break;
+    if (submitLock.current || !selectedTemplate || selectedIds.size === 0) return;
+    if (hasUncertainRequest()) { toast.error("Сначала подтвердите прежний пакет через «Повторить ошибки»."); return; }
+    submitLock.current = true;
+    const epoch = scopeEpoch.current;
+    try {
+      const actorId = captureOfflineContext()?.actorId;
+      if (!actorId) throw Error('Требуется подтверждённый вход в исходную учётную запись.');
+      batchActorId.current = actorId;
+      const current = runFence(epoch, captureDocumentOutputFence()); current();
+      prepared.current.clear();
+      const ids = Array.from(selectedIds);
+      // Freeze every recipient before the first asynchronous render or write.
+      ids.forEach((id, index) => prepared.current.set(id, prepareOne(index, id)));
+      cancelRef.current = false; setStep("running"); setProgress(0); setResults([]);
+      const localResults: GenerationResult[] = [];
+      for (let i = 0; i < ids.length; i++) {
+        if (cancelRef.current) break;
+        const res = await generateOne(ids[i], current); current();
+        localResults.push(res); setProgress(Math.round(((i + 1) / ids.length) * 100)); setResults([...localResults]);
       }
-      const res = await generateOne(i, ids[i]);
-      localResults.push(res);
-      setProgress(Math.round(((i + 1) / ids.length) * 100));
-      setResults([...localResults]);
-    }
-
-    setStep("done");
-    const successful = localResults.filter(r => r.status === "success").length;
-    if (successful === ids.length) {
-      toast.success(`Сгенерировано документов: ${successful}`);
-    } else {
-      toast.warning(`Готово: ${successful}/${ids.length}. Ошибок: ${ids.length - successful}`);
-    }
+      setStep("done");
+      const okCount = localResults.filter(r => r.status === "success").length;
+      if (okCount) toast.success("Создано документов: " + okCount);
+      if (localResults.some(r => r.status === "error")) toast.error("Не все документы подтверждены. Повторите ошибки прежнего пакета.");
+    } catch { showUnconfirmedRun(epoch); }
+    finally { submitLock.current = false; }
   }
 
-  // Повторная попытка только для записей со статусом error
   async function handleRetryErrors() {
+    if (submitLock.current) return;
     const errors = results.filter(r => r.status === "error");
-    if (errors.length === 0) return;
-    cancelRef.current = false;
-    setStep("running");
-    setProgress(0);
-    const success = results.filter(r => r.status === "success");
-    const updated: GenerationResult[] = [...success];
-    setResults(updated);
-
-    for (let i = 0; i < errors.length; i++) {
-      if (cancelRef.current) break;
-      // Используем оригинальный индекс из общего списка для сохранения нумерации.
-      const originalIndex = results.findIndex(r => r.recipientId === errors[i].recipientId);
-      const res = await generateOne(originalIndex >= 0 ? originalIndex : i, errors[i].recipientId);
-      updated.push(res);
-      setProgress(Math.round(((i + 1) / errors.length) * 100));
-      setResults([...updated]);
-    }
-    setStep("done");
-    toast.success("Повторная генерация завершена");
+    if (!errors.length) return;
+    submitLock.current = true;
+    const epoch = scopeEpoch.current;
+    try {
+      const actorId = captureOfflineContext()?.actorId;
+      if (!actorId || actorId !== batchActorId.current || errors.some(row => prepared.current.get(row.recipientId)?.organizationId !== organizationId)) throw Error('Повтор доступен только исходному пользователю в исходной организации.');
+      const current = runFence(epoch, captureDocumentOutputFence()); current();
+      cancelRef.current = false; setStep("running"); setProgress(0);
+      const updated = results.filter(r => r.status === "success"); setResults(updated);
+      for (let i = 0; i < errors.length; i++) {
+        if (cancelRef.current) break;
+        const res = await generateOne(errors[i].recipientId, current); current();
+        updated.push(res); setProgress(Math.round(((i + 1) / errors.length) * 100)); setResults([...updated]);
+      }
+      setStep("done");
+      if (updated.some(r => r.status === "error")) toast.error("Не все записи подтверждены. Сохранён прежний запрос для безопасного повтора.");
+      else toast.success("Прежний пакет подтверждён без повторной регистрации.");
+    } catch { showUnconfirmedRun(epoch); }
+    finally { submitLock.current = false; }
   }
 
   // Скачивание всех успешных PDF одним ZIP-архивом
@@ -448,6 +459,11 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
       toast.warning("Дождитесь завершения или нажмите «Остановить»");
       return;
     }
+    if (submitLock.current || hasUncertainRequest()) {
+      toast.warning("Результат записи пока не подтверждён. Сначала повторите ошибки прежнего пакета.");
+      return;
+    }
+    prepared.current.clear(); batchActorId.current = null;
     setStep("setup");
     setProgress(0);
     setResults([]);
