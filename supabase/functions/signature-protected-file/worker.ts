@@ -66,6 +66,6 @@ export async function readProtectedSignatureFile(input:unknown,deps:ProtectedFil
   const bytes=await boundedBytes(response,signal);await current();const sha256=await boundedAwait(digest(bytes),signal);await current();
   if(before.object.reported_size!==null&&before.object.reported_size!==bytes.byteLength||before.expected_bytes!==null&&before.expected_bytes!==bytes.byteLength||before.expected_sha256!==null&&before.expected_sha256!==sha256)fail('SOURCE_CHANGED');
   const after=parse(await invoke());if(!same(before,after))fail('SOURCE_CHANGED');await current();return{kind:'file',context:before,bytes,sha256,mime:actualMime};
- }catch(error){if(error instanceof ProtectedFileError)throw error;fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
+ }catch(error){if(error instanceof ProtectedFileError)throw error;return fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
  finally{clearTimeout(timer);outer?.removeEventListener('abort',abort);ctl.abort();}
 }
