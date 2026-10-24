@@ -235,7 +235,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const generateProgramsTableHTML = (): string => {
     const rows = resolvedPrograms
       .filter(p => p.course)
-      .map((p, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${p.course!.title}</td><td style="text-align:center">${p.course!.frdo_duration_hours || p.course!.duration || '-'}</td><td style="text-align:center">${p.count}</td><td style="text-align:right">${formatPrice(p.price)}</td><td style="text-align:right">${formatPrice(String(p.subtotal))}</td></tr>`);
+      .map((p, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${escapeDocumentHtml(p.course!.title)}</td><td style="text-align:center">${escapeDocumentHtml(p.course!.frdo_duration_hours || p.course!.duration || '-')}</td><td style="text-align:center">${p.count}</td><td style="text-align:right">${formatPrice(p.price)}</td><td style="text-align:right">${formatPrice(String(p.subtotal))}</td></tr>`);
     
     return `<table><thead><tr><th style="text-align:center">№</th><th>Наименование программы</th><th style="text-align:center">Объём, часов</th><th style="text-align:center">Кол-во чел.</th><th style="text-align:right">Цена за 1 чел., руб.</th><th style="text-align:right">Сумма, руб.</th></tr></thead><tbody>${rows.join('')}<tr><td colspan="5" style="text-align:right;font-weight:bold">Итого:</td><td style="text-align:right;font-weight:bold">${formatPrice(String(totalPrice))}</td></tr></tbody></table>`;
   };
@@ -352,10 +352,15 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{additional_terms}}': additionalTerms || '',
     };
 
+    // Legacy placeholders are text; only the generated table carries intentional HTML.
+    // Its free-text cells are escaped where the table is built above.
+    const htmlReplacements = Object.fromEntries(Object.entries(replacements).map(([token, value]) =>
+      [token, token === '{{programs_table}}' ? value : escapeDocumentHtml(value)]));
+
     const facts = await resolveContractFacts(supabase as unknown as Parameters<typeof resolveContractFacts>[0],
       organizationId, validPrograms.map(program => program.course!.id), templateText);
     assertCurrentScope();
-    let result = substituteContractTemplate(templateText, replacements, facts, escapeDocumentHtml);
+    let result = substituteContractTemplate(templateText, htmlReplacements, facts, escapeDocumentHtml);
 
     // Fallback: remove any remaining "в лице ... Устава" for ИП after substitution
     if (orgIsIP) {
@@ -393,9 +398,9 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
     // Add signature block with stamps
     const counterpartySignName = isIndividual ? individualData.fullName : '_________________ ';
-    const signatureBlock = `<div class="section"><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${orgRequisites.director_name} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК${isIndividual ? ' (СЛУШАТЕЛЬ)' : ''}:</strong><br><br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / ${counterpartySignName} /</div></div></td></tr></table></div>`;
+    const signatureBlock = `<div class="section"><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${escapeDocumentHtml(orgRequisites.signature_url)}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${escapeDocumentHtml(orgRequisites.stamp_url)}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${escapeDocumentHtml(orgRequisites.director_name)} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК${isIndividual ? ' (СЛУШАТЕЛЬ)' : ''}:</strong><br><br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / ${escapeDocumentHtml(counterpartySignName)} /</div></div></td></tr></table></div>`;
 
-    return assertContractOutput(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`);
+    return assertContractOutput(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${escapeDocumentHtml(contractNumber)}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`);
   };
 
   const generateUnconfirmedDraft = async () => (await generateContractHTML()).replace(/<body>/i,
