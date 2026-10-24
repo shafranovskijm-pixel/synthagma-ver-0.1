@@ -109,7 +109,7 @@ function fixture(options: {
 }
 
 describe("inbox scanner actual handler transport fixtures", () => {
-  it.each([{}, { Authorization: "Bearer anonymous" }])("rejects unauthenticated/non-admin %j before pool access or IMAP", async headers => {
+  it.each([{}, { Authorization: "Bearer anonymous" }] as Record<string, string>[])("rejects unauthenticated/non-admin %j before pool access or IMAP", async headers => {
     const f = fixture(); expect((await f.run(headers)).status).toBe(403);
     expect(f.getPool).not.toHaveBeenCalled(); expect(f.connectImap).not.toHaveBeenCalled();
   });

@@ -103,7 +103,7 @@ const BodySchema = z.object({
   { message: "Один тип документа нельзя добавить в пакет дважды", path: ["otherDocuments"] },
 );
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
