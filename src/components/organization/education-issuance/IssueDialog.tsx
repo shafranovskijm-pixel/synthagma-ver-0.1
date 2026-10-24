@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { studentDetailsPath } from '@/lib/groups/groupContext';
-import { localDateIso } from "@/lib/date/localDate";
+import { issuanceUtcDateIso } from "@/lib/educationIssuance/date";
 import { sameCopyValue } from "@/lib/copyRegistry/value";
 import { useEducationIssuanceScope } from "@/hooks/useEducationIssuance";
 import { artifactFinalRef, EducationIssuanceError, issuanceScopeCurrent, normalizeIssuanceError, prepareEducationIssuanceMutation, readEducationIssuance, type EducationIssuanceScope, type PreparedIssuanceMutation } from "@/lib/educationIssuance/client";
@@ -30,11 +30,11 @@ export function IssueEducationDialog(props:Props){
   const [scope,setScope]=useState<EducationIssuanceScope|null>(null),[courseId,setCourseId]=useState(props.courseId??"");
   const [candidates,setCandidates]=useState<IssuanceCandidate[]>([]),[after,setAfter]=useState<string|null>(null);
   const [selected,setSelected]=useState<Set<string>>(new Set()),[preview,setPreview]=useState<IssuancePreview|null>(null),[preparation,setPreparation]=useState<IssuancePreparation|null>(null);
-  const [date,setDate]=useState(localDateIso()),[series,setSeries]=useState(""),[reason,setReason]=useState("");
+  const [date,setDate]=useState(issuanceUtcDateIso()),[series,setSeries]=useState(""),[reason,setReason]=useState("");
   const [busy,setBusy]=useState(false),[artifactBusy,setArtifactBusy]=useState(false),[error,setError]=useState<string|null>(null);
   const flight=useRef(false),epoch=useRef(0),operation=useRef<PreparedIssuanceMutation|null>(null);
   useEffect(()=>{
-    ++epoch.current;flight.current=false;operation.current=null;setPreview(null);setPreparation(null);setCandidates([]);setAfter(null);setBusy(false);setArtifactBusy(false);setError(null);setDate(localDateIso());setSeries("");setReason("");
+    ++epoch.current;flight.current=false;operation.current=null;setPreview(null);setPreparation(null);setCandidates([]);setAfter(null);setBusy(false);setArtifactBusy(false);setError(null);setDate(issuanceUtcDateIso());setSeries("");setReason("");
     setCourseId(props.courseId??"");setSelected(new Set(props.focusEnrollmentId&&props.courseId?[props.focusEnrollmentId]:[]));
     if(!props.open){setScope(null);return;}try{setScope(capture());}catch(cause){setScope(null);setError(normalizeIssuanceError(cause).message);}
   },[props.open,props.organizationId,props.groupId,props.courseId,props.focusEnrollmentId,capture]);
@@ -99,7 +99,7 @@ export function IssueEducationDialog(props:Props){
     <DialogHeader><DialogTitle>Проверяемая выдача документов</DialogTitle><DialogDescription>Сервер проверяет фактическую программу, итог аттестации, условия приёма и полномочия. После этого нужно сформировать и утвердить точный итоговый PDF и отдельно подтвердить выдачу. Прогресс 100% сам по себе права на документ не даёт.</DialogDescription></DialogHeader>
     {current&&scope&&<IssuancePreparationRecovery scope={scope} kind="original" disabled={locked||!!preparation} onRecover={recover} onOpenRecord={id=>{props.onOpenChange(false);props.onOpenRecord(id);}}/>}
     <fieldset disabled={!current||locked||!!preparation} className="space-y-4">
-      <div className="grid sm:grid-cols-3 gap-3"><div className="space-y-2 sm:col-span-2"><Label>Точный курс</Label><Select value={courseId} onValueChange={id=>{setCourseId(id);setSelected(new Set());changed();}} disabled={!!props.courseId}><SelectTrigger aria-label="Точный курс"><SelectValue placeholder="Выберите курс"/></SelectTrigger><SelectContent>{props.courses.map(course=><SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Дата выдачи</Label><Input aria-label="Дата выдачи" type="date" value={date} onChange={event=>{setDate(event.target.value);changed();}}/></div></div>
+      <div className="grid sm:grid-cols-3 gap-3"><div className="space-y-2 sm:col-span-2"><Label>Точный курс</Label><Select value={courseId} onValueChange={id=>{setCourseId(id);setSelected(new Set());changed();}} disabled={!!props.courseId}><SelectTrigger aria-label="Точный курс"><SelectValue placeholder="Выберите курс"/></SelectTrigger><SelectContent>{props.courses.map(course=><SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Дата выдачи</Label><Input aria-label="Дата выдачи" type="date" max={issuanceUtcDateIso()} value={date} onChange={event=>{setDate(event.target.value);changed();}}/><p className="text-xs text-muted-foreground">Дата выдачи проверяется по UTC. Сегодня: {issuanceUtcDateIso()}.</p></div></div>
       <div className="grid sm:grid-cols-2 gap-3"><div className="space-y-2"><Label>Серия, если применяется</Label><Input aria-label="Серия, если применяется" value={series} maxLength={120} onChange={event=>{setSeries(event.target.value);changed();}}/></div><div className="space-y-2"><Label>Основание решения сотрудника</Label><Textarea aria-label="Основание решения сотрудника" value={reason} maxLength={2000} onChange={event=>{setReason(event.target.value);setPreparation(null);}}/></div></div>
     </fieldset>
     <div className="space-y-2">{rows.map(row=><div key={row.enrollment_id} className="rounded-xl border p-3 space-y-2"><div className="flex gap-3 items-start">
