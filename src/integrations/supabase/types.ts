@@ -15864,6 +15864,750 @@ export type Database = {
           },
         ]
       }
+      uc_archive_authority_revisions: {
+        Row: {
+          actor_id: string
+          appointed_user_id: string
+          authority_id: string
+          evidence: Json
+          id: string
+          organization_id: string
+          reason: string
+          recorded_at: string
+          retained_people: string[]
+          revision: number
+          roles: string[]
+          state: string
+        }
+        Insert: {
+          actor_id: string
+          appointed_user_id: string
+          authority_id: string
+          evidence: Json
+          id?: string
+          organization_id: string
+          reason: string
+          recorded_at?: string
+          retained_people?: string[]
+          revision: number
+          roles: string[]
+          state: string
+        }
+        Update: {
+          actor_id?: string
+          appointed_user_id?: string
+          authority_id?: string
+          evidence?: Json
+          id?: string
+          organization_id?: string
+          reason?: string
+          recorded_at?: string
+          retained_people?: string[]
+          revision?: number
+          roles?: string[]
+          state?: string
+        }
+        Relationships: []
+      }
+      uc_archive_case_events: {
+        Row: {
+          actor_id: string
+          case_id: string
+          id: string
+          kind: string
+          organization_id: string
+          payload: Json
+          payload_sha256: string
+          private_capture: Json | null
+          recorded_at: string
+          retained_people: string[]
+          revision: number
+          snapshot: Json
+        }
+        Insert: {
+          actor_id: string
+          case_id: string
+          id?: string
+          kind: string
+          organization_id: string
+          payload: Json
+          payload_sha256: string
+          private_capture?: Json | null
+          recorded_at?: string
+          retained_people?: string[]
+          revision: number
+          snapshot: Json
+        }
+        Update: {
+          actor_id?: string
+          case_id?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          payload?: Json
+          payload_sha256?: string
+          private_capture?: Json | null
+          recorded_at?: string
+          retained_people?: string[]
+          revision?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_cases: {
+        Row: {
+          attribution_actors: string[]
+          closure: Json | null
+          created_at: string
+          created_by: string
+          cursor_secret: string
+          enrollment_id: string | null
+          group_id: string | null
+          hold_events: Json
+          id: string
+          members: Json
+          opened_on: string
+          organization_id: string
+          retained_subjects: string[]
+          revision: number
+          rule_version_id: string | null
+          scope: Json
+          state: string
+          state_hash: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attribution_actors?: string[]
+          closure?: Json | null
+          created_at?: string
+          created_by: string
+          cursor_secret?: string
+          enrollment_id?: string | null
+          group_id?: string | null
+          hold_events?: Json
+          id?: string
+          members?: Json
+          opened_on: string
+          organization_id: string
+          retained_subjects?: string[]
+          revision?: number
+          rule_version_id?: string | null
+          scope: Json
+          state?: string
+          state_hash: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attribution_actors?: string[]
+          closure?: Json | null
+          created_at?: string
+          created_by?: string
+          cursor_secret?: string
+          enrollment_id?: string | null
+          group_id?: string | null
+          hold_events?: Json
+          id?: string
+          members?: Json
+          opened_on?: string
+          organization_id?: string
+          retained_subjects?: string[]
+          revision?: number
+          rule_version_id?: string | null
+          scope?: Json
+          state?: string
+          state_hash?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_archive_disposal_reviews: {
+        Row: {
+          act_source: Json | null
+          actor_id: string
+          blocker_codes: Json
+          calculation: Json
+          case_id: string
+          case_revision: number
+          case_state_hash: string
+          created_at: string
+          destruction_authorized: boolean
+          explicit_decision: Json | null
+          id: string
+          legal_hold_events: Json
+          organization_id: string
+          retained_people: string[]
+          rule_version_id: string | null
+          state: string
+        }
+        Insert: {
+          act_source?: Json | null
+          actor_id: string
+          blocker_codes?: Json
+          calculation: Json
+          case_id: string
+          case_revision: number
+          case_state_hash: string
+          created_at?: string
+          destruction_authorized?: boolean
+          explicit_decision?: Json | null
+          id?: string
+          legal_hold_events: Json
+          organization_id: string
+          retained_people?: string[]
+          rule_version_id?: string | null
+          state: string
+        }
+        Update: {
+          act_source?: Json | null
+          actor_id?: string
+          blocker_codes?: Json
+          calculation?: Json
+          case_id?: string
+          case_revision?: number
+          case_state_hash?: string
+          created_at?: string
+          destruction_authorized?: boolean
+          explicit_decision?: Json | null
+          id?: string
+          legal_hold_events?: Json
+          organization_id?: string
+          retained_people?: string[]
+          rule_version_id?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_disposal_reviews_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_archive_disposal_reviews_rule_version_id_fkey"
+            columns: ["rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_rule_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_org_keys: {
+        Row: {
+          created_at: string
+          organization_id: string
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          organization_id: string
+          secret?: string
+        }
+        Update: {
+          created_at?: string
+          organization_id?: string
+          secret?: string
+        }
+        Relationships: []
+      }
+      uc_archive_package_builds: {
+        Row: {
+          actor_id: string
+          blockers: Json
+          case_id: string
+          completeness: string
+          created_at: string
+          id: string
+          input_revision: number
+          input_state_hash: string
+          lease_id: string | null
+          lease_until: string | null
+          manifest: Json | null
+          manifest_bytes: number | null
+          manifest_sha256: string | null
+          organization_id: string
+          phase: string
+          request_id: string
+          retained_people: string[]
+          sealed_at: string | null
+        }
+        Insert: {
+          actor_id: string
+          blockers?: Json
+          case_id: string
+          completeness?: string
+          created_at?: string
+          id?: string
+          input_revision: number
+          input_state_hash: string
+          lease_id?: string | null
+          lease_until?: string | null
+          manifest?: Json | null
+          manifest_bytes?: number | null
+          manifest_sha256?: string | null
+          organization_id: string
+          phase: string
+          request_id: string
+          retained_people?: string[]
+          sealed_at?: string | null
+        }
+        Update: {
+          actor_id?: string
+          blockers?: Json
+          case_id?: string
+          completeness?: string
+          created_at?: string
+          id?: string
+          input_revision?: number
+          input_state_hash?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          manifest?: Json | null
+          manifest_bytes?: number | null
+          manifest_sha256?: string | null
+          organization_id?: string
+          phase?: string
+          request_id?: string
+          retained_people?: string[]
+          sealed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_package_builds_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_package_files: {
+        Row: {
+          bucket_id: string
+          byte_sha256: string
+          byte_size: number
+          created_at: string
+          id: string
+          member_id: string
+          mime_type: string
+          object_id: string
+          object_path: string
+          object_updated_at: string
+          organization_id: string
+          package_id: string
+          readback_sha256: string
+          retained_people: string[]
+          source_reference: Json
+        }
+        Insert: {
+          bucket_id: string
+          byte_sha256: string
+          byte_size: number
+          created_at?: string
+          id: string
+          member_id: string
+          mime_type: string
+          object_id: string
+          object_path: string
+          object_updated_at: string
+          organization_id: string
+          package_id: string
+          readback_sha256: string
+          retained_people?: string[]
+          source_reference: Json
+        }
+        Update: {
+          bucket_id?: string
+          byte_sha256?: string
+          byte_size?: number
+          created_at?: string
+          id?: string
+          member_id?: string
+          mime_type?: string
+          object_id?: string
+          object_path?: string
+          object_updated_at?: string
+          organization_id?: string
+          package_id?: string
+          readback_sha256?: string
+          retained_people?: string[]
+          source_reference?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_package_files_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_package_builds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_requests: {
+        Row: {
+          actor_id: string
+          case_id: string | null
+          command_sha256: string
+          id: string
+          organization_id: string
+          receipt: Json
+          recorded_at: string
+          request_id: string
+          retained_people: string[]
+          scope: Json
+        }
+        Insert: {
+          actor_id: string
+          case_id?: string | null
+          command_sha256: string
+          id?: string
+          organization_id: string
+          receipt: Json
+          recorded_at?: string
+          request_id: string
+          retained_people?: string[]
+          scope: Json
+        }
+        Update: {
+          actor_id?: string
+          case_id?: string | null
+          command_sha256?: string
+          id?: string
+          organization_id?: string
+          receipt?: Json
+          recorded_at?: string
+          request_id?: string
+          retained_people?: string[]
+          scope?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_restore_files: {
+        Row: {
+          bucket_id: string
+          byte_sha256: string
+          byte_size: number
+          created_at: string
+          id: string
+          mime_type: string
+          object_id: string
+          object_path: string
+          object_updated_at: string
+          organization_id: string
+          package_id: string
+          readback_sha256: string
+          restore_id: string
+          retained_people: string[]
+        }
+        Insert: {
+          bucket_id: string
+          byte_sha256: string
+          byte_size: number
+          created_at?: string
+          id: string
+          mime_type: string
+          object_id: string
+          object_path: string
+          object_updated_at: string
+          organization_id: string
+          package_id: string
+          readback_sha256: string
+          restore_id: string
+          retained_people?: string[]
+        }
+        Update: {
+          bucket_id?: string
+          byte_sha256?: string
+          byte_size?: number
+          created_at?: string
+          id?: string
+          mime_type?: string
+          object_id?: string
+          object_path?: string
+          object_updated_at?: string
+          organization_id?: string
+          package_id?: string
+          readback_sha256?: string
+          restore_id?: string
+          retained_people?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_restore_files_package_id_id_fkey"
+            columns: ["package_id", "id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_package_files"
+            referencedColumns: ["package_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_archive_restore_files_restore_id_fkey"
+            columns: ["restore_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_restore_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_restore_projections: {
+        Row: {
+          created_at: string
+          entity_kind: string
+          export_id: string
+          id: string
+          organization_id: string
+          projection: Json
+          projection_sha256: string
+          restore_id: string
+          retained_people: string[]
+        }
+        Insert: {
+          created_at?: string
+          entity_kind: string
+          export_id: string
+          id?: string
+          organization_id: string
+          projection: Json
+          projection_sha256: string
+          restore_id: string
+          retained_people?: string[]
+        }
+        Update: {
+          created_at?: string
+          entity_kind?: string
+          export_id?: string
+          id?: string
+          organization_id?: string
+          projection?: Json
+          projection_sha256?: string
+          restore_id?: string
+          retained_people?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_restore_projections_restore_id_fkey"
+            columns: ["restore_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_restore_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_restore_runs: {
+        Row: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          failure_code: string | null
+          id: string
+          lease_id: string | null
+          lease_until: string | null
+          manifest_sha256: string
+          organization_id: string
+          package_id: string
+          projection_sha256: string | null
+          request_id: string
+          retained_people: string[]
+          state: string
+          verified_file_ids: string[]
+        }
+        Insert: {
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          failure_code?: string | null
+          id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          manifest_sha256: string
+          organization_id: string
+          package_id: string
+          projection_sha256?: string | null
+          request_id: string
+          retained_people?: string[]
+          state: string
+          verified_file_ids?: string[]
+        }
+        Update: {
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          failure_code?: string | null
+          id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          manifest_sha256?: string
+          organization_id?: string
+          package_id?: string
+          projection_sha256?: string | null
+          request_id?: string
+          retained_people?: string[]
+          state?: string
+          verified_file_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_restore_runs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_package_builds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_rule_revisions: {
+        Row: {
+          actor_id: string
+          center_approval: Json | null
+          data: Json
+          entry_id: string
+          id: string
+          legal_review: Json | null
+          nomenclature_reference: Json
+          nomenclature_version_id: string
+          organization_id: string
+          recorded_at: string
+          retained_people: string[]
+          revision: number
+          rule_id: string
+          source_byte_sha256: string
+          source_check: Json | null
+          source_reference: Json
+          state: string
+        }
+        Insert: {
+          actor_id: string
+          center_approval?: Json | null
+          data: Json
+          entry_id: string
+          id?: string
+          legal_review?: Json | null
+          nomenclature_reference: Json
+          nomenclature_version_id: string
+          organization_id: string
+          recorded_at?: string
+          retained_people?: string[]
+          revision: number
+          rule_id: string
+          source_byte_sha256: string
+          source_check?: Json | null
+          source_reference: Json
+          state: string
+        }
+        Update: {
+          actor_id?: string
+          center_approval?: Json | null
+          data?: Json
+          entry_id?: string
+          id?: string
+          legal_review?: Json | null
+          nomenclature_reference?: Json
+          nomenclature_version_id?: string
+          organization_id?: string
+          recorded_at?: string
+          retained_people?: string[]
+          revision?: number
+          rule_id?: string
+          source_byte_sha256?: string
+          source_check?: Json | null
+          source_reference?: Json
+          state?: string
+        }
+        Relationships: []
+      }
+      uc_archive_rule_source_checks: {
+        Row: {
+          actor_id: string
+          actual_byte_sha256: string | null
+          actual_byte_size: number | null
+          created_at: string
+          declared_byte_sha256: string
+          expires_at: string
+          id: string
+          organization_id: string
+          phase: string
+          request_id: string
+          retained_people: string[]
+          rule_version_id: string
+          sealed_at: string | null
+          source_context: Json
+          source_reference: Json
+          verified_rule_version_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          actual_byte_sha256?: string | null
+          actual_byte_size?: number | null
+          created_at?: string
+          declared_byte_sha256: string
+          expires_at?: string
+          id?: string
+          organization_id: string
+          phase?: string
+          request_id: string
+          retained_people?: string[]
+          rule_version_id: string
+          sealed_at?: string | null
+          source_context: Json
+          source_reference: Json
+          verified_rule_version_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          actual_byte_sha256?: string | null
+          actual_byte_size?: number | null
+          created_at?: string
+          declared_byte_sha256?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          phase?: string
+          request_id?: string
+          retained_people?: string[]
+          rule_version_id?: string
+          sealed_at?: string | null
+          source_context?: Json
+          source_reference?: Json
+          verified_rule_version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_rule_source_checks_rule_version_id_fkey"
+            columns: ["rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_rule_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_archive_rule_source_checks_verified_rule_version_id_fkey"
+            columns: ["verified_rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_rule_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uc_conducted_session_requests: {
         Row: {
           actor_id: string
@@ -18781,6 +19525,662 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_normative_events: {
+        Row: {
+          actor_id: string
+          body: Json
+          expected_sequence: number
+          id: string
+          kind: string
+          manifest_id: string | null
+          occurred_at: string
+          organization_id: string | null
+          request_id: string
+          request_sha256: string
+          scope_key: string
+          sequence: number
+        }
+        Insert: {
+          actor_id: string
+          body: Json
+          expected_sequence: number
+          id: string
+          kind: string
+          manifest_id?: string | null
+          occurred_at: string
+          organization_id?: string | null
+          request_id: string
+          request_sha256: string
+          scope_key: string
+          sequence: number
+        }
+        Update: {
+          actor_id?: string
+          body?: Json
+          expected_sequence?: number
+          id?: string
+          kind?: string
+          manifest_id?: string | null
+          occurred_at?: string
+          organization_id?: string | null
+          request_id?: string
+          request_sha256?: string
+          scope_key?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_normative_events_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "uc_normative_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_normative_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_normative_manifests: {
+        Row: {
+          body_sha256: string
+          canonical_body: string
+          catalog_version: string
+          created_at: string
+          created_by: string
+          id: string
+          predecessor_id: string | null
+          request_id: string
+          request_sha256: string
+          revision: number
+        }
+        Insert: {
+          body_sha256: string
+          canonical_body: string
+          catalog_version: string
+          created_at: string
+          created_by: string
+          id: string
+          predecessor_id?: string | null
+          request_id: string
+          request_sha256: string
+          revision: number
+        }
+        Update: {
+          body_sha256?: string
+          canonical_body?: string
+          catalog_version?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          predecessor_id?: string | null
+          request_id?: string
+          request_sha256?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_normative_manifests_predecessor_id_fkey"
+            columns: ["predecessor_id"]
+            isOneToOne: false
+            referencedRelation: "uc_normative_manifests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_publication_calendar_tasks: {
+        Row: {
+          body: Json
+          body_sha256: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          organization_id: string
+          profile_revision: number
+          rule_id: string
+          rule_revision: number
+          task_key: string
+        }
+        Insert: {
+          body: Json
+          body_sha256: string
+          created_at?: string
+          created_by: string
+          id: string
+          kind: string
+          organization_id: string
+          profile_revision: number
+          rule_id: string
+          rule_revision: number
+          task_key: string
+        }
+        Update: {
+          body?: Json
+          body_sha256?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          profile_revision?: number
+          rule_id?: string
+          rule_revision?: number
+          task_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_calendar_tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_publication_calendar_tasks_rule_id_rule_revision_fkey"
+            columns: ["rule_id", "rule_revision"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_rule_versions"
+            referencedColumns: ["id", "revision"]
+          },
+        ]
+      }
+      uc_publication_check_jobs: {
+        Row: {
+          actor_id: string
+          check_id: string | null
+          completed_at: string | null
+          created_at: string
+          current_scope_sha256: string
+          edition_id: string
+          expected_event_sequence: number
+          expected_stream_revision: number
+          expires_at: string
+          id: string
+          lease_id: string
+          organization_id: string
+          request_id: string
+          request_sha256: string
+          state: string
+        }
+        Insert: {
+          actor_id: string
+          check_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_scope_sha256: string
+          edition_id: string
+          expected_event_sequence: number
+          expected_stream_revision: number
+          expires_at: string
+          id: string
+          lease_id: string
+          organization_id: string
+          request_id: string
+          request_sha256: string
+          state: string
+        }
+        Update: {
+          actor_id?: string
+          check_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_scope_sha256?: string
+          edition_id?: string
+          expected_event_sequence?: number
+          expected_stream_revision?: number
+          expires_at?: string
+          id?: string
+          lease_id?: string
+          organization_id?: string
+          request_id?: string
+          request_sha256?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_check_jobs_organization_id_edition_id_fkey"
+            columns: ["organization_id", "edition_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_editions"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_publication_job_check_fk"
+            columns: ["organization_id", "check_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_checks"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      uc_publication_checks: {
+        Row: {
+          actor_id: string
+          body: Json
+          body_sha256: string
+          edition_id: string
+          id: string
+          job_id: string
+          organization_id: string
+          recorded_at: string
+        }
+        Insert: {
+          actor_id: string
+          body: Json
+          body_sha256: string
+          edition_id: string
+          id: string
+          job_id: string
+          organization_id: string
+          recorded_at?: string
+        }
+        Update: {
+          actor_id?: string
+          body?: Json
+          body_sha256?: string
+          edition_id?: string
+          id?: string
+          job_id?: string
+          organization_id?: string
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_checks_organization_id_edition_id_fkey"
+            columns: ["organization_id", "edition_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_editions"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_publication_checks_organization_id_job_id_fkey"
+            columns: ["organization_id", "job_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_check_jobs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      uc_publication_deadline_decisions: {
+        Row: {
+          accepted: boolean
+          applicability_revision: number
+          deadline: Json | null
+          decided_at: string
+          decided_by: string
+          id: string
+          organization_id: string
+          profile_revision: number
+          reason: string
+          request_id: string
+          revision: number
+          rule_id: string
+          rule_revision: number
+          source_revision_sha256: string
+        }
+        Insert: {
+          accepted: boolean
+          applicability_revision: number
+          deadline?: Json | null
+          decided_at?: string
+          decided_by: string
+          id: string
+          organization_id: string
+          profile_revision: number
+          reason: string
+          request_id: string
+          revision: number
+          rule_id: string
+          rule_revision: number
+          source_revision_sha256: string
+        }
+        Update: {
+          accepted?: boolean
+          applicability_revision?: number
+          deadline?: Json | null
+          decided_at?: string
+          decided_by?: string
+          id?: string
+          organization_id?: string
+          profile_revision?: number
+          reason?: string
+          request_id?: string
+          revision?: number
+          rule_id?: string
+          rule_revision?: number
+          source_revision_sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_deadline_decisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_publication_deadline_decisions_rule_id_rule_revision_fkey"
+            columns: ["rule_id", "rule_revision"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_rule_versions"
+            referencedColumns: ["id", "revision"]
+          },
+        ]
+      }
+      uc_publication_editions: {
+        Row: {
+          applicability_revision: number | null
+          body: Json
+          body_sha256: string
+          created_at: string
+          created_by: string
+          id: string
+          organization_id: string
+          private_document_id: string | null
+          private_version_id: string | null
+          profile_revision: number
+          revision: number
+          rule_id: string
+          rule_revision: number
+          stream_id: string
+        }
+        Insert: {
+          applicability_revision?: number | null
+          body: Json
+          body_sha256: string
+          created_at?: string
+          created_by: string
+          id: string
+          organization_id: string
+          private_document_id?: string | null
+          private_version_id?: string | null
+          profile_revision: number
+          revision: number
+          rule_id: string
+          rule_revision: number
+          stream_id: string
+        }
+        Update: {
+          applicability_revision?: number | null
+          body?: Json
+          body_sha256?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id?: string
+          private_document_id?: string | null
+          private_version_id?: string | null
+          profile_revision?: number
+          revision?: number
+          rule_id?: string
+          rule_revision?: number
+          stream_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_editions_organization_id_stream_id_fkey"
+            columns: ["organization_id", "stream_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_streams"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_publication_editions_rule_id_rule_revision_fkey"
+            columns: ["rule_id", "rule_revision"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_rule_versions"
+            referencedColumns: ["id", "revision"]
+          },
+        ]
+      }
+      uc_publication_events: {
+        Row: {
+          actor_id: string
+          body: Json
+          edition_id: string
+          id: string
+          kind: string
+          occurred_at: string
+          organization_id: string
+          request_id: string
+          sequence: number
+        }
+        Insert: {
+          actor_id: string
+          body: Json
+          edition_id: string
+          id: string
+          kind: string
+          occurred_at?: string
+          organization_id: string
+          request_id: string
+          sequence: number
+        }
+        Update: {
+          actor_id?: string
+          body?: Json
+          edition_id?: string
+          id?: string
+          kind?: string
+          occurred_at?: string
+          organization_id?: string
+          request_id?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_events_organization_id_edition_id_fkey"
+            columns: ["organization_id", "edition_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_editions"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      uc_publication_participants: {
+        Row: {
+          object_id: string
+          object_kind: string
+          organization_id: string
+          relation: string
+          user_id: string
+        }
+        Insert: {
+          object_id: string
+          object_kind: string
+          organization_id: string
+          relation: string
+          user_id: string
+        }
+        Update: {
+          object_id?: string
+          object_kind?: string
+          organization_id?: string
+          relation?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_participants_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_publication_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          kind: string
+          object_id: string
+          organization_id: string
+          request_id: string
+          request_sha256: string
+          result: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          kind: string
+          object_id: string
+          organization_id: string
+          request_id: string
+          request_sha256: string
+          result: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          kind?: string
+          object_id?: string
+          organization_id?: string
+          request_id?: string
+          request_sha256?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_publication_rule_versions: {
+        Row: {
+          annual_deadline: Json | null
+          catalog_version: string
+          created_at: string
+          created_by: string
+          id: string
+          legal_review: string
+          period: string
+          request_id: string
+          request_sha256: string
+          requirement_id: string
+          requirement_version: string
+          review_reason: string | null
+          revision: number
+          source_revision_sha256: string
+          source_snapshot: Json
+          title: string
+        }
+        Insert: {
+          annual_deadline?: Json | null
+          catalog_version: string
+          created_at?: string
+          created_by: string
+          id: string
+          legal_review?: string
+          period: string
+          request_id: string
+          request_sha256: string
+          requirement_id: string
+          requirement_version: string
+          review_reason?: string | null
+          revision: number
+          source_revision_sha256: string
+          source_snapshot: Json
+          title: string
+        }
+        Update: {
+          annual_deadline?: Json | null
+          catalog_version?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          legal_review?: string
+          period?: string
+          request_id?: string
+          request_sha256?: string
+          requirement_id?: string
+          requirement_version?: string
+          review_reason?: string | null
+          revision?: number
+          source_revision_sha256?: string
+          source_snapshot?: Json
+          title?: string
+        }
+        Relationships: []
+      }
+      uc_publication_streams: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_edition_id: string | null
+          id: string
+          organization_id: string
+          reporting_year: number | null
+          requirement_id: string
+          revision: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_edition_id?: string | null
+          id: string
+          organization_id: string
+          reporting_year?: number | null
+          requirement_id: string
+          revision: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_edition_id?: string | null
+          id?: string
+          organization_id?: string
+          reporting_year?: number | null
+          requirement_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_publication_head_edition_fk"
+            columns: ["organization_id", "current_edition_id"]
+            isOneToOne: false
+            referencedRelation: "uc_publication_editions"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "uc_publication_streams_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_publication_write_tokens: {
+        Row: {
+          object_id: string
+          operation: string
+          table_name: string
+          transaction_id: number
+        }
+        Insert: {
+          object_id: string
+          operation: string
+          table_name: string
+          transaction_id: number
+        }
+        Update: {
+          object_id?: string
+          operation?: string
+          table_name?: string
+          transaction_id?: number
+        }
+        Relationships: []
+      }
       uc_scoped_journal_contexts: {
         Row: {
           course_id: string | null
@@ -19051,6 +20451,191 @@ export type Database = {
           request_id?: string
         }
         Relationships: []
+      }
+      uc_self_examination_drafts: {
+        Row: {
+          body: Json
+          centre_final: Json | null
+          created_at: string
+          created_by: string
+          fact_reviews: Json
+          id: string
+          latest_artifact: Json | null
+          organization_id: string
+          participant_ids: string[]
+          publication: Json | null
+          reporting_year: number
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          body: Json
+          centre_final?: Json | null
+          created_at?: string
+          created_by: string
+          fact_reviews?: Json
+          id?: string
+          latest_artifact?: Json | null
+          organization_id: string
+          participant_ids: string[]
+          publication?: Json | null
+          reporting_year: number
+          revision: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          body?: Json
+          centre_final?: Json | null
+          created_at?: string
+          created_by?: string
+          fact_reviews?: Json
+          id?: string
+          latest_artifact?: Json | null
+          organization_id?: string
+          participant_ids?: string[]
+          publication?: Json | null
+          reporting_year?: number
+          revision?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_self_examination_drafts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_self_examination_events: {
+        Row: {
+          action: string
+          actor_id: string
+          draft_id: string
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_sha256: string
+          receipt: Json
+          recorded_at: string
+          request_id: string
+          revision: number
+          snapshot: Json
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          draft_id: string
+          id: string
+          organization_id: string
+          participant_ids: string[]
+          payload_sha256: string
+          receipt: Json
+          recorded_at?: string
+          request_id: string
+          revision: number
+          snapshot: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          draft_id?: string
+          id?: string
+          organization_id?: string
+          participant_ids?: string[]
+          payload_sha256?: string
+          receipt?: Json
+          recorded_at?: string
+          request_id?: string
+          revision?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_self_examination_events_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "uc_self_examination_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_self_examination_sources: {
+        Row: {
+          bucket: string
+          document_id: string
+          draft_id: string
+          event_id: string
+          id: string
+          linked_at: string
+          linked_by: string
+          organization_id: string
+          participant_ids: string[]
+          path: string
+          source_ref: Json
+          source_role: string
+          storage_object_id: string
+          version_id: string
+        }
+        Insert: {
+          bucket: string
+          document_id: string
+          draft_id: string
+          event_id: string
+          id?: string
+          linked_at?: string
+          linked_by: string
+          organization_id: string
+          participant_ids: string[]
+          path: string
+          source_ref: Json
+          source_role: string
+          storage_object_id: string
+          version_id: string
+        }
+        Update: {
+          bucket?: string
+          document_id?: string
+          draft_id?: string
+          event_id?: string
+          id?: string
+          linked_at?: string
+          linked_by?: string
+          organization_id?: string
+          participant_ids?: string[]
+          path?: string
+          source_ref?: Json
+          source_role?: string
+          storage_object_id?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_self_examination_sources_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "uc_self_examination_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_self_examination_sources_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "uc_self_examination_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_self_examination_sources_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       uc_session_document_drafts: {
         Row: {
@@ -20934,6 +22519,27 @@ export type Database = {
         }
         Returns: Json
       }
+      append_publication_rule_version: {
+        Args: {
+          p_expected_revision: number
+          p_input: Json
+          p_organization_id: string
+          p_request_id: string
+          p_rule_id: string
+        }
+        Returns: Json
+      }
+      apply_archive_case: {
+        Args: {
+          p_action: Json
+          p_case_id: string
+          p_expected_revision: number
+          p_organization_id: string
+          p_request_id: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
       apply_conducted_session_action: {
         Args: {
           p_action: Json
@@ -21011,6 +22617,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_self_examination_draft: {
+        Args: {
+          p_action: Json
+          p_expected_revision: number
+          p_organization_id: string
+          p_reporting_year: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
       apply_signature_assurance: {
         Args: {
           p_action: Json
@@ -21057,6 +22673,54 @@ export type Database = {
           p_review_note: string
           p_statement_id: string
         }
+        Returns: Json
+      }
+      archive_package_context: {
+        Args: { p_org: string; p_package: string; p_scope: Json }
+        Returns: Json
+      }
+      archive_package_object_context: {
+        Args: {
+          p_file: string
+          p_kind: string
+          p_lease: string
+          p_org: string
+          p_package: string
+          p_scope: Json
+          p_sha256?: string
+        }
+        Returns: Json
+      }
+      archive_restore_context: {
+        Args: { p_org: string; p_restore: string; p_scope: Json }
+        Returns: Json
+      }
+      archive_restore_object_context: {
+        Args: {
+          p_file: string
+          p_lease: string
+          p_org: string
+          p_restore: string
+          p_scope: Json
+          p_side: string
+        }
+        Returns: Json
+      }
+      archive_rule_inspection_context: {
+        Args: { p_org: string; p_source: Json }
+        Returns: Json
+      }
+      archive_sealed_file_context: {
+        Args: {
+          p_file: string
+          p_org: string
+          p_package: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
+      archive_sealed_package_context: {
+        Args: { p_org: string; p_package: string; p_scope: Json }
         Returns: Json
       }
       attest_cold_outreach_campaign: {
@@ -21199,6 +22863,24 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_archive_package: {
+        Args: {
+          p_org: string
+          p_package: string
+          p_request: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
+      claim_archive_restore: {
+        Args: {
+          p_org: string
+          p_request: string
+          p_restore: string
+          p_scope: Json
+        }
+        Returns: Json
+      }
       claim_due_mailing_send_jobs: {
         Args: { p_batch_size?: number; p_stale_after?: string }
         Returns: {
@@ -21321,6 +23003,30 @@ export type Database = {
         Returns: string
       }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      commit_archive_package: {
+        Args: {
+          p_files: Json
+          p_lease: string
+          p_manifest: Json
+          p_manifest_bytes: number
+          p_manifest_sha256: string
+          p_package: string
+        }
+        Returns: Json
+      }
+      commit_archive_restore: {
+        Args: {
+          p_files: Json
+          p_lease: string
+          p_manifest_sha256: string
+          p_restore: string
+        }
+        Returns: Json
+      }
+      commit_archive_rule_source_check: {
+        Args: { p_job: string; p_proof: Json }
+        Returns: Json
+      }
       commit_org_document_version: {
         Args: {
           p_document?: Json
@@ -21512,6 +23218,15 @@ export type Database = {
           p_phone?: string
         }
         Returns: string
+      }
+      create_organization_publication: {
+        Args: {
+          p_expected_stream_revision: number
+          p_input: Json
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       create_program_facts_version: {
         Args: {
@@ -22578,6 +24293,15 @@ export type Database = {
         }
         Returns: Json
       }
+      list_normative_impact_centres: {
+        Args: {
+          p_before_organization_id?: string
+          p_context_organization_id: string
+          p_limit?: number
+          p_manifest_id: string
+        }
+        Returns: Json
+      }
       list_ordinary_mail_report_candidates: {
         Args: {
           p_bot_ready: boolean
@@ -22622,8 +24346,38 @@ export type Database = {
         }
         Returns: Json
       }
+      list_organization_publication_calendar: {
+        Args: {
+          p_before_id?: string
+          p_limit?: number
+          p_organization_id: string
+          p_reporting_year: number
+        }
+        Returns: Json
+      }
+      list_organization_publication_editions: {
+        Args: {
+          p_before_revision?: number
+          p_limit?: number
+          p_organization_id: string
+          p_stream_id: string
+        }
+        Returns: Json
+      }
+      list_organization_publications: {
+        Args: {
+          p_before_stream_id?: string
+          p_limit?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       list_program_facts: { Args: { p_organization_id: string }; Returns: Json }
       list_program_facts_candidates: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      list_publication_rule_versions: {
         Args: { p_organization_id: string }
         Returns: Json
       }
@@ -22880,6 +24634,10 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_archive_rule_source_check: {
+        Args: { p_org: string; p_request: string; p_rule_version: string }
+        Returns: Json
+      }
       prepare_csz_signed_upload: {
         Args: {
           p_comment: string
@@ -22912,6 +24670,16 @@ export type Database = {
           p_payload: Json
           p_recipient_id: string
           p_run_token: string
+        }
+        Returns: Json
+      }
+      prepare_organization_publication_check: {
+        Args: {
+          p_edition_id: string
+          p_expected_event_sequence: number
+          p_expected_revision: number
+          p_organization_id: string
+          p_request_id: string
         }
         Returns: Json
       }
@@ -22985,6 +24753,10 @@ export type Database = {
         Returns: Json
       }
       purge_recycle_bin_30d: { Args: never; Returns: number }
+      read_archive_cases: {
+        Args: { p_organization_id: string; p_query: Json; p_scope: Json }
+        Returns: Json
+      }
       read_conducted_sessions: {
         Args: { p_group_id: string; p_organization_id: string; p_query: Json }
         Returns: Json
@@ -23026,8 +24798,34 @@ export type Database = {
         Args: { p_organization_id: string; p_query: Json }
         Returns: Json
       }
+      read_normative_governance: {
+        Args: { p_manifest_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      read_organization_publication: {
+        Args: {
+          p_before_sequence?: number
+          p_edition_id: string
+          p_limit?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       read_scoped_custom_journals: {
         Args: { p_context: Json; p_organization_id: string; p_query: Json }
+        Returns: Json
+      }
+      read_self_examination_draft: {
+        Args: { p_organization_id: string; p_reporting_year: number }
+        Returns: Json
+      }
+      read_self_examination_history: {
+        Args: {
+          p_before_revision?: number
+          p_limit?: number
+          p_organization_id: string
+          p_reporting_year: number
+        }
         Returns: Json
       }
       read_signature_assurance: {
@@ -23054,6 +24852,40 @@ export type Database = {
         Args: { p_failed: number; p_ledger_id: string; p_sent: number }
         Returns: undefined
       }
+      record_normative_governance_event: {
+        Args: {
+          p_body: Json
+          p_expected_sequence: number
+          p_kind: string
+          p_manifest_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      record_normative_runtime_evidence: {
+        Args: {
+          p_body: Json
+          p_expected_sequence: number
+          p_manifest_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      record_organization_publication_action: {
+        Args: {
+          p_edition_id: string
+          p_expected_event_sequence: number
+          p_expected_revision: number
+          p_kind: string
+          p_organization_id: string
+          p_reason: string
+          p_reported_publication_date: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       record_postpaid_feature_confirmation: {
         Args: {
           p_confirmed_at: string
@@ -23079,12 +24911,36 @@ export type Database = {
         Args: { p_lesson_id: string }
         Returns: boolean
       }
+      record_publication_deadline_decision: {
+        Args: {
+          p_accept: boolean
+          p_applicability_revision: number
+          p_expected_revision: number
+          p_organization_id: string
+          p_profile_revision: number
+          p_reason: string
+          p_request_id: string
+          p_rule_id: string
+          p_rule_revision: number
+        }
+        Returns: Json
+      }
       register_goreltech_group_document_stage: {
         Args: {
           p_actor_id: string
           p_docs: Json
           p_group_id: string
           p_organization_id: string
+        }
+        Returns: Json
+      }
+      register_normative_manifest: {
+        Args: {
+          p_canonical_body: string
+          p_expected_sequence: number
+          p_organization_id: string
+          p_request_id: string
+          p_sha256: string
         }
         Returns: Json
       }
@@ -23551,6 +25407,14 @@ export type Database = {
         Args: { p_answers: Json; p_attempt_id: string }
         Returns: Json
       }
+      sync_organization_publication_calendar: {
+        Args: {
+          p_organization_id: string
+          p_reporting_year: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
       tbank_add_calendar_months: {
         Args: { p_months: number; p_start: string }
         Returns: string
@@ -23821,6 +25685,524 @@ export type Database = {
           p_user: string
         }
         Returns: Json
+      }
+      uc_archive_action_capability: {
+        Args: { p_caps: Json; p_kind: string }
+        Returns: undefined
+      }
+      uc_archive_active_holds: { Args: { p_events: Json }; Returns: Json }
+      uc_archive_admission_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_append_case: {
+        Args: {
+          p_capture?: Json
+          p_case: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+          p_kind: string
+          p_next: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+          p_payload: Json
+          p_people?: string[]
+        }
+        Returns: {
+          attribution_actors: string[]
+          closure: Json | null
+          created_at: string
+          created_by: string
+          cursor_secret: string
+          enrollment_id: string | null
+          group_id: string | null
+          hold_events: Json
+          id: string
+          members: Json
+          opened_on: string
+          organization_id: string
+          retained_subjects: string[]
+          revision: number
+          rule_version_id: string | null
+          scope: Json
+          state: string
+          state_hash: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_cases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_apply_authority: {
+        Args: { p_action: Json; p_org: string }
+        Returns: Json
+      }
+      uc_archive_apply_case: {
+        Args: { p_action: Json; p_case: string; p_org: string; p_scope: Json }
+        Returns: {
+          attribution_actors: string[]
+          closure: Json | null
+          created_at: string
+          created_by: string
+          cursor_secret: string
+          enrollment_id: string | null
+          group_id: string | null
+          hold_events: Json
+          id: string
+          members: Json
+          opened_on: string
+          organization_id: string
+          retained_subjects: string[]
+          revision: number
+          rule_version_id: string | null
+          scope: Json
+          state: string
+          state_hash: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_cases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_apply_rule: {
+        Args: { p_action: Json; p_org: string }
+        Returns: Json
+      }
+      uc_archive_authority_current: {
+        Args: {
+          p_lock?: boolean
+          p_org: string
+          p_role: string
+          p_user: string
+        }
+        Returns: {
+          actor_id: string
+          appointed_user_id: string
+          authority_id: string
+          evidence: Json
+          id: string
+          organization_id: string
+          reason: string
+          recorded_at: string
+          retained_people: string[]
+          revision: number
+          roles: string[]
+          state: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_authority_revisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_can_role: {
+        Args: { p_org: string; p_role: string }
+        Returns: boolean
+      }
+      uc_archive_caps: { Args: { p_org: string; p_scope: Json }; Returns: Json }
+      uc_archive_case_access: {
+        Args: {
+          p_case: string
+          p_org: string
+          p_scope: Json
+          p_write?: boolean
+        }
+        Returns: {
+          attribution_actors: string[]
+          closure: Json | null
+          created_at: string
+          created_by: string
+          cursor_secret: string
+          enrollment_id: string | null
+          group_id: string | null
+          hold_events: Json
+          id: string
+          members: Json
+          opened_on: string
+          organization_id: string
+          retained_subjects: string[]
+          revision: number
+          rule_version_id: string | null
+          scope: Json
+          state: string
+          state_hash: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_cases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_case_digest: {
+        Args: {
+          p_case: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+        }
+        Returns: string
+      }
+      uc_archive_case_projection: {
+        Args: {
+          p_case: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_archive_current_source_ref: {
+        Args: { p_org: string; p_proof: Json; p_scope: Json }
+        Returns: Json
+      }
+      uc_archive_cursor: {
+        Args: {
+          p_kind: string
+          p_org: string
+          p_position?: Json
+          p_scope: Json
+          p_token?: string
+        }
+        Returns: Json
+      }
+      uc_archive_decision: {
+        Args: { p_decision: Json; p_lock?: boolean; p_org: string }
+        Returns: Json
+      }
+      uc_archive_education_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_error: { Args: { p_code: string }; Returns: undefined }
+      uc_archive_event_canonical: { Args: { p_value: Json }; Returns: string }
+      uc_archive_event_hash: { Args: { p_value: Json }; Returns: string }
+      uc_archive_event_projection: {
+        Args: {
+          p_event: Database["public"]["Tables"]["uc_archive_case_events"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_archive_fence: {
+        Args: {
+          p_org: string
+          p_people: string[]
+          p_request?: string
+          p_scope: Json
+          p_write?: boolean
+        }
+        Returns: undefined
+      }
+      uc_archive_frdo_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_group_document_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_hash: { Args: { p_value: Json }; Returns: string }
+      uc_archive_journal_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_json_literal: { Args: { p_value: Json }; Returns: Json }
+      uc_archive_json_people: { Args: { p_value: Json }; Returns: string[] }
+      uc_archive_open_case: {
+        Args: { p_action: Json; p_org: string; p_scope: Json }
+        Returns: {
+          attribution_actors: string[]
+          closure: Json | null
+          created_at: string
+          created_by: string
+          cursor_secret: string
+          enrollment_id: string | null
+          group_id: string | null
+          hold_events: Json
+          id: string
+          members: Json
+          opened_on: string
+          organization_id: string
+          retained_subjects: string[]
+          revision: number
+          rule_version_id: string | null
+          scope: Json
+          state: string
+          state_hash: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_cases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_org_files: {
+        Args: { p_lock?: boolean; p_org: string; p_value: Json }
+        Returns: Json
+      }
+      uc_archive_org_version: {
+        Args: {
+          p_lock?: boolean
+          p_org: string
+          p_reviewed?: boolean
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_package_access: {
+        Args: {
+          p_current?: boolean
+          p_org: string
+          p_package: string
+          p_scope: Json
+          p_write?: boolean
+        }
+        Returns: {
+          actor_id: string
+          blockers: Json
+          case_id: string
+          completeness: string
+          created_at: string
+          id: string
+          input_revision: number
+          input_state_hash: string
+          lease_id: string | null
+          lease_until: string | null
+          manifest: Json | null
+          manifest_bytes: number | null
+          manifest_sha256: string | null
+          organization_id: string
+          phase: string
+          request_id: string
+          retained_people: string[]
+          sealed_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_package_builds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_package_projection: {
+        Args: {
+          p_build: Database["public"]["Tables"]["uc_archive_package_builds"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_archive_people: { Args: { p_value: Json }; Returns: string[] }
+      uc_archive_personal_counts: { Args: { p_user: string }; Returns: Json }
+      uc_archive_prepare_disposal: {
+        Args: {
+          p_head: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_archive_prepare_package: {
+        Args: {
+          p_head: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_archive_prepare_restore: {
+        Args: {
+          p_head: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+          p_package: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_archive_registry_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_restore_access: {
+        Args: {
+          p_org: string
+          p_restore: string
+          p_scope: Json
+          p_write?: boolean
+        }
+        Returns: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          failure_code: string | null
+          id: string
+          lease_id: string | null
+          lease_until: string | null
+          manifest_sha256: string
+          organization_id: string
+          package_id: string
+          projection_sha256: string | null
+          request_id: string
+          retained_people: string[]
+          state: string
+          verified_file_ids: string[]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_restore_runs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_restore_insert: {
+        Args: { p_new: unknown }
+        Returns: unknown
+        SetofOptions: {
+          from: "storage.objects"
+          to: "objects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_archive_restore_projection: {
+        Args: {
+          p_run: Database["public"]["Tables"]["uc_archive_restore_runs"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_archive_retention_block: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_archive_revision_valid: { Args: { p_value: Json }; Returns: boolean }
+      uc_archive_rule_draft_valid: { Args: { p_value: Json }; Returns: boolean }
+      uc_archive_rule_projection: {
+        Args: {
+          p_rule: Database["public"]["Tables"]["uc_archive_rule_revisions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_archive_scope: {
+        Args: { p_org: string; p_scope: Json }
+        Returns: string
+      }
+      uc_archive_scope_contains: {
+        Args: { p_case: Json; p_query: Json }
+        Returns: boolean
+      }
+      uc_archive_scoped_journal_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_signature_file: {
+        Args: {
+          p_binding: string
+          p_disclosure: Json
+          p_document: Json
+          p_file_id: string
+          p_org: string
+          p_party: string
+          p_scan_revision?: number
+          p_signature: string
+        }
+        Returns: Json
+      }
+      uc_archive_signature_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_source: {
+        Args: {
+          p_exact?: boolean
+          p_lock?: boolean
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_source_capture: {
+        Args: {
+          p_actors: string[]
+          p_captured: Json
+          p_expected_count: number
+          p_files: Json
+          p_history: Json
+          p_history_kind: string
+          p_label: string
+          p_org: string
+          p_scope: Json
+          p_source: Json
+        }
+        Returns: Json
+      }
+      uc_archive_source_inventory: {
+        Args: { p_org: string; p_query: Json; p_scope: Json }
+        Returns: Json
+      }
+      uc_archive_source_shape: {
+        Args: {
+          p_hash_key: string
+          p_id_key: string
+          p_keys: string[]
+          p_kind: string
+          p_source: Json
+        }
+        Returns: undefined
+      }
+      uc_archive_text: {
+        Args: { p_limit?: number; p_value: Json }
+        Returns: boolean
       }
       uc_assignment_removal_state: {
         Args: { p_enrollment: string; p_group: string; p_org: string }
@@ -25772,6 +28154,19 @@ export type Database = {
         Args: { p_action: string; p_payload: Json }
         Returns: Json
       }
+      uc_ng_canonical: { Args: { p: Json; p_depth?: number }; Returns: string }
+      uc_ng_closed: { Args: { keys: string[]; p: Json }; Returns: boolean }
+      uc_ng_fence: {
+        Args: { p_org: string; p_owner?: boolean; p_write: boolean }
+        Returns: string
+      }
+      uc_ng_hash: { Args: { p_text: string }; Returns: string }
+      uc_ng_personal_counts: { Args: { p_user: string }; Returns: Json }
+      uc_ng_retention_block: { Args: { p_user: string }; Returns: undefined }
+      uc_ng_validate_manifest: {
+        Args: { p_hash: string; p_raw: string }
+        Returns: Json
+      }
       uc_observe_admission_sealed_object: {
         Args: {
           p_actor_id: string
@@ -25889,6 +28284,95 @@ export type Database = {
         Args: { p_version: string }
         Returns: Json
       }
+      uc_publication_actor_allowed: {
+        Args: { p_actor: string; p_org: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_publication_append_event: {
+        Args: {
+          p_actor: string
+          p_body: Json
+          p_edition: string
+          p_kind: string
+          p_org: string
+          p_request: string
+        }
+        Returns: string
+      }
+      uc_publication_check_context: {
+        Args: {
+          p_actor_id: string
+          p_job_id: string
+          p_lease_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      uc_publication_closed: {
+        Args: { p_keys: string[]; p_value: Json }
+        Returns: boolean
+      }
+      uc_publication_commit_check: {
+        Args: {
+          p_actor_id: string
+          p_job_id: string
+          p_lease_id: string
+          p_observation: Json
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      uc_publication_current_scope: {
+        Args: { p_edition: string; p_org: string }
+        Returns: Json
+      }
+      uc_publication_error: { Args: { p_code: string }; Returns: undefined }
+      uc_publication_fence: {
+        Args: {
+          p_actor: string
+          p_edition?: string
+          p_extra_people?: string[]
+          p_org: string
+          p_write?: boolean
+        }
+        Returns: undefined
+      }
+      uc_publication_hash: { Args: { p_value: string }; Returns: string }
+      uc_publication_people: {
+        Args: { p_edition: string; p_org: string }
+        Returns: string[]
+      }
+      uc_publication_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_publication_projection: {
+        Args: { p_edition: string; p_org: string; p_scope: Json }
+        Returns: Json
+      }
+      uc_publication_public_url: { Args: { p_value: string }; Returns: boolean }
+      uc_publication_receipt: {
+        Args: { p_org: string; p_request: string }
+        Returns: Json
+      }
+      uc_publication_record_person: {
+        Args: {
+          p_kind: string
+          p_object: string
+          p_org: string
+          p_person: string
+          p_relation: string
+        }
+        Returns: undefined
+      }
+      uc_publication_retention_block: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_publication_token: {
+        Args: { p_id: string; p_operation?: string; p_table: string }
+        Returns: undefined
+      }
       uc_registration_identification_claim: {
         Args: { p_actor: string; p_org: string; p_user: string }
         Returns: string
@@ -25971,6 +28455,79 @@ export type Database = {
         Returns: boolean
       }
       uc_scoped_journal_text_hash: { Args: { p_text: string }; Returns: string }
+      uc_self_examination_actor: {
+        Args: {
+          p_lock?: boolean
+          p_org: string
+          p_people?: string[]
+          p_request?: string
+          p_write?: boolean
+        }
+        Returns: string
+      }
+      uc_self_examination_answers_valid: {
+        Args: { p_answers: Json }
+        Returns: boolean
+      }
+      uc_self_examination_catalog: { Args: never; Returns: Json }
+      uc_self_examination_error: {
+        Args: { p_code: string }
+        Returns: undefined
+      }
+      uc_self_examination_facts: {
+        Args: { p_body: Json }
+        Returns: {
+          fact_key: string
+          required: boolean
+          value: Json
+          value_sha256: string
+        }[]
+      }
+      uc_self_examination_json_valid: {
+        Args: { p_depth?: number; p_value: Json }
+        Returns: boolean
+      }
+      uc_self_examination_link: {
+        Args: {
+          p_draft: string
+          p_event: string
+          p_org: string
+          p_people: string[]
+          p_role: string
+          p_source: Json
+        }
+        Returns: undefined
+      }
+      uc_self_examination_personal_counts: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      uc_self_examination_projection: {
+        Args: {
+          p_draft: Database["public"]["Tables"]["uc_self_examination_drafts"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_self_examination_retained: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      uc_self_examination_reviews: {
+        Args: { p_body: Json; p_org: string; p_reviews: Json }
+        Returns: Json
+      }
+      uc_self_examination_shape: {
+        Args: { p_keys: string[]; p_value: Json }
+        Returns: boolean
+      }
+      uc_self_examination_source: {
+        Args: { p_lock?: boolean; p_org: string; p_ref: Json }
+        Returns: Json
+      }
+      uc_self_examination_validate: {
+        Args: { p_body: Json; p_year: number }
+        Returns: undefined
+      }
       uc_session_access: {
         Args: { p_group: string; p_org: string; p_write: boolean }
         Returns: string
