@@ -18,6 +18,8 @@ import { PublicationCalendarPanel } from "./PublicationCalendarPanel";
 import { EducationProfileDialog } from "./EducationProfileDialog";
 import { NormativeGovernancePanel } from "./NormativeGovernancePanel";
 import { AssignedGroupDocumentsNotice } from "../AssignedGroupDocumentsNotice";
+import { PreparationDetailsDialog } from "./PreparationDetailsDialog";
+import { preparationPlan } from "@/lib/uc-compliance/preparationCatalog";
 import type { OrgDocument } from "@/hooks/useOrgDocumentsManager";
 import { compliancePreparation, groupDocumentSelectionPath, isGroupDocumentTask } from "@/lib/organization/complianceTaskNavigation";
 
@@ -93,7 +95,9 @@ export function EducationCenterAssistant(props: Props) {
   const profile = useEducationComplianceProfile(props.organizationId, canRead, canWrite);
   const decisions = useDocumentApplicabilityDecisions(props.organizationId, profile.data?.revision ?? null, COMPLIANCE_CATALOG_VERSION, canRead && !!profile.data, canWrite);
   const [profileOpen, setProfileOpen] = useState(false), [selectedTask, setSelectedTask] = useState<string | null>(null);
+  const [preparationTask, setPreparationTask] = useState<{ organizationId: string; profileRevision: number; id: string } | null>(null);
   useEffect(() => { setProfileOpen(false); setSelectedTask(null); }, [props.organizationId]);
+  useEffect(() => { setPreparationTask(null); }, [props.organizationId, profile.data?.revision]);
   if (scopedTeacher) return <AssignedGroupDocumentsNotice />;
   if (profile.denied || decisions.denied) return <div className="bg-card rounded-2xl border border-border p-6 space-y-3"><p className="text-sm text-muted-foreground">Профиль и решения центра доступны сотрудникам с правом работы с документами всей организации. Обновите данные после изменения доступа.</p><Button variant="outline" onClick={() => { void profile.reload(); void decisions.reload(); }}>Обновить доступ</Button></div>;
   if (!ready || !canRead) return null;
@@ -108,7 +112,15 @@ export function EducationCenterAssistant(props: Props) {
   const canConfigure = permissions.canSeeOrgTab("settings") && permissions.can("settings.write");
   const canOpenGroups = permissions.canSeeOrgTab("students") && permissions.can("students.read");
   const destinationAllowed = (destination: string) => destination === "journals" ? permissions.can("journals.read") : destination === "counterparties" ? permissions.can("companies.read") : true;
-  const reload = () => { setSelectedTask(null); void profile.reload(); void decisions.reload(); };
+  const reload = () => { setSelectedTask(null); setPreparationTask(null); void profile.reload(); void decisions.reload(); };
+  const prepared = preparationTask?.organizationId === props.organizationId && preparationTask.profileRevision === profile.data?.revision
+    ? evaluation?.requirements.find(task => task.requirement.id === preparationTask.id) : null;
+  const preparedTool = prepared ? compliancePreparation(prepared.requirement.id) : null;
+  const preparedWorkflow = prepared && isGroupDocumentTask(prepared.requirement.id)
+    ? canOpenGroups ? { href: groupDocumentSelectionPath(), label: "Выбрать группу и документы" } : null
+    : preparedTool ? canConfigure ? { href: preparedTool.href, label: preparedTool.label } : null
+    : prepared && prepared.requirement.existingDestination !== "org" && destinationAllowed(prepared.requirement.existingDestination)
+      ? { href: taskHref(prepared.requirement.existingDestination), label: "Открыть рабочий раздел" } : null;
   return <section className="space-y-4" aria-label="Что нужно моему центру">
     <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -165,6 +177,7 @@ export function EducationCenterAssistant(props: Props) {
               <p className="text-sm">{groupTask ? "Документы и фактические результаты группы открываются в её папке. Загруженная копия организации не заменяет эти записи." : task.evidence === "file_present" ? "Файл есть. Утверждение, содержание и период требуют отдельной проверки." : task.evidence === "inactive" ? "Есть прежний файл: проверьте архив, срок действия или наличие содержимого." : "Подтверждающий файл не найден в документах организации."}</p>
               {current && <p className="text-xs text-muted-foreground">{current.decision === null ? "Прежнее решение отозвано." : current.profile_revision !== profile.data?.revision || current.catalog_version !== COMPLIANCE_CATALOG_VERSION ? "Прежнее решение требует пересмотра после изменения профиля или каталога." : "Учтено мотивированное решение центра."}</p>}
               <div className="flex flex-wrap gap-2">
+                {preparationPlan(definition.id) && <Button size="sm" variant="outline" onClick={() => setPreparationTask({ organizationId: props.organizationId, profileRevision: profile.data!.revision, id: definition.id })}>Образец и подготовка</Button>}
                 {definition.kind === "regular" && <Button size="sm" variant="outline" disabled={!canWrite || profile.saving || decisions.saving} onClick={() => props.onUpload(definition.typeId)}><FileText className="w-4 h-4 mr-2" />Загрузить файл</Button>}
                 {document && <Button size="sm" variant="outline" onClick={() => props.onHistory(document)}><History className="w-4 h-4 mr-2" />Файл и версии</Button>}
                 {groupTask && canOpenGroups ? <Button size="sm" variant="outline" asChild><a href={groupDocumentSelectionPath()}>Выбрать группу и документы</a></Button>
@@ -188,6 +201,9 @@ export function EducationCenterAssistant(props: Props) {
     {profile.data && <EducationProfileDialog open={profileOpen} onOpenChange={setProfileOpen} snapshot={profile.data} organization={props.organization} documents={props.documents}
       canWrite={canWrite} saving={profile.saving} conflict={profile.conflict} uncertain={profile.uncertain} error={profile.error}
       onSave={profile.save} onReload={() => void profile.reload()} onClose={() => setProfileOpen(false)} loadHistory={profile.loadHistory} />}
+    {prepared && <PreparationDetailsDialog key={props.organizationId+":"+profile.data?.revision+":"+prepared.requirement.id} requirement={prepared.requirement} workflow={preparedWorkflow}
+      onSelfExamination={prepared.requirement.id === "self_examination_report" && canWrite && !profile.saving && !decisions.saving ? props.onSelfExamination : undefined}
+      onClose={() => setPreparationTask(null)} />}
     {selected && profile.data && <DecisionDialog key={`${props.organizationId}:${selected.requirement.id}:${profile.data.revision}`} task={selected}
       current={decisions.data?.find(row => row.requirement_id === selected.requirement.id)} decisions={decisions} canWrite={canWrite} profileRevision={profile.data.revision} onClose={() => setSelectedTask(null)} onReload={reload} />}
   </section>;

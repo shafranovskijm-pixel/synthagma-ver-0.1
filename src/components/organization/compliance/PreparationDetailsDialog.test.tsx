@@ -1,0 +1,55 @@
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { REQUIREMENTS } from '@/lib/uc-compliance/catalog';
+import { preparationExample } from '@/lib/uc-compliance/preparationCatalog';
+import { PreparationDetailsDialog } from './PreparationDetailsDialog';
+const requirement = (id: string) => REQUIREMENTS.find(x => x.id === id)!;
+const close = vi.fn();
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); });
+it('PD01 renders a literal adaptation structure and separate legal limits without approving or writing a document', () => {
+ const r = { ...requirement('admission_rules'), label: '<img src=x onerror=alert(1)>' };
+ const view = render(<PreparationDetailsDialog requirement={r} workflow={null} onClose={close} />);
+ const dialog = screen.getByRole('dialog');
+ expect(within(dialog).getByRole('heading', { name: '<img src=x onerror=alert(1)>: образец и подготовка' })).toBeVisible();
+ expect(view.baseElement.querySelector('img')).toBeNull();
+ expect(screen.getByLabelText('Текст примера для адаптации')).toHaveTextContent('ПРОЕКТ СТРУКТУРЫ ДЛЯ АДАПТАЦИИ И ПРАВОВОЙ ПРОВЕРКИ');
+ expect(screen.getByText(/не утверждает документ/)).toBeVisible();
+ expect(within(dialog).queryByRole('button', { name: /Утвердить|Сохранить|Подписать/ })).toBeNull();
+ expect(within(dialog).queryByRole('link', { name: 'Открыть рабочий раздел' })).toBeNull();
+ fireEvent.click(within(dialog).getByRole('button', { name: 'Закрыть' })); expect(close).toHaveBeenCalledOnce();
+});
+it('PD02 downloads the exact selected checklist bytes as UTF-8 and releases its object URL', async () => {
+ const created = vi.fn((_blob: Blob) => 'blob:uc029-example'); const revoked = vi.fn();
+ Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: created });
+ Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revoked });
+ const clicked: { href?: string; name?: string } = {};
+ vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function(this: HTMLAnchorElement) { clicked.href = this.getAttribute('href')!; clicked.name = this.download; });
+ render(<PreparationDetailsDialog requirement={requirement('license')} workflow={null} onClose={close} />);
+ fireEvent.click(screen.getByRole('button', { name: 'Скачать чек-лист' }));
+ expect(created).toHaveBeenCalledOnce(); const blob = created.mock.calls[0][0] as Blob;
+ expect(blob).toBeInstanceOf(Blob); expect(blob.type).toBe('text/plain;charset=utf-8');
+ expect(blob.size).toBe(new TextEncoder().encode(preparationExample('license')!).length);
+ const exported = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsText(blob); });
+ expect(exported).toBe(preparationExample('license'));
+ expect(clicked).toEqual({ href: 'blob:uc029-example', name: 'sintagma-example-license.txt' });
+ expect(revoked).toHaveBeenCalledWith('blob:uc029-example');
+ expect(document.querySelector('a[download]')).toBeNull();
+});
+it('PD03 keeps the readable example and a fixed error when browser download is unavailable', () => {
+ Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => { throw new Error('SECRET_FILE_PATH'); }) });
+ render(<PreparationDetailsDialog requirement={requirement('salary_rules')} workflow={null} onClose={close} />);
+ fireEvent.click(screen.getByRole('button', { name: 'Скачать структуру проекта' }));
+ expect(screen.getByRole('alert')).toHaveTextContent('Не удалось скачать пример');
+ expect(screen.getByLabelText('Текст примера для адаптации')).toHaveTextContent('Сведения центра и источник: [не заполнено]');
+ expect(document.body).not.toHaveTextContent('SECRET_FILE_PATH');
+});
+it('PD04 exposes only the explicitly supplied authorized workflow and self-examination callback', () => {
+ const self = vi.fn();
+ const view = render(<PreparationDetailsDialog requirement={requirement('self_examination_report')} workflow={{ href: '/organization?tab=documents&documentView=org', label: 'Раздел центра' }} onSelfExamination={self} onClose={close} />);
+ expect(screen.getByRole('link', { name: 'Раздел центра' })).toHaveAttribute('href', '/organization?tab=documents&documentView=org');
+ fireEvent.click(screen.getByRole('button', { name: 'Открыть анкету самообследования' })); expect(self).toHaveBeenCalledOnce();
+ view.rerender(<PreparationDetailsDialog requirement={requirement('self_examination_report')} workflow={null} onClose={close} />);
+ expect(screen.queryByRole('link', { name: 'Раздел центра' })).toBeNull();
+ expect(screen.queryByRole('button', { name: 'Открыть анкету самообследования' })).toBeNull();
+});
