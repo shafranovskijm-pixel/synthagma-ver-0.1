@@ -1,0 +1,5 @@
+# Publication TLS native address compatibility
+
+The working-site E1 check after PR138 identified an exact null-prototype TLS address with two own data fields matching the pinned TCP host and port443. This change accepts that observed shape alongside the existing ordinary object. Unknown prototypes, extra keys, accessors, non-TCP peers, mismatching hosts/ports remain denied. Original TCP pin, TLS SNI/certificate validation, awaited handshake and closed diagnostic fields are preserved. No SQL, authentication flags or document/legal states change.
+
+Validation: six meaningful cases passed in the first7 run; the remaining case failed because its old-log expectation predated PR138 diagnostics. That one stale fixture expectation was corrected and the affected case alone passed. This is6+1 distinct criteria, not a single green7 run. One ordinary esbuild API5 bundle build passed. The first failure is retained in the local release evidence. After actual deployment the normal site check remains required.

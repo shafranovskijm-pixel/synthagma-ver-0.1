@@ -124,12 +124,14 @@ export function parsePublicPublicationResponse(raw: Uint8Array): { status: numbe
 
 
 /** deno_net startTls returns its native IpAddr without the JS connectTls transport marker.
- * Accept only that exact data shape after upgrading the already checked TCP peer.
+ * Accept only that exact own-data shape with an ordinary or null prototype after upgrading the already checked TCP peer.
  * The real-hostname TLS handshake and the independent peer checks below remain mandatory.
  */
 function isPinnedNativeStartTlsPeer(peer: unknown, tcpPeer: PublicationConnection["remoteAddr"], address: string): boolean {
   if (tcpPeer.transport !== "tcp" || tcpPeer.hostname !== address || tcpPeer.port !== 443) return false;
-  if (!peer || typeof peer !== "object" || Object.getPrototypeOf(peer) !== Object.prototype) return false;
+  if (!peer || typeof peer !== "object") return false;
+  const prototype = Object.getPrototypeOf(peer);
+  if (prototype !== Object.prototype && prototype !== null) return false;
   const keys = Reflect.ownKeys(peer);
   if (keys.length !== 2 || !keys.includes("hostname") || !keys.includes("port")) return false;
   const hostname = Object.getOwnPropertyDescriptor(peer, "hostname"), port = Object.getOwnPropertyDescriptor(peer, "port");
