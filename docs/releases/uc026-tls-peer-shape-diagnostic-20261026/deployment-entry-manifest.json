@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "kind": "uc026_deployment_entry_runtime_identity",
+  "buildMarker": "uc026-tls-peer-shape-20261026-v1",
+  "entry": {
+    "path": "supabase/functions/publication-accessibility/index.ts",
+    "bytes": 252,
+    "sha256": "e9a7f0a126bdb331f60571d961c11bcb88013abb31eb2e7ffaeff563babebada",
+    "gitBlob": "47244df3546483705707e550ff51715947ea9713",
+    "change": "One leading static comment only; original runtime import and remainder byteexact.",
+    "runtimeImport": "./runtime.bundle.js"
+  },
+  "runtime": {
+    "path": "supabase/functions/publication-accessibility/runtime.bundle.js",
+    "bytes": 15186,
+    "sha256": "725799160d38edab098539891895fc160d78aa504551292f7200ce49088cec52"
+  },
+  "source": {
+    "path": "supabase/functions/_shared/uc-publication-http.ts",
+    "sha256": "e91a6c1c10b710389a74fbb10a9931463f2c3aa9cfca5e0091403acd0fbd1b8d"
+  },
+  "generatedBundleSourceManifest": {
+    "path": "docs/releases/uc026-tls-peer-shape-diagnostic-20261026/bundle-source-manifest.json",
+    "sha256": "506f2f2c27a7123bccd7b5781367eed4e160b52a0348bff2272eb554b0212b8e"
+  },
+  "entryCommentAddedAfterBuild": true,
+  "secondBuildRequired": false,
+  "jwtConfigurationChanged": false,
+  "providerDeploymentVerified": false,
+  "hostedRuntimeIdentityProven": false
+}

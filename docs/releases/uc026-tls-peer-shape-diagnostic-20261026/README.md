@@ -1,0 +1,11 @@
+# UC026 TLS refusal shape diagnostic
+
+Only the existing tls_transport refusal adds [PublicationCheckPeerShape] uc026-tls-peer-shape-20261026-v1. Its payload is a fixed set of enums and booleans; no IP, host, property name/value, response, credential, error or stack is logged. Descriptor inspection and even connection getter failure are contained by the diagnostic catch. The original guard predicate and original closed guard log are retained, and unknown peer shapes remain denied. Successful TLS/content-verdict paths are quiet.
+
+The thin entry now has one leading static comment binding runtime SHA256 725799160d38edab098539891895fc160d78aa504551292f7200ce49088cec52. Its original runtime import and all following bytes are unchanged. This identity can distinguish the requested new entry/runtime at the next provider deployment; it does not prove which hosted version produced the prior refusal.
+
+Actual final B: seven affected paired privacy/result/IO cases passed, including capped own-key count, null prototype, accessor without getter execution, changed TCP/peer, introspection and connection getter failures, throwing logger, and quiet successful/native/explicit TLS content verdicts. Node 14260 exited naturally0, exact PID+children EMPTY, source/runtime drift[] and full193-package4445-code inventory exact. Earlier A seven-case PASS and a pre-Node junction assertion stop remain saved. The old TLS12 and41 were not repeated.
+
+One proven API build produced exactly five TS inputs and four output files, runtime 15186 bytes. Node 18048 exited naturally0 with fresh EMPTY/drift[]. The three generated JSON documents are verbatim actual outputs; deployment-entry-manifest.json separately binds the post-build entry comment to the exact runtime. npm:@supabase/supabase-js@2.90.1 stays external and unchanged. Local build performs no network, SQL, Git, provider deployment or real TLS request.
+
+Only three existing code paths plus these new release documents are selected. No JWT/settings/auth/SQL/data/UI changes. Root retains the fresh Git lease and provider release, followed by one ordinary new UI publication check. Actual hosted Deno/peer shape, certificate handshake, deployment identity and working-site acceptance remain unproven by these local checks.

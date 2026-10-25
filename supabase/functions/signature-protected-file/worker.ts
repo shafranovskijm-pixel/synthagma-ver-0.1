@@ -3,7 +3,7 @@ import {canonicalSignatureStorageReader}from './controlled-source/worker.ts';
 export {canonicalSignatureStorageReader};
 export type ProtectedFileFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'REVISION_CONFLICT'|'REQUEST_CONFLICT'|'SOURCE_UNAVAILABLE'|'SOURCE_CHANGED'|'CLOSED'|'EXPIRED'|'LIMIT_EXCEEDED'|'DEPENDENCY_UNAVAILABLE';
 export class ProtectedFileError extends Error{constructor(readonly code:ProtectedFileFailure){super(code);this.name='ProtectedFileError';}}
-const fail=(code:ProtectedFileFailure):never=>{throw new ProtectedFileError(code);};
+const fail:(code:ProtectedFileFailure)=>never=(code)=>{throw new ProtectedFileError(code);};
 const codes=new Set<ProtectedFileFailure>(['ACCESS_DENIED','INVALID_INPUT','NOT_FOUND','REVISION_CONFLICT','REQUEST_CONFLICT','SOURCE_UNAVAILABLE','SOURCE_CHANGED','CLOSED','EXPIRED','LIMIT_EXCEEDED','DEPENDENCY_UNAVAILABLE']);
 export interface ProtectedFileDependencies{
  observeOriginalActor(signal:AbortSignal):Promise<string|null>;
@@ -28,7 +28,7 @@ function boundedAwait<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
   operation.then(value=>{signal.removeEventListener('abort',abort);if(signal.aborted)reject(new ProtectedFileError('ACCESS_DENIED'));else resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
  });
 }
-async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array>{
+async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array<ArrayBuffer>>{
  if(!response.ok||response.redirected)fail(response.status===404?'SOURCE_UNAVAILABLE':'DEPENDENCY_UNAVAILABLE');
  const rawLength=response.headers.get('content-length');
  if(rawLength!==null&&(!/^\d{1,12}$/.test(rawLength)||Number(rawLength)>SIGNATURE_SOURCE_MAX_BYTES))fail('LIMIT_EXCEEDED');
@@ -47,7 +47,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
   const bytes=new Uint8Array(total);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.byteLength;}complete=true;return bytes;
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
-async function digest(bytes:Uint8Array):Promise<string>{
+async function digest(bytes:Uint8Array<ArrayBuffer>):Promise<string>{
  const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 
@@ -66,6 +66,6 @@ export async function readProtectedSignatureFile(input:unknown,deps:ProtectedFil
   const bytes=await boundedBytes(response,signal);await current();const sha256=await boundedAwait(digest(bytes),signal);await current();
   if(before.object.reported_size!==null&&before.object.reported_size!==bytes.byteLength||before.expected_bytes!==null&&before.expected_bytes!==bytes.byteLength||before.expected_sha256!==null&&before.expected_sha256!==sha256)fail('SOURCE_CHANGED');
   const after=parse(await invoke());if(!same(before,after))fail('SOURCE_CHANGED');await current();return{kind:'file',context:before,bytes,sha256,mime:actualMime};
- }catch(error){if(error instanceof ProtectedFileError)throw error;fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
+ }catch(error){if(error instanceof ProtectedFileError)throw error;return fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
  finally{clearTimeout(timer);outer?.removeEventListener('abort',abort);ctl.abort();}
 }

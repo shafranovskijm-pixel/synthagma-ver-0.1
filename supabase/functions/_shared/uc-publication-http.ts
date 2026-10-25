@@ -136,6 +136,44 @@ function isPinnedNativeStartTlsPeer(peer: unknown, tcpPeer: PublicationConnectio
   return Boolean(hostname && "value" in hostname && hostname.value === address && port && "value" in port && port.value === 443);
 }
 
+// Fixed build identity and closed shape only. No peer values, property names or errors leave this refusal.
+function logRejectedTlsPeerShape(connection: PublicationConnection, tcpConnection: PublicationConnection, address: string): void {
+  type Shape = {
+    inspection: "complete" | "unavailable";
+    transport: "absent" | "tcp" | "other";
+    prototype: "ordinary" | "null" | "other";
+    ownKeyCount: "0" | "1" | "2" | "3" | "4_plus" | "unavailable";
+    hostnameDescriptor: "absent" | "data" | "accessor";
+    portDescriptor: "absent" | "data" | "accessor";
+    hostnameMatchesPinned: boolean; portMatches443: boolean;
+    tcpHostnameMatchesPinned: boolean; tcpPortMatches443: boolean;
+  };
+  let shape: Shape = { inspection: "unavailable", transport: "other", prototype: "other", ownKeyCount: "unavailable",
+    hostnameDescriptor: "absent", portDescriptor: "absent", hostnameMatchesPinned: false, portMatches443: false,
+    tcpHostnameMatchesPinned: false, tcpPortMatches443: false };
+  try {
+    const peer = connection.remoteAddr, tcpPeer = tcpConnection.remoteAddr;
+    if (peer && typeof peer === "object" && tcpPeer && typeof tcpPeer === "object") {
+      const prototype = Object.getPrototypeOf(peer), count = Reflect.ownKeys(peer).length;
+      const transport = Object.getOwnPropertyDescriptor(peer, "transport");
+      const hostname = Object.getOwnPropertyDescriptor(peer, "hostname"), port = Object.getOwnPropertyDescriptor(peer, "port");
+      const tcpHostname = Object.getOwnPropertyDescriptor(tcpPeer, "hostname"), tcpPort = Object.getOwnPropertyDescriptor(tcpPeer, "port");
+      shape = { inspection: "complete",
+        transport: !transport ? "absent" : "value" in transport && transport.value === "tcp" ? "tcp" : "other",
+        prototype: prototype === Object.prototype ? "ordinary" : prototype === null ? "null" : "other",
+        ownKeyCount: count === 0 ? "0" : count === 1 ? "1" : count === 2 ? "2" : count === 3 ? "3" : "4_plus",
+        hostnameDescriptor: !hostname ? "absent" : "value" in hostname ? "data" : "accessor",
+        portDescriptor: !port ? "absent" : "value" in port ? "data" : "accessor",
+        hostnameMatchesPinned: Boolean(hostname && "value" in hostname && hostname.value === address),
+        portMatches443: Boolean(port && "value" in port && port.value === 443),
+        tcpHostnameMatchesPinned: Boolean(tcpHostname && "value" in tcpHostname && tcpHostname.value === address),
+        tcpPortMatches443: Boolean(tcpPort && "value" in tcpPort && tcpPort.value === 443) };
+    }
+  } catch { /* Uninspectable shapes stay closed; no exception text or partial values are emitted. */ }
+  try { console.warn("[PublicationCheckPeerShape]", "uc026-tls-peer-shape-20261026-v1", shape); }
+  catch { /* Diagnostics cannot change the original refusal. */ }
+}
+
 function defaultNetwork(): PublicationNetwork {
   const runtime = (globalThis as unknown as { Deno?: PublicationNetwork }).Deno;
   if (!runtime || typeof runtime.resolveDns !== "function" || typeof runtime.connect !== "function" || typeof runtime.startTls !== "function") return unavailable();
@@ -180,7 +218,10 @@ export async function observePublicPublication(input: { publicUrl: string; conte
       if (tcp.remoteAddr.hostname !== address) return unsafe("tcp_hostname");
       if (tcp.remoteAddr.port !== 443) return unsafe("tcp_port");
       const tls = await hold(network.startTls(tcp, { hostname: url.hostname, alpnProtocols: ["http/1.1"] }));
-      if (tls.remoteAddr.transport !== "tcp" && !isPinnedNativeStartTlsPeer(tls.remoteAddr, tcp.remoteAddr, address)) return unsafe("tls_transport");
+      if (tls.remoteAddr.transport !== "tcp" && !isPinnedNativeStartTlsPeer(tls.remoteAddr, tcp.remoteAddr, address)) {
+        logRejectedTlsPeerShape(tls, tcp, address);
+        return unsafe("tls_transport");
+      }
       if (tls.remoteAddr.hostname !== address) return unsafe("tls_hostname");
       if (tls.remoteAddr.port !== 443) return unsafe("tls_port");
       if (typeof tls.handshake !== "function") return unsafe("tls_handshake_missing");
