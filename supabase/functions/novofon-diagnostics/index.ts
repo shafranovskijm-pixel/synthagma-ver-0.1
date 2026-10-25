@@ -1,7 +1,9 @@
+import {requireTelephonyActor,telephonyProviderMessage,telephonyProviderDetails} from "../_shared/telephony-authorization.ts";
+import {accessErrorResponse} from "../_shared/privileged-access.ts";
+import {readProviderOperationObject} from "../_shared/provider-operation-access.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  describeNovofonError,
   getConfiguredOperatorNumber,
   getConfiguredSipLogin,
   getConfiguredVirtualPhoneNumber,
@@ -48,16 +50,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function errorDetails(error: unknown): Record<string, unknown> {
-  if (error instanceof NovofonApiError) {
-    return {
-      code: error.code,
-      mnemonic: error.mnemonic,
-      status: error.status,
-    };
-  }
-  return {};
-}
+function errorDetails(error: unknown): Record<string, unknown> { return telephonyProviderDetails(error); }
 
 function canUseClassicFallback() {
   return hasClassicApiCredentials();
@@ -72,18 +65,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) return json({ error: "auth required" }, 401);
-
-    const supabaseAuth = createClient(
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } },
     );
-    const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
-    if (authErr || !user) return json({ error: "invalid auth" }, 401);
+    const actor = await requireTelephonyActor(req, admin, header => createClient(
+      Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {global:{headers:{Authorization:header}},auth:{autoRefreshToken:false,persistSession:false}},
+    ), true);
+    const user = {id:actor.userId};
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readProviderOperationObject(req);
     const testNumber = normalizeNovofonPhone(body?.test_number || "");
     const callerId = getConfiguredVirtualPhoneNumber();
     const operatorNumber = normalizeNovofonPhone(body?.operator_number || getConfiguredOperatorNumber(testNumber) || testNumber || "");
@@ -128,7 +121,7 @@ serve(async (req) => {
         key: "employees",
         label: "Сотрудники АТС",
         ok: false,
-        message: describeNovofonError(error),
+        message: telephonyProviderMessage(error),
         details: errorDetails(error),
       });
     }
@@ -153,7 +146,7 @@ serve(async (req) => {
         key: "virtual_number",
         label: "Номер в аккаунте Novofon",
         ok: canUseClassicFallback(),
-        message: describeNovofonError(error),
+        message: telephonyProviderMessage(error),
         details: { ...errorDetails(error), classic_fallback_enabled: canUseClassicFallback() },
       });
     }
@@ -219,8 +212,8 @@ serve(async (req) => {
               key: "test_call",
               label: "Тестовый звонок",
               ok: false,
-              message: describeNovofonError(fallbackError),
-              details: { ...errorDetails(fallbackError), primary_error: describeNovofonError(error) },
+              message: telephonyProviderMessage(fallbackError),
+              details: { ...errorDetails(fallbackError), primary_error: telephonyProviderMessage(error) },
             });
           }
         } else {
@@ -228,8 +221,8 @@ serve(async (req) => {
             key: "test_call",
             label: "Тестовый звонок",
             ok: false,
-            message: describeNovofonError(simpleError),
-            details: { ...errorDetails(simpleError), primary_error: describeNovofonError(error) },
+            message: telephonyProviderMessage(simpleError),
+            details: { ...errorDetails(simpleError), primary_error: telephonyProviderMessage(error) },
           });
         }
         }
@@ -250,6 +243,6 @@ serve(async (req) => {
       steps,
     });
   } catch (error) {
-    return json({ ok: false, error: describeNovofonError(error), details: errorDetails(error) }, 500);
+    return accessErrorResponse(error, corsHeaders);
   }
 });
