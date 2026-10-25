@@ -115,6 +115,8 @@ export function EducationCenterAssistant(props: Props) {
   const reload = () => { setSelectedTask(null); setPreparationTask(null); void profile.reload(); void decisions.reload(); };
   const prepared = preparationTask?.organizationId === props.organizationId && preparationTask.profileRevision === profile.data?.revision
     ? evaluation?.requirements.find(task => task.requirement.id === preparationTask.id) : null;
+  const preparedDocument = prepared ? props.documents.find(row => row.id === prepared.documentId && !row.deleted_at)
+    ?? props.documents.find(row => !row.deleted_at && [prepared.requirement.typeId, ...prepared.requirement.existingDocTypes].includes(row.type)) : undefined;
   const preparedTool = prepared ? compliancePreparation(prepared.requirement.id) : null;
   const preparedWorkflow = prepared && isGroupDocumentTask(prepared.requirement.id)
     ? canOpenGroups ? { href: groupDocumentSelectionPath(), label: "Выбрать группу и документы" } : null
@@ -202,6 +204,8 @@ export function EducationCenterAssistant(props: Props) {
       canWrite={canWrite} saving={profile.saving} conflict={profile.conflict} uncertain={profile.uncertain} error={profile.error}
       onSave={profile.save} onReload={() => void profile.reload()} onClose={() => setProfileOpen(false)} loadHistory={profile.loadHistory} />}
     {prepared && <PreparationDetailsDialog key={props.organizationId+":"+profile.data?.revision+":"+prepared.requirement.id} requirement={prepared.requirement} workflow={preparedWorkflow}
+      onUploadDraft={prepared.requirement.kind === "regular" && canWrite && !profile.saving && !decisions.saving ? () => props.onUpload(prepared.requirement.typeId) : undefined}
+      onOpenVersions={preparedDocument ? () => props.onHistory(preparedDocument) : undefined}
       onSelfExamination={prepared.requirement.id === "self_examination_report" && canWrite && !profile.saving && !decisions.saving ? props.onSelfExamination : undefined}
       onClose={() => setPreparationTask(null)} />}
     {selected && profile.data && <DecisionDialog key={`${props.organizationId}:${selected.requirement.id}:${profile.data.revision}`} task={selected}
