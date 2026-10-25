@@ -1,0 +1,1 @@
+import {fileURLToPath}from'node:url';const local=(p)=>fileURLToPath(new URL(p,import.meta.url));export default{root:local('../../'),envDir:local('./no-env'),test:{environment:'node',include:['tests/archive-package-disposal/package.acceptance.ts'],fileParallelism:false,maxWorkers:1,minWorkers:1,testTimeout:10000,hookTimeout:10000,retry:0,cache:false}};
