@@ -441,6 +441,9 @@ export function useOrgDetailsView(organization: Organization) {
         fetchCredentials();
         fetchDocuments();
         break;
+      case "documents":
+        fetchDocuments();
+        break;
       case "history":
       case "comments":
       case "reminders":
@@ -535,7 +538,7 @@ export function useOrgDetailsView(organization: Organization) {
     isStorageWarning, isStorageExceeded, isAiGenWarning, isAiGenExceeded, shouldBlockAI,
     usageLimitsReady, usageAccessLoading, usageAccessError, retryUsageAccess, effectiveStorageLimit, isPostpaid,
     dndSensors, handleCourseDragEnd, filteredStudents, formatBytes,
-    saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchPendingEnrollmentsCount, recalculateStorage, recalculatingStorage,
+    saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchDocuments, fetchPendingEnrollmentsCount, recalculateStorage, recalculatingStorage,
     showSkillspaceImport, setShowSkillspaceImport, showSkillspaceBatchImport, setShowSkillspaceBatchImport,
     showStudentBulkImport, setShowStudentBulkImport, pendingEnrollmentsCount,
     skillspaceUpdateCourse, setSkillspaceUpdateCourse,

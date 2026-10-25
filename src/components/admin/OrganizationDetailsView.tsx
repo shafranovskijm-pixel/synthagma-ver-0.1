@@ -22,6 +22,7 @@ import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { AdminDocumentsManager } from "./AdminDocumentsManager";
 import { OrgCommercialDocumentsPanel } from "./OrgCommercialDocumentsPanel";
 import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
+import { SelfExaminationOperator } from "@/components/organization/self-examination/SelfExaminationOperator";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
@@ -192,6 +193,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           {vm.activeTab === "tariffs" && <OrgTariffsPanel organizationId={organization.id} subscriptionPlan={organization.subscription_plan || 'free'} planInfo={vm.planInfo} tariffCustomLabel={vm.tariffCustomLabel} setTariffCustomLabel={vm.setTariffCustomLabel} tariffPaidUntil={vm.tariffPaidUntil} setTariffPaidUntil={vm.setTariffPaidUntil} isSavingTariff={vm.isSavingTariff} saveTariffSettings={vm.saveTariffSettings} customLimits={vm.customLimits} setCustomLimits={vm.setCustomLimits} customCategories={vm.customCategories} setCustomCategories={vm.setCustomCategories} customPrice={vm.customPrice} setCustomPrice={vm.setCustomPrice} customDiscount={vm.customDiscount} setCustomDiscount={vm.setCustomDiscount} />}
           {vm.activeTab === "documents" && (
             <div className="space-y-6">
+              <SelfExaminationOperator
+                organizationId={organization.id}
+                documents={vm.documents}
+                onDocumentsChange={vm.fetchDocuments}
+              />
               <OrgCommercialDocumentsPanel
                 organizationId={organization.id}
                 organizationName={organization.name}
