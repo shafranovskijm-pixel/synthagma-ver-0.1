@@ -19,6 +19,7 @@ import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { DataSubjectRequestsManager } from "@/components/organization/DataSubjectRequestsManager";
 import { IncomingDocumentsManager } from "@/components/organization/IncomingDocumentsManager";
 // DocumentsKpiDashboard pulls in recharts (~200KB) — load it only when the KPI section renders
+const ArchivePanel = lazy(() => import("@/components/organization/archive-cases/ArchivePanel"));
 const DocumentsKpiDashboard = lazy(() => import("@/components/organization/DocumentsKpiDashboard").then(m => ({ default: m.DocumentsKpiDashboard })));
 import { RecycleBinManager } from "@/components/organization/RecycleBinManager";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +53,7 @@ import {
 // Подпункты группы «Документы организации» (второй уровень)
 type OrgDocSubValue = Extract<
   DocumentSubTab,
-  "programs" | "journals" | "frdo" | "testimonials" | "diplomas" | "certificates" | "protocols" | "orders" | "org" | "pd_requests"
+  "programs" | "journals" | "frdo" | "testimonials" | "diplomas" | "certificates" | "protocols" | "orders" | "org" | "pd_requests" | "archive_cases"
 >;
 
 const ORG_DOCS_SUBITEMS: { value: OrgDocSubValue; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string }[] = [
@@ -66,6 +67,7 @@ const ORG_DOCS_SUBITEMS: { value: OrgDocSubValue; label: string; icon: React.Ele
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500" },
   { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70" },
   { value: "pd_requests", label: "Запросы ПД", icon: ShieldCheck, iconColor: "text-emerald-500" },
+  { value: "archive_cases", label: "Архивные дела", icon: FolderOpen, iconColor: "text-amber-500" },
 ];
 
 // Корневые горизонтальные пункты (верхний ряд)
@@ -93,6 +95,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   programs: "Управление образовательными программами",
   journals: "Журналы учёта обучения",
   frdo: "Выгрузка данных в ФИС ФРДО",
+  archive_cases: "Архивные дела, основания хранения, проверенные пакеты и исторические копии",
   counterparties: "Договоры, счета и закрывающие документы с контрагентами",
   signatures: "Журнал отправленных на подписание документов и доказательства подписей",
   pd_requests: DSR_DEADLINE_HELP,
@@ -559,6 +562,7 @@ function DocumentsTabContent({
           {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} canConfigure={canWriteDocuments} />}
           {h.activeTab === "journals" && canReadJournals && <JournalsManager organizationId={organizationId!} />}
           {h.activeTab === "frdo" && canReadFrdo && <FRDOManager organizationId={organizationId!} />}
+          {h.activeTab === "archive_cases" && organizationId && <Suspense fallback={<p className="text-sm text-muted-foreground">Загрузка архивных дел…</p>}><ArchivePanel organizationId={organizationId}/></Suspense>}
           {h.activeTab === "signatures" && (
             <SignaturesJournal
               organizationId={organizationId}

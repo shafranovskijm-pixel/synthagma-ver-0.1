@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "src/lib/archiveCases/contract.ts",
+    "src/lib/archiveCases/package.ts",
+    "src/lib/archiveCases/sealedRead.ts",
+    "src/lib/archiveCases/restoreWorker.ts",
+    "src/lib/archiveCases/__tests__/fixtures.ts",
+    "src/lib/archiveCases/__tests__/sealed.fixtures.ts",
+    "src/lib/archiveCases/__tests__/sealedRead.test.ts",
+    "src/lib/archiveCases/__tests__/sealedHttp.test.ts",
+    "src/lib/archiveCases/__tests__/restoreWorker.test.ts",
+    "src/lib/archiveCases/__tests__/restoreHttp.test.ts",
+    "supabase/functions/archive-case-read/http.ts",
+    "supabase/functions/archive-case-restore/http.ts"
+  ]
+}

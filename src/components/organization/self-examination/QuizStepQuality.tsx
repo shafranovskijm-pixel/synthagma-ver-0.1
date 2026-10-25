@@ -14,7 +14,7 @@ export function QuizStepQuality({ data, updateData, toggleControlType }: Props) 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Виды контроля</Label>
+        <Label>Виды контроля</Label>{data.hasPedagogicalCouncil === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasPedagogicalCouncil: null })}>Неизвестно</button>}
         <div className="grid grid-cols-2 gap-2">
           {["входной", "текущий", "промежуточный", "итоговый"].map((type) => (
             <label key={type} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2 cursor-pointer">
@@ -53,8 +53,8 @@ export function QuizStepQuality({ data, updateData, toggleControlType }: Props) 
       </div>
 
       <div className="flex items-center gap-3">
-        <Checkbox id="employer-participation" checked={data.hasEmployerParticipation} onCheckedChange={(checked) => updateData({ hasEmployerParticipation: !!checked })} />
-        <Label htmlFor="employer-participation" className="cursor-pointer">Участие работодателей в оценке качества образования</Label>
+        <Checkbox id="employer-participation" checked={data.hasEmployerParticipation ?? "indeterminate"} onCheckedChange={(checked) => updateData({ hasEmployerParticipation: checked === "indeterminate" ? null : checked })} />
+        <Label htmlFor="employer-participation" className="cursor-pointer">Участие работодателей в оценке качества образования</Label>{data.hasEmployerParticipation === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasEmployerParticipation: null })}>Неизвестно</button>}
       </div>
     </div>
   );

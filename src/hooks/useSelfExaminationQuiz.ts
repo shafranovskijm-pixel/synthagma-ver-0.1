@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
@@ -11,14 +11,14 @@ export interface CommissionMember {
 export interface Program {
   name: string;
   type: string;
-  studentsCount: number;
+  studentsCount: number | null;
 }
 
 export interface StaffMember {
   fio: string;
   subject: string;
   education: string;
-  experienceYears: number;
+  experienceYears: number | null;
   employmentType: string;
 }
 
@@ -45,50 +45,41 @@ export interface QuizData {
   commissionMembers: CommissionMember[];
   directorFio: string;
   directorPosition: string;
-  directorTermYears: number;
-  hasPedagogicalCouncil: boolean;
+  directorTermYears: number | null;
+  hasPedagogicalCouncil: boolean | null;
   pedagogicalCouncilProtocolNumber: string;
   pedagogicalCouncilProtocolDate: string;
   programs: Program[];
-  totalStudents: number;
-  completedStudents: number;
+  totalStudents: number | null;
+  completedStudents: number | null;
   controlTypes: string[];
   testingPlatformName: string;
   testingPlatformUrl: string;
   finalAttestationForm: string;
-  hasEmployerParticipation: boolean;
+  hasEmployerParticipation: boolean | null;
   staff: StaffMember[];
-  hasWebsite: boolean;
-  hasDistancePlatform: boolean;
-  hasMultimedia: boolean;
-  hasLibrary: boolean;
+  hasWebsite: boolean | null;
+  hasDistancePlatform: boolean | null;
+  hasMultimedia: boolean | null;
+  hasLibrary: boolean | null;
   additionalEquipment: string;
   additionalNotes: string;
 }
 
-const initialQuizData: QuizData = {
-  fullName: "", shortName: "",
-  legalForm: "Общество с ограниченной ответственностью",
-  legalAddress: "", phone: "", email: "", website: "",
-  ogrn: "", inn: "", kpp: "", founders: "",
-  licenseNumber: "", licenseDate: "",
-  programTypes: ["дополнительное профессиональное образование"],
-  periodStart: "", periodEnd: "", orderNumber: "", orderDate: "",
-  commissionChairman: { fio: "", position: "Директор" },
-  commissionMembers: [{ fio: "", position: "Преподаватель" }],
-  directorFio: "", directorPosition: "Директор", directorTermYears: 3,
-  hasPedagogicalCouncil: true,
-  pedagogicalCouncilProtocolNumber: "1", pedagogicalCouncilProtocolDate: "",
-  programs: [{ name: "", type: "повышение квалификации", studentsCount: 0 }],
-  totalStudents: 0, completedStudents: 0,
-  controlTypes: ["входной", "текущий", "промежуточный", "итоговый"],
-  testingPlatformName: "", testingPlatformUrl: "",
-  finalAttestationForm: "квалификационный экзамен",
-  hasEmployerParticipation: true,
-  staff: [{ fio: "", subject: "", education: "Высшее профессиональное", experienceYears: 5, employmentType: "По договору" }],
-  hasWebsite: true, hasDistancePlatform: true, hasMultimedia: true, hasLibrary: true,
-  additionalEquipment: "", additionalNotes: "",
+export const initialQuizData: QuizData = {
+  fullName: '', shortName: '', legalForm: '', legalAddress: '', phone: '', email: '', website: '',
+  ogrn: '', inn: '', kpp: '', founders: '', licenseNumber: '', licenseDate: '', programTypes: [],
+  periodStart: '', periodEnd: '', orderNumber: '', orderDate: '', commissionChairman: { fio: '', position: '' }, commissionMembers: [],
+  directorFio: '', directorPosition: '', directorTermYears: null, hasPedagogicalCouncil: null,
+  pedagogicalCouncilProtocolNumber: '', pedagogicalCouncilProtocolDate: '', programs: [], totalStudents: null, completedStudents: null,
+  controlTypes: [], testingPlatformName: '', testingPlatformUrl: '', finalAttestationForm: '', hasEmployerParticipation: null, staff: [],
+  hasWebsite: null, hasDistancePlatform: null, hasMultimedia: null, hasLibrary: null, additionalEquipment: '', additionalNotes: '',
 };
+export function optionalNonnegativeNumber(value: string): number | null {
+  if (!value.trim()) return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= Number.MAX_SAFE_INTEGER ? number : null;
+}
 
 interface OrganizationData {
   name?: string; inn?: string; kpp?: string; ogrn?: string;
@@ -111,6 +102,7 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoadingInn, setIsLoadingInn] = useState(false);
   const [innLoaded, setInnLoaded] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [data, setData] = useState<QuizData>(() => ({
     ...initialQuizData,
     fullName: organizationData?.name || "",
@@ -122,19 +114,19 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
     phone: organizationData?.phone || "",
     legalAddress: organizationData?.legal_address || "",
     directorFio: organizationData?.director_name || "",
-    directorPosition: organizationData?.director_position || "Директор",
+    directorPosition: organizationData?.director_position || "",
     commissionChairman: {
       fio: organizationData?.director_name || "",
-      position: organizationData?.director_position || "Директор",
+      position: organizationData?.director_position || "",
     },
-    periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-    periodEnd: new Date().toISOString().split('T')[0],
-    orderDate: new Date().toISOString().split('T')[0],
-    orderNumber: `${new Date().getFullYear()}-СО-01`,
-    pedagogicalCouncilProtocolDate: new Date().toISOString().split('T')[0],
+
   }));
 
+  const alive = useRef(true), innEpoch = useRef(0);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; ++innEpoch.current; }; }, []);
   const updateData = (updates: Partial<QuizData>) => {
+    setDirty(true);
+    if (updates.inn !== undefined) { ++innEpoch.current; setInnLoaded(false); }
     setData(prev => ({ ...prev, ...updates }));
   };
 
@@ -143,18 +135,15 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
       toast.error("Введите корректный ИНН (10 или 12 цифр)");
       return;
     }
+    const request = ++innEpoch.current;
     setIsLoadingInn(true);
     try {
       const { data: result, error } = await safeInvoke<any>('dadata-company', { body: { inn: data.inn } });
+      if (!alive.current || request !== innEpoch.current) return;
       if (error) throw error;
       if (result.success && result.company) {
         const company = result.company;
-        let legalForm = "Общество с ограниченной ответственностью";
-        if (company.opf) {
-          if (company.opf.includes("ИП") || company.type === "INDIVIDUAL") legalForm = "Индивидуальный предприниматель";
-          else if (company.opf.includes("АО") || company.opf.includes("Акционерное")) legalForm = "Акционерное общество";
-          else if (company.opf.includes("АНО") || company.opf.includes("Автономная")) legalForm = "Автономная некоммерческая организация";
-        }
+        const legalForm = typeof company.opf === 'string' && company.opf.trim() ? company.opf : data.legalForm;
         const foundersText = company.founders?.length > 0 ? company.founders.join(", ") : data.founders;
         let licenseDate = data.licenseDate;
         if (company.license?.issueDate) {
@@ -188,10 +177,11 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
         toast.error(result.message || "Компания не найдена");
       }
     } catch (error) {
+      if (!alive.current || request !== innEpoch.current) return;
       console.error("Error loading company by INN:", error);
       toast.error("Ошибка загрузки данных по ИНН");
     } finally {
-      setIsLoadingInn(false);
+      if (alive.current && request === innEpoch.current) setIsLoadingInn(false);
     }
   };
 
@@ -199,21 +189,21 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
   const handleBack = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
   // Array manipulators
-  const addCommissionMember = () => updateData({ commissionMembers: [...data.commissionMembers, { fio: "", position: "Преподаватель" }] });
+  const addCommissionMember = () => updateData({ commissionMembers: [...data.commissionMembers, { fio: "", position: "" }] });
   const removeCommissionMember = (index: number) => updateData({ commissionMembers: data.commissionMembers.filter((_, i) => i !== index) });
   const updateCommissionMember = (index: number, field: keyof CommissionMember, value: string) => {
     const updated = [...data.commissionMembers]; updated[index] = { ...updated[index], [field]: value }; updateData({ commissionMembers: updated });
   };
 
-  const addProgram = () => updateData({ programs: [...data.programs, { name: "", type: "повышение квалификации", studentsCount: 0 }] });
+  const addProgram = () => updateData({ programs: [...data.programs, { name: "", type: "", studentsCount: null }] });
   const removeProgram = (index: number) => updateData({ programs: data.programs.filter((_, i) => i !== index) });
-  const updateProgram = (index: number, field: keyof Program, value: string | number) => {
+  const updateProgram = (index: number, field: keyof Program, value: string | number | null) => {
     const updated = [...data.programs]; updated[index] = { ...updated[index], [field]: value }; updateData({ programs: updated });
   };
 
-  const addStaffMember = () => updateData({ staff: [...data.staff, { fio: "", subject: "", education: "Высшее профессиональное", experienceYears: 5, employmentType: "По договору" }] });
+  const addStaffMember = () => updateData({ staff: [...data.staff, { fio: "", subject: "", education: "", experienceYears: null, employmentType: "" }] });
   const removeStaffMember = (index: number) => updateData({ staff: data.staff.filter((_, i) => i !== index) });
-  const updateStaffMember = (index: number, field: keyof StaffMember, value: string | number) => {
+  const updateStaffMember = (index: number, field: keyof StaffMember, value: string | number | null) => {
     const updated = [...data.staff]; updated[index] = { ...updated[index], [field]: value }; updateData({ staff: updated });
   };
 
@@ -230,7 +220,7 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
   const progress = (currentStep / QUIZ_STEPS.length) * 100;
 
   return {
-    data, updateData, currentStep, setCurrentStep,
+    data, updateData, dirty, replaceData: (next: QuizData) => { ++innEpoch.current; setData(next); setInnLoaded(false); setDirty(false); }, currentStep, setCurrentStep,
     isLoadingInn, innLoaded, loadCompanyByInn,
     handleNext, handleBack, progress,
     addCommissionMember, removeCommissionMember, updateCommissionMember,

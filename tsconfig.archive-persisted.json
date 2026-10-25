@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "src/lib/archiveCases/contract.ts",
+    "src/lib/archiveCases/package.ts",
+    "src/lib/archiveCases/worker.ts",
+    "src/lib/archiveCases/__tests__/fixtures.ts",
+    "src/lib/archiveCases/__tests__/contract.test.ts",
+    "src/lib/archiveCases/__tests__/worker.test.ts",
+    "src/lib/archiveCases/__tests__/http.test.ts",
+    "supabase/functions/archive-case-package/http.ts"
+  ]
+}

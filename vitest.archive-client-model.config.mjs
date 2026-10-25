@@ -1,0 +1,2 @@
+import{fileURLToPath}from'node:url';
+export default{root:fileURLToPath(new URL('.',import.meta.url)),envDir:fileURLToPath(new URL('./unused-archive-client-env',import.meta.url)),resolve:{alias:{'@':fileURLToPath(new URL('./src',import.meta.url))}},esbuild:{jsx:'automatic'},test:{globals:true,environment:'jsdom',setupFiles:['./src/test/setup.ts'],maxWorkers:1,fileParallelism:false,include:['src/lib/archiveCases/__tests__/client.test.ts','src/hooks/__tests__/useArchiveCases.test.tsx']}};

@@ -1,3 +1,4 @@
+import { optionalNonnegativeNumber } from "@/hooks/useSelfExaminationQuiz";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ interface Props {
   data: QuizData;
   addStaffMember: () => void;
   removeStaffMember: (index: number) => void;
-  updateStaffMember: (index: number, field: keyof StaffMember, value: string | number) => void;
+  updateStaffMember: (index: number, field: keyof StaffMember, value: string | number | null) => void;
 }
 
 export function QuizStepStaff({ data, addStaffMember, removeStaffMember, updateStaffMember }: Props) {
@@ -41,7 +42,7 @@ export function QuizStepStaff({ data, addStaffMember, removeStaffMember, updateS
                   <SelectItem value="Среднее профессиональное">Среднее проф.</SelectItem>
                 </SelectContent>
               </Select>
-              <Input type="number" value={member.experienceYears || ''} onChange={(e) => updateStaffMember(index, 'experienceYears', parseInt(e.target.value) || 0)} placeholder="Стаж (лет)" className="rounded-lg" />
+              <Input type="number" value={member.experienceYears ?? ''} onChange={(e) => updateStaffMember(index, 'experienceYears', optionalNonnegativeNumber(e.target.value))} placeholder="Стаж (лет)" className="rounded-lg" />
               <Select value={member.employmentType} onValueChange={(v) => updateStaffMember(index, 'employmentType', v)}>
                 <SelectTrigger className="rounded-lg text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>

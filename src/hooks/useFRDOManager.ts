@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
+import { captureOfflineAuthRevision, subscribeOfflineAuthRevision } from "@/utils/courseCache";
 import { useEducationIssuanceScope } from "@/hooks/useEducationIssuance";
 import { issuanceScopeCurrent, requireIssuanceScope, type EducationIssuanceScope } from "@/lib/educationIssuance/client";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,11 +48,13 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   useEffect(() => { setExistingExport(null); }, [organizationId, ctx.groupId, ctx.courseId]);
   const groupId = ctx.groupId || null;
   const contextCourseId = ctx.courseId || null;
-  const capture=useEducationIssuanceScope(organizationId,groupId,contextCourseId??"");
+  const accessRevision = useSyncExternalStore(subscribeOfflineAuthRevision, captureOfflineAuthRevision, captureOfflineAuthRevision);
+  const capture=useEducationIssuanceScope(organizationId,groupId,JSON.stringify([contextCourseId,accessRevision]));
   const [dataScope,setDataScope]=useState<EducationIssuanceScope|null>(null);
   const currentData=canExport&&!!dataScope&&issuanceScopeCurrent(dataScope);
   const loadEpoch=useRef(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
   const [enrollmentsMap, setEnrollmentsMap] = useState<Map<string, EnrollmentData[]>>(new Map());
@@ -67,27 +70,31 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   const [visibleCount, setVisibleCount] = useState(5);
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
 
-  useEffect(() => { setSelectedStudents(new Set()); setShowExportDialog(false); setExistingExport(null); setDataScope(null); setStudents([]); setCourses([]); setFrdoDataMap(new Map()); setEnrollmentsMap(new Map()); if(canExport)void loadData(); else setIsLoading(false); return()=>{++loadEpoch.current;}; }, [organizationId, groupId, contextCourseId, capture, canExport]);
+  useEffect(() => { setSelectedStudents(new Set()); setShowExportDialog(false); setExistingExport(null); setDataScope(null); setLoadError(null); setStudents([]); setCourses([]); setFrdoDataMap(new Map()); setEnrollmentsMap(new Map()); if(canExport)void loadData(); else setIsLoading(false); return()=>{++loadEpoch.current;}; }, [organizationId, groupId, contextCourseId, capture, canExport]);
   useEffect(() => { setCourseFilter(contextCourseId || "all"); }, [contextCourseId]);
 
   const loadData = async () => {
-    if(!canExport)return; const scope=capture(),run=++loadEpoch.current; setDataScope(null);
-    setIsLoading(true);
+    if(!canExport)return;
+    const run=++loadEpoch.current;
+    let scope: EducationIssuanceScope | null = null;
+    setDataScope(null); setLoadError(null); setIsLoading(true);
     try {
+      scope=capture();
       const { data: profilesData, error: profilesError } = groupId
         ? { data: await fetchEffectiveGroupProfiles(supabase, organizationId, groupId, { select: "user_id, full_name, email, student_group_id" }), error: null }
         : await supabase.from("profiles").select("user_id, full_name, email, student_group_id").eq("organization_id", organizationId);
       requireIssuanceScope(scope); if(run!==loadEpoch.current)return; if (profilesError) throw profilesError;
+      if (!Array.isArray(profilesData)) throw new Error("Unconfirmed FRDO profiles response");
       const userIds = profilesData?.map(p => p.user_id) || [];
       setGroupMemberIds(userIds);
-      if (userIds.length === 0) { setStudents([]); setIsLoading(false); return; }
+      if (userIds.length === 0) { setStudents([]); setCourses([]); setEnrollmentsMap(new Map()); setFrdoDataMap(new Map()); setDataScope(scope); return; }
 
       const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
       requireIssuanceScope(scope); if(run!==loadEpoch.current)return;
       const orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
       const studentUserIds = userIds.filter(id => !orgAdminUserIds.has(id));
       const studentProfiles = (profilesData || []).filter(p => !orgAdminUserIds.has(p.user_id));
-      if (studentUserIds.length === 0) { setStudents([]); setIsLoading(false); return; }
+      if (studentUserIds.length === 0) { setStudents([]); setCourses([]); setEnrollmentsMap(new Map()); setFrdoDataMap(new Map()); setDataScope(scope); return; }
 
       const { data: enrollmentsData, error: enrollmentError } = await supabase.from("enrollments").select("id, user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)").in("user_id", studentUserIds);
       requireIssuanceScope(scope); if(run!==loadEpoch.current)return; if(enrollmentError)throw enrollmentError;
@@ -123,7 +130,12 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
         });
       }
       setFrdoDataMap(dataMap); setDataScope(scope);
-    } catch (error) { if(run===loadEpoch.current&&issuanceScopeCurrent(scope)){setDataScope(null);toast.error("Не удалось подтвердить сведения ФРДО. Обновите данные.");} }
+    } catch (error) {
+      if(run===loadEpoch.current&&(!scope||issuanceScopeCurrent(scope))){
+        const message="Не удалось подтвердить сведения ФРДО. Обновите данные.";
+        setDataScope(null); setLoadError(message); toast.error(message);
+      }
+    }
     finally { if(run===loadEpoch.current)setIsLoading(false); }
   };
 
@@ -187,7 +199,9 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
 
   return {
     canExport, existingExport, setExistingExport, groupId,
-    isLoading, students:scopedStudents, courses:currentData?courses:[], searchQuery, setSearchQuery,
+    isLoading: permissions.loading || (canExport && (isLoading || (!currentData && !loadError))),
+    loadError: !permissions.loading && !canExport ? "Доступ к сведениям ФРДО не подтверждён. Проверьте права организации." : loadError,
+    students:scopedStudents, courses:currentData?courses:[], searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,
     selectedStudentForExport, selectedEnrollmentForExport,

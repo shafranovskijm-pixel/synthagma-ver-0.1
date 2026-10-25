@@ -41,15 +41,15 @@ export function QuizStepLicense({ data, updateData, toggleProgramType, addCommis
       </div>
 
       <div className="border-t border-border pt-4 mt-4">
-        <h4 className="font-medium mb-4">Период самообследования</h4>
+        <h4 className="font-medium mb-4">Отчётный календарный год</h4><p className="text-xs text-muted-foreground mb-3">Период определяется выбранным годом. Дата приказа и срок работы комиссии указываются отдельно.</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Дата начала *</Label>
-            <Input type="date" value={data.periodStart} onChange={(e) => updateData({ periodStart: e.target.value })} className="rounded-xl" />
+            <Input type="date" value={data.periodStart} readOnly className="rounded-xl" />
           </div>
           <div className="space-y-2">
             <Label>Дата окончания *</Label>
-            <Input type="date" value={data.periodEnd} onChange={(e) => updateData({ periodEnd: e.target.value })} className="rounded-xl" />
+            <Input type="date" value={data.periodEnd} readOnly className="rounded-xl" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 mt-4">

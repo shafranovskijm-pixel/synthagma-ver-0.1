@@ -20,19 +20,20 @@ export function QuizStepInfrastructure({ data, updateData }: Props) {
             { key: "hasMultimedia" as const, title: "Мультимедийное оборудование", desc: "Проекторы, интерактивные доски и т.д." },
             { key: "hasLibrary" as const, title: "Библиотечный фонд", desc: "Учебная и методическая литература" },
           ].map((item) => (
-            <label key={item.key} className="flex items-center gap-3 bg-secondary/50 rounded-xl p-4 cursor-pointer">
-              <Checkbox checked={data[item.key]} onCheckedChange={(checked) => updateData({ [item.key]: !!checked })} />
+            <div key={item.key} className="flex items-center gap-3 bg-secondary/50 rounded-xl p-4 cursor-pointer">
+              <Checkbox id={item.key} checked={data[item.key] ?? "indeterminate"} onCheckedChange={(checked) => updateData({ [item.key]: checked === "indeterminate" ? null : checked })} />
               <div>
-                <div className="font-medium text-sm">{item.title}</div>
+                <Label htmlFor={item.key} className="font-medium text-sm cursor-pointer">{item.title}</Label>
                 <div className="text-xs text-muted-foreground">{item.desc}</div>
+                {data[item.key] === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ [item.key]: null })}>Неизвестно</button>}
               </div>
-            </label>
+            </div>
           ))}
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label>Дополнительное оборудование</Label>
+        <Label>Дополнительное оборудование</Label>{data.hasEmployerParticipation === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasEmployerParticipation: null })}>Неизвестно</button>}{data.hasPedagogicalCouncil === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasPedagogicalCouncil: null })}>Неизвестно</button>}
         <Textarea value={data.additionalEquipment} onChange={(e) => updateData({ additionalEquipment: e.target.value })} placeholder="Опишите дополнительное оборудование, учебные материалы и т.д." className="rounded-xl min-h-[80px]" />
       </div>
     </div>

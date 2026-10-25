@@ -1,4 +1,4 @@
-import { SELF_EXAMINATION_SERVICE_PRICE } from "@/lib/selfExaminationPrice";
+import { prepareSelfExaminationOrder, saveSelfExaminationOrder } from '@/lib/selfExamination/order';
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -202,6 +202,7 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
   const [uploadExpiresAt, setUploadExpiresAt] = useState<string>("");
   const [uploadResponsible, setUploadResponsible] = useState<string>("");
   const [expiryFilter, setExpiryFilter] = useState<"all" | "active" | "expiring" | "expired" | "archived">("all");
+  const quizOrderOperation = useRef<{key:string;order:ReturnType<typeof prepareSelfExaminationOrder>}|null>(null);
   const [showQuiz, setShowQuiz] = useState(false);
   const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
   const [showAutoGenSuccessDialog, setShowAutoGenSuccessDialog] = useState(false);
@@ -361,22 +362,19 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
 
   const getExpiryStatus = getOrgDocumentState;
 
-  const handleQuizSubmit = async (quizData: any) => {
-    if (!canWrite) return;
+  const handleQuizSubmit = async (reference: import("@/lib/selfExamination/form").SelfExaminationOrderReference) => {
+    if (!canWrite || reference.organization_id !== organizationId || activeOrganization.current !== organizationId) return;
     setIsSubmittingQuiz(true);
     try {
-      const { error } = await supabase.from("service_orders").insert({
-        organization_id: organizationId,
-        service_id: "self_examination_report_auto",
-        service_title: "Автоформирование отчёта о результатах самообследования",
-        service_price: SELF_EXAMINATION_SERVICE_PRICE.label,
-        notes: JSON.stringify(quizData),
-        status: "pending",
-      });
-      if (error) throw error;
+      const key=JSON.stringify([reference.organization_id,reference.draft_id,reference.reporting_year]);
+      if(quizOrderOperation.current&&quizOrderOperation.current.key!==key)throw Error('Unconfirmed previous order. Retry the same saved draft first.');
+      quizOrderOperation.current??={key,order:prepareSelfExaminationOrder(reference)};
+      await saveSelfExaminationOrder(quizOrderOperation.current.order);
+      quizOrderOperation.current=null;
+      if(activeOrganization.current!==organizationId)return;
       setShowQuiz(false);
       setShowAutoGenSuccessDialog(true);
-      toast.success("Заявка на автоформирование отправлена!");
+      toast.success("Заявка на подготовку черновика отправлена. Списание не выполнялось.");
     } catch (error) {
       console.error("Error submitting auto-gen order:", error);
       toast.error("Ошибка при отправке заявки");

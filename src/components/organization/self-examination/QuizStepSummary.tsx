@@ -1,4 +1,4 @@
-import { SELF_EXAMINATION_SERVICE_PRICE } from "@/lib/selfExaminationPrice";
+import { selfExaminationPriceLabel } from '@/lib/selfExamination/policy';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles } from "lucide-react";
@@ -40,7 +40,7 @@ export function QuizStepSummary({ data, updateData }: Props) {
           </div>
           <div>
             <span className="text-muted-foreground">Обучающихся:</span>
-            <div className="font-medium">{data.totalStudents}</div>
+            <div className="font-medium">{data.totalStudents??"Не указано"}</div>
           </div>
           <div>
             <span className="text-muted-foreground">Педагогов:</span>
@@ -57,11 +57,11 @@ export function QuizStepSummary({ data, updateData }: Props) {
       <div className="bg-secondary/50 rounded-xl p-4 text-sm space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Стоимость услуги:</span>
-          <span className="font-bold text-primary text-xl">{SELF_EXAMINATION_SERVICE_PRICE.label}</span>
+          <span className="font-bold text-primary text-xl">{selfExaminationPriceLabel()}</span>
         </div>
         <p className="text-xs text-muted-foreground">
           После отправки заявки с вами свяжется менеджер для подтверждения и оплаты.
-          После оплаты отчёт будет сгенерирован автоматически.
+          Подготовка черновика и исполнение услуги подтверждаются отдельно. Итог проверяет и утверждает учебный центр; публикация не выполняется автоматически.
         </p>
       </div>
     </div>
