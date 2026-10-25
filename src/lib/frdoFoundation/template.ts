@@ -1,14 +1,17 @@
 import {OFFICIAL_TEMPLATES} from './officialMetadata';
 import {BOUNDS,decodeUtf8,ensureCurrent,refuse,sha256,utf8} from './hash';
 import {mapFrozenProjections} from './mapper';
-import {fillTargetRows,parseXml,verifyNativeStructure,verifyWrittenCells,type VerifiedPublicDonorStructure} from './ooxml';
+import {fillTargetRows,parseXml,verifyPinnedNativeStructure,verifyWrittenCells,type VerifiedPublicDonorStructure} from './ooxml';
 import {boundedStream,newBudget,readZipParts,remaining,type Budget} from './zip';
 import {browserXmlRuntime,type XmlRuntime} from './xmlRuntime';
+import {indexVerifiedWorksheet,VERIFIED_WORKSHEET_WINDOW_ROWS} from './verifiedWorksheetProjection';
 import {verifySealedMappedBatch} from './sealedBatch';
 import type {CurrentGuard,MappedBatch,PartProof,Stream,WorkbookOutput} from './types';
 export interface WorkbookRuntimeOptions{xml?:XmlRuntime;}
 async function partProofs(parts:ReadonlyMap<string,Uint8Array>,budget:Budget):Promise<PartProof[]>{const result:PartProof[]=[];for(const [path,raw]of [...parts].sort(([a],[b])=>a<b?-1:a>b?1:0)){remaining(budget);const hash=await sha256(raw);remaining(budget);result.push({path,bytes:raw.length,sha256:hash});}return result;}
-async function openDonor(raw:Uint8Array,stream:Stream,budget:Budget,xml:XmlRuntime){const metadata=OFFICIAL_TEMPLATES[stream];if(raw.length!==metadata.donor_bytes)return refuse('TEMPLATE_CHANGED');const hash=await sha256(raw);remaining(budget);if(hash!==metadata.donor_sha256)return refuse('TEMPLATE_CHANGED');const donor=await readZipParts(raw,budget),proofs=await partProofs(donor.parts,budget);if(proofs.length!==metadata.parts.length)return refuse('TEMPLATE_CHANGED');for(const expected of metadata.parts){const actual=proofs.find(p=>p.path===expected.path);if(!actual||actual.bytes!==expected.bytes||actual.sha256!==expected.sha256)return refuse('TEMPLATE_CHANGED');}const native=verifyNativeStructure(donor.parts,stream,xml);remaining(budget);return {...donor,native};}
+async function openDonor(raw:Uint8Array,stream:Stream,budget:Budget,xml:XmlRuntime){const metadata=OFFICIAL_TEMPLATES[stream];if(raw.length!==metadata.donor_bytes)return refuse('TEMPLATE_CHANGED');const hash=await sha256(raw);remaining(budget);if(hash!==metadata.donor_sha256)return refuse('TEMPLATE_CHANGED');const donor=await readZipParts(raw,budget),proofs=await partProofs(donor.parts,budget);if(proofs.length!==metadata.parts.length)return refuse('TEMPLATE_CHANGED');for(const expected of metadata.parts){const actual=proofs.find(p=>p.path===expected.path);if(!actual||actual.bytes!==expected.bytes||actual.sha256!==expected.sha256)return refuse('TEMPLATE_CHANGED');}// Whole donor and every original part were hashed above; project only for DOM semantics, never for byte/package checks.
+ const sheetRaw=donor.parts.get(metadata.sheet_path);if(!sheetRaw)return refuse();const verifiedSheet=indexVerifiedWorksheet(decodeUtf8(sheetRaw,BOUNDS.xmlBytes),stream),nativeParts=new Map(donor.parts);nativeParts.set(metadata.sheet_path,utf8(verifiedSheet.project(),BOUNDS.xmlBytes));
+ const native=verifyPinnedNativeStructure(nativeParts,stream,xml);remaining(budget);return {...donor,native};}
 function expectedSheet(donor:ReadonlyMap<string,Uint8Array>,batch:MappedBatch):Uint8Array{const path=OFFICIAL_TEMPLATES[batch.context.stream].sheet_path,raw=donor.get(path);if(!raw)return refuse();return utf8(fillTargetRows(decodeUtf8(raw,BOUNDS.xmlBytes),batch.context.stream,batch.rows.map(row=>row.cells)),BOUNDS.xmlBytes);}
 async function readback(output:Uint8Array,donor:ReadonlyMap<string,Uint8Array>,native:VerifiedPublicDonorStructure,batch:MappedBatch,budget:Budget,xml:XmlRuntime):Promise<PartProof[]>{
  const metadata=OFFICIAL_TEMPLATES[batch.context.stream],actual=await readZipParts(output,budget);if(actual.parts.size!==donor.size)return refuse();const expected=expectedSheet(donor,batch);
@@ -16,7 +19,12 @@ async function readback(output:Uint8Array,donor:ReadonlyMap<string,Uint8Array>,n
  // All non-target part bytes and the entire expected target XML were just compared.
  // Their native dictionaries/names/validations cannot change; do not parse them twice.
  const required=(parts:ReadonlyMap<string,Uint8Array>,path:string)=>{const raw=parts.get(path);if(!raw)return refuse();return raw;};
- verifyWrittenCells(parseXml(required(actual.parts,metadata.sheet_path),xml),native.sheet,batch.context.stream,batch.rows.map(row=>row.cells),native.strings,native.styles);remaining(budget);
+ // Complete sheet/part byte comparison above includes every unused row, cell, attribute and XML segment before any projection.
+ const donorProjection=indexVerifiedWorksheet(decodeUtf8(required(donor,metadata.sheet_path),BOUNDS.xmlBytes),batch.context.stream),outputProjection=indexVerifiedWorksheet(decodeUtf8(required(actual.parts,metadata.sheet_path),BOUNDS.xmlBytes),batch.context.stream);
+ if(donorProjection.rowCount!==outputProjection.rowCount)return refuse();
+ for(let start=0;start<batch.rows.length;start+=VERIFIED_WORKSHEET_WINDOW_ROWS){remaining(budget);const rows=batch.rows.slice(start,start+VERIFIED_WORKSHEET_WINDOW_ROWS).map(row=>row.cells),first=start+2;
+  verifyWrittenCells(parseXml(utf8(outputProjection.project(first,rows.length),BOUNDS.xmlBytes),xml),parseXml(utf8(donorProjection.project(first,rows.length),BOUNDS.xmlBytes),xml),batch.context.stream,rows,native.strings,native.styles,first);remaining(budget);
+ }
  return partProofs(actual.parts,budget);
 }
 /** The single writer used by both fresh genuine projections and a trusted persisted
