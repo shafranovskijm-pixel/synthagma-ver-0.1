@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { packet, scope, envelope, summary, uid, actor, org, group, hash, stamp, eventBase } from './uiFixtures';
-import { canonicalJson, sha256 } from '../../frdoFoundation/hash';
+import { packet, scope, envelope, summary, uid, actor, org, group, hash, stamp, eventBase } from './uiFixtures.ts';
+import { canonicalJson, sha256 } from '../../frdoFoundation/hash.ts';
 const mock = vi.hoisted(() => ({ invoke: vi.fn(), session: vi.fn(), live: true }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mock.session }, functions: { invoke: mock.invoke } } }));
 vi.mock('@/lib/educationIssuance/client', () => ({ issuanceScopeCurrent: (s: any) => mock.live && s.current() }));
-import { readFrdoPackets, readOwnFrdoAuthorities, mutateFrdoPacket, prepareFrdoCommand } from '../client';
+import { readFrdoPackets, readOwnFrdoAuthorities, mutateFrdoPacket, prepareFrdoCommand } from '../client.ts';
 beforeEach(() => { vi.clearAllMocks(); mock.live = true; mock.session.mockResolvedValue({ data: { session: { user: { id: actor }, access_token: 'ORIGINAL_ACTOR_JWT' } }, error: null }); });
 const response = (data: unknown) => mock.invoke.mockResolvedValue({ data, error: null });
 describe('persisted FRDO original-actor client', () => {

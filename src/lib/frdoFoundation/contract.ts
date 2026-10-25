@@ -3,8 +3,8 @@
  * Cross-object predicates listed in UC020_IMPLEMENTATION_CONTRACT_V1.json are mandatory at each endpoint.
  */
 import { z } from 'zod';
-import { issuanceRecordSchema, issuanceFrdoFactsSchema } from '../educationIssuance/contract';
-import { OFFICIAL_TEMPLATES } from './officialMetadata';
+import { issuanceRecordSchema, issuanceFrdoFactsSchema } from '../educationIssuance/contract.ts';
+import { OFFICIAL_TEMPLATES } from './officialMetadata.ts';
 export { issuanceFrdoFactsSchema };
 const uuid=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 const sha=z.string().regex(/^[a-f0-9]{64}$/);

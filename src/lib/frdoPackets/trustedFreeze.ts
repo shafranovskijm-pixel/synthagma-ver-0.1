@@ -1,11 +1,11 @@
 import type {z} from 'zod';
-import {BOUNDS,canonicalJson,ensureCurrent,sha256} from '../frdoFoundation/hash';
-import type {CurrentGuard} from '../frdoFoundation/types';
-import {PacketInvariantError,verifyFrozenCapture} from './invariants';
-import * as runtime from './runtimeContract';
-import {issuerReviewIntentSchema} from './issuerReview';
-import type {FrozenCapture} from './types';
-import type {correctionPlanSchema} from '../frdoFoundation/contract';
+import {BOUNDS,canonicalJson,ensureCurrent,sha256} from '../frdoFoundation/hash.ts';
+import type {CurrentGuard} from '../frdoFoundation/types.ts';
+import {PacketInvariantError,verifyFrozenCapture} from './invariants.ts';
+import * as runtime from './runtimeContract.ts';
+import {issuerReviewIntentSchema} from './issuerReview.ts';
+import type {FrozenCapture} from './types.ts';
+import type {correctionPlanSchema} from '../frdoFoundation/contract.ts';
 
 /** Shared exact domain mirrored by SQL canonical hashing; never jsonb::text SHA.
  * Explicit review evidence/source epoch + every mapped subject lives in capture. */

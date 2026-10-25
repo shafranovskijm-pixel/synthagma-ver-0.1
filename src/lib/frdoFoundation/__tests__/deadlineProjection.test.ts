@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deadlineSchema } from '../contract';
-import { projectPendingFrdoDeadline } from '../deadlineProjection';
+import { deadlineSchema } from '../contract.ts';
+import { projectPendingFrdoDeadline } from '../deadlineProjection.ts';
 
 describe('checked FRDO source orientation never becomes an approved deadline', () => {
   it('keeps PO in working days with its exact checked source and no date/calendar authority', () => {

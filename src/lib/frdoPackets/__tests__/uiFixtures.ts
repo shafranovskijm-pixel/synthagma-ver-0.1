@@ -1,8 +1,8 @@
-import { input, guard } from '../../frdoFoundation/__tests__/fixtures';
-import { uid, org, actor, group, hash, stamp, source } from '../../educationIssuance/__tests__/fixtures';
-import { captureReviewedPacket } from '../issuerReview';
-import { packetProjectionSchema, RUNTIME_ABI_REVISION } from '../runtimeContract';
-import type { FrdoPacket, FrdoScope } from '../client';
+import { input, guard } from '../../frdoFoundation/__tests__/fixtures.ts';
+import { uid, org, actor, group, hash, stamp, source } from '../../educationIssuance/__tests__/fixtures.ts';
+import { captureReviewedPacket } from '../issuerReview.ts';
+import { packetProjectionSchema, RUNTIME_ABI_REVISION } from '../runtimeContract.ts';
+import type { FrdoPacket, FrdoScope } from '../client.ts';
 export { uid, org, actor, group, hash, stamp, source };
 export const proof = { source, byte_sha256: 'b'.repeat(64), byte_size: 127 };
 export const review = { regime: 'ordinary_rf' as const, evidence: source, review_note: 'Синтетическая проверка режима, не правовое утверждение' };

@@ -1,4 +1,4 @@
-import{canonicalJson,ensureCurrent,sha256}from'../frdoFoundation/hash';import type{CurrentGuard}from'../frdoFoundation/types';import{assertArtifactBinding,PacketInvariantError}from'./invariants';import type{FrdoPacket,FrdoAction}from'./client';
+import{canonicalJson,ensureCurrent,sha256}from'../frdoFoundation/hash.ts';import type{CurrentGuard}from'../frdoFoundation/types.ts';import{assertArtifactBinding,PacketInvariantError}from'./invariants.ts';import type{FrdoPacket,FrdoAction}from'./client.ts';
 /** Pure UC018 preview of the already-authorized packet projection. This mirrors
  * uc_frdo_registry_data exactly; server scope/CAS and narrow dispatcher still
  * authorize every write. It is unrelated to official spreadsheet mapping. */

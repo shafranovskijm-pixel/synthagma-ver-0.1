@@ -3,13 +3,13 @@ import {webcrypto} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import JSZip from 'jszip';
-import {generateOfficialWorkbook,verifyOfficialWorkbook} from '../template';
-import {OFFICIAL_TEMPLATES} from '../officialMetadata';
-import {parseXml,cellValue,elements,sharedStrings,fillTargetRows} from '../ooxml';
-import {sha256} from '../hash';
-import {input,guard,expectedDpo,expectedPo,seal} from './fixtures';
-import type {Stream} from '../types';
-import type {XmlDocument} from '../xmlRuntime';
+import {generateOfficialWorkbook,verifyOfficialWorkbook} from '../template.ts';
+import {OFFICIAL_TEMPLATES} from '../officialMetadata.ts';
+import {parseXml,cellValue,elements,sharedStrings,fillTargetRows} from '../ooxml.ts';
+import {sha256} from '../hash.ts';
+import {input,guard,expectedDpo,expectedPo,seal} from './fixtures.ts';
+import type {Stream} from '../types.ts';
+import type {XmlDocument} from '../xmlRuntime.ts';
 beforeAll(()=>vi.stubGlobal('crypto',webcrypto));afterAll(()=>vi.unstubAllGlobals());
 async function donor(stream:Stream){return new Uint8Array(await readFile(new URL('../__fixtures__/'+(stream==='dpo'?'dpo20230116.xlsx':'po16102026.xlsx'),import.meta.url)));}
 async function parts(raw:Uint8Array){const zip=await JSZip.loadAsync(raw),result=new Map<string,Uint8Array>(),paths=Object.keys(zip.files);expect(paths).toHaveLength(14);for(const path of paths){const file=zip.file(path);expect(file).not.toBeNull();result.set(path,await file!.async('uint8array'));}return result;}

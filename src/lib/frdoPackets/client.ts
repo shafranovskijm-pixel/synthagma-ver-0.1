@@ -1,8 +1,8 @@
 import {supabase} from '@/integrations/supabase/client';
 import {issuanceScopeCurrent,type EducationIssuanceScope} from '@/lib/educationIssuance/client';
-import {canonicalJson,sha256} from '../frdoFoundation/hash';
-import {verifyFrozenCapture,assertArtifactBinding} from './invariants';
-import * as c from './contract';import * as r from './runtimeContract';import type {z} from 'zod';
+import {canonicalJson,sha256} from '../frdoFoundation/hash.ts';
+import {verifyFrozenCapture,assertArtifactBinding} from './invariants.ts';
+import * as c from './contract.ts';import * as r from './runtimeContract.ts';import type {z} from 'zod';
 export type FrdoScope=EducationIssuanceScope;
 /** Frontend DTOs are values already accepted by the strict closed wire schemas. */
 export type FrdoWire<T>=T extends null|undefined?T:T extends(infer Item)[]?FrdoWire<Item>[]:T extends object?{[Key in keyof T]-?:FrdoWire<T[Key]>}:T;

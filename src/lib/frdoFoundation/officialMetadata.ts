@@ -1,5 +1,5 @@
 // Source-checked official donor manifests; this is not FIS acceptance or legal policy approval.
-import {deepFreeze} from './hash';
+import {deepFreeze} from './hash.ts';
 export const OFFICIAL_TEMPLATES = deepFreeze({
   "dpo": {
     "id": "dpo20230116",

@@ -1,6 +1,6 @@
-import { mappedBatchSchema } from './contract';
-import { BOUNDS, canonicalJson, ensureCurrent, refuse, sha256 } from './hash';
-import type { CurrentGuard, MappedBatch } from './types';
+import { mappedBatchSchema } from './contract.ts';
+import { BOUNDS, canonicalJson, ensureCurrent, refuse, sha256 } from './hash.ts';
+import type { CurrentGuard, MappedBatch } from './types.ts';
 
 /** A checksum/shape boundary, not authority. A trusted caller must independently
  * validate original actor, every source/subject and exact persisted CAS snapshot. */

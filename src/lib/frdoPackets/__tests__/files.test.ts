@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
-import { packet, scope, org, uid } from './uiFixtures';
+import { packet, scope, org, uid } from './uiFixtures.ts';
 const mock = vi.hoisted(() => ({ read: vi.fn(), save: vi.fn(), fetch: vi.fn(), live: true }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/lib/documentRegistry/client', () => ({ captureDocumentRegistryScope: vi.fn(), readDocumentRegistry: vi.fn() }));
 vi.mock('@/lib/documentRegistry/files', () => ({ downloadRegistryBlob: mock.save }));
 vi.mock('../client', async original => ({ ...(await original<any>()), requireFrdoScope: () => { if (!mock.live) throw Object.assign(Error(), { code: 'ACCESS_DENIED' }); }, requireFrdoSession: async () => 'ORIGINAL', readFrdoPackets: mock.read }));
-import { downloadFrdoArtifact } from '../files';
+import { downloadFrdoArtifact } from '../files.ts';
 let p: Awaited<ReturnType<typeof packet>>;
 beforeEach(async () => { vi.clearAllMocks(); mock.live = true; vi.stubEnv('VITE_SUPABASE_URL', 'https://qa.supabase.co'); vi.stubGlobal('fetch', mock.fetch); p = await packet(true); const hash = createHash('sha256').update('abc').digest('hex'); if (p.current_build?.state !== 'sealed') throw Error(); p.current_build.artifact.byte_sha256 = hash; p.current_build.readback_sha256 = hash; const d = { kind: 'download', download: { signed_url: 'https://qa.supabase.co/storage/v1/object/sign/frdo-packet-artifacts/' + org + '/packets/' + p.ref.id + '/' + p.current_build.id + '/' + p.current_build.artifact_id + '.xlsx?token=QA', byte_size: 3, byte_sha256: hash, expires_at: new Date(Date.now() + 60000).toISOString() } }; mock.read.mockResolvedValue(d); mock.fetch.mockImplementation(async () => new Response('abc', { status: 200, headers: { 'content-length': '3' } })); });
 describe('exact FRDO artifact bytes and late authorization', () => {

@@ -1,10 +1,10 @@
 import{z}from'zod';
-import{canonicalJson,ensureCurrent,sha256}from'../../../src/lib/frdoFoundation/hash';
-import type{CurrentGuard}from'../../../src/lib/frdoFoundation/types';
-import *as runtime from'../../../src/lib/frdoPackets/runtimeContract';
-import{PacketInvariantError}from'../../../src/lib/frdoPackets/invariants';
-import{createTrustedFrdoService}from'./trustedService';
-import{FrdoTransportError,type FrdoRestPorts}from'./restTransport';
+import{canonicalJson,ensureCurrent,sha256}from'../../../src/lib/frdoFoundation/hash.ts';
+import type{CurrentGuard}from'../../../src/lib/frdoFoundation/types.ts';
+import *as runtime from'../../../src/lib/frdoPackets/runtimeContract.ts';
+import{PacketInvariantError}from'../../../src/lib/frdoPackets/invariants.ts';
+import{createTrustedFrdoService}from'./trustedService.ts';
+import{FrdoTransportError,type FrdoRestPorts}from'./restTransport.ts';
 const cors={'access-control-allow-origin':'*','access-control-allow-headers':'authorization,apikey,content-type,x-client-info','access-control-allow-methods':'POST,OPTIONS','cache-control':'no-store'};
 const requestSchema=z.discriminatedUnion('operation',[
  z.object({operation:z.literal('mutate'),command:runtime.mutationRequestSchema}).strict(),

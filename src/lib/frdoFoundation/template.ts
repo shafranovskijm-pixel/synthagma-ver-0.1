@@ -1,11 +1,11 @@
-import {OFFICIAL_TEMPLATES} from './officialMetadata';
-import {BOUNDS,decodeUtf8,ensureCurrent,refuse,sha256,utf8} from './hash';
-import {mapFrozenProjections} from './mapper';
-import {fillTargetRows,parseXml,verifyNativeStructure,verifyWrittenCells,type VerifiedPublicDonorStructure} from './ooxml';
-import {boundedStream,newBudget,readZipParts,remaining,type Budget} from './zip';
-import {browserXmlRuntime,type XmlRuntime} from './xmlRuntime';
-import {verifySealedMappedBatch} from './sealedBatch';
-import type {CurrentGuard,MappedBatch,PartProof,Stream,WorkbookOutput} from './types';
+import {OFFICIAL_TEMPLATES} from './officialMetadata.ts';
+import {BOUNDS,decodeUtf8,ensureCurrent,refuse,sha256,utf8} from './hash.ts';
+import {mapFrozenProjections} from './mapper.ts';
+import {fillTargetRows,parseXml,verifyNativeStructure,verifyWrittenCells,type VerifiedPublicDonorStructure} from './ooxml.ts';
+import {boundedStream,newBudget,readZipParts,remaining,type Budget} from './zip.ts';
+import {browserXmlRuntime,type XmlRuntime} from './xmlRuntime.ts';
+import {verifySealedMappedBatch} from './sealedBatch.ts';
+import type {CurrentGuard,MappedBatch,PartProof,Stream,WorkbookOutput} from './types.ts';
 export interface WorkbookRuntimeOptions{xml?:XmlRuntime;}
 async function partProofs(parts:ReadonlyMap<string,Uint8Array>,budget:Budget):Promise<PartProof[]>{const result:PartProof[]=[];for(const [path,raw]of [...parts].sort(([a],[b])=>a<b?-1:a>b?1:0)){remaining(budget);const hash=await sha256(raw);remaining(budget);result.push({path,bytes:raw.length,sha256:hash});}return result;}
 async function openDonor(raw:Uint8Array,stream:Stream,budget:Budget,xml:XmlRuntime){const metadata=OFFICIAL_TEMPLATES[stream];if(raw.length!==metadata.donor_bytes)return refuse('TEMPLATE_CHANGED');const hash=await sha256(raw);remaining(budget);if(hash!==metadata.donor_sha256)return refuse('TEMPLATE_CHANGED');const donor=await readZipParts(raw,budget),proofs=await partProofs(donor.parts,budget);if(proofs.length!==metadata.parts.length)return refuse('TEMPLATE_CHANGED');for(const expected of metadata.parts){const actual=proofs.find(p=>p.path===expected.path);if(!actual||actual.bytes!==expected.bytes||actual.sha256!==expected.sha256)return refuse('TEMPLATE_CHANGED');}const native=verifyNativeStructure(donor.parts,stream,xml);remaining(budget);return {...donor,native};}

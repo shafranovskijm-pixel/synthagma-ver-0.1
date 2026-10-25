@@ -1,7 +1,7 @@
-import {issuedRecord,uid,org,actor,group,hash,stamp,source} from '../../educationIssuance/__tests__/fixtures';
-import {officialTemplateRef} from '../dictionaries';
-import {canonicalJson,sha256} from '../hash';
-import type {FoundationInput,MappingEntry,Stream,Supplement,SupplementFields} from '../types';
+import {issuedRecord,uid,org,actor,group,hash,stamp,source} from '../../educationIssuance/__tests__/fixtures.ts';
+import {officialTemplateRef} from '../dictionaries.ts';
+import {canonicalJson,sha256} from '../hash.ts';
+import type {FoundationInput,MappingEntry,Stream,Supplement,SupplementFields} from '../types.ts';
 export const guard={assertCurrent:()=>undefined};
 const known=<T extends string|boolean>(value:T)=>({state:'known' as const,value});
 export function fields():SupplementFields{return {gender:known('Муж'),snils:known('11223344595'),citizenship_code:known('643'),training_form:known('Очная'),financing_source:known('Платное обучение'),education_form:known('в образовательной организации'),professional_area:known('Образование и наука'),specialty_group:known('Производство мебели'),prior_education_level:known('Высшее образование'),prior_diploma_last_name:known('Иванов'),prior_diploma_series:known('0001'),prior_diploma_number:known('000002'),po_program_subtype:known('Программа профессиональной подготовки по профессии рабочего, должности служащего'),qualification_rank:known('3'),qualification_not_awarded:known(false),patronymic_absence:known(false),series_absence:known(false),loss_confirmation:known('Нет'),exchange_confirmation:known('Нет'),destruction_confirmation:known('Нет'),snils_exception:{kind:'none'}};}

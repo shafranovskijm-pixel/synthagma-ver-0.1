@@ -1,4 +1,4 @@
-import { refuse } from './hash';
+import { refuse } from './hash.ts';
 
 /** Readonly subset actually used by the shared OOXML validator. No browser globals,
  * serializer, DOM mutation or resource loading are required by this port. */

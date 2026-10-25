@@ -1,9 +1,9 @@
 import {z} from 'zod';
-import * as foundation from '../frdoFoundation/contract';
-import {canonicalJson,deepFreeze,ensureCurrent,sha256} from '../frdoFoundation/hash';
-import type {CurrentGuard,FoundationInput} from '../frdoFoundation/types';
-import {captureFrozenPacket} from './canonicalCapture';
-import {PacketInvariantError,verifyFrozenCapture} from './invariants';
+import * as foundation from '../frdoFoundation/contract.ts';
+import {canonicalJson,deepFreeze,ensureCurrent,sha256} from '../frdoFoundation/hash.ts';
+import type {CurrentGuard,FoundationInput} from '../frdoFoundation/types.ts';
+import {captureFrozenPacket} from './canonicalCapture.ts';
+import {PacketInvariantError,verifyFrozenCapture} from './invariants.ts';
 
 /** An explicit per-packet organization fact, not platform/legal verification.
  * A caller supplies an exact private source revision, never its byte proof. */

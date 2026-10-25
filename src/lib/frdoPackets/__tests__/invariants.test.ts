@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { input, duplicate, guard, seal } from '../../frdoFoundation/__tests__/fixtures';
-import { uid, org, actor, hash, stamp, source } from '../../educationIssuance/__tests__/fixtures';
-import { canonicalJson, sha256 } from '../../frdoFoundation/hash';
-import { captureFrozenPacket } from '../canonicalCapture';
+import { input, duplicate, guard, seal } from '../../frdoFoundation/__tests__/fixtures.ts';
+import { uid, org, actor, hash, stamp, source } from '../../educationIssuance/__tests__/fixtures.ts';
+import { canonicalJson, sha256 } from '../../frdoFoundation/hash.ts';
+import { captureFrozenPacket } from '../canonicalCapture.ts';
 import { assertArtifactBinding, assertCurrentOperator, assertEnvelope, assertExactManifest, assertRejectedCorrection, assertSameRequestPayload,
-  assertUploadReceiptBinding, deriveSubjectManifest, retainedPersonIds, validateReceiptPartition, verifyFrozenCapture } from '../invariants';
-import type { Authority, FrozenCapture } from '../types';
-import type { Row } from '../../frdoFoundation/types';
+  assertUploadReceiptBinding, deriveSubjectManifest, retainedPersonIds, validateReceiptPartition, verifyFrozenCapture } from '../invariants.ts';
+import type { Authority, FrozenCapture } from '../types.ts';
+import type { Row } from '../../frdoFoundation/types.ts';
 let capture: Readonly<FrozenCapture>;
 beforeAll(async () => { capture = await captureFrozenPacket(await input(), guard); });
 const clone = () => structuredClone(capture) as FrozenCapture;
