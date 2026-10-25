@@ -1,0 +1,2 @@
+import{io}from'./scope';
+export const supabase={rpc(name:string,args:any){const call:any={name,args,headers:{},signal:null};io.trace.push(call);return{setHeader(key:string,value:string){call.headers[key]=value;return this;},abortSignal(signal:AbortSignal){call.signal=signal;return this;},then(resolve:any,reject:any){io.started?.();return Promise.resolve().then(()=>io.response()).then(resolve,reject);}};}};

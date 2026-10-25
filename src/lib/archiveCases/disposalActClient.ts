@@ -1,0 +1,20 @@
+import {supabase} from '@/integrations/supabase/client';
+import {assertArchiveScope,requireArchiveJwt,type ArchiveClientScope} from './client';
+import {ArchiveError,archiveErrorCode,archiveHash,archiveRevision,archiveUuid,type ArchiveCase} from './contract';
+import {disposalCommand,disposalRead,disposalReceipt,type ArchiveDisposalCommand} from './disposalAct';
+const normalized=(error:unknown)=>{if(error instanceof ArchiveError)return error;const message=error&&typeof error==='object'&&'message'in error?error.message:undefined;const parsed=archiveErrorCode.safeParse(message);return new ArchiveError(parsed.success?parsed.data:'DEPENDENCY_UNAVAILABLE');};
+async function call(scope:ArchiveClientScope,name:'read_archive_disposal_acts'|'record_archive_disposal_act',args:Record<string,unknown>):Promise<unknown>{
+ assertArchiveScope(scope);const token=await requireArchiveJwt(scope);assertArchiveScope(scope);const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
+ try{const request=supabase.rpc(name as never,args as never).setHeader('Authorization','Bearer '+token).abortSignal(controller.signal);const result=await Promise.race([Promise.resolve(request),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new ArchiveError('DEPENDENCY_UNAVAILABLE'));},20000);})]);assertArchiveScope(scope);if(result.status===401||result.status===403)throw new ArchiveError('ACCESS_DENIED');if(result.error)throw normalized(result.error);return result.data;}
+ catch(error){assertArchiveScope(scope);throw normalized(error);}finally{clearTimeout(timer);controller.abort();}
+}
+export async function readArchiveDisposalActs(scope:ArchiveClientScope,caseId:string,position:{ceiling:number|null;after:number|null}={ceiling:null,after:null}){
+ assertArchiveScope(scope);archiveUuid.parse(caseId);if(position.ceiling!==null)archiveRevision.parse(position.ceiling);if(position.after!==null)archiveRevision.parse(position.after);
+ let value;try{value=disposalRead.parse(await call(scope,'read_archive_disposal_acts',{p_organization_id:scope.organizationId,p_scope:scope.archiveScope,p_case_id:caseId,p_query:{...position,limit:25}}));}catch(error){throw normalized(error);}
+ assertArchiveScope(scope);if(value.organization_id!==scope.organizationId||value.actor_id!==scope.actorId||value.case_id!==caseId||position.ceiling!==null&&value.ceiling>position.ceiling||new Set(value.items.map(x=>x.id)).size!==value.items.length||value.items.some((x,i)=>x.organization_id!==scope.organizationId||x.case_id!==caseId||x.sequence>value.ceiling||position.after!==null&&x.sequence>=position.after||i>0&&x.sequence>=value.items[i-1].sequence)||value.next_after!==null&&(value.items.length!==25||value.next_after!==value.items.at(-1)?.sequence))throw new ArchiveError('SOURCE_CHANGED');return value;
+}
+export async function recordArchiveDisposalAct(scope:ArchiveClientScope,head:Pick<ArchiveCase,'id'|'organization_id'|'revision'|'state_hash'>,requestId:string,command:ArchiveDisposalCommand){
+ assertArchiveScope(scope);if(head.organization_id!==scope.organizationId)throw new ArchiveError('ACCESS_DENIED');archiveUuid.parse(requestId);archiveUuid.parse(head.id);archiveRevision.parse(head.revision);archiveHash.parse(head.state_hash);const input=disposalCommand.parse(structuredClone(command));
+ let value;try{value=disposalReceipt.parse(await call(scope,'record_archive_disposal_act',{p_organization_id:scope.organizationId,p_scope:scope.archiveScope,p_case_id:head.id,p_case_revision:head.revision,p_case_state_hash:head.state_hash,p_request_id:requestId,p_command:input}));}catch(error){throw normalized(error);}
+ assertArchiveScope(scope);if(value.organization_id!==scope.organizationId||value.actor_id!==scope.actorId||value.case_id!==head.id||value.request_id!==requestId||value.action_kind!==input.kind||input.kind==='draft'&&value.revision!==1||input.kind!=='draft'&&(value.act_id!==input.act_id||value.revision!==input.expected_revision+1))throw new ArchiveError('SOURCE_CHANGED');return value;
+}
