@@ -1,0 +1,1037 @@
+{
+  "inputs": {
+    "../../implementation-20261016/node_modules/zod/v3/helpers/util.js": {
+      "bytes": 4055,
+      "imports": [],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/ZodError.js": {
+      "bytes": 4349,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/util.js",
+          "kind": "import-statement",
+          "original": "./helpers/util.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/locales/en.js": {
+      "bytes": 5602,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/ZodError.js",
+          "kind": "import-statement",
+          "original": "../ZodError.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/util.js",
+          "kind": "import-statement",
+          "original": "../helpers/util.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/errors.js": {
+      "bytes": 243,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/locales/en.js",
+          "kind": "import-statement",
+          "original": "./locales/en.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js": {
+      "bytes": 3601,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/errors.js",
+          "kind": "import-statement",
+          "original": "../errors.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/locales/en.js",
+          "kind": "import-statement",
+          "original": "../locales/en.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/helpers/typeAliases.js": {
+      "bytes": 11,
+      "imports": [],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/helpers/errorUtil.js": {
+      "bytes": 300,
+      "imports": [],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/types.js": {
+      "bytes": 131212,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/ZodError.js",
+          "kind": "import-statement",
+          "original": "./ZodError.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/errors.js",
+          "kind": "import-statement",
+          "original": "./errors.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/errorUtil.js",
+          "kind": "import-statement",
+          "original": "./helpers/errorUtil.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js",
+          "kind": "import-statement",
+          "original": "./helpers/parseUtil.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/util.js",
+          "kind": "import-statement",
+          "original": "./helpers/util.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/v3/external.js": {
+      "bytes": 205,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/errors.js",
+          "kind": "import-statement",
+          "original": "./errors.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js",
+          "kind": "import-statement",
+          "original": "./helpers/parseUtil.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/typeAliases.js",
+          "kind": "import-statement",
+          "original": "./helpers/typeAliases.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/helpers/util.js",
+          "kind": "import-statement",
+          "original": "./helpers/util.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/types.js",
+          "kind": "import-statement",
+          "original": "./types.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/ZodError.js",
+          "kind": "import-statement",
+          "original": "./ZodError.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "../../implementation-20261016/node_modules/zod/index.js": {
+      "bytes": 105,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/external.js",
+          "kind": "import-statement",
+          "original": "./v3/external.js"
+        },
+        {
+          "path": "../../implementation-20261016/node_modules/zod/v3/external.js",
+          "kind": "import-statement",
+          "original": "./v3/external.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-package/archive-core/contract.ts": {
+      "bytes": 22709,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-package/archive-core/package.ts": {
+      "bytes": 9027,
+      "imports": [
+        {
+          "path": "supabase/functions/archive-case-package/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-package/archive-core/worker.ts": {
+      "bytes": 8431,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-package/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-package/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-package/http.ts": {
+      "bytes": 9922,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-package/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-package/archive-core/worker.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/worker.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-package/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/admission-case-access.ts": {
+      "bytes": 39018,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-package/index.ts": {
+      "bytes": 1956,
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/archive-case-package/http.ts",
+          "kind": "import-statement",
+          "original": "./http.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/admission-case-access.ts",
+          "kind": "import-statement",
+          "original": "../_shared/admission-case-access.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-read/archive-core/contract.ts": {
+      "bytes": 22709,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-read/archive-core/package.ts": {
+      "bytes": 9027,
+      "imports": [
+        {
+          "path": "supabase/functions/archive-case-read/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-read/archive-core/sealedRead.ts": {
+      "bytes": 5807,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-read/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-read/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-read/http.ts": {
+      "bytes": 6631,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-read/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-read/archive-core/sealedRead.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/sealedRead.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-read/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-read/index.ts": {
+      "bytes": 1077,
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/archive-case-read/http.ts",
+          "kind": "import-statement",
+          "original": "./http.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/admission-case-access.ts",
+          "kind": "import-statement",
+          "original": "../_shared/admission-case-access.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-restore/archive-core/contract.ts": {
+      "bytes": 22709,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-restore/archive-core/package.ts": {
+      "bytes": 9027,
+      "imports": [
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-restore/archive-core/sealedRead.ts": {
+      "bytes": 5807,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-restore/archive-core/restoreWorker.ts": {
+      "bytes": 5849,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./package.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/sealedRead.ts",
+          "kind": "import-statement",
+          "original": "./sealedRead.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-restore/http.ts": {
+      "bytes": 9928,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/restoreWorker.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/restoreWorker.ts"
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-case-restore/index.ts": {
+      "bytes": 1089,
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/archive-case-restore/http.ts",
+          "kind": "import-statement",
+          "original": "./http.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/admission-case-access.ts",
+          "kind": "import-statement",
+          "original": "../_shared/admission-case-access.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-rule-source-check/archive-core/contract.ts": {
+      "bytes": 22709,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-rule-source-check/archive-core/package.ts": {
+      "bytes": 9027,
+      "imports": [
+        {
+          "path": "supabase/functions/archive-rule-source-check/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./contract.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-rule-source-check/http.ts": {
+      "bytes": 9909,
+      "imports": [
+        {
+          "path": "../../implementation-20261016/node_modules/zod/index.js",
+          "kind": "import-statement",
+          "original": "zod"
+        },
+        {
+          "path": "supabase/functions/archive-rule-source-check/archive-core/contract.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/contract.ts"
+        },
+        {
+          "path": "supabase/functions/archive-rule-source-check/archive-core/package.ts",
+          "kind": "import-statement",
+          "original": "./archive-core/package.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/archive-rule-source-check/index.ts": {
+      "bytes": 1089,
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/archive-rule-source-check/http.ts",
+          "kind": "import-statement",
+          "original": "./http.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/admission-case-access.ts",
+          "kind": "import-statement",
+          "original": "../_shared/admission-case-access.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/privileged-access.ts": {
+      "bytes": 5797,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/document-operation-access.ts": {
+      "bytes": 4850,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/privileged-access.ts",
+          "kind": "import-statement",
+          "original": "./privileged-access.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-answers.ts": {
+      "bytes": 2629,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-catalog.ts": {
+      "bytes": 9918,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-workflow-contract.ts": {
+      "bytes": 8352,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/self-examination-answers.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-answers.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-catalog.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-catalog.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-labels.ts": {
+      "bytes": 2865,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/self-examination-catalog.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-catalog.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-projector.ts": {
+      "bytes": 6710,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/self-examination-workflow-contract.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-workflow-contract.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-catalog.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-catalog.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-labels.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-labels.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-renderer.ts": {
+      "bytes": 14109,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/self-examination-generation.ts": {
+      "bytes": 11619,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/privileged-access.ts",
+          "kind": "import-statement",
+          "original": "./privileged-access.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-projector.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-projector.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-renderer.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-renderer.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-workflow-contract.ts",
+          "kind": "import-statement",
+          "original": "./self-examination-workflow-contract.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/generate-self-examination-report/index.ts": {
+      "bytes": 3795,
+      "imports": [
+        {
+          "path": "https://deno.land/std@0.168.0/http/server.ts",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "https://esm.sh/@supabase/supabase-js@2",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/_shared/privileged-access.ts",
+          "kind": "import-statement",
+          "original": "../_shared/privileged-access.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/document-operation-access.ts",
+          "kind": "import-statement",
+          "original": "../_shared/document-operation-access.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/self-examination-generation.ts",
+          "kind": "import-statement",
+          "original": "../_shared/self-examination-generation.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/uc-publication-url.ts": {
+      "bytes": 1109,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/uc-publication-http.ts": {
+      "bytes": 14085,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/uc-publication-url.ts",
+          "kind": "import-statement",
+          "original": "./uc-publication-url.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/publication-accessibility/worker.ts": {
+      "bytes": 5272,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/uc-publication-http.ts",
+          "kind": "import-statement",
+          "original": "../_shared/uc-publication-http.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/uc-publication-url.ts",
+          "kind": "import-statement",
+          "original": "../_shared/uc-publication-url.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/publication-accessibility/http.ts": {
+      "bytes": 3175,
+      "imports": [
+        {
+          "path": "supabase/functions/publication-accessibility/worker.ts",
+          "kind": "import-statement",
+          "original": "./worker.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/publication-accessibility/index.ts": {
+      "bytes": 1891,
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/publication-accessibility/http.ts",
+          "kind": "import-statement",
+          "original": "./http.ts"
+        },
+        {
+          "path": "supabase/functions/publication-accessibility/worker.ts",
+          "kind": "import-statement",
+          "original": "./worker.ts"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "../output/archive-case-package/index.ts": {
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/archive-case-package/index.ts",
+      "inputs": {
+        "supabase/functions/archive-case-package/index.ts": {
+          "bytesInOutput": 1360
+        },
+        "../../implementation-20261016/node_modules/zod/v3/external.js": {
+          "bytesInOutput": 1756
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/util.js": {
+          "bytesInOutput": 1700
+        },
+        "../../implementation-20261016/node_modules/zod/v3/ZodError.js": {
+          "bytesInOutput": 1660
+        },
+        "../../implementation-20261016/node_modules/zod/v3/locales/en.js": {
+          "bytesInOutput": 3022
+        },
+        "../../implementation-20261016/node_modules/zod/v3/errors.js": {
+          "bytesInOutput": 53
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js": {
+          "bytesInOutput": 1461
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/errorUtil.js": {
+          "bytesInOutput": 129
+        },
+        "../../implementation-20261016/node_modules/zod/v3/types.js": {
+          "bytesInOutput": 49767
+        },
+        "../../implementation-20261016/node_modules/zod/index.js": {
+          "bytesInOutput": 0
+        },
+        "supabase/functions/archive-case-package/archive-core/contract.ts": {
+          "bytesInOutput": 15944
+        },
+        "supabase/functions/archive-case-package/archive-core/package.ts": {
+          "bytesInOutput": 2825
+        },
+        "supabase/functions/archive-case-package/archive-core/worker.ts": {
+          "bytesInOutput": 4721
+        },
+        "supabase/functions/archive-case-package/http.ts": {
+          "bytesInOutput": 6046
+        },
+        "supabase/functions/_shared/admission-case-access.ts": {
+          "bytesInOutput": 1001
+        }
+      },
+      "bytes": 91539
+    },
+    "../output/archive-case-read/index.ts": {
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/archive-case-read/index.ts",
+      "inputs": {
+        "supabase/functions/archive-case-read/index.ts": {
+          "bytesInOutput": 638
+        },
+        "../../implementation-20261016/node_modules/zod/v3/external.js": {
+          "bytesInOutput": 1753
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/util.js": {
+          "bytesInOutput": 1700
+        },
+        "../../implementation-20261016/node_modules/zod/v3/ZodError.js": {
+          "bytesInOutput": 1660
+        },
+        "../../implementation-20261016/node_modules/zod/v3/locales/en.js": {
+          "bytesInOutput": 3022
+        },
+        "../../implementation-20261016/node_modules/zod/v3/errors.js": {
+          "bytesInOutput": 53
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js": {
+          "bytesInOutput": 1460
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/errorUtil.js": {
+          "bytesInOutput": 129
+        },
+        "../../implementation-20261016/node_modules/zod/v3/types.js": {
+          "bytesInOutput": 49747
+        },
+        "../../implementation-20261016/node_modules/zod/index.js": {
+          "bytesInOutput": 0
+        },
+        "supabase/functions/archive-case-read/archive-core/contract.ts": {
+          "bytesInOutput": 15938
+        },
+        "supabase/functions/archive-case-read/archive-core/package.ts": {
+          "bytesInOutput": 578
+        },
+        "supabase/functions/archive-case-read/archive-core/sealedRead.ts": {
+          "bytesInOutput": 2647
+        },
+        "supabase/functions/archive-case-read/http.ts": {
+          "bytesInOutput": 4068
+        },
+        "supabase/functions/_shared/admission-case-access.ts": {
+          "bytesInOutput": 1001
+        }
+      },
+      "bytes": 84488
+    },
+    "../output/archive-case-restore/index.ts": {
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/archive-case-restore/index.ts",
+      "inputs": {
+        "supabase/functions/archive-case-restore/index.ts": {
+          "bytesInOutput": 638
+        },
+        "../../implementation-20261016/node_modules/zod/v3/external.js": {
+          "bytesInOutput": 1756
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/util.js": {
+          "bytesInOutput": 1700
+        },
+        "../../implementation-20261016/node_modules/zod/v3/ZodError.js": {
+          "bytesInOutput": 1660
+        },
+        "../../implementation-20261016/node_modules/zod/v3/locales/en.js": {
+          "bytesInOutput": 3022
+        },
+        "../../implementation-20261016/node_modules/zod/v3/errors.js": {
+          "bytesInOutput": 53
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js": {
+          "bytesInOutput": 1461
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/errorUtil.js": {
+          "bytesInOutput": 129
+        },
+        "../../implementation-20261016/node_modules/zod/v3/types.js": {
+          "bytesInOutput": 49776
+        },
+        "../../implementation-20261016/node_modules/zod/index.js": {
+          "bytesInOutput": 0
+        },
+        "supabase/functions/archive-case-restore/archive-core/contract.ts": {
+          "bytesInOutput": 15938
+        },
+        "supabase/functions/archive-case-restore/archive-core/package.ts": {
+          "bytesInOutput": 2579
+        },
+        "supabase/functions/archive-case-restore/archive-core/sealedRead.ts": {
+          "bytesInOutput": 3078
+        },
+        "supabase/functions/archive-case-restore/archive-core/restoreWorker.ts": {
+          "bytesInOutput": 3238
+        },
+        "supabase/functions/archive-case-restore/http.ts": {
+          "bytesInOutput": 6192
+        },
+        "supabase/functions/_shared/admission-case-access.ts": {
+          "bytesInOutput": 1001
+        }
+      },
+      "bytes": 92315
+    },
+    "../output/archive-rule-source-check/index.ts": {
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/archive-rule-source-check/index.ts",
+      "inputs": {
+        "supabase/functions/archive-rule-source-check/index.ts": {
+          "bytesInOutput": 638
+        },
+        "../../implementation-20261016/node_modules/zod/v3/external.js": {
+          "bytesInOutput": 1754
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/util.js": {
+          "bytesInOutput": 1700
+        },
+        "../../implementation-20261016/node_modules/zod/v3/ZodError.js": {
+          "bytesInOutput": 1660
+        },
+        "../../implementation-20261016/node_modules/zod/v3/locales/en.js": {
+          "bytesInOutput": 3022
+        },
+        "../../implementation-20261016/node_modules/zod/v3/errors.js": {
+          "bytesInOutput": 53
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/parseUtil.js": {
+          "bytesInOutput": 1461
+        },
+        "../../implementation-20261016/node_modules/zod/v3/helpers/errorUtil.js": {
+          "bytesInOutput": 129
+        },
+        "../../implementation-20261016/node_modules/zod/v3/types.js": {
+          "bytesInOutput": 49753
+        },
+        "../../implementation-20261016/node_modules/zod/index.js": {
+          "bytesInOutput": 0
+        },
+        "supabase/functions/archive-rule-source-check/archive-core/contract.ts": {
+          "bytesInOutput": 15944
+        },
+        "supabase/functions/archive-rule-source-check/archive-core/package.ts": {
+          "bytesInOutput": 536
+        },
+        "supabase/functions/archive-rule-source-check/http.ts": {
+          "bytesInOutput": 6591
+        },
+        "supabase/functions/_shared/admission-case-access.ts": {
+          "bytesInOutput": 1001
+        }
+      },
+      "bytes": 84336
+    },
+    "../output/generate-self-examination-report/index.ts": {
+      "imports": [
+        {
+          "path": "https://deno.land/std@0.168.0/http/server.ts",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "https://esm.sh/@supabase/supabase-js@2",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/generate-self-examination-report/index.ts",
+      "inputs": {
+        "supabase/functions/generate-self-examination-report/index.ts": {
+          "bytesInOutput": 2676
+        },
+        "supabase/functions/_shared/privileged-access.ts": {
+          "bytesInOutput": 1476
+        },
+        "supabase/functions/_shared/document-operation-access.ts": {
+          "bytesInOutput": 1751
+        },
+        "supabase/functions/_shared/self-examination-answers.ts": {
+          "bytesInOutput": 1885
+        },
+        "supabase/functions/_shared/self-examination-catalog.ts": {
+          "bytesInOutput": 8784
+        },
+        "supabase/functions/_shared/self-examination-workflow-contract.ts": {
+          "bytesInOutput": 3542
+        },
+        "supabase/functions/_shared/self-examination-labels.ts": {
+          "bytesInOutput": 2560
+        },
+        "supabase/functions/_shared/self-examination-projector.ts": {
+          "bytesInOutput": 4266
+        },
+        "supabase/functions/_shared/self-examination-renderer.ts": {
+          "bytesInOutput": 9912
+        },
+        "supabase/functions/_shared/self-examination-generation.ts": {
+          "bytesInOutput": 8430
+        }
+      },
+      "bytes": 45283
+    },
+    "../output/publication-accessibility/index.ts": {
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/publication-accessibility/index.ts",
+      "inputs": {
+        "supabase/functions/publication-accessibility/index.ts": {
+          "bytesInOutput": 1139
+        },
+        "supabase/functions/_shared/uc-publication-url.ts": {
+          "bytesInOutput": 721
+        },
+        "supabase/functions/_shared/uc-publication-http.ts": {
+          "bytesInOutput": 6286
+        },
+        "supabase/functions/publication-accessibility/worker.ts": {
+          "bytesInOutput": 2844
+        },
+        "supabase/functions/publication-accessibility/http.ts": {
+          "bytesInOutput": 2034
+        }
+      },
+      "bytes": 13025
+    }
+  }
+}

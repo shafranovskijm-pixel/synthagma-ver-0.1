@@ -1,0 +1,399 @@
+{
+  "schema_version": 1,
+  "kind": "six_exact_union144_function_bundles",
+  "esbuild": "0.25.12",
+  "source_hold_sha256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6",
+  "functions": [
+    {
+      "name": "archive-case-package",
+      "path": "index.ts",
+      "bytes": 91539,
+      "sha256": "81cb9b2c725d08b9b43bfc490411540c235003ed9a00cfbe290ed98cfec606c2",
+      "external_imports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ]
+    },
+    {
+      "name": "archive-case-read",
+      "path": "index.ts",
+      "bytes": 84488,
+      "sha256": "03b503a98839a36b9737d7769ee8aea0957a36dd781eba92df7a746a1de20733",
+      "external_imports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ]
+    },
+    {
+      "name": "archive-case-restore",
+      "path": "index.ts",
+      "bytes": 92315,
+      "sha256": "e34013f55efe8b46d9a2ae3f2e72b1f5ecfd41d23297009d364aacb0669de6e2",
+      "external_imports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ]
+    },
+    {
+      "name": "archive-rule-source-check",
+      "path": "index.ts",
+      "bytes": 84336,
+      "sha256": "b9596805c36fdf5b2f41eb10250b98de6245bdd22e0f7305cb414f8acd469dd4",
+      "external_imports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ]
+    },
+    {
+      "name": "generate-self-examination-report",
+      "path": "index.ts",
+      "bytes": 45283,
+      "sha256": "3ed3a1c3504bf6a956849a430655f382ee3f5ccef2c16dbf23b10ab89c64d099",
+      "external_imports": [
+        "https://deno.land/std@0.168.0/http/server.ts",
+        "https://esm.sh/@supabase/supabase-js@2"
+      ]
+    },
+    {
+      "name": "publication-accessibility",
+      "path": "index.ts",
+      "bytes": 13025,
+      "sha256": "51fb44d4238e429fb2b7e820698bf366d0d2b60d782d3b8d6ae9852172a27498",
+      "external_imports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ]
+    }
+  ],
+  "all_sources": [
+    {
+      "id": "node_modules/zod/index.js",
+      "bytes": 105,
+      "sha256": "6419c4ac0e637ff08463083e31886d10354f74cbcc4e584400b2b837e39ac881"
+    },
+    {
+      "id": "node_modules/zod/v3/errors.js",
+      "bytes": 243,
+      "sha256": "d40831f478288d76e82bbbcc3b7e95c8513b6e76471f2d49a37c979bc57d492d"
+    },
+    {
+      "id": "node_modules/zod/v3/external.js",
+      "bytes": 205,
+      "sha256": "5d26d2e47e2352def36f89a3e8bf8581da22b7f857e07ef3114cd52cf4813445"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/errorUtil.js",
+      "bytes": 300,
+      "sha256": "68589c0cf44c8b4ad19b77418f53caad2cd1dbc8d714f526e1876ebdee4828c5"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/parseUtil.js",
+      "bytes": 3601,
+      "sha256": "b57484013bb360bac2e334d58fcd5f6cbfa63ffcc7d8ff3dbbb3380ca659b956"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/typeAliases.js",
+      "bytes": 11,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/util.js",
+      "bytes": 4055,
+      "sha256": "906ef685e5853d496e293ee8f8a2bb8b1ed2d078a1bcdfedb2dfd61d75b6330c"
+    },
+    {
+      "id": "node_modules/zod/v3/locales/en.js",
+      "bytes": 5602,
+      "sha256": "51a6dcc5d4bd52a64da127c012c6c963395c1d9a343ad75d4a8eca662fc8b205"
+    },
+    {
+      "id": "node_modules/zod/v3/types.js",
+      "bytes": 131212,
+      "sha256": "9763a2938f0e7f983363ef4bf6530e7583e3f2d54f8a4a6684efad58febc6e8e"
+    },
+    {
+      "id": "node_modules/zod/v3/ZodError.js",
+      "bytes": 4349,
+      "sha256": "f5ac9e86b92e201d41e294d7aa35986a2aa28829e1bcc8ac25f7c8dce0674b99"
+    },
+    {
+      "id": "supabase/functions/_shared/admission-case-access.ts",
+      "bytes": 39018,
+      "sha256": "463dd9412444097e2425724fc3501976f513f58ad13ed3cc15b33ea471141dbd"
+    },
+    {
+      "id": "supabase/functions/_shared/document-operation-access.ts",
+      "bytes": 4850,
+      "sha256": "579d7496636d2154cff688069061afe0fe1898d98ba939d5418e2f51855dc5c9"
+    },
+    {
+      "id": "supabase/functions/_shared/privileged-access.ts",
+      "bytes": 5797,
+      "sha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-answers.ts",
+      "bytes": 2629,
+      "sha256": "b8c33b879fa4c3cc69d386f72230572b771c8689831d1958c4d0443e72f6771c"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-catalog.ts",
+      "bytes": 9918,
+      "sha256": "b69d8e547f0ec32b96790cdbc46233a5279d344e7288d495c9ef0bf419ddd892"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-generation.ts",
+      "bytes": 11619,
+      "sha256": "4d5c4f7562f231a020f102763864ec056f24cf54d35706c4a711b4ec5920812b"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-labels.ts",
+      "bytes": 2865,
+      "sha256": "58fa335890f4bc3d04fa7b9aa459f8e4a10f61da5ab21247f586aa83c05d5a62"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-projector.ts",
+      "bytes": 6710,
+      "sha256": "6ee8873c40555076ac8f403ce6f0a9e0618b01dc9564897f92941d91905ba023"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-renderer.ts",
+      "bytes": 14109,
+      "sha256": "9acc39d445e2a8d5cf55f4d36ba8b9bed69037223eb3675e97a66ecdd11a8b3a"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-workflow-contract.ts",
+      "bytes": 8352,
+      "sha256": "5964feab5c2790b5c45e438eeeb33b7cf646c4c93104f3197bd6680f5d6b39f2"
+    },
+    {
+      "id": "supabase/functions/_shared/uc-publication-http.ts",
+      "bytes": 14085,
+      "sha256": "eb3654f4ba4cc42e71c40b8775e6a4ff4e90921edd13a0ece175ce17b5cec644"
+    },
+    {
+      "id": "supabase/functions/_shared/uc-publication-url.ts",
+      "bytes": 1109,
+      "sha256": "126293f643aada5d2245c37dc3d3dc924c81a5a447fe4cb35be026c4b25301d0"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/archive-core/contract.ts",
+      "bytes": 22709,
+      "sha256": "c91e024ba3c70ad91b2154f3aa66a25fd367c57dbd2b7a40f407212905f095ed"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/archive-core/package.ts",
+      "bytes": 9027,
+      "sha256": "e721a7b71bfe3e36dcb6082d1b28baedc7321a663a53fb732146e079bd2dd215"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/archive-core/worker.ts",
+      "bytes": 8431,
+      "sha256": "f89f92885c50a1bb252afd2050a98d3209d8db34013dae8b5033fdf46e66e3c2"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/http.ts",
+      "bytes": 9922,
+      "sha256": "7c12bb91adb45eb4229d283847146c47860ba65941d822f6c2087f83d3350720"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/index.ts",
+      "bytes": 1956,
+      "sha256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f"
+    },
+    {
+      "id": "supabase/functions/archive-case-read/archive-core/contract.ts",
+      "bytes": 22709,
+      "sha256": "c91e024ba3c70ad91b2154f3aa66a25fd367c57dbd2b7a40f407212905f095ed"
+    },
+    {
+      "id": "supabase/functions/archive-case-read/archive-core/package.ts",
+      "bytes": 9027,
+      "sha256": "e721a7b71bfe3e36dcb6082d1b28baedc7321a663a53fb732146e079bd2dd215"
+    },
+    {
+      "id": "supabase/functions/archive-case-read/archive-core/sealedRead.ts",
+      "bytes": 5807,
+      "sha256": "ba9699bd1b893f7ec715d88737765fc1253baf66997fb5f464f49a9ef1f8e214"
+    },
+    {
+      "id": "supabase/functions/archive-case-read/http.ts",
+      "bytes": 6631,
+      "sha256": "77a3a1ab5d7cd627445c98f7dc44c78505682d52bfe5f5cf0ea5fc80dedf3f7e"
+    },
+    {
+      "id": "supabase/functions/archive-case-read/index.ts",
+      "bytes": 1077,
+      "sha256": "51491bdd4af7e7b47b1049f0fde6bd77e475b086ab002d47848a20b5209c7f6d"
+    },
+    {
+      "id": "supabase/functions/archive-case-restore/archive-core/contract.ts",
+      "bytes": 22709,
+      "sha256": "c91e024ba3c70ad91b2154f3aa66a25fd367c57dbd2b7a40f407212905f095ed"
+    },
+    {
+      "id": "supabase/functions/archive-case-restore/archive-core/package.ts",
+      "bytes": 9027,
+      "sha256": "e721a7b71bfe3e36dcb6082d1b28baedc7321a663a53fb732146e079bd2dd215"
+    },
+    {
+      "id": "supabase/functions/archive-case-restore/archive-core/restoreWorker.ts",
+      "bytes": 5849,
+      "sha256": "361cf228a297d52fe8b055701c2f907cc224b14ec992da1c2ff51f7c490ecc54"
+    },
+    {
+      "id": "supabase/functions/archive-case-restore/archive-core/sealedRead.ts",
+      "bytes": 5807,
+      "sha256": "ba9699bd1b893f7ec715d88737765fc1253baf66997fb5f464f49a9ef1f8e214"
+    },
+    {
+      "id": "supabase/functions/archive-case-restore/http.ts",
+      "bytes": 9928,
+      "sha256": "cc4773afb2a020ccb13cc5e2015a7962db5eb0b3a61441e12e7522fb16d2803f"
+    },
+    {
+      "id": "supabase/functions/archive-case-restore/index.ts",
+      "bytes": 1089,
+      "sha256": "645d8b28765b735316d3301fdb030786e02aa9705a9b011977dab3805c945e3f"
+    },
+    {
+      "id": "supabase/functions/archive-rule-source-check/archive-core/contract.ts",
+      "bytes": 22709,
+      "sha256": "c91e024ba3c70ad91b2154f3aa66a25fd367c57dbd2b7a40f407212905f095ed"
+    },
+    {
+      "id": "supabase/functions/archive-rule-source-check/archive-core/package.ts",
+      "bytes": 9027,
+      "sha256": "e721a7b71bfe3e36dcb6082d1b28baedc7321a663a53fb732146e079bd2dd215"
+    },
+    {
+      "id": "supabase/functions/archive-rule-source-check/http.ts",
+      "bytes": 9909,
+      "sha256": "9205f002dd9fca6e6b555038efb5270e59dc1df5dbf1105856190531e49435d7"
+    },
+    {
+      "id": "supabase/functions/archive-rule-source-check/index.ts",
+      "bytes": 1089,
+      "sha256": "0ec3036a999d524720ed2b69a0c9ebf6f3ade948632ad1ab00676a4035911753"
+    },
+    {
+      "id": "supabase/functions/generate-self-examination-report/index.ts",
+      "bytes": 3795,
+      "sha256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/http.ts",
+      "bytes": 3175,
+      "sha256": "f97cf4a9cd5b84383bf4eeb17a6d04da51058f4833b8f90d4570c00fada380a6"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/index.ts",
+      "bytes": 1891,
+      "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/worker.ts",
+      "bytes": 5272,
+      "sha256": "15e95181b06ae21c76a1670dc0a01b7eeedde0c58aee55d7d91beeb1107ebc18"
+    }
+  ],
+  "all_external_runtime_imports": [
+    "https://deno.land/std@0.168.0/http/server.ts",
+    "https://esm.sh/@supabase/supabase-js@2",
+    "npm:@supabase/supabase-js@2.90.1"
+  ],
+  "jwt_deployment_matrix": [
+    {
+      "name": "archive-case-package",
+      "sourceEntryPresent": false,
+      "sourceVerifyJWT": null,
+      "explicitNativeDeployVerifyJWT": true,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 403,
+        "code": "ACCESS_DENIED"
+      },
+      "ownOptionsStatus": 204,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    },
+    {
+      "name": "archive-case-read",
+      "sourceEntryPresent": false,
+      "sourceVerifyJWT": null,
+      "explicitNativeDeployVerifyJWT": true,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 403,
+        "code": "ACCESS_DENIED"
+      },
+      "ownOptionsStatus": 204,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    },
+    {
+      "name": "archive-case-restore",
+      "sourceEntryPresent": false,
+      "sourceVerifyJWT": null,
+      "explicitNativeDeployVerifyJWT": true,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 403,
+        "code": "ACCESS_DENIED"
+      },
+      "ownOptionsStatus": 204,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    },
+    {
+      "name": "archive-rule-source-check",
+      "sourceEntryPresent": false,
+      "sourceVerifyJWT": null,
+      "explicitNativeDeployVerifyJWT": true,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 403,
+        "code": "ACCESS_DENIED"
+      },
+      "ownOptionsStatus": 204,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    },
+    {
+      "name": "generate-self-examination-report",
+      "sourceEntryPresent": true,
+      "sourceVerifyJWT": false,
+      "explicitNativeDeployVerifyJWT": false,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 401,
+        "code": "ACCESS_DENIED or existing AccessError JSON"
+      },
+      "ownOptionsStatus": 200,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    },
+    {
+      "name": "publication-accessibility",
+      "sourceEntryPresent": false,
+      "sourceVerifyJWT": null,
+      "explicitNativeDeployVerifyJWT": true,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 401,
+        "code": "ACCESS_DENIED or existing AccessError JSON"
+      },
+      "ownOptionsStatus": 204,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    }
+  ],
+  "build_calls": 1,
+  "total_bundle_bytes": 410986,
+  "external_network_at_build": false,
+  "native_deno_dependencies_resolved": false,
+  "provider_deployed": false,
+  "working_site_accepted": false,
+  "legal_approval": false
+}

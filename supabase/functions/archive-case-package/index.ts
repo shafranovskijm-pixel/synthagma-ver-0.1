@@ -1,9 +1,2 @@
-import{createClient}from'npm:@supabase/supabase-js@2.90.1';
-import{archivePackageRequest,type ArchiveRuntimeClient}from'./http.ts';
-import{admissionFetch}from'../_shared/admission-case-access.ts';
-Deno.serve(request=>archivePackageRequest(request,{
- configured:!!Deno.env.get('SUPABASE_URL')&&!!Deno.env.get('SUPABASE_ANON_KEY')&&!!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
- createCaller:(authorization,signal)=>{const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_ANON_KEY')!,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{headers:{Authorization:authorization},fetch:admissionFetch(fetch,signal)}});return{auth:client.auth,storage:client.storage,rpc:(name,args)=>client.rpc(name,args).setHeader('Authorization',authorization)}as unknown as ArchiveRuntimeClient;},
- createService:signal=>{const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;const authorization='Bearer '+key;const client=createClient(Deno.env.get('SUPABASE_URL')!,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{headers:{Authorization:authorization},fetch:admissionFetch(fetch,signal)}});return{storage:client.storage,rpc:(name,args)=>client.rpc(name,args).setHeader('Authorization',authorization)}as unknown as ArchiveRuntimeClient;},
- async readProtected(authorization,action,signal){const response=await admissionFetch(fetch,signal)(Deno.env.get('SUPABASE_URL')!+'/functions/v1/signature-protected-file',{method:'POST',headers:{authorization,apikey:Deno.env.get('SUPABASE_ANON_KEY')!,'content-type':'application/json'},body:JSON.stringify(action)});if(!response.ok)throw{status:response.status};const length=Number(response.headers.get('content-length'));if(Number.isFinite(length)&&length>20971520)throw{message:'SOURCE_UNAVAILABLE'};const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.byteLength>20971520)throw{message:'SOURCE_UNAVAILABLE'};return bytes;},
-}));
+// Prebuilt from unchanged runtime-source.ts; see DEPLOYMENT_MAPPING.json in the release evidence.
+import "./runtime.bundle.js";
