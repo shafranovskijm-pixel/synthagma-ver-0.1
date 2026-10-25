@@ -1,3 +1,4 @@
+import { optionalNonnegativeNumber } from "@/hooks/useSelfExaminationQuiz";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +15,7 @@ export function QuizStepManagement({ data, updateData }: Props) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>ФИО директора *</Label>
+          <Label>ФИО директора *</Label>{data.hasEmployerParticipation === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasEmployerParticipation: null })}>Неизвестно</button>}
           <Input value={data.directorFio} onChange={(e) => updateData({ directorFio: e.target.value })} placeholder="Иванов Иван Иванович" className="rounded-xl" />
         </div>
         <div className="space-y-2">
@@ -25,9 +26,10 @@ export function QuizStepManagement({ data, updateData }: Props) {
 
       <div className="space-y-2">
         <Label>Срок полномочий (лет)</Label>
-        <Select value={data.directorTermYears.toString()} onValueChange={(v) => updateData({ directorTermYears: parseInt(v) })}>
+        <Select value={data.directorTermYears === null ? "unknown" : String(data.directorTermYears)} onValueChange={(v) => updateData({ directorTermYears: v === "unknown" ? null : optionalNonnegativeNumber(v) })}>
           <SelectTrigger className="rounded-xl w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="unknown">Не указано</SelectItem>
             <SelectItem value="1">1 год</SelectItem>
             <SelectItem value="2">2 года</SelectItem>
             <SelectItem value="3">3 года</SelectItem>
@@ -38,8 +40,8 @@ export function QuizStepManagement({ data, updateData }: Props) {
 
       <div className="border-t border-border pt-4 mt-4">
         <div className="flex items-center gap-3 mb-4">
-          <Checkbox id="pedagogical-council" checked={data.hasPedagogicalCouncil} onCheckedChange={(checked) => updateData({ hasPedagogicalCouncil: !!checked })} />
-          <Label htmlFor="pedagogical-council" className="cursor-pointer font-medium">Педагогический совет</Label>
+          <Checkbox id="pedagogical-council" checked={data.hasPedagogicalCouncil ?? "indeterminate"} onCheckedChange={(checked) => updateData({ hasPedagogicalCouncil: checked === "indeterminate" ? null : checked })} />
+          <Label htmlFor="pedagogical-council" className="cursor-pointer font-medium">Педагогический совет</Label>{data.hasPedagogicalCouncil === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasPedagogicalCouncil: null })}>Неизвестно</button>}
         </div>
         {data.hasPedagogicalCouncil && (
           <div className="grid grid-cols-2 gap-4 ml-7">

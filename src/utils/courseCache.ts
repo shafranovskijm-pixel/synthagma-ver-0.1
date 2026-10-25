@@ -25,6 +25,22 @@ let authRevision = 0;
 let observedAccess: string | null = null;
 const validatedScopes = new Map<string, OfflineScope>();
 const erasedAccounts = new Set<string>();
+const authRevisionListeners = new Set<() => void>();
+
+/** React readers subscribe to the same epoch that invalidates scoped personal data. */
+export function subscribeOfflineAuthRevision(listener: () => void): () => void {
+  authRevisionListeners.add(listener);
+  return () => { authRevisionListeners.delete(listener); };
+}
+
+function advanceOfflineAuthRevision(): void {
+  authRevision += 1;
+  validatedScopes.clear();
+  for (const listener of authRevisionListeners) {
+    // A failed view subscriber must not interrupt authoritative access invalidation.
+    try { listener(); } catch { /* Continue notifying other readers. */ }
+  }
+}
 
 /** Only AuthProvider sets actor; no stored role/profile is treated as current auth. */
 export function setOfflineAuthActor(actorId: string | null): void {
@@ -32,16 +48,14 @@ export function setOfflineAuthActor(actorId: string | null): void {
   if (activeActor === actorId) return;
   activeActor = actorId;
   observedAccess = null;
-  authRevision += 1;
-  validatedScopes.clear();
+  advanceOfflineAuthRevision();
 }
 
 /** Publish an observed role/access change synchronously before React state publication. */
 export function observeOfflineAccess(actorId: string, fingerprint: string): void {
   if (actorId !== activeActor || observedAccess === fingerprint) return;
   observedAccess = fingerprint;
-  authRevision += 1;
-  validatedScopes.clear();
+  advanceOfflineAuthRevision();
 }
 
 /** Monotonic auth/access epoch, including anonymous transitions. */

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "kind": "same_union144_native_entrypoint_packaging",
+  "function": "generate-self-examination-report",
+  "esbuild": "0.25.12",
+  "entry": "supabase/functions/generate-self-examination-report/index.ts",
+  "entry_sha256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175",
+  "output": {
+    "path": "index.ts",
+    "bytes": 45283,
+    "sha256": "3ed3a1c3504bf6a956849a430655f382ee3f5ccef2c16dbf23b10ab89c64d099"
+  },
+  "source_hold_sha256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6",
+  "sources": [
+    {
+      "id": "supabase/functions/_shared/document-operation-access.ts",
+      "bytes": 4850,
+      "sha256": "579d7496636d2154cff688069061afe0fe1898d98ba939d5418e2f51855dc5c9"
+    },
+    {
+      "id": "supabase/functions/_shared/privileged-access.ts",
+      "bytes": 5797,
+      "sha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-answers.ts",
+      "bytes": 2629,
+      "sha256": "b8c33b879fa4c3cc69d386f72230572b771c8689831d1958c4d0443e72f6771c"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-catalog.ts",
+      "bytes": 9918,
+      "sha256": "b69d8e547f0ec32b96790cdbc46233a5279d344e7288d495c9ef0bf419ddd892"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-generation.ts",
+      "bytes": 11619,
+      "sha256": "4d5c4f7562f231a020f102763864ec056f24cf54d35706c4a711b4ec5920812b"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-labels.ts",
+      "bytes": 2865,
+      "sha256": "58fa335890f4bc3d04fa7b9aa459f8e4a10f61da5ab21247f586aa83c05d5a62"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-projector.ts",
+      "bytes": 6710,
+      "sha256": "6ee8873c40555076ac8f403ce6f0a9e0618b01dc9564897f92941d91905ba023"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-renderer.ts",
+      "bytes": 14109,
+      "sha256": "9acc39d445e2a8d5cf55f4d36ba8b9bed69037223eb3675e97a66ecdd11a8b3a"
+    },
+    {
+      "id": "supabase/functions/_shared/self-examination-workflow-contract.ts",
+      "bytes": 8352,
+      "sha256": "5964feab5c2790b5c45e438eeeb33b7cf646c4c93104f3197bd6680f5d6b39f2"
+    },
+    {
+      "id": "supabase/functions/generate-self-examination-report/index.ts",
+      "bytes": 3795,
+      "sha256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175"
+    }
+  ],
+  "external_imports": [
+    "https://deno.land/std@0.168.0/http/server.ts",
+    "https://esm.sh/@supabase/supabase-js@2"
+  ],
+  "contains_external_imports": true,
+  "external_network_at_build": false,
+  "native_deno_dependencies_resolved": false,
+  "provider_deployed": false,
+  "working_site_accepted": false,
+  "legal_approval": false,
+  "jwt_deployment": {
+    "name": "generate-self-examination-report",
+    "sourceEntryPresent": true,
+    "sourceVerifyJWT": false,
+    "explicitNativeDeployVerifyJWT": false,
+    "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+    "ownUnauthenticatedPOST": {
+      "status": 401,
+      "code": "ACCESS_DENIED or existing AccessError JSON"
+    },
+    "ownOptionsStatus": 200,
+    "actualGatewaySettingVerified": false,
+    "liveAuthenticatedQARequired": true,
+    "anonymousGateway401IsNotHandlerVersionProof": true
+  }
+}

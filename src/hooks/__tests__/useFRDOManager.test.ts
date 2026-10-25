@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { org,pupil,enrollment,course,uid } from "@/lib/educationIssuance/__tests__/fixtures";
 const mock=vi.hoisted(()=>({current:true,allowed:true,queryError:false,from:vi.fn(),rpc:vi.fn(),error:vi.fn()}));
-vi.mock("@/utils/courseCache",()=>({captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
+vi.mock("@/utils/courseCache",()=>({captureOfflineAuthRevision:()=>1,subscribeOfflineAuthRevision:()=>()=>{},captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock("@/hooks/useStaffPermissions",()=>({useStaffPermissions:()=>({organizationId:"00000000-0000-4000-8000-000000000002",loading:false,error:null,can:(permission:string)=>mock.allowed&&permission!=="documents.issue"})}));
 vi.mock("@/utils/fetchUserRolesBatched",()=>({fetchUserRolesBatched:async()=>[]}));
 vi.mock("@/integrations/supabase/client",()=>({supabase:{from:mock.from,rpc:mock.rpc}}));

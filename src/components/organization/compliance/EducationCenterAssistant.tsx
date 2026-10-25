@@ -14,7 +14,9 @@ import { useDocumentApplicabilityDecisions, type DocumentApplicabilitySnapshot }
 import { COMPLIANCE_STAGES, type ApplicabilityDecision, type EvaluatedRequirement } from "@/lib/uc-compliance/model";
 import { COMPLIANCE_CATALOG_VERSION, STAGE_GUIDANCE } from "@/lib/uc-compliance/catalog";
 import { evaluateRequirements } from "@/lib/uc-compliance/evaluate";
+import { PublicationCalendarPanel } from "./PublicationCalendarPanel";
 import { EducationProfileDialog } from "./EducationProfileDialog";
+import { NormativeGovernancePanel } from "./NormativeGovernancePanel";
 import { AssignedGroupDocumentsNotice } from "../AssignedGroupDocumentsNotice";
 import type { OrgDocument } from "@/hooks/useOrgDocumentsManager";
 import { compliancePreparation, groupDocumentSelectionPath, isGroupDocumentTask } from "@/lib/organization/complianceTaskNavigation";
@@ -123,6 +125,7 @@ export function EducationCenterAssistant(props: Props) {
         <p className="text-xs text-muted-foreground">{profile.data?.revision ? `Сохранённая версия профиля: ${profile.data.revision}` : "Профиль ещё не сохранён"}. Каталог: {evaluation.snapshot.catalogVersion}. Проверка условий: {evaluation.snapshot.asOf}.</p>
       </>}
     </div>
+    {profile.data && <NormativeGovernancePanel key={props.organizationId} organizationId={props.organizationId} canWrite={canWrite} profileRevision={profile.data.revision || null} />}
     {evaluation && <Accordion type="multiple" defaultValue={["before_start"]} className="space-y-3">{COMPLIANCE_STAGES.map(stage => {
       const tasks = evaluation.requirements.filter(task => task.requirement.stage === stage.id);
       return <AccordionItem key={stage.id} value={stage.id} className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -181,6 +184,7 @@ export function EducationCenterAssistant(props: Props) {
         </AccordionContent>
       </AccordionItem>;
     })}</Accordion>}
+    <PublicationCalendarPanel organizationId={props.organizationId} profileRevision={profile.data?.revision ?? 0} decisions={decisions.data ?? []} documents={props.documents} canRead={canRead} canWrite={canWrite} canSign={action.canSign} />
     {profile.data && <EducationProfileDialog open={profileOpen} onOpenChange={setProfileOpen} snapshot={profile.data} organization={props.organization} documents={props.documents}
       canWrite={canWrite} saving={profile.saving} conflict={profile.conflict} uncertain={profile.uncertain} error={profile.error}
       onSave={profile.save} onReload={() => void profile.reload()} onClose={() => setProfileOpen(false)} loadHistory={profile.loadHistory} />}

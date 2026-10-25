@@ -15,7 +15,7 @@ import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
 
-export type DocumentSubTab = "kpi" | "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "incoming" | "signatures" | "pd_requests" | "recycle_bin" | "proposals" | "sales_contracts";
+export type DocumentSubTab = "kpi" | "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "incoming" | "signatures" | "pd_requests" | "archive_cases" | "recycle_bin" | "proposals" | "sales_contracts";
 export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "history";
 export type CounterpartyType = "platform" | "company" | "payer";
 

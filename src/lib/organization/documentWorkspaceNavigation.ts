@@ -12,6 +12,7 @@ const DOCUMENT_VIEWS: ReadonlySet<DocumentSubTab> = new Set([
   "testimonials",
   "journals",
   "frdo",
+  "archive_cases",
   "counterparties",
   "incoming",
   "signatures",

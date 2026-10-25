@@ -24,7 +24,7 @@ export function FRDOManager({
   returnToGroupId?: string | null;
 }) {
   const {
-    canExport, existingExport, setExistingExport, isLoading, students, courses, searchQuery, setSearchQuery,
+    canExport, existingExport, setExistingExport, isLoading, loadError, students, courses, searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,
     selectedStudentForExport, selectedEnrollmentForExport,
@@ -37,7 +37,13 @@ export function FRDOManager({
   const [showSanitizer, setShowSanitizer] = useState(false);
   const [showPackets, setShowPackets] = useState(false);
 
-  if (isLoading) return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
+  if (isLoading) return <div role="status" aria-label="Загрузка сведений ФРДО" className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
+  if (loadError) return (
+    <div role="alert" className="bg-card rounded-2xl border border-border p-6 space-y-4">
+      <p className="text-muted-foreground">{loadError}</p>
+      {canExport && <Button variant="outline" className="rounded-xl" onClick={() => void refresh()}>Обновить данные</Button>}
+    </div>
+  );
 
   const visibleStudents = filteredStudents.slice(0, visibleCount);
 

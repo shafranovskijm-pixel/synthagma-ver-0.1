@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "kind": "same_union144_native_entrypoint_packaging",
+  "function": "archive-case-package",
+  "esbuild": "0.25.12",
+  "entry": "supabase/functions/archive-case-package/index.ts",
+  "entry_sha256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f",
+  "output": {
+    "path": "index.ts",
+    "bytes": 91539,
+    "sha256": "81cb9b2c725d08b9b43bfc490411540c235003ed9a00cfbe290ed98cfec606c2"
+  },
+  "source_hold_sha256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6",
+  "sources": [
+    {
+      "id": "node_modules/zod/index.js",
+      "bytes": 105,
+      "sha256": "6419c4ac0e637ff08463083e31886d10354f74cbcc4e584400b2b837e39ac881"
+    },
+    {
+      "id": "node_modules/zod/v3/errors.js",
+      "bytes": 243,
+      "sha256": "d40831f478288d76e82bbbcc3b7e95c8513b6e76471f2d49a37c979bc57d492d"
+    },
+    {
+      "id": "node_modules/zod/v3/external.js",
+      "bytes": 205,
+      "sha256": "5d26d2e47e2352def36f89a3e8bf8581da22b7f857e07ef3114cd52cf4813445"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/errorUtil.js",
+      "bytes": 300,
+      "sha256": "68589c0cf44c8b4ad19b77418f53caad2cd1dbc8d714f526e1876ebdee4828c5"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/parseUtil.js",
+      "bytes": 3601,
+      "sha256": "b57484013bb360bac2e334d58fcd5f6cbfa63ffcc7d8ff3dbbb3380ca659b956"
+    },
+    {
+      "id": "node_modules/zod/v3/helpers/util.js",
+      "bytes": 4055,
+      "sha256": "906ef685e5853d496e293ee8f8a2bb8b1ed2d078a1bcdfedb2dfd61d75b6330c"
+    },
+    {
+      "id": "node_modules/zod/v3/locales/en.js",
+      "bytes": 5602,
+      "sha256": "51a6dcc5d4bd52a64da127c012c6c963395c1d9a343ad75d4a8eca662fc8b205"
+    },
+    {
+      "id": "node_modules/zod/v3/types.js",
+      "bytes": 131212,
+      "sha256": "9763a2938f0e7f983363ef4bf6530e7583e3f2d54f8a4a6684efad58febc6e8e"
+    },
+    {
+      "id": "node_modules/zod/v3/ZodError.js",
+      "bytes": 4349,
+      "sha256": "f5ac9e86b92e201d41e294d7aa35986a2aa28829e1bcc8ac25f7c8dce0674b99"
+    },
+    {
+      "id": "supabase/functions/_shared/admission-case-access.ts",
+      "bytes": 39018,
+      "sha256": "463dd9412444097e2425724fc3501976f513f58ad13ed3cc15b33ea471141dbd"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/archive-core/contract.ts",
+      "bytes": 22709,
+      "sha256": "c91e024ba3c70ad91b2154f3aa66a25fd367c57dbd2b7a40f407212905f095ed"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/archive-core/package.ts",
+      "bytes": 9027,
+      "sha256": "e721a7b71bfe3e36dcb6082d1b28baedc7321a663a53fb732146e079bd2dd215"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/archive-core/worker.ts",
+      "bytes": 8431,
+      "sha256": "f89f92885c50a1bb252afd2050a98d3209d8db34013dae8b5033fdf46e66e3c2"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/http.ts",
+      "bytes": 9922,
+      "sha256": "7c12bb91adb45eb4229d283847146c47860ba65941d822f6c2087f83d3350720"
+    },
+    {
+      "id": "supabase/functions/archive-case-package/index.ts",
+      "bytes": 1956,
+      "sha256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f"
+    }
+  ],
+  "external_imports": [
+    "npm:@supabase/supabase-js@2.90.1"
+  ],
+  "contains_external_imports": true,
+  "external_network_at_build": false,
+  "native_deno_dependencies_resolved": false,
+  "provider_deployed": false,
+  "working_site_accepted": false,
+  "legal_approval": false,
+  "jwt_deployment": {
+    "name": "archive-case-package",
+    "sourceEntryPresent": false,
+    "sourceVerifyJWT": null,
+    "explicitNativeDeployVerifyJWT": true,
+    "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+    "ownUnauthenticatedPOST": {
+      "status": 403,
+      "code": "ACCESS_DENIED"
+    },
+    "ownOptionsStatus": 204,
+    "actualGatewaySettingVerified": false,
+    "liveAuthenticatedQARequired": true,
+    "anonymousGateway401IsNotHandlerVersionProof": true
+  }
+}

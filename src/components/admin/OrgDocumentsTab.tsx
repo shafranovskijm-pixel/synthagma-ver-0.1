@@ -1,3 +1,4 @@
+import { SelfExaminationOperator } from '@/components/organization/self-examination/SelfExaminationOperator';
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -116,6 +117,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
 
   return (
     <div className="space-y-6">
+      <SelfExaminationOperator organizationId={organizationId} documents={documents} onDocumentsChange={onDocumentsChange}/>
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-4">
         {documentsByType.map(type => {

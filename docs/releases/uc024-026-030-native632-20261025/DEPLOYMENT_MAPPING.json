@@ -1,0 +1,610 @@
+{
+  "schema": "sintagma.six-function-frdo-style-deployment-mapping.v1",
+  "status": "LOCAL_BUNDLE_PASS_RELEASE_MAPPING_ONLY_NATIVE_PROVIDER_QA_PENDING",
+  "atUtc": "2026-10-25T11:46:50.961Z",
+  "canonicalUnion144": {
+    "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-frdo-union144-current127-20261025/SOURCE_HOLD_CURRENT127_UNION144.json",
+    "sha256": "490ae92a0db52a2515a4d85fdf39704b736373eee6ddbca0367fb81251bfdd0d"
+  },
+  "sourceHold": {
+    "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/SOURCE_HOLD_SIX_ENTRYPOINTS_45_INPUTS_NO_ENGINE_GO.json",
+    "bytes": 70918,
+    "sha256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+  },
+  "buildPlan": {
+    "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/FINITE_SIX_FUNCTION_BUNDLE_PLAN_NO_EXECUTION_GO.json",
+    "bytes": 69955,
+    "sha256": "62af9fc1aa62b56531898f64986d5e6a364ebc871f48a177296ea9a5ff66f337"
+  },
+  "actualBuild": {
+    "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/actual-build-six/result.json",
+    "bytes": 6564,
+    "sha256": "18dfd600cc9d7fbbc006e87c3927d96362fa956e619a9a3ed2c39268deee3d27",
+    "pid": 34820,
+    "naturalExit": 0,
+    "freshOwnedResult": "EMPTY",
+    "drift": []
+  },
+  "fileTransform": "For each function retain exact original index as runtime-source.ts, copy generated index.ts bytes as runtime.bundle.js, add exact thin index with provenance comment. No builder call or compiler transform during release mapping.",
+  "sourcePathCount": 18,
+  "modifiedOriginalEntryCount": 6,
+  "newRetainedSources": 6,
+  "newRuntimeBundles": 6,
+  "originalBusinessSourcesPreserved": true,
+  "functions": [
+    {
+      "name": "archive-case-package",
+      "originalEntry": {
+        "path": "supabase/functions/archive-case-package/index.ts",
+        "bytes": 1956,
+        "sha256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f",
+        "sourceHoldSHA256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+      },
+      "retainedOriginalSource": {
+        "path": "supabase/functions/archive-case-package/runtime-source.ts",
+        "bytes": 1956,
+        "sha256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f",
+        "byteExact": true
+      },
+      "thinEntry": {
+        "path": "supabase/functions/archive-case-package/index.ts",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+        "onlyImport": "./runtime.bundle.js"
+      },
+      "generatedRuntime": {
+        "path": "supabase/functions/archive-case-package/runtime.bundle.js",
+        "bytes": 91539,
+        "sha256": "81cb9b2c725d08b9b43bfc490411540c235003ed9a00cfbe290ed98cfec606c2",
+        "copiedByteExactFrom": "archive-case-package/index.ts",
+        "frozenBuildManifestSHA256": "e5f477969f6fde7c2590b9f82b7a0410c2afdb733bb0591e5abbd7776a42f24d"
+      },
+      "externalImports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ],
+      "jwt": {
+        "name": "archive-case-package",
+        "sourceEntryPresent": false,
+        "sourceVerifyJWT": null,
+        "explicitNativeDeployVerifyJWT": true,
+        "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+        "ownUnauthenticatedPOST": {
+          "status": 403,
+          "code": "ACCESS_DENIED"
+        },
+        "ownOptionsStatus": 204,
+        "actualGatewaySettingVerified": false,
+        "liveAuthenticatedQARequired": true,
+        "anonymousGateway401IsNotHandlerVersionProof": true
+      },
+      "sameCodeRebuilt": false,
+      "nativeDenoResolved": false,
+      "providerDeployed": false,
+      "workingSiteAccepted": false
+    },
+    {
+      "name": "archive-case-read",
+      "originalEntry": {
+        "path": "supabase/functions/archive-case-read/index.ts",
+        "bytes": 1077,
+        "sha256": "51491bdd4af7e7b47b1049f0fde6bd77e475b086ab002d47848a20b5209c7f6d",
+        "sourceHoldSHA256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+      },
+      "retainedOriginalSource": {
+        "path": "supabase/functions/archive-case-read/runtime-source.ts",
+        "bytes": 1077,
+        "sha256": "51491bdd4af7e7b47b1049f0fde6bd77e475b086ab002d47848a20b5209c7f6d",
+        "byteExact": true
+      },
+      "thinEntry": {
+        "path": "supabase/functions/archive-case-read/index.ts",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+        "onlyImport": "./runtime.bundle.js"
+      },
+      "generatedRuntime": {
+        "path": "supabase/functions/archive-case-read/runtime.bundle.js",
+        "bytes": 84488,
+        "sha256": "03b503a98839a36b9737d7769ee8aea0957a36dd781eba92df7a746a1de20733",
+        "copiedByteExactFrom": "archive-case-read/index.ts",
+        "frozenBuildManifestSHA256": "3a4f72c35519adb44f01f9e793960ec1bba6c0aeedabc2cce9b325bf444c610f"
+      },
+      "externalImports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ],
+      "jwt": {
+        "name": "archive-case-read",
+        "sourceEntryPresent": false,
+        "sourceVerifyJWT": null,
+        "explicitNativeDeployVerifyJWT": true,
+        "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+        "ownUnauthenticatedPOST": {
+          "status": 403,
+          "code": "ACCESS_DENIED"
+        },
+        "ownOptionsStatus": 204,
+        "actualGatewaySettingVerified": false,
+        "liveAuthenticatedQARequired": true,
+        "anonymousGateway401IsNotHandlerVersionProof": true
+      },
+      "sameCodeRebuilt": false,
+      "nativeDenoResolved": false,
+      "providerDeployed": false,
+      "workingSiteAccepted": false
+    },
+    {
+      "name": "archive-case-restore",
+      "originalEntry": {
+        "path": "supabase/functions/archive-case-restore/index.ts",
+        "bytes": 1089,
+        "sha256": "645d8b28765b735316d3301fdb030786e02aa9705a9b011977dab3805c945e3f",
+        "sourceHoldSHA256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+      },
+      "retainedOriginalSource": {
+        "path": "supabase/functions/archive-case-restore/runtime-source.ts",
+        "bytes": 1089,
+        "sha256": "645d8b28765b735316d3301fdb030786e02aa9705a9b011977dab3805c945e3f",
+        "byteExact": true
+      },
+      "thinEntry": {
+        "path": "supabase/functions/archive-case-restore/index.ts",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+        "onlyImport": "./runtime.bundle.js"
+      },
+      "generatedRuntime": {
+        "path": "supabase/functions/archive-case-restore/runtime.bundle.js",
+        "bytes": 92315,
+        "sha256": "e34013f55efe8b46d9a2ae3f2e72b1f5ecfd41d23297009d364aacb0669de6e2",
+        "copiedByteExactFrom": "archive-case-restore/index.ts",
+        "frozenBuildManifestSHA256": "d9809cbf042031ae1563a7de8ac4e488f243e236879aeee6b4c6eee8ce434187"
+      },
+      "externalImports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ],
+      "jwt": {
+        "name": "archive-case-restore",
+        "sourceEntryPresent": false,
+        "sourceVerifyJWT": null,
+        "explicitNativeDeployVerifyJWT": true,
+        "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+        "ownUnauthenticatedPOST": {
+          "status": 403,
+          "code": "ACCESS_DENIED"
+        },
+        "ownOptionsStatus": 204,
+        "actualGatewaySettingVerified": false,
+        "liveAuthenticatedQARequired": true,
+        "anonymousGateway401IsNotHandlerVersionProof": true
+      },
+      "sameCodeRebuilt": false,
+      "nativeDenoResolved": false,
+      "providerDeployed": false,
+      "workingSiteAccepted": false
+    },
+    {
+      "name": "archive-rule-source-check",
+      "originalEntry": {
+        "path": "supabase/functions/archive-rule-source-check/index.ts",
+        "bytes": 1089,
+        "sha256": "0ec3036a999d524720ed2b69a0c9ebf6f3ade948632ad1ab00676a4035911753",
+        "sourceHoldSHA256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+      },
+      "retainedOriginalSource": {
+        "path": "supabase/functions/archive-rule-source-check/runtime-source.ts",
+        "bytes": 1089,
+        "sha256": "0ec3036a999d524720ed2b69a0c9ebf6f3ade948632ad1ab00676a4035911753",
+        "byteExact": true
+      },
+      "thinEntry": {
+        "path": "supabase/functions/archive-rule-source-check/index.ts",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+        "onlyImport": "./runtime.bundle.js"
+      },
+      "generatedRuntime": {
+        "path": "supabase/functions/archive-rule-source-check/runtime.bundle.js",
+        "bytes": 84336,
+        "sha256": "b9596805c36fdf5b2f41eb10250b98de6245bdd22e0f7305cb414f8acd469dd4",
+        "copiedByteExactFrom": "archive-rule-source-check/index.ts",
+        "frozenBuildManifestSHA256": "2d9683d3f3119a361fa9751f2c65c0823cfac0070530bdfbb1c6cf0d200978d9"
+      },
+      "externalImports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ],
+      "jwt": {
+        "name": "archive-rule-source-check",
+        "sourceEntryPresent": false,
+        "sourceVerifyJWT": null,
+        "explicitNativeDeployVerifyJWT": true,
+        "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+        "ownUnauthenticatedPOST": {
+          "status": 403,
+          "code": "ACCESS_DENIED"
+        },
+        "ownOptionsStatus": 204,
+        "actualGatewaySettingVerified": false,
+        "liveAuthenticatedQARequired": true,
+        "anonymousGateway401IsNotHandlerVersionProof": true
+      },
+      "sameCodeRebuilt": false,
+      "nativeDenoResolved": false,
+      "providerDeployed": false,
+      "workingSiteAccepted": false
+    },
+    {
+      "name": "generate-self-examination-report",
+      "originalEntry": {
+        "path": "supabase/functions/generate-self-examination-report/index.ts",
+        "bytes": 3795,
+        "sha256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175",
+        "sourceHoldSHA256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+      },
+      "retainedOriginalSource": {
+        "path": "supabase/functions/generate-self-examination-report/runtime-source.ts",
+        "bytes": 3795,
+        "sha256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175",
+        "byteExact": true
+      },
+      "thinEntry": {
+        "path": "supabase/functions/generate-self-examination-report/index.ts",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+        "onlyImport": "./runtime.bundle.js"
+      },
+      "generatedRuntime": {
+        "path": "supabase/functions/generate-self-examination-report/runtime.bundle.js",
+        "bytes": 45283,
+        "sha256": "3ed3a1c3504bf6a956849a430655f382ee3f5ccef2c16dbf23b10ab89c64d099",
+        "copiedByteExactFrom": "generate-self-examination-report/index.ts",
+        "frozenBuildManifestSHA256": "36a70ac9e1030f7460e287729e8784b038c225000e2c401db93ba7ace138c0fa"
+      },
+      "externalImports": [
+        "https://deno.land/std@0.168.0/http/server.ts",
+        "https://esm.sh/@supabase/supabase-js@2"
+      ],
+      "jwt": {
+        "name": "generate-self-examination-report",
+        "sourceEntryPresent": true,
+        "sourceVerifyJWT": false,
+        "explicitNativeDeployVerifyJWT": false,
+        "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+        "ownUnauthenticatedPOST": {
+          "status": 401,
+          "code": "ACCESS_DENIED or existing AccessError JSON"
+        },
+        "ownOptionsStatus": 200,
+        "actualGatewaySettingVerified": false,
+        "liveAuthenticatedQARequired": true,
+        "anonymousGateway401IsNotHandlerVersionProof": true
+      },
+      "sameCodeRebuilt": false,
+      "nativeDenoResolved": false,
+      "providerDeployed": false,
+      "workingSiteAccepted": false
+    },
+    {
+      "name": "publication-accessibility",
+      "originalEntry": {
+        "path": "supabase/functions/publication-accessibility/index.ts",
+        "bytes": 1891,
+        "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c",
+        "sourceHoldSHA256": "d9d05d05c5a26e869f02ea408d80eee173881187fdba7958f9a3395548e316b6"
+      },
+      "retainedOriginalSource": {
+        "path": "supabase/functions/publication-accessibility/runtime-source.ts",
+        "bytes": 1891,
+        "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c",
+        "byteExact": true
+      },
+      "thinEntry": {
+        "path": "supabase/functions/publication-accessibility/index.ts",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+        "onlyImport": "./runtime.bundle.js"
+      },
+      "generatedRuntime": {
+        "path": "supabase/functions/publication-accessibility/runtime.bundle.js",
+        "bytes": 13025,
+        "sha256": "51fb44d4238e429fb2b7e820698bf366d0d2b60d782d3b8d6ae9852172a27498",
+        "copiedByteExactFrom": "publication-accessibility/index.ts",
+        "frozenBuildManifestSHA256": "6c8297bddb53d66804173e258873089d73bf60a964ac0f54f7b7194d921b275a"
+      },
+      "externalImports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ],
+      "jwt": {
+        "name": "publication-accessibility",
+        "sourceEntryPresent": false,
+        "sourceVerifyJWT": null,
+        "explicitNativeDeployVerifyJWT": true,
+        "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+        "ownUnauthenticatedPOST": {
+          "status": 401,
+          "code": "ACCESS_DENIED or existing AccessError JSON"
+        },
+        "ownOptionsStatus": 204,
+        "actualGatewaySettingVerified": false,
+        "liveAuthenticatedQARequired": true,
+        "anonymousGateway401IsNotHandlerVersionProof": true
+      },
+      "sameCodeRebuilt": false,
+      "nativeDenoResolved": false,
+      "providerDeployed": false,
+      "workingSiteAccepted": false
+    }
+  ],
+  "sourceFiles": [
+    {
+      "repoPath": "supabase/functions/archive-case-package/index.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-package/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "gitBlobSHA": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+      "role": "thin_native_entry",
+      "previousSHA256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f"
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-package/runtime-source.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-package/runtime-source.ts",
+      "bytes": 1956,
+      "sha256": "17b99823fda60b40d583fa441bdad5fcd6ae7eaece0f3804153f8c5b8c252e5f",
+      "gitBlobSHA": "12f12eae6a1a52803910210b2248588a97fc645e",
+      "role": "retained_original_index_source",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-package/runtime.bundle.js",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-package/runtime.bundle.js",
+      "bytes": 91539,
+      "sha256": "81cb9b2c725d08b9b43bfc490411540c235003ed9a00cfbe290ed98cfec606c2",
+      "gitBlobSHA": "e9134cdef52f815bbd6ad127f4258d135d1df818",
+      "role": "exact_existing_generated_bundle",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-read/index.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-read/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "gitBlobSHA": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+      "role": "thin_native_entry",
+      "previousSHA256": "51491bdd4af7e7b47b1049f0fde6bd77e475b086ab002d47848a20b5209c7f6d"
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-read/runtime-source.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-read/runtime-source.ts",
+      "bytes": 1077,
+      "sha256": "51491bdd4af7e7b47b1049f0fde6bd77e475b086ab002d47848a20b5209c7f6d",
+      "gitBlobSHA": "0ed1c0a0a974e79a9b3ab434fe1d9d274d20d1e0",
+      "role": "retained_original_index_source",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-read/runtime.bundle.js",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-read/runtime.bundle.js",
+      "bytes": 84488,
+      "sha256": "03b503a98839a36b9737d7769ee8aea0957a36dd781eba92df7a746a1de20733",
+      "gitBlobSHA": "7535c22ae24ab60f23e8928bb71159690937a60b",
+      "role": "exact_existing_generated_bundle",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-restore/index.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-restore/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "gitBlobSHA": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+      "role": "thin_native_entry",
+      "previousSHA256": "645d8b28765b735316d3301fdb030786e02aa9705a9b011977dab3805c945e3f"
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-restore/runtime-source.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-restore/runtime-source.ts",
+      "bytes": 1089,
+      "sha256": "645d8b28765b735316d3301fdb030786e02aa9705a9b011977dab3805c945e3f",
+      "gitBlobSHA": "032b1d66ac7350956823bbc4d14072a7cd0fa2b2",
+      "role": "retained_original_index_source",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-case-restore/runtime.bundle.js",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-case-restore/runtime.bundle.js",
+      "bytes": 92315,
+      "sha256": "e34013f55efe8b46d9a2ae3f2e72b1f5ecfd41d23297009d364aacb0669de6e2",
+      "gitBlobSHA": "92928fbb55eb88235c442946728b1c73e917baf2",
+      "role": "exact_existing_generated_bundle",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-rule-source-check/index.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-rule-source-check/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "gitBlobSHA": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+      "role": "thin_native_entry",
+      "previousSHA256": "0ec3036a999d524720ed2b69a0c9ebf6f3ade948632ad1ab00676a4035911753"
+    },
+    {
+      "repoPath": "supabase/functions/archive-rule-source-check/runtime-source.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-rule-source-check/runtime-source.ts",
+      "bytes": 1089,
+      "sha256": "0ec3036a999d524720ed2b69a0c9ebf6f3ade948632ad1ab00676a4035911753",
+      "gitBlobSHA": "f9dfeb142565e73e008e83f57081499f5d6f108f",
+      "role": "retained_original_index_source",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/archive-rule-source-check/runtime.bundle.js",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/archive-rule-source-check/runtime.bundle.js",
+      "bytes": 84336,
+      "sha256": "b9596805c36fdf5b2f41eb10250b98de6245bdd22e0f7305cb414f8acd469dd4",
+      "gitBlobSHA": "3ebb40b6a31bf97e9d624922bdde2276d39a1cfd",
+      "role": "exact_existing_generated_bundle",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/generate-self-examination-report/index.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/generate-self-examination-report/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "gitBlobSHA": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+      "role": "thin_native_entry",
+      "previousSHA256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175"
+    },
+    {
+      "repoPath": "supabase/functions/generate-self-examination-report/runtime-source.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/generate-self-examination-report/runtime-source.ts",
+      "bytes": 3795,
+      "sha256": "372b1179eb6c9bf7992eeea8117adab7759d9e30b2a5762327200eadee4c1175",
+      "gitBlobSHA": "636b82813ee37718b3e25d03175251cd766300c4",
+      "role": "retained_original_index_source",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/generate-self-examination-report/runtime.bundle.js",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/generate-self-examination-report/runtime.bundle.js",
+      "bytes": 45283,
+      "sha256": "3ed3a1c3504bf6a956849a430655f382ee3f5ccef2c16dbf23b10ab89c64d099",
+      "gitBlobSHA": "81285a8da486c62d2de1d6a4930e5be1010629b6",
+      "role": "exact_existing_generated_bundle",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/publication-accessibility/index.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/publication-accessibility/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "gitBlobSHA": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+      "role": "thin_native_entry",
+      "previousSHA256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+    },
+    {
+      "repoPath": "supabase/functions/publication-accessibility/runtime-source.ts",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/publication-accessibility/runtime-source.ts",
+      "bytes": 1891,
+      "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c",
+      "gitBlobSHA": "ffdc9a371de598153b98c4f210302468dc9612e3",
+      "role": "retained_original_index_source",
+      "previousSHA256": null
+    },
+    {
+      "repoPath": "supabase/functions/publication-accessibility/runtime.bundle.js",
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc024-026-030-six-functions-packaging-20261025/release-frdo-analogue/source/supabase/functions/publication-accessibility/runtime.bundle.js",
+      "bytes": 13025,
+      "sha256": "51fb44d4238e429fb2b7e820698bf366d0d2b60d782d3b8d6ae9852172a27498",
+      "gitBlobSHA": "012d67dd050fca0a78fafc05633d6c9c5330e1c5",
+      "role": "exact_existing_generated_bundle",
+      "previousSHA256": null
+    }
+  ],
+  "archivedFrozenOutput14": [
+    {
+      "path": "archive-case-package/bundle-source-manifest.json",
+      "bytes": 4055,
+      "sha256": "e5f477969f6fde7c2590b9f82b7a0410c2afdb733bb0591e5abbd7776a42f24d",
+      "byteExact": true
+    },
+    {
+      "path": "archive-case-package/index.ts",
+      "bytes": 91539,
+      "sha256": "81cb9b2c725d08b9b43bfc490411540c235003ed9a00cfbe290ed98cfec606c2",
+      "byteExact": true
+    },
+    {
+      "path": "archive-case-read/bundle-source-manifest.json",
+      "bytes": 4035,
+      "sha256": "3a4f72c35519adb44f01f9e793960ec1bba6c0aeedabc2cce9b325bf444c610f",
+      "byteExact": true
+    },
+    {
+      "path": "archive-case-read/index.ts",
+      "bytes": 84488,
+      "sha256": "03b503a98839a36b9737d7769ee8aea0957a36dd781eba92df7a746a1de20733",
+      "byteExact": true
+    },
+    {
+      "path": "archive-case-restore/bundle-source-manifest.json",
+      "bytes": 4261,
+      "sha256": "d9809cbf042031ae1563a7de8ac4e488f243e236879aeee6b4c6eee8ce434187",
+      "byteExact": true
+    },
+    {
+      "path": "archive-case-restore/index.ts",
+      "bytes": 92315,
+      "sha256": "e34013f55efe8b46d9a2ae3f2e72b1f5ecfd41d23297009d364aacb0669de6e2",
+      "byteExact": true
+    },
+    {
+      "path": "archive-rule-source-check/bundle-source-manifest.json",
+      "bytes": 3895,
+      "sha256": "2d9683d3f3119a361fa9751f2c65c0823cfac0070530bdfbb1c6cf0d200978d9",
+      "byteExact": true
+    },
+    {
+      "path": "archive-rule-source-check/index.ts",
+      "bytes": 84336,
+      "sha256": "b9596805c36fdf5b2f41eb10250b98de6245bdd22e0f7305cb414f8acd469dd4",
+      "byteExact": true
+    },
+    {
+      "path": "esbuild.metafile.json",
+      "bytes": 33875,
+      "sha256": "f6d9dd9f94e1b54e663a2670ba9382ef977ca9b608d7eb4583494fd9fccb490f",
+      "byteExact": true
+    },
+    {
+      "path": "generate-self-examination-report/bundle-source-manifest.json",
+      "bytes": 3444,
+      "sha256": "36a70ac9e1030f7460e287729e8784b038c225000e2c401db93ba7ace138c0fa",
+      "byteExact": true
+    },
+    {
+      "path": "generate-self-examination-report/index.ts",
+      "bytes": 45283,
+      "sha256": "3ed3a1c3504bf6a956849a430655f382ee3f5ccef2c16dbf23b10ab89c64d099",
+      "byteExact": true
+    },
+    {
+      "path": "publication-accessibility/bundle-source-manifest.json",
+      "bytes": 2399,
+      "sha256": "6c8297bddb53d66804173e258873089d73bf60a964ac0f54f7b7194d921b275a",
+      "byteExact": true
+    },
+    {
+      "path": "publication-accessibility/index.ts",
+      "bytes": 13025,
+      "sha256": "51fb44d4238e429fb2b7e820698bf366d0d2b60d782d3b8d6ae9852172a27498",
+      "byteExact": true
+    },
+    {
+      "path": "six-functions-bundle-manifest.json",
+      "bytes": 14586,
+      "sha256": "d09f153dd8ee2212a5964dad0a72f64de717eceb48a968ff15da1e6ac8ed36b5",
+      "byteExact": true
+    }
+  ],
+  "sourceConfig": {
+    "path": "supabase/config.toml",
+    "sha256": "531dcd0618863e7e9c4bc6e5dfa2fb7ceb2c700b08cc0e631f77335fb52a06f6",
+    "gitBlob": "53b8fad9222935d4fb999622281a33a3cbf5678f",
+    "noSourceConfigChange": true,
+    "defaultSource": "https://supabase.com/docs/guides/functions/function-configuration",
+    "checkedOn": "2026-10-25"
+  },
+  "verifyJWTExplicitRootDecision": "New five verify_jwt=true preserving documented default; existing generate-self-examination-report=false. No code/config/provider setting altered by packaging. Root native deploy must pass/read back each exact value; diagnose authenticated gateway rejection before changing.",
+  "next": "Root independently review and compose these paths into authorized source release; provider must resolve unchanged remoteSDK imports. Five true gateways plus legacy selfexamfalse; authenticated userQA required. No defaultJWT weakening on gateway failures.",
+  "limits": {
+    "sameCodeRebuilds": 0,
+    "installs": 0,
+    "network": 0,
+    "PG": 0,
+    "SQL": 0,
+    "providerWrites": 0,
+    "GitWrites": 0,
+    "nativeDenoResolved": false,
+    "providerDeployed": false,
+    "workingSiteAccepted": false,
+    "legalApproval": false
+  }
+}

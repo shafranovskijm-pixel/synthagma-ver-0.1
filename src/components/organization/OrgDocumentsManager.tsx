@@ -124,7 +124,7 @@ function OrgDocumentsManagerContent({ organizationId, canWrite = false }: OrgDoc
         </DialogContent>
       </Dialog>
 
-      <SelfExaminationQuiz open={h.showQuiz} onOpenChange={h.setShowQuiz} onSubmit={h.handleQuizSubmit} isSubmitting={h.isSubmittingQuiz} organizationData={h.organizationData} />
+      <SelfExaminationQuiz organizationId={organizationId} open={h.showQuiz} onOpenChange={h.setShowQuiz} onSubmit={h.handleQuizSubmit} isSubmitting={h.isSubmittingQuiz} organizationData={h.organizationData} />
 
       <Dialog open={h.showAutoGenSuccessDialog} onOpenChange={h.setShowAutoGenSuccessDialog}>
         <DialogContent className="rounded-2xl text-center">

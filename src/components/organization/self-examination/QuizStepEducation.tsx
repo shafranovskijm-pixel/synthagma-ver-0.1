@@ -1,3 +1,4 @@
+import { optionalNonnegativeNumber } from "@/hooks/useSelfExaminationQuiz";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ interface Props {
   updateData: (updates: Partial<QuizData>) => void;
   addProgram: () => void;
   removeProgram: (index: number) => void;
-  updateProgram: (index: number, field: keyof Program, value: string | number) => void;
+  updateProgram: (index: number, field: keyof Program, value: string | number | null) => void;
 }
 
 export function QuizStepEducation({ data, updateData, addProgram, removeProgram, updateProgram }: Props) {
@@ -18,7 +19,7 @@ export function QuizStepEducation({ data, updateData, addProgram, removeProgram,
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Образовательные программы</Label>
+          <Label>Образовательные программы</Label>{data.hasEmployerParticipation === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasEmployerParticipation: null })}>Неизвестно</button>}{data.hasPedagogicalCouncil === null ? <span className="text-xs text-muted-foreground">Не заполнено</span> : <button type="button" className="text-xs text-muted-foreground underline" onClick={() => updateData({ hasPedagogicalCouncil: null })}>Неизвестно</button>}
           <Button variant="outline" size="sm" onClick={addProgram} className="rounded-lg gap-1">
             <Plus className="w-3 h-3" />Добавить
           </Button>
@@ -43,7 +44,7 @@ export function QuizStepEducation({ data, updateData, addProgram, removeProgram,
                     <SelectItem value="профессиональное обучение">Профессиональное обучение</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input type="number" value={program.studentsCount || ''} onChange={(e) => updateProgram(index, 'studentsCount', parseInt(e.target.value) || 0)} placeholder="Кол-во обучающихся" className="rounded-lg" />
+                <Input type="number" value={program.studentsCount ?? ''} onChange={(e) => updateProgram(index, 'studentsCount', optionalNonnegativeNumber(e.target.value))} placeholder="Кол-во обучающихся" className="rounded-lg" />
               </div>
             </div>
           ))}
@@ -55,11 +56,11 @@ export function QuizStepEducation({ data, updateData, addProgram, removeProgram,
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Всего обучающихся за период</Label>
-            <Input type="number" value={data.totalStudents || ''} onChange={(e) => updateData({ totalStudents: parseInt(e.target.value) || 0 })} placeholder="0" className="rounded-xl" />
+            <Input type="number" value={data.totalStudents ?? ''} onChange={(e) => updateData({ totalStudents: optionalNonnegativeNumber(e.target.value) })} placeholder="Не указано" className="rounded-xl" />
           </div>
           <div className="space-y-2">
             <Label>Успешно завершили обучение</Label>
-            <Input type="number" value={data.completedStudents || ''} onChange={(e) => updateData({ completedStudents: parseInt(e.target.value) || 0 })} placeholder="0" className="rounded-xl" />
+            <Input type="number" value={data.completedStudents ?? ''} onChange={(e) => updateData({ completedStudents: optionalNonnegativeNumber(e.target.value) })} placeholder="Не указано" className="rounded-xl" />
           </div>
         </div>
       </div>
