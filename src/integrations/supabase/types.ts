@@ -19632,6 +19632,90 @@ export type Database = {
           },
         ]
       }
+      uc_normative_template_links: {
+        Row: {
+          action: string
+          actor_id: string
+          expected_revision: number
+          hash_scope: string
+          id: string
+          manifest_id: string
+          manifest_sha256: string
+          occurred_at: string
+          organization_id: string
+          reason: string
+          request_id: string
+          request_sha256: string
+          revision: number
+          source_id: string
+          source_sha256: string
+          target_kind: string
+          target_parent_id: string
+          target_sha256: string
+          target_version_id: string
+          target_version_number: number
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          expected_revision: number
+          hash_scope: string
+          id: string
+          manifest_id: string
+          manifest_sha256: string
+          occurred_at: string
+          organization_id: string
+          reason: string
+          request_id: string
+          request_sha256: string
+          revision: number
+          source_id: string
+          source_sha256: string
+          target_kind: string
+          target_parent_id: string
+          target_sha256: string
+          target_version_id: string
+          target_version_number: number
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          expected_revision?: number
+          hash_scope?: string
+          id?: string
+          manifest_id?: string
+          manifest_sha256?: string
+          occurred_at?: string
+          organization_id?: string
+          reason?: string
+          request_id?: string
+          request_sha256?: string
+          revision?: number
+          source_id?: string
+          source_sha256?: string
+          target_kind?: string
+          target_parent_id?: string
+          target_sha256?: string
+          target_version_id?: string
+          target_version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_normative_template_links_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "uc_normative_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_normative_template_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uc_publication_calendar_tasks: {
         Row: {
           body: Json
@@ -24802,6 +24886,14 @@ export type Database = {
         Args: { p_manifest_id?: string; p_organization_id: string }
         Returns: Json
       }
+      read_normative_template_associations: {
+        Args: {
+          p_manifest_id: string
+          p_organization_id: string
+          p_query: Json
+        }
+        Returns: Json
+      }
       read_organization_publication: {
         Args: {
           p_before_sequence?: number
@@ -24868,6 +24960,15 @@ export type Database = {
           p_body: Json
           p_expected_sequence: number
           p_manifest_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      record_normative_template_association: {
+        Args: {
+          p_command: Json
+          p_expected_revision: number
           p_organization_id: string
           p_request_id: string
         }
@@ -28165,6 +28266,49 @@ export type Database = {
       uc_ng_retention_block: { Args: { p_user: string }; Returns: undefined }
       uc_ng_validate_manifest: {
         Args: { p_hash: string; p_raw: string }
+        Returns: Json
+      }
+      uc_nt_fence: {
+        Args: { p_org: string; p_write: boolean }
+        Returns: string
+      }
+      uc_nt_link_view: {
+        Args: {
+          p_changed: Json
+          p_link: Database["public"]["Tables"]["uc_normative_template_links"]["Row"]
+          p_selected: Database["public"]["Tables"]["uc_normative_manifests"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_nt_manifest: {
+        Args: { p_id: string; p_sha?: string }
+        Returns: {
+          body_sha256: string
+          canonical_body: string
+          catalog_version: string
+          created_at: string
+          created_by: string
+          id: string
+          predecessor_id: string | null
+          request_id: string
+          request_sha256: string
+          revision: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_normative_manifests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_nt_scope: { Args: { p_kind: string; p_org: string }; Returns: boolean }
+      uc_nt_target: {
+        Args: {
+          p_kind: string
+          p_lock?: boolean
+          p_org: string
+          p_version: string
+        }
         Returns: Json
       }
       uc_observe_admission_sealed_object: {
