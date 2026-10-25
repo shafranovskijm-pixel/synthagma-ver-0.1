@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import * as foundation from '../../../src/lib/frdoFoundation/contract';
-import {canonicalJson,ensureCurrent,sha256} from '../../../src/lib/frdoFoundation/hash';
+import {canonicalJson,ensureCurrent,sha256,FrdoFoundationError} from '../../../src/lib/frdoFoundation/hash';
 import type {CurrentGuard,Stream} from '../../../src/lib/frdoFoundation/types';
 import type {XmlRuntime} from '../../../src/lib/frdoFoundation/xmlRuntime';
 import {generateMappedOfficialWorkbook,verifyMappedOfficialWorkbook} from '../../../src/lib/frdoFoundation/template';
@@ -52,6 +52,42 @@ export interface TrustedFrdoPorts {
 }
 function refuse(code:PacketInvariantError['code']):never{throw new PacketInvariantError(code);}
 function same(a:unknown,b:unknown){return canonicalJson(a)===canonicalJson(b);}
+
+type GenerateStage='capture_verify'|'capture_binding'|'donor_read'|'workbook_generate'|'upload_claim_check'|'candidate_upload'|'upload_binding'|'readback_claim_check'|'candidate_readback'|'readback_binding'|'workbook_verify'|'output_binding'|'seal_claim_check'|'artifact_seal';
+function reportGenerateFailure(stage:GenerateStage,error:unknown):void{
+ // Closed literals only. Never log an exception, dynamic code, source value or identifier.
+ try{
+  let category='unexpected';
+  if(error instanceof PacketInvariantError){
+   switch(error.code){
+    case 'INVALID_REQUEST':category='packet_invalid_request';break;
+    case 'ACCESS_DENIED':category='packet_access_denied';break;
+    case 'SOURCE_CHANGED':category='packet_source_changed';break;
+    case 'READINESS_BLOCKED':category='packet_readiness_blocked';break;
+    case 'IDEMPOTENCY_CONFLICT':category='packet_idempotency_conflict';break;
+    case 'REVISION_CONFLICT':category='packet_revision_conflict';break;
+    case 'RECEIPT_MISMATCH':category='packet_receipt_mismatch';break;
+    case 'ILLEGAL_TRANSITION':category='packet_illegal_transition';break;
+    default:category='packet_other';
+   }
+  }else if(error instanceof FrdoFoundationError){
+   switch(error.code){
+    case 'INVALID_REQUEST':category='foundation_invalid_request';break;
+    case 'ACCESS_DENIED':category='foundation_access_denied';break;
+    case 'READINESS_BLOCKED':category='foundation_readiness_blocked';break;
+    case 'SOURCE_CHANGED':category='foundation_source_changed';break;
+    case 'SOURCE_UNAVAILABLE':category='foundation_source_unavailable';break;
+    case 'TEMPLATE_CHANGED':category='foundation_template_changed';break;
+    case 'LIMIT_EXCEEDED':category='foundation_limit_exceeded';break;
+    case 'INVALID_WORKBOOK':category='foundation_invalid_workbook';break;
+    case 'DEPENDENCY_UNAVAILABLE':category='foundation_dependency_unavailable';break;
+    default:category='foundation_other';
+   }
+  }else if(error instanceof z.ZodError)category='schema_validation';
+  console.warn('[FrdoGenerateFailure]',stage,category);
+ }catch{/* Diagnostics must never replace the original failure or its scoped report. */}
+}
+
 
 export function createTrustedFrdoService(ports:Readonly<TrustedFrdoPorts>){
  async function actorGuard(outer:CurrentGuard){
@@ -115,21 +151,35 @@ export function createTrustedFrdoService(ports:Readonly<TrustedFrdoPorts>){
   if(claim.actor_id!==actor.actor||claim.organization_id!==request.organization_id||claim.packet.id!==request.packet_id||claim.build_id!==request.build_id||claim.request_id!==request.request_id||claim.input_revision!==request.input_revision||claim.snapshot_sha256!==claim.packet.snapshot_sha256||claim.storage.path!==`${request.organization_id}/packets/${request.packet_id}/${request.build_id}/${claim.artifact_id}.xlsx`)refuse('SOURCE_CHANGED');
   const local:CurrentGuard={assertCurrent(){ensureCurrent(outer);if(ports.now()>=Date.parse(claim.lease_until))refuse('REVISION_CONFLICT');}};
   const check=async()=>{await actor.refresh();await ports.originalRpc('uc_frdo_assert_file_claim',{p_request:request,p_lease:claim.lease_id});ensureCurrent(local);};
+  let stage:GenerateStage='capture_verify';
   try{
    const capture=await verifyFrozenCapture(claim.capture,local);ensureCurrent(local);
+   stage='capture_binding';
    if(capture.snapshot_sha256!==claim.snapshot_sha256||capture.mapped_batch.context.organization_id!==claim.organization_id||!same(capture.mapped_batch.context.scope,claim.scope)||!same(capture.mapped_batch.context.template,claim.template))refuse('SOURCE_CHANGED');
+   stage='donor_read';
    const donor=await ports.donor(capture.mapped_batch.context.stream);ensureCurrent(local);
+   stage='workbook_generate';
    const output=await generateMappedOfficialWorkbook(capture.mapped_batch,donor,local,{xml:ports.xml});ensureCurrent(local);
+   stage='upload_claim_check';
    await check();
+   stage='candidate_upload';
    const object=candidateObjectSchema.parse(await ports.uploadCandidate(Object.freeze(structuredClone(claim)),output.bytes,{build_id:claim.build_id,lease_id:claim.lease_id,request_id:claim.request_id,snapshot_sha256:claim.snapshot_sha256}));ensureCurrent(local);
+   stage='upload_binding';
    if(object.byte_size!==output.byte_size)refuse('SOURCE_CHANGED');
-   await check();const saved=await ports.readCandidate(Object.freeze(structuredClone(claim)),local);ensureCurrent(local);
+   stage='readback_claim_check';
+   await check();stage='candidate_readback';const saved=await ports.readCandidate(Object.freeze(structuredClone(claim)),local);ensureCurrent(local);
+   stage='readback_binding';
    if(!(saved instanceof Uint8Array)||saved.length!==output.byte_size)refuse('SOURCE_CHANGED');
+   stage='workbook_verify';
    const verified=await verifyMappedOfficialWorkbook(capture.mapped_batch,donor,saved,local,{xml:ports.xml});ensureCurrent(local);
+   stage='output_binding';
    if(verified.byte_sha256!==output.byte_sha256||verified.byte_size!==output.byte_size||!same(verified.parts,output.parts))refuse('SOURCE_CHANGED');
+   stage='seal_claim_check';
    await check();const value={...request,verified_actor_id:actor.actor,lease_id:claim.lease_id,snapshot_sha256:claim.snapshot_sha256,byte_sha256:output.byte_sha256,byte_size:output.byte_size,readback_sha256:verified.byte_sha256,template:claim.template,signing:output.signing,parts:verified.parts,object_id:object.object_id,object_updated_at:object.updated_at};
+   stage='artifact_seal';
    const result=await ports.serviceRpc('uc_frdo_seal_file',{p_value:value});ensureCurrent(local);return result;
   }catch(error){
+   reportGenerateFailure(stage,error);
    // Failure reporting is best effort and still ORIGINAL JWT/CAS/lease scoped.
    // Never delete a historical object, broaden rights, auto requeue or hide error.
    try{await actor.refresh();await ports.originalRpc('uc_frdo_fail_file',{p_build:claim.build_id,p_lease:claim.lease_id,p_code:error instanceof PacketInvariantError&&error.code==='SOURCE_CHANGED'?'SOURCE_CHANGED':'FILE_GENERATION_FAILED'});}catch{/* Original failure remains authoritative. */}

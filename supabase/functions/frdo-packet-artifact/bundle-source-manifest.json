@@ -5,8 +5,8 @@
   "entry": "nativeEntry.ts",
   "output": {
     "path": "runtime.bundle.js",
-    "bytes": 1388862,
-    "sha256": "e6092958dcafdecb1f63e545219401f48e0c0c34c1cfaa4f02ae740d60f22eae"
+    "bytes": 1390442,
+    "sha256": "accb8905007943b7148de8970225df93452c3faebbb20b14c7d7c3a570745634"
   },
   "index": {
     "path": "index.ts",
@@ -252,8 +252,8 @@
     },
     {
       "id": "supabase/functions/frdo-packet-artifact/trustedService.ts",
-      "bytes": 19210,
-      "sha256": "c0b7612b8d9262ead2c2233233b6eeec2011f6cd113fc281c010afa2d62e8d21"
+      "bytes": 21836,
+      "sha256": "e0c5924e2f0c59732a8ee6af9942f314189d2eae4a6960fd5b9a0c6c7099a2f9"
     },
     {
       "id": "supabase/functions/frdo-packet-artifact/xmlRuntime.ts",
