@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { captureCustomJournalScope, customJournalScopeCurrent, type CustomJournalScope } from "@/lib/customJournals/client";
-import { retainedLearningSummaryQuerySchema, retainedLearningSummarySchema, type RetainedLearningSummary } from "./contract";
+import { retainedLearningSummaryQuerySchema, retainedLearningSummarySchema, type RetainedLearningSummary } from './contract.ts';
 import { LearningOutcomeError, normalizeLearningOutcomeError } from "@/lib/learningOutcomes/client";
 
 export type OwnRetainedScope = CustomJournalScope;

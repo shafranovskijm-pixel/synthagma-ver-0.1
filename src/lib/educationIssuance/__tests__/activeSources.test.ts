@@ -1,11 +1,11 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
-import {org,actor,enrollment,course,pupil,uid,issuedRecord} from './fixtures';
+import {org,actor,enrollment,course,pupil,uid,issuedRecord} from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true,load:vi.fn()}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:'00000000-0000-4000-8000-000000000001',revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{}}));
 vi.mock('../export',()=>({loadIssuanceExport:mock.load}));
-import {captureIssuanceScope} from '../client';
-import {selectActiveIssuanceSources,readActiveIssuanceSources} from '../activeSources';
+import {captureIssuanceScope} from '../client.ts';
+import {selectActiveIssuanceSources,readActiveIssuanceSources} from '../activeSources.ts';
 const assignment={enrollmentId:enrollment,courseId:course,userId:pupil};
 beforeEach(()=>{vi.clearAllMocks();mock.current=true;});
 describe('read-only official-source selection',()=>{

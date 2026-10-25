@@ -1,7 +1,7 @@
 import { sameCopyValue } from '@/lib/copyRegistry/value';
-import * as c from './contract';
-import { EducationIssuanceError, assertIssuanceRecords, assertIssuanceEvents, readEducationIssuance, requireIssuanceScope, type EducationIssuanceScope } from './client';
-import type { IssuanceExport, IssuanceQuery, IssuanceSnapshot } from './types';
+import * as c from './contract.ts';
+import { EducationIssuanceError, assertIssuanceRecords, assertIssuanceEvents, readEducationIssuance, requireIssuanceScope, type EducationIssuanceScope } from './client.ts';
+import type { IssuanceExport, IssuanceQuery, IssuanceSnapshot } from './types.ts';
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const utf8 = (text: string) => new TextEncoder().encode(text);

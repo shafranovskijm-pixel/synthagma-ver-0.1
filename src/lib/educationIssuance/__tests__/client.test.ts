@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { actor,org,group,enrollment,request,uid,caps,hash,withdrawal,withdrawalAction,mutation } from "./fixtures";
+import { actor,org,group,enrollment,request,uid,caps,hash,withdrawal,withdrawalAction,mutation } from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true,session:vi.fn(),rpc:vi.fn(),response:null as any,after:null as null|(()=>void)}));
 vi.mock("@/utils/courseCache",()=>({captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock("@/integrations/supabase/client",()=>({supabase:{auth:{getSession:mock.session},rpc:mock.rpc}}));
-import { captureIssuanceScope, prepareEducationIssuanceMutation, readEducationIssuance } from "../client";
+import { captureIssuanceScope, prepareEducationIssuanceMutation, readEducationIssuance } from '../client.ts';
 const capture=()=>captureIssuanceScope(org,{kind:"organization"},()=>true);
 beforeEach(()=>{vi.clearAllMocks();mock.current=true;mock.after=null;mock.session.mockResolvedValue({data:{session:{user:{id:actor},access_token:"synthetic-token"}},error:null});
   mock.rpc.mockImplementation(()=>({setHeader:async()=>{mock.after?.();return {data:mock.response,error:null,status:200};}}));});
@@ -54,8 +54,8 @@ describe("controlled retained withdrawal boundary",()=>{
   });
 });
 
-import { issuedRecord,issueAction,issueMutation,preparation } from './fixtures';
-import { prepareEducationIssuanceArtifacts } from '../client';
+import { issuedRecord,issueAction,issueMutation,preparation } from './fixtures.ts';
+import { prepareEducationIssuanceArtifacts } from '../client.ts';
 describe('exact prepared artifact and frozen facts',()=>{
   it('cannot issue from technical completion or a template without an approved saved artifact',()=>{
     const action=issueAction();delete (action.items[0] as any).artifact;

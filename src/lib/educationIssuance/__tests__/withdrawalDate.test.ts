@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {withdrawalDateBounds} from '../withdrawalDate';
+import {withdrawalDateBounds} from '../withdrawalDate.ts';
 class LocalNextDay extends Date{getFullYear(){return 2026;}getMonth(){return 9;}getDate(){return 23;}}
 class LocalPreviousDay extends Date{getFullYear(){return 2026;}getMonth(){return 9;}getDate(){return 21;}}
 describe('withdrawal explicit effective date bounds',()=>{

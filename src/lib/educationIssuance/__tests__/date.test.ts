@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {issuanceUtcDateIso} from '../date';
+import {issuanceUtcDateIso} from '../date.ts';
 describe('issuance date uses the server UTC calendar',()=>{
  it('does not default to tomorrow after midnight in Vladivostok',()=>{expect(issuanceUtcDateIso(new Date('2026-10-24T01:30:00+10:00'))).toBe('2026-10-23');});
  it('uses the next UTC day before local midnight in a negative offset',()=>{expect(issuanceUtcDateIso(new Date('2026-10-23T23:30:00-07:00'))).toBe('2026-10-24');});

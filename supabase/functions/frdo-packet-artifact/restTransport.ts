@@ -10,7 +10,7 @@ const serviceNames=new Set(['uc_frdo_commit_freeze','uc_frdo_commit_correction',
 export class FrdoTransportError extends Error{
  constructor(readonly code:'AUTH_REQUIRED'|'ACCESS_DENIED'|'INVALID_REQUEST'|'SOURCE_UNAVAILABLE'|'DEPENDENCY_UNAVAILABLE'|'SOURCE_CHANGED'|'REVISION_CONFLICT'|'IDEMPOTENCY_CONFLICT'|'READINESS_BLOCKED'|'ARTIFACT_UNAVAILABLE'|'ILLEGAL_TRANSITION'|'RECEIPT_MISMATCH'|'TEMPLATE_CHANGED'|'FILE_GENERATION_FAILED'|'FRDO_PACKET_RETENTION_REVIEW_REQUIRED'){super(code);this.name='FrdoTransportError';}
 }
-const throwCode=(code:FrdoTransportError['code']):never=>{throw new FrdoTransportError(code);};
+function throwCode(code:FrdoTransportError['code']):never{throw new FrdoTransportError(code);}
 interface TransportOptions{
  supabaseUrl:string;publishableKey:string;serviceKey:string;originalBearer:string;
  fetch:typeof fetch;guard:CurrentGuard;donor:(stream:Stream)=>Promise<Uint8Array>;xml:Readonly<XmlRuntime>;now?:()=>number;

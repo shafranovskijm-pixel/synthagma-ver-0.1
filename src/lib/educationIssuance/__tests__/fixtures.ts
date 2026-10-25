@@ -1,4 +1,4 @@
-import type { IssuanceCapabilities, IssuanceMutation, WithdrawalBasis, WithdrawalState } from "../types";
+import type { IssuanceCapabilities, IssuanceMutation, WithdrawalBasis, WithdrawalState } from '../types.ts';
 export const uid=(n:number)=>"00000000-0000-4000-8000-"+n.toString().padStart(12,"0");
 export const actor=uid(1),org=uid(2),group=uid(3),course=uid(4),pupil=uid(5),enrollment=uid(6),request=uid(7);
 export const hash="a".repeat(64),stamp="2026-10-22T10:00:00Z";
@@ -16,7 +16,7 @@ export function mutation(replayed=false):IssuanceMutation{return {schema_version
   receipt:{request_id:request,action:"withdraw_enrollments",scope_hash:hash,payload_hash:hash,record_ids:[],enrollment_ids:[enrollment],event_ids:[uid(10)],applied_at:stamp,replayed},
   records:[],withdrawals:[withdrawal("withdrawn")]};}
 
-import type { IssuancePreparation } from "../types";
+import type { IssuancePreparation } from '../types.ts';
 export function eligibility(){
   const association={organization_id:org,group_id:group,enrollment_id:enrollment,user_id:pupil,course_id:course};
   const program_ref={enrollment_snapshot_id:uid(20),binding_id:uid(21),binding_revision:1,version_id:uid(22),snapshot_hash:hash,facts_hash:hash,file_document_id:uid(23),file_version_id:uid(24),file_review_id:uid(25)};
@@ -37,7 +37,7 @@ export function preparation(status:IssuancePreparation["items"][number]["status"
       render_input_hash:hash,artifact,final_record_id:status==="consumed"?uid(52):null}]});
 }
 
-export function issuedRecord():import('../types').IssuanceRecord {
+export function issuedRecord():import('../types.ts').IssuanceRecord {
   const prep=preparation('approved_unissued'),item=prep.items[0],artifact=item.artifact!,review=artifact.output_review!;
   const {output_review,...captured}=artifact;
   return {official:{id:uid(52),organization_id:org,enrollment_id:enrollment,user_id:pupil,course_id:course,group_id:group,reg_number:'1',document_number:'1',document_series:null,

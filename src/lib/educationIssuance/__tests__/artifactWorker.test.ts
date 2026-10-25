@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { actor,org,uid,preparation } from "./fixtures";
-import { issuancePreparationSchema } from "../contract";
+import { actor,org,uid,preparation } from './fixtures.ts';
+import { issuancePreparationSchema } from '../contract.ts';
 const mock=vi.hoisted(()=>({current:true,read:vi.fn(),session:vi.fn(),invoke:vi.fn(),rpc:vi.fn()}));
 vi.mock("@/utils/courseCache",()=>({captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock("@/integrations/supabase/client",()=>({supabase:{auth:{getSession:mock.session},functions:{invoke:mock.invoke},rpc:mock.rpc}}));
-vi.mock("../client",async original=>({...await original<typeof import("../client")>(),readEducationIssuance:mock.read}));
-import { captureIssuanceScope, artifactFinalRef } from "../client";
-import { prepareArtifactRender } from "../artifactWorker";
+vi.mock("../client",async original=>({...await original<typeof import('../client.ts')>(),readEducationIssuance:mock.read}));
+import { captureIssuanceScope, artifactFinalRef } from '../client.ts';
+import { prepareArtifactRender } from '../artifactWorker.ts';
 const scope=()=>captureIssuanceScope(org,{kind:"organization"},()=>true);
 const read=(value=preparation())=>({kind:"preparation",preparation:issuancePreparationSchema.parse(value)});
 const result=(request:any,value=preparation("rendered_unissued"))=>({data:{schema_version:1,...request,status:value.items[0].status==="consumed"?"consumed":"rendered_unissued",final_record_id:value.items[0].final_record_id,artifact:value.items[0].artifact},error:null});
