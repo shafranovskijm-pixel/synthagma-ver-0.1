@@ -19,7 +19,7 @@ const BOT_TOKEN = `123456789:${"b".repeat(35)}`;
 const subtle = webcrypto.subtle as SubtleCrypto;
 
 function env(values: Record<string, string | undefined>): EnvReader {
-  return (name) => values[name];
+  return (name: string) => values[name];
 }
 
 function expectContractError(action: () => unknown, code: string, status: number): void {

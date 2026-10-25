@@ -24,7 +24,7 @@ function dependencies(
     ...overrides,
   };
   return {
-    env: (name) => values[name],
+    env: (name: string) => values[name],
     fetch: fetchImpl,
     subtle,
   };

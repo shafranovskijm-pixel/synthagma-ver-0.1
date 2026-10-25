@@ -81,7 +81,7 @@ function fixture(options: Record<string, any> = {}) {
     },
   };
   const createAdmin = vi.fn(() => admin);
-  const handler = createMailingReportHandler({ env: (key) => env[key], createAdmin, newToken: () => `fixture-token-${++nextToken}` });
+  const handler = createMailingReportHandler({ env: (key: string) => env[key], createAdmin, newToken: () => `fixture-token-${++nextToken}` });
   const run = async (body: unknown = {}, settings: { headers?: Record<string, string>; method?: string; raw?: string } = {}) => {
     const method = settings.method ?? "POST";
     const response = await handler(new Request("https://example.invalid/local-fixture", {
