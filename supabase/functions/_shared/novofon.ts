@@ -7,7 +7,6 @@ import { crypto as stdCrypto } from "https://deno.land/std@0.224.0/crypto/mod.ts
 const CALL_API_BASE = "https://callapi-jsonrpc.novofon.ru/v4.0";
 const DATA_API_BASE = "https://dataapi-jsonrpc.novofon.ru/v2.0";
 const CLASSIC_API_BASE = "https://api.novofon.com";
-const CLASSIC_API_FALLBACK_BASE = "https://api.zadarma.com";
 
 export interface NovofonJsonRpcError {
   code?: number;
@@ -462,58 +461,67 @@ export async function novofonClassicRequest<T = unknown>(
   path: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  const candidates: Array<{ key: string; secret: string; label: string }> = [];
-  addClassicCandidate(candidates, Deno.env.get("NOVOFON_CLASSIC_API_KEY"), Deno.env.get("NOVOFON_CLASSIC_API_SECRET"), "classic");
-  addClassicCandidate(candidates, Deno.env.get("NOVOFON_API_KEY"), Deno.env.get("NOVOFON_API_SECRET"), "api_key");
+  try {
+    const candidates: Array<{ key: string; secret: string; label: string }> = [];
+    addClassicCandidate(candidates, Deno.env.get("NOVOFON_CLASSIC_API_KEY"), Deno.env.get("NOVOFON_CLASSIC_API_SECRET"), "classic");
+    addClassicCandidate(candidates, Deno.env.get("NOVOFON_API_KEY"), Deno.env.get("NOVOFON_API_SECRET"), "api_key");
 
-  // Classic REST API v1 (including /v1/webrtc/get_key/) uses
-  // Authorization: user_key:signature. In the current Novofon/Zadarma cabinet
-  // the user_key can be displayed as appid_..., so it is still valid here.
-  if (isAppId(Deno.env.get("NOVOFON_LOGIN"))) {
-    addClassicCandidate(candidates, Deno.env.get("NOVOFON_LOGIN"), Deno.env.get("NOVOFON_PASSWORD"), "login_appid");
-  }
-  if (isAppId(Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"))) {
-    addClassicCandidate(candidates, Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"), Deno.env.get("NOVOFON_PASSWORD"), "employee_appid");
-  }
-
-  if (!candidates.length) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
-
-  const requestParams = { ...params, format: "json" };
-  const paramsStr = buildParamsString(requestParams);
-  let lastError: Error | null = null;
-  for (const baseUrl of [CLASSIC_API_BASE, CLASSIC_API_FALLBACK_BASE]) {
-    const url = method === "GET" && paramsStr
-      ? `${baseUrl}${path}?${paramsStr}`
-      : `${baseUrl}${path}`;
-
-    for (const candidate of candidates) {
-      const md5 = await md5Hex(paramsStr);
-      const hex = await hmacSha1Hex(candidate.secret, `${path}${paramsStr}${md5}`);
-      const signature = encodeBase64(new TextEncoder().encode(hex));
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          Authorization: `${candidate.key}:${signature}`,
-          Accept: "application/json",
-          ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-        },
-        body: method === "POST" ? paramsStr : undefined,
-      });
-
-      const text = await res.text();
-      let json: any;
-      try { json = JSON.parse(text); } catch { json = { raw: text }; }
-
-      if (res.ok && json?.status !== "error") return json as T;
-
-      const message = json?.message || text || `HTTP ${res.status}`;
-      lastError = new Error(`Novofon ${candidate.label} ${new URL(baseUrl).hostname} HTTP ${res.status}: ${message}`);
-      if (!isClassicRecoverableFailure(res.status, message)) throw lastError;
+    // Classic REST API v1 (including /v1/webrtc/get_key/) uses
+    // Authorization: user_key:signature. In the current Novofon/Zadarma cabinet
+    // the user_key can be displayed as appid_..., so it is still valid here.
+    if (isAppId(Deno.env.get("NOVOFON_LOGIN"))) {
+      addClassicCandidate(candidates, Deno.env.get("NOVOFON_LOGIN"), Deno.env.get("NOVOFON_PASSWORD"), "login_appid");
     }
-  }
+    if (isAppId(Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"))) {
+      addClassicCandidate(candidates, Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"), Deno.env.get("NOVOFON_PASSWORD"), "employee_appid");
+    }
 
-  throw lastError || new Error("Novofon classic API request failed");
+    if (!candidates.length) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
+
+    const requestParams = { ...params, format: "json" };
+    const paramsStr = buildParamsString(requestParams);
+    let lastError: Error | null = null;
+    for (const baseUrl of [CLASSIC_API_BASE]) {
+      const url = method === "GET" && paramsStr
+        ? `${baseUrl}${path}?${paramsStr}`
+        : `${baseUrl}${path}`;
+      if (new URL(url).origin !== CLASSIC_API_BASE) {
+        throw new Error("Novofon Classic API request failed");
+      }
+
+      for (const candidate of candidates) {
+        const md5 = await md5Hex(paramsStr);
+        const hex = await hmacSha1Hex(candidate.secret, `${path}${paramsStr}${md5}`);
+        const signature = encodeBase64(new TextEncoder().encode(hex));
+
+        const res = await fetch(url, {
+          method,
+          redirect: "error",
+          headers: {
+            Authorization: `${candidate.key}:${signature}`,
+            Accept: "application/json",
+            ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+          },
+          body: method === "POST" ? paramsStr : undefined,
+        });
+
+        const text = await res.text();
+        let json: any;
+        try { json = JSON.parse(text); } catch { json = { raw: text }; }
+
+        if (res.ok && json?.status !== "error") return json as T;
+
+        const message = json?.message || text || `HTTP ${res.status}`;
+        lastError = new Error("Novofon Classic API request failed");
+        if (!isClassicRecoverableFailure(res.status, message)) throw lastError;
+      }
+    }
+
+    throw lastError || new Error("Novofon classic API request failed");
+  } catch {
+    // Do not project provider payload, request parameters or credential-derived errors.
+    throw new Error("Novofon Classic API request failed");
+  }
 }
 
 function addClassicCandidate(
