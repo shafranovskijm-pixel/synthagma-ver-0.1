@@ -391,7 +391,7 @@ export function useDocumentsTab(
         setActCustomerPosition((data as any).director_position || "Руководитель");
         toast.success("Организация найдена", { description: data.name });
       } else {
-        const { data: dadataResult } = await supabase.functions.invoke("dadata-company", { body: { inn } });
+        const { data: dadataResult } = await supabase.functions.invoke("dadata-company", { body: { inn, organizationId } });
         if (dadataResult?.success) {
           setActCustomerName(dadataResult.company.shortName || dadataResult.company.name || "");
           setActCustomerInn(dadataResult.company.inn || inn);

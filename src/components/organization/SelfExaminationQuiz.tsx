@@ -60,7 +60,7 @@ function SelfExaminationYearEntry(props:SelfExaminationQuizProps&{onDirtyChange:
  return <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl"><div className="flex gap-3 items-center pr-6"><label htmlFor="self-year" className="text-sm">Отчётный год</label><select id="self-year" value={year} disabled={dirty||props.isSubmitting} onChange={e=>setYear(Number(e.target.value))} className="rounded-xl border bg-background p-2">{Array.from({length:new Date().getUTCFullYear()-1999},(_,i)=>new Date().getUTCFullYear()-i).map(y=><option key={y} value={y}>{y}</option>)}</select>{dirty&&<span className="text-xs text-muted-foreground">Сохраните или сбросьте изменения перед сменой года.</span>}</div><SelfExaminationEntry key={year} {...props} year={year} onDirty={next=>{setDirty(next);props.onDirtyChange(next);}}/></DialogContent>;
 }
 function SelfExaminationEntry({organizationId,year,onSubmit,isSubmitting,organizationData,onDirty}:SelfExaminationQuizProps&{year:number;onDirty:(dirty:boolean)=>void}) {
- const model=useSelfExaminationDraft(organizationId,year),quiz=useSelfExaminationQuiz(organizationData);
+ const model=useSelfExaminationDraft(organizationId,year),quiz=useSelfExaminationQuiz(organizationData,organizationId);
  const[metadata,setMetadata]=useState<SelfExaminationDraftInput>(()=>emptySelfExaminationDraft(year)),[metaDirty,setMetaDirty]=useState(false),[localError,setLocalError]=useState<string|null>(null);
  const loaded=useRef<string|null>(null),dirty=quiz.dirty||metaDirty;
  useLayoutEffect(()=>{onDirty(dirty||model.saving||model.uncertain);},[dirty,model.saving,model.uncertain]);
@@ -106,7 +106,7 @@ function SelfExaminationEntry({organizationId,year,onSubmit,isSubmitting,organiz
           </DialogDescription>
         </DialogHeader>
 
-        <p className="text-xs text-muted-foreground">Период: 01.01.{year}–31.12.{year}. Ориентир размещения за этот год: 20.04.{year+1}. Применимость проверяет центр.</p>
+        <p className="text-xs text-muted-foreground">Период: 01.01.{year}–31.12.{year}. Срок размещения проверьте в календаре центра после проверки нормативного основания.</p>
         {(model.error||localError)&&<p role="alert" className="text-sm text-destructive">{model.error||localError}</p>}
         <div className="flex gap-2 flex-wrap"><Button variant="outline" disabled={blocked||isSubmitting} onClick={save}>{model.saving?'Сохранение...':model.uncertain?'Повторить то же сохранение':'Сохранить черновик'}</Button><Button variant="ghost" disabled={model.saving||isSubmitting} onClick={reset}>Загрузить сохранённый / сбросить правки</Button><span className="text-xs self-center text-muted-foreground">{model.draft?'Версия '+model.draft.revision+' · '+(dirty?'Есть несохранённые изменения':'Сохранено'):model.loading?'Загрузка...':model.loaded?'Черновик ещё не сохранён':'Сохранённые данные пока не подтверждены'}</span></div>
         {/* Progress */}

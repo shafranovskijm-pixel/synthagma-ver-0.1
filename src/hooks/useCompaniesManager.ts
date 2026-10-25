@@ -255,7 +255,7 @@ export function useCompaniesManager(organizationId: string) {
     setIsSearchingDadata(true);
     try {
       const { data, error } = await safeInvoke<any>("dadata-company", {
-        body: { inn }
+        body: { inn, organizationId }
       });
 
       if (error) throw error;
@@ -296,7 +296,7 @@ export function useCompaniesManager(organizationId: string) {
     setIsSearchingDadataEdit(true);
     try {
       const { data, error } = await safeInvoke<DadataCompanyLookupResult>("dadata-company", {
-        body: { inn },
+        body: { inn, organizationId },
       });
 
       if (error) throw error;

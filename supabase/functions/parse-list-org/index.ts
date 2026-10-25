@@ -106,12 +106,12 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<string>
   return (data.html as string) || (data.data?.html as string) || '';
 }
 
-async function enrichWithDadata(inn: string, supabaseUrl: string, supabaseKey: string): Promise<any | null> {
+async function enrichWithDadata(inn: string, supabaseUrl: string, originalAuthorization: string): Promise<any | null> {
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/dadata-company`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${supabaseKey}`,
+        'Authorization': originalAuthorization,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ inn }),
@@ -232,7 +232,7 @@ serve(async (req) => {
         skipped++;
         continue;
       }
-      const dadata = await enrichWithDadata(c.inn, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const dadata = await enrichWithDadata(c.inn, SUPABASE_URL, req.headers.get('Authorization')!);
       await sleep(350);
 
       const row: any = {

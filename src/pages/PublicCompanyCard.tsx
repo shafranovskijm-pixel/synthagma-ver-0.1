@@ -54,7 +54,7 @@ export default function PublicCompanyCard() {
   const { token } = useParams<{ token: string }>();
   const { requisites, loading: requisitesLoading, error: requisitesError, refresh: refreshRequisites } = useCompanyCardOperatorRequisites();
   const [valid, setValid] = useState<boolean | null>(null);
-  const [address, setAddress] = useState<string | null>(null);
+  const address = requisites?.address || null;
   const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,11 +67,6 @@ export default function PublicCompanyCard() {
 
       if (data?.setting_value === token) {
         setValid(true);
-        // Try to get address from DaData
-        try {
-          const { data: dd } = await supabase.functions.invoke('dadata-company', { body: { inn: KNOWN_DATA.inn } });
-          if (dd?.company?.address) setAddress(dd.company.address);
-        } catch { /* ignore */ }
       } else {
         setValid(false);
       }
