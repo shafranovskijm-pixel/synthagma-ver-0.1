@@ -17,10 +17,13 @@ export interface XmlDocument {
 }
 export interface XmlRuntime { parse(text: string): XmlDocument }
 
+type DOMParserLike = new () => { parseFromString(text: string, mimeType: string): unknown };
+
 /** Selected explicitly by each operation. Never reassign globalThis.DOMParser. */
 export const browserXmlRuntime: XmlRuntime = Object.freeze({
   parse(text: string): XmlDocument {
-    if (typeof DOMParser === 'undefined') return refuse('DEPENDENCY_UNAVAILABLE');
-    return new DOMParser().parseFromString(text, 'application/xml');
+    const ParserImpl = (globalThis as { DOMParser?: DOMParserLike }).DOMParser;
+    if (ParserImpl === undefined) return refuse('DEPENDENCY_UNAVAILABLE');
+    return new ParserImpl().parseFromString(text, 'application/xml') as XmlDocument;
   },
 });
