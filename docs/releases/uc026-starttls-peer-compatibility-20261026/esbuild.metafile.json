@@ -1,0 +1,99 @@
+{
+  "inputs": {
+    "supabase/functions/_shared/uc-publication-url.ts": {
+      "bytes": 1109,
+      "imports": [],
+      "format": "esm"
+    },
+    "supabase/functions/_shared/uc-publication-http.ts": {
+      "bytes": 16192,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/uc-publication-url.ts",
+          "kind": "import-statement",
+          "original": "./uc-publication-url.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/publication-accessibility/worker.ts": {
+      "bytes": 5272,
+      "imports": [
+        {
+          "path": "supabase/functions/_shared/uc-publication-http.ts",
+          "kind": "import-statement",
+          "original": "../_shared/uc-publication-http.ts"
+        },
+        {
+          "path": "supabase/functions/_shared/uc-publication-url.ts",
+          "kind": "import-statement",
+          "original": "../_shared/uc-publication-url.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/publication-accessibility/http.ts": {
+      "bytes": 3175,
+      "imports": [
+        {
+          "path": "supabase/functions/publication-accessibility/worker.ts",
+          "kind": "import-statement",
+          "original": "./worker.ts"
+        }
+      ],
+      "format": "esm"
+    },
+    "supabase/functions/publication-accessibility/runtime-source.ts": {
+      "bytes": 1891,
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "supabase/functions/publication-accessibility/http.ts",
+          "kind": "import-statement",
+          "original": "./http.ts"
+        },
+        {
+          "path": "supabase/functions/publication-accessibility/worker.ts",
+          "kind": "import-statement",
+          "original": "./worker.ts"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "../output/publication-accessibility/runtime.bundle.js": {
+      "imports": [
+        {
+          "path": "npm:@supabase/supabase-js@2.90.1",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "supabase/functions/publication-accessibility/runtime-source.ts",
+      "inputs": {
+        "supabase/functions/publication-accessibility/runtime-source.ts": {
+          "bytesInOutput": 1139
+        },
+        "supabase/functions/_shared/uc-publication-url.ts": {
+          "bytesInOutput": 721
+        },
+        "supabase/functions/_shared/uc-publication-http.ts": {
+          "bytesInOutput": 7153
+        },
+        "supabase/functions/publication-accessibility/worker.ts": {
+          "bytesInOutput": 2844
+        },
+        "supabase/functions/publication-accessibility/http.ts": {
+          "bytesInOutput": 2034
+        }
+      },
+      "bytes": 13892
+    }
+  }
+}

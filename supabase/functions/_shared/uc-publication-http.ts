@@ -7,7 +7,7 @@ export interface PublicationConnection {
   read(buffer: Uint8Array): Promise<number | null>;
   write(buffer: Uint8Array): Promise<number>;
   close(): void;
-  remoteAddr: { transport: string; hostname?: string; port?: number };
+  remoteAddr: { transport?: string; hostname?: string; port?: number };
   handshake?: () => Promise<{ alpnProtocol: string | null }>;
 }
 export interface PublicationNetwork {
@@ -122,6 +122,20 @@ export function parsePublicPublicationResponse(raw: Uint8Array): { status: numbe
   return { status: parsed.status, headers: parsed.headers, body };
 }
 
+
+/** deno_net startTls returns its native IpAddr without the JS connectTls transport marker.
+ * Accept only that exact data shape after upgrading the already checked TCP peer.
+ * The real-hostname TLS handshake and the independent peer checks below remain mandatory.
+ */
+function isPinnedNativeStartTlsPeer(peer: unknown, tcpPeer: PublicationConnection["remoteAddr"], address: string): boolean {
+  if (tcpPeer.transport !== "tcp" || tcpPeer.hostname !== address || tcpPeer.port !== 443) return false;
+  if (!peer || typeof peer !== "object" || Object.getPrototypeOf(peer) !== Object.prototype) return false;
+  const keys = Reflect.ownKeys(peer);
+  if (keys.length !== 2 || !keys.includes("hostname") || !keys.includes("port")) return false;
+  const hostname = Object.getOwnPropertyDescriptor(peer, "hostname"), port = Object.getOwnPropertyDescriptor(peer, "port");
+  return Boolean(hostname && "value" in hostname && hostname.value === address && port && "value" in port && port.value === 443);
+}
+
 function defaultNetwork(): PublicationNetwork {
   const runtime = (globalThis as unknown as { Deno?: PublicationNetwork }).Deno;
   if (!runtime || typeof runtime.resolveDns !== "function" || typeof runtime.connect !== "function" || typeof runtime.startTls !== "function") return unavailable();
@@ -166,7 +180,7 @@ export async function observePublicPublication(input: { publicUrl: string; conte
       if (tcp.remoteAddr.hostname !== address) return unsafe("tcp_hostname");
       if (tcp.remoteAddr.port !== 443) return unsafe("tcp_port");
       const tls = await hold(network.startTls(tcp, { hostname: url.hostname, alpnProtocols: ["http/1.1"] }));
-      if (tls.remoteAddr.transport !== "tcp") return unsafe("tls_transport");
+      if (tls.remoteAddr.transport !== "tcp" && !isPinnedNativeStartTlsPeer(tls.remoteAddr, tcp.remoteAddr, address)) return unsafe("tls_transport");
       if (tls.remoteAddr.hostname !== address) return unsafe("tls_hostname");
       if (tls.remoteAddr.port !== 443) return unsafe("tls_port");
       if (typeof tls.handshake !== "function") return unsafe("tls_handshake_missing");

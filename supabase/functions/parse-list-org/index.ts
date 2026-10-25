@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logExternalOperation } from "../_shared/external-operation-observability.ts";
+import { AccessError, accessErrorResponse, checked } from "../_shared/privileged-access.ts";
+import { requireCompanyEnrichmentAccess } from "./authorization.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,7 +101,7 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<string>
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(`Firecrawl ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
+    throw new Error("FIRECRAWL_REQUEST_FAILED");
   }
   return (data.html as string) || (data.data?.html as string) || '';
 }
@@ -115,13 +117,13 @@ async function enrichWithDadata(inn: string, supabaseUrl: string, supabaseKey: s
       body: JSON.stringify({ inn }),
     });
     if (!res.ok) {
-      console.warn(`[dadata-company] ${inn} -> ${res.status}`);
+      console.warn("[dadata-company] enrichment request was unsuccessful");
       return null;
     }
     const data = await res.json();
     return data?.success ? data.company : null;
   } catch (e) {
-    console.warn(`[dadata-company] ${inn} error:`, (e as Error).message);
+    console.warn("[dadata-company] enrichment request failed");
     return null;
   }
 }
@@ -142,6 +144,7 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    await requireCompanyEnrichmentAccess(req, supabase);
 
     const { searchUrl, pages = 1 } = await req.json();
     if (!searchUrl || typeof searchUrl !== 'string') {
@@ -169,7 +172,7 @@ serve(async (req) => {
         console.log(`[parse-list-org] page ${p} parsed ${parsed.length}`);
         allParsed.push(...parsed);
       } catch (e) {
-        errors.push(`page ${p}: ${(e as Error).message}`);
+        errors.push(`page ${p}: Не удалось получить страницу.`);
       }
       if (p < pagesNum) await sleep(1500);
     }
@@ -214,7 +217,7 @@ serve(async (req) => {
               });
             }
           } catch (e) {
-            errors.push(`dadata okved ${okved}: ${(e as Error).message}`);
+            errors.push("dadata: Не удалось получить организации.");
           }
           await sleep(400);
         }
@@ -261,24 +264,27 @@ serve(async (req) => {
         parsed_at: new Date().toISOString(),
       };
 
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('sales_companies_db')
         .select('id')
         .eq('inn', c.inn)
+        .is('organization_id', null)
         .maybeSingle();
+      checked({ data: existing, error: existingError });
 
       if (existing) {
         const { error: upErr } = await supabase
           .from('sales_companies_db')
           .update(row)
-          .eq('id', existing.id);
-        if (upErr) errors.push(`update ${c.inn}: ${upErr.message}`);
+          .eq('id', existing.id)
+          .is('organization_id', null);
+        if (upErr) errors.push("update: Не удалось сохранить организацию.");
         else updated++;
       } else {
         const { error: inErr } = await supabase
           .from('sales_companies_db')
           .insert(row);
-        if (inErr) errors.push(`insert ${c.inn}: ${inErr.message}`);
+        if (inErr) errors.push("insert: Не удалось сохранить организацию.");
         else inserted++;
       }
       enrichedRows.push(row);
@@ -291,7 +297,8 @@ serve(async (req) => {
       errors: errors.slice(0, 20),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown';
+    if (error instanceof AccessError) return accessErrorResponse(error, corsHeaders);
+    const message = "Не удалось обработать запрос организаций. Повторите попытку.";
     console.error('[parse-list-org] fatal:', message);
     return new Response(JSON.stringify({ error: message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "kind": "uc026_pinned_native_starttls_peer_compatibility_runtime",
+  "function": "publication-accessibility",
+  "esbuild": "0.25.12",
+  "entry": "supabase/functions/publication-accessibility/runtime-source.ts",
+  "entry_sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c",
+  "output": {
+    "path": "runtime.bundle.js",
+    "bytes": 13892,
+    "sha256": "a01ba6c8234a2f6a03ac4a9e4ace82e4e1945fa98d2315ea91e78e4b498448c4"
+  },
+  "source_hold_sha256": "f63cef1170f9cd8326f50e38f8c638b79974d65b22cc250c62eb7b65f8b71b3e",
+  "sources": [
+    {
+      "id": "supabase/functions/_shared/uc-publication-http.ts",
+      "bytes": 16192,
+      "sha256": "b0f4ac985c70459a2dca2053a37c4c2f0117af049f48214bd775d3a09cb4e3c9"
+    },
+    {
+      "id": "supabase/functions/_shared/uc-publication-url.ts",
+      "bytes": 1109,
+      "sha256": "126293f643aada5d2245c37dc3d3dc924c81a5a447fe4cb35be026c4b25301d0"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/http.ts",
+      "bytes": 3175,
+      "sha256": "f97cf4a9cd5b84383bf4eeb17a6d04da51058f4833b8f90d4570c00fada380a6"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/runtime-source.ts",
+      "bytes": 1891,
+      "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/worker.ts",
+      "bytes": 5272,
+      "sha256": "15e95181b06ae21c76a1670dc0a01b7eeedde0c58aee55d7d91beeb1107ebc18"
+    }
+  ],
+  "external_imports": [
+    "npm:@supabase/supabase-js@2.90.1"
+  ],
+  "contains_external_imports": true,
+  "external_network_at_build": false,
+  "native_deno_dependencies_resolved": false,
+  "provider_deployed": false,
+  "working_site_accepted": false,
+  "legal_approval": false,
+  "jwt_deployment": {
+    "name": "publication-accessibility",
+    "sourceEntryPresent": false,
+    "sourceVerifyJWT": null,
+    "explicitNativeDeployVerifyJWT": true,
+    "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+    "ownUnauthenticatedPOST": {
+      "status": 401,
+      "code": "ACCESS_DENIED or existing AccessError JSON"
+    },
+    "ownOptionsStatus": 204,
+    "actualGatewaySettingVerified": false,
+    "liveAuthenticatedQARequired": true,
+    "anonymousGateway401IsNotHandlerVersionProof": true
+  }
+}

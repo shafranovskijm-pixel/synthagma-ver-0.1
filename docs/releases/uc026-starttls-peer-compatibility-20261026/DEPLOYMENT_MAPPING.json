@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "kind": "uc026_pinned_native_starttls_peer_compatibility_release",
+  "atUtc": "2026-10-25T17:55:42.893Z",
+  "base": {
+    "commit": "022fae46556fa8fcde7be7b97b4ad4bebcc1e83d",
+    "tree": "782ffd40fe649083bd718b538fdc88bdc254328d",
+    "rootTreeSHA256": "4eb959a04a3511f035fe146dae26d87ad3eaaf7b2752411f15d9cee85cd297f8",
+    "refreshCurrentMainBeforeRelease": true
+  },
+  "function": "publication-accessibility",
+  "entry": "supabase/functions/publication-accessibility/index.ts",
+  "source": {
+    "path": "supabase/functions/_shared/uc-publication-http.ts",
+    "bytes": 16192,
+    "sha256": "b0f4ac985c70459a2dca2053a37c4c2f0117af049f48214bd775d3a09cb4e3c9",
+    "beforeSha256": "abe1b5269292b417fcc6bb7ab603dd954c17cb7729c8cbc0d1f5bde86d2a08e4"
+  },
+  "runtime": {
+    "path": "supabase/functions/publication-accessibility/runtime.bundle.js",
+    "bytes": 13892,
+    "sha256": "a01ba6c8234a2f6a03ac4a9e4ace82e4e1945fa98d2315ea91e78e4b498448c4",
+    "editableEntry": "supabase/functions/publication-accessibility/runtime-source.ts",
+    "entrySHA256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c",
+    "exactFiveInputs": [
+      {
+        "id": "supabase/functions/_shared/uc-publication-http.ts",
+        "bytes": 16192,
+        "sha256": "b0f4ac985c70459a2dca2053a37c4c2f0117af049f48214bd775d3a09cb4e3c9"
+      },
+      {
+        "id": "supabase/functions/_shared/uc-publication-url.ts",
+        "bytes": 1109,
+        "sha256": "126293f643aada5d2245c37dc3d3dc924c81a5a447fe4cb35be026c4b25301d0"
+      },
+      {
+        "id": "supabase/functions/publication-accessibility/http.ts",
+        "bytes": 3175,
+        "sha256": "f97cf4a9cd5b84383bf4eeb17a6d04da51058f4833b8f90d4570c00fada380a6"
+      },
+      {
+        "id": "supabase/functions/publication-accessibility/runtime-source.ts",
+        "bytes": 1891,
+        "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+      },
+      {
+        "id": "supabase/functions/publication-accessibility/worker.ts",
+        "bytes": 5272,
+        "sha256": "15e95181b06ae21c76a1670dc0a01b7eeedde0c58aee55d7d91beeb1107ebc18"
+      }
+    ],
+    "externalImports": [
+      "npm:@supabase/supabase-js@2.90.1"
+    ]
+  },
+  "preservation": {
+    "sourceChanges": 3,
+    "thinIndex": {
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4",
+      "changed": false
+    },
+    "config": {
+      "bytes": 6546,
+      "sha256": "531dcd0618863e7e9c4bc6e5dfa2fb7ceb2c700b08cc0e631f77335fb52a06f6",
+      "changed": false
+    },
+    "gatewayJWT": "Preserve existing publication-accessibility native setting/default true. No config/JWT/handler/worker/SQL change; actual provider setting and hosted dependency resolution are not proven by this local package.",
+    "sameNumericPinnedTCPBeforeAndAfter": true,
+    "exactNativeOwnHostnamePortShapeOnly": true,
+    "originalTLSHostnameAndCertificateOptionsUnchanged": true,
+    "awaitedHandshakeBeforeAnyHttpWrite": true,
+    "explicitOtherTransportAndUnknownShapesDenied": true,
+    "persistedObservationAndSQLSchemaUnchanged": true,
+    "noUserInterfaceOrDataChanges": true,
+    "oldHistoricalDocsUntouched": true,
+    "noNewFilesInNativeFolderExceptExistingBundleOverwrite": true
+  },
+  "primaryEvidence": {
+    "upstreamEdgeCommit": "9198a5179776a7ceb8deb40cc3ea415f5f92cacd",
+    "upstreamCargoCrate": "deno_net0.174.0",
+    "DenoImplementationTag": "v2.1.4",
+    "actualHostedVersion": "UNKNOWN",
+    "actualCloudPeerValue": "UNKNOWN; only closed tls_transport diagnostic was observed before this release",
+    "sources": [
+      {
+        "url": "https://raw.githubusercontent.com/supabase/edge-runtime/9198a5179776a7ceb8deb40cc3ea415f5f92cacd/ext/runtime/js/denoOverrides.js",
+        "fact": "Direct upstream TLS binding"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/denoland/deno/v2.1.4/ext/net/02_tls.js",
+        "fact": "startTls returns op IpAddr without connectTls transport decoration"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/denoland/deno/v2.1.4/ext/net/ops_tls.rs",
+        "fact": "Consumes same TcpStreamResource and uses peer_addr/original hostname TLS config and real handshake"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/denoland/deno/v2.1.4/ext/net/ops.rs",
+        "fact": "IpAddr serialized hostname/port fields"
+      }
+    ],
+    "savedSourceProofSHA256": "de0295b112d906270b3878a64dcc15109a722489e83a76fdc9c953d5ecb55017"
+  },
+  "actualLocalEvidence": {
+    "affected12": {
+      "receiptSHA256": "a1753e9271f39aa5621e5c99901b95a10282cef1abfb608a974ec7341b2ebbbb",
+      "result": "PASS",
+      "passed": 12,
+      "pid": 36752,
+      "naturalExit0": true,
+      "freshOwnedEmpty": true,
+      "sourceRuntimeDrift": [],
+      "full193Packages4445CodeExact": true
+    },
+    "firstFixtureFailurePreserved": {
+      "receiptSHA256": "794ad874a52b5ee38a8d77d0050fc6385b4e34064f82cbe44970fd61d335b237",
+      "passed": 0,
+      "failed": 12,
+      "cause": "Reserved .example fixture hostname refused before TCP/TLS; product/URL guard stayed unchanged. Only4host literals and2receipt descriptive counts corrected in successor."
+    },
+    "old41RerunCount": 0,
+    "API": {
+      "receiptSHA256": "e4e5e6c169660df3d9f954a6dc42e994eebc79415b57366ca2c02bb16760344c",
+      "oneBuildCall": true,
+      "pid": 29768,
+      "naturalExit0": true,
+      "freshOwnedEmpty": true,
+      "inputCount": 5,
+      "outputCount": 4,
+      "drift": []
+    }
+  },
+  "nativeAndLive": {
+    "deployed": false,
+    "providerRuntimeVersionKnown": false,
+    "realCertificateHandshakeTestedLocally": false,
+    "workingSiteAccepted": false,
+    "requiredNext": "Root releases exact source/bundle, preserves current gateway settings, then performs one normal new UI publication check. Do not replay old worker requests or run raw probes."
+  }
+}
