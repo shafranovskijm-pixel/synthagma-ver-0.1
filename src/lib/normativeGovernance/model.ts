@@ -35,6 +35,13 @@ export interface ManifestImpact {
   templateCoverage: "explicit_metadata_only_custom_templates_unmapped";
   existingDecisionsPreserved: true;
 }
+function impactSourceIds(requirement: NormativeManifest["requirements"][number]): string[] {
+  const payload = JSON.parse(requirement.payloadJson) as { retention?: unknown } | null;
+  const retention = payload?.retention;
+  const sourceId = retention && typeof retention === "object" && !Array.isArray(retention)
+    ? (retention as Record<string, unknown>).sourceId : undefined;
+  return typeof sourceId === "string" ? [...requirement.sourceIds, sourceId] : requirement.sourceIds;
+}
 export function manifestImpact(before: NormativeManifest | null, after: NormativeManifest): ManifestImpact {
   const priorSources = new Map(before?.sources.map(source => [source.id, source.sha256]) ?? []);
   const sources = new Map(after.sources.map(source => [source.id, source.sha256]));
@@ -44,7 +51,7 @@ export function manifestImpact(before: NormativeManifest | null, after: Normativ
   const changedRequirementIds = [...new Set([...priorRequirements.keys(), ...requirements.keys()])]
     .filter(id => priorRequirements.get(id)?.sha256 !== requirements.get(id)?.sha256).sort();
   const affectedRequirementIds = [...new Set([...changedRequirementIds, ...[...priorRequirements.values(), ...requirements.values()]
-    .filter(requirement => requirement.sourceIds.some(id => changedSourceIds.includes(id))).map(requirement => requirement.id)])].sort();
+    .filter(requirement => impactSourceIds(requirement).some(id => changedSourceIds.includes(id))).map(requirement => requirement.id)])].sort();
   return { changedSourceIds, changedRequirementIds, affectedRequirementIds,
     templateCoverage: "explicit_metadata_only_custom_templates_unmapped", existingDecisionsPreserved: true };
 }
