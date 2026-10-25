@@ -14,13 +14,30 @@ interface FilePreviewDialogProps {
   allowDownload?: boolean;
 }
 
-export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileType, allowDownload = true }: FilePreviewDialogProps) {
+export function FilePreviewDialog(props: FilePreviewDialogProps) {
+  // A new file owns a new loading lifecycle; old frame events cannot update it.
+  const fileKey = JSON.stringify([props.fileUrl, props.fileName, props.fileType]);
+  return <FilePreviewContent key={fileKey} {...props} />;
+}
+
+function FilePreviewContent({ open, onOpenChange, fileUrl, fileName, fileType, allowDownload = true }: FilePreviewDialogProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [previewFailed, setPreviewFailed] = useState(false);
   useEffect(() => { setIsLoading(true); setPreviewFailed(false); }, [open, fileUrl]);
 
   const preview = courseDocumentPreview(fileUrl, fileType, [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
   const canPreview = preview.previewUrl !== null && !previewFailed;
+
+  useEffect(() => {
+    if (!open || !canPreview || !isLoading) return;
+    let current = true;
+    const timer = setTimeout(() => {
+      if (!current) return;
+      setIsLoading(false);
+      setPreviewFailed(true);
+    }, 15_000);
+    return () => { current = false; clearTimeout(timer); };
+  }, [open, canPreview, isLoading]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,7 +83,7 @@ export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileT
               <p className="text-muted-foreground text-center">
                 {preview.mode === "direct_only" ? "Откройте документ в новой вкладке или скачайте его." : <>Предпросмотр недоступен для файлов типа <strong>{fileType?.toUpperCase() || "—"}</strong></>}
               </p>
-              {preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer">
+              {allowDownload && preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer">
                 <Button className="gap-2">
                   <ExternalLink className="w-4 h-4" />
                   Открыть файл
