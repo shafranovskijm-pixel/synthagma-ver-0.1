@@ -1,3 +1,5 @@
+import {requireTelephonyActor,telephonyProviderMessage} from "../_shared/telephony-authorization.ts";
+import {accessErrorResponse} from "../_shared/privileged-access.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -28,18 +30,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return json({ error: "auth required" }, 401);
-    }
-
-    const supabase = createClient(
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } },
     );
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) return json({ error: "invalid auth" }, 401);
+    const actor = await requireTelephonyActor(req, admin, header => createClient(
+      Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {global:{headers:{Authorization:header}},auth:{autoRefreshToken:false,persistSession:false}},
+    ), true);
+    const user = {id:actor.userId};
 
     const login = Deno.env.get("NOVOFON_WEBRTC_SIP_LOGIN")?.trim() || buildConfiguredSipLogin();
     const fallbackPassword = Deno.env.get("NOVOFON_WEBRTC_SIP_PASSWORD") || Deno.env.get("NOVOFON_SIP_PASSWORD");
@@ -81,7 +81,7 @@ serve(async (req) => {
       if (!fallbackPassword || !wss) {
         return json({
           error: "webrtc_not_available",
-          message: webrtcError instanceof Error ? webrtcError.message : String(webrtcError),
+          message: telephonyProviderMessage(webrtcError),
         }, 200);
       }
 
@@ -93,11 +93,11 @@ serve(async (req) => {
         password: fallbackPassword,
         domain,
         wss,
-        warning: webrtcError instanceof Error ? webrtcError.message : String(webrtcError),
+        warning: telephonyProviderMessage(webrtcError),
       });
     }
   } catch (e) {
-    return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);
+    return accessErrorResponse(e, corsHeaders);
   }
 });
 

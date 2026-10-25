@@ -1,7 +1,9 @@
+import {requireTelephonyActor,requireVisibleTelephonyLead,telephonyProviderMessage} from "../_shared/telephony-authorization.ts";
+import {accessErrorResponse,AccessError} from "../_shared/privileged-access.ts";
+import {readProviderOperationObject} from "../_shared/provider-operation-access.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  describeNovofonError,
   getConfiguredOperatorNumber,
   getConfiguredSipLogin,
   getConfiguredVirtualPhoneNumber,
@@ -60,28 +62,23 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "auth required" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabaseAuth = createClient(
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } },
     );
-    const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "invalid auth" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const actor = await requireTelephonyActor(req, admin, header => createClient(
+      Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {global:{headers:{Authorization:header}},auth:{autoRefreshToken:false,persistSession:false}},
+    ), true);
+    const user = {id:actor.userId};
 
-    const body = await req.json();
-    const { to_number, lead_id, company_inn, company_name, from_sip, operator_number, is_test } = body ?? {};
-    if (!to_number) {
+    const body = await readProviderOperationObject(req);
+    const { to_number, lead_id, from_sip, operator_number, is_test } = body;
+    const lead = await requireVisibleTelephonyLead(actor, lead_id);
+    const company_inn = lead?.inn ?? (typeof body.company_inn === 'string' ? body.company_inn.slice(0,12) : null);
+    const company_name = lead?.org_name ?? (typeof body.company_name === 'string' ? body.company_name.slice(0,256) : null);
+    if (typeof to_number !== "string" || !to_number.trim() || to_number.length > 64 || (from_sip != null && (typeof from_sip !== "string" || from_sip.length > 128)) || (operator_number != null && (typeof operator_number !== "string" || operator_number.length > 64))) {
       return new Response(JSON.stringify({ error: "to_number required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -95,6 +92,7 @@ serve(async (req) => {
     }
 
     const to = normalizeNovofonPhone(to_number);
+    if (to.length < 7 || to.length > 15) return accessErrorResponse(new AccessError(400, "Некорректный номер телефона"), corsHeaders);
     const operator = normalizeNovofonPhone(operator_number || from_sip || getConfiguredOperatorNumber());
     if (!operator) {
       return new Response(JSON.stringify({
@@ -132,7 +130,7 @@ serve(async (req) => {
         providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
       } catch (classicError) {
         if (!hasCallApiCredentials()) throw classicError;
-        console.warn("Classic callback failed, falling back to Call API:", describeNovofonError(classicError));
+        console.warn("telephony_classic_fallback", {code:"provider_failed"});
         usedApi = "call_api";
         nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
           first_call: "operator",
@@ -202,11 +200,7 @@ serve(async (req) => {
       });
     }
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
+
 
     const { data: log, error: logErr } = await admin
       .from("call_logs")
@@ -226,24 +220,20 @@ serve(async (req) => {
       .select("id")
       .single();
 
-    if (logErr) console.error("call_log insert error", logErr);
+    if (logErr) console.error("telephony_call_log_write_failed", {code:"database_failed"});
 
+    const ok = usedApi === "classic_callback" ? nfRes.status === "success" : Boolean((nfRes as CallStartResponse).call_session_id);
     return new Response(
       JSON.stringify({
-        ok: usedApi === "classic_callback" ? nfRes.status === "success" : Boolean((nfRes as CallStartResponse).call_session_id),
+        ok,
         api: usedApi,
-        novofon: nfRes,
+        novofon: ok ? nfRes : {message:telephonyProviderMessage(null)},
         employee: employeeInfo,
         call_log_id: log?.id ?? null,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
-    const msg = describeNovofonError(e);
-    console.error("novofon-call-start error:", msg);
-    return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return accessErrorResponse(e, corsHeaders);
   }
 });

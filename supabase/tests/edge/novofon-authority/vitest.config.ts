@@ -1,0 +1,3 @@
+import {fileURLToPath} from 'node:url';
+const local=(p:string)=>fileURLToPath(new URL(p,import.meta.url));
+export default {root:local('./'),envDir:local('./no-env'),resolve:{alias:[{find:'https://deno.land/std@0.168.0/http/server.ts',replacement:local('./telephony-ports.ts')},{find:'https://esm.sh/@supabase/supabase-js@2',replacement:local('./telephony-ports.ts')},{find:'npm:@supabase/supabase-js@2/cors',replacement:local('./telephony-ports.ts')},{find:'../_shared/novofon.ts',replacement:local('./novofon-provider-port.ts')}]},test:{environment:'node',include:['telephony-authority.acceptance.ts'],fileParallelism:false,maxWorkers:1,minWorkers:1,testTimeout:10000,hookTimeout:10000,retry:0,cache:false}};

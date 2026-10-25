@@ -1,6 +1,9 @@
+import {requireTelephonyActor} from "../_shared/telephony-authorization.ts";
+import {accessErrorResponse,checked,requireUuid} from "../_shared/privileged-access.ts";
+import {readProviderOperationObject} from "../_shared/provider-operation-access.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { describeNovofonError, novofonDataRpc, novofonRequest } from "../_shared/novofon.ts";
+import { novofonDataRpc, novofonRequest } from "../_shared/novofon.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,38 +28,32 @@ type CallsReportRow = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "auth required" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const supabaseAuth = createClient(
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } },
     );
-    const { data: { user } } = await supabaseAuth.auth.getUser();
-    if (!user) return new Response("unauthorized", { status: 401, headers: corsHeaders });
+    const actor = await requireTelephonyActor(req, admin, header => createClient(
+      Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {global:{headers:{Authorization:header}},auth:{autoRefreshToken:false,persistSession:false}},
+    ), false);
+    const user = {id:actor.userId};
 
-    const { call_log_id } = await req.json();
+    const body = await readProviderOperationObject(req);
+    const call_log_id = requireUuid(body.call_log_id, 'идентификатор звонка');
     if (!call_log_id) {
       return new Response(JSON.stringify({ error: "call_log_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
 
-    const { data: log } = await admin
+
+    const log = checked<any>(await actor.caller
       .from("call_logs")
       .select("id, novofon_call_id, recording_url, started_at")
       .eq("id", call_log_id)
-      .maybeSingle();
+      .maybeSingle());
 
     if (!log) return new Response("not found", { status: 404, headers: corsHeaders });
 
@@ -113,7 +110,7 @@ serve(async (req) => {
         });
       }
     } catch (dataApiError) {
-      console.warn("Novofon Data API recording lookup failed:", describeNovofonError(dataApiError));
+      console.warn("telephony_recording_classic_fallback", {code:"provider_failed"});
 
       const nfRes = await novofonRequest<{ status: string; link?: string; lifetime?: number }>(
         "GET",
@@ -136,10 +133,6 @@ serve(async (req) => {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("novofon-recording-url error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return accessErrorResponse(e, corsHeaders);
   }
 });
