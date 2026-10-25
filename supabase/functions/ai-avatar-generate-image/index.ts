@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
     if (resp.status === 402) return json({ error: "Недостаточно ИИ-кредитов" }, 402);
     if (!resp.ok) {
       const t = await resp.text();
-      console.error("Image gen error", resp.status, t);
+      ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "request_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("Image gen error", resp.status, t);
       return json({ error: "Не удалось сгенерировать изображение" }, 500);
     }
 

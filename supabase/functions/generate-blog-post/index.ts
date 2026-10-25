@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithTools } from "../_shared/gigachat-client.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,7 @@ serve(async (req) => {
   try {
     const { topic, category, style = "информативный" }: GenerateRequest = await req.json();
 
-    console.log("Generating blog post for topic:", topic);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("log", "request_started"))("Generating blog post for topic:", topic);
 
     const systemPrompt = `Ты — профессиональный копирайтер для EdTech-платформы СИНТАГМА. 
 Пиши статьи на русском языке для блога об онлайн-обучении, автоматизации образовательных процессов и EdTech-технологиях.

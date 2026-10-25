@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 import { createSberHttpClient } from "../_shared/russian-ca.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const sberHttpClient = createSberHttpClient();
 
@@ -45,7 +46,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
-    console.error("GigaChat auth error:", tokenRes.status, text);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "oauth_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("GigaChat auth error:", tokenRes.status, text);
     throw { status: tokenRes.status, message: `GigaChat auth error: ${tokenRes.status}` };
   }
 
@@ -80,7 +81,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
 
   if (!chatRes.ok) {
     const text = await chatRes.text();
-    console.error("GigaChat generation error:", chatRes.status, text);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "request_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("GigaChat generation error:", chatRes.status, text);
     throw { status: chatRes.status, message: `GigaChat generation error: ${chatRes.status}` };
   }
 
@@ -90,7 +91,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   // Extract image file_id from the response (format: <img src="file_id" .../>)
   const fileIdMatch = content.match(/<img\s+src="([^"]+)"/);
   if (!fileIdMatch) {
-    console.error("GigaChat response has no image:", content);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "invalid_response"))("GigaChat response has no image:", content);
     throw { status: 502, message: "GigaChat не сгенерировал изображение" };
   }
 
@@ -145,7 +146,7 @@ async function generateWithLovableAI(prompt: string): Promise<string> {
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    console.error("[generate-image] Lovable AI error:", resp.status, text);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "request_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("[generate-image] Lovable AI error:", resp.status, text);
     if (resp.status === 402) throw { status: 402, message: "Lovable AI: payment required" };
     if (resp.status === 429) throw { status: 429, message: "Lovable AI: rate limited", retryable: true };
     throw { status: resp.status, message: `Lovable AI error: ${resp.status}` };
@@ -167,7 +168,7 @@ serve(async (req) => {
     if (!prompt) throw new Error("Prompt is required");
 
     const selectedProvider = provider || "gigachat";
-    console.log(`[generate-image] provider=${selectedProvider}, slotIndex=${slotIndex}, prompt="${prompt.slice(0, 80)}..."`);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("log", "request_started"))(`[generate-image] provider=${selectedProvider}, slotIndex=${slotIndex}, prompt="${prompt.slice(0, 80)}..."`);
 
     let generatedImageUrl = "";
     let usedSlot = -1;

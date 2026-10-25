@@ -4,6 +4,7 @@
  */
 
 import { createSberHttpClient } from "./russian-ca.ts";
+import { logAiOperation, readAiResponseJson, parseAiToolJson, fetchAiResponse, readAiResponseText } from "./ai-observability.ts";
 
 const httpClient = createSberHttpClient();
 
@@ -62,7 +63,7 @@ function createSlots(): GigaChatSlot[] {
     });
   }
 
-  console.log(`[GigaChat] Pool initialized with ${slots.length} slot(s)`);
+  logAiOperation("log", "pool_ready");
 
   return slots;
 }
@@ -126,21 +127,21 @@ async function getSlotToken(slot: GigaChatSlot): Promise<string> {
   };
   if (httpClient) (fetchOpts as any).client = httpClient;
 
-  const response = await fetch(
+  const response = await fetchAiResponse(
     "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
     fetchOpts,
   );
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`[GigaChat][${slot.name}] OAuth error:`, response.status, errorText);
+    const errorText = await readAiResponseText(response);
+    logAiOperation("error", "oauth_failed", response.status);
     throw new Error(`GigaChat OAuth failed: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = await readAiResponseJson(response);
   slot.cachedToken = data.access_token;
   slot.tokenExpiresAt = Math.floor(data.expires_at / 1000);
-  console.log(`[GigaChat][${slot.name}] OAuth token obtained, expires in ${slot.tokenExpiresAt - now}s`);
+  logAiOperation("log", "oauth_ready");
   return slot.cachedToken!;
 }
 
@@ -190,14 +191,14 @@ async function _rawCallGigaChat(
   };
   if (httpClient) (fetchOpts as any).client = httpClient;
 
-  const response = await fetch(
+  const response = await fetchAiResponse(
     "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
     fetchOpts,
   );
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`[GigaChat][${slot.name}] API error:`, response.status, errorText);
+    const errorText = await readAiResponseText(response);
+    logAiOperation("error", "request_failed", response.status);
     if (response.status === 402) {
       throw new Error("GigaChat 402: Payment required — tokens exhausted");
     }
@@ -207,12 +208,12 @@ async function _rawCallGigaChat(
     throw new Error(`GigaChat API error: ${response.status}`);
   }
 
-  const result = await response.json();
+  const result = await readAiResponseJson(response);
   const content = result.choices?.[0]?.message?.content || "";
 
   // Detect moderation responses (GigaChat returns HTTP 200 but with refusal text)
   if (isModerationResponse(content)) {
-    console.warn(`[GigaChat][${slot.name}] [MODERATION] Detected moderation response for model ${model}: "${content.substring(0, 150)}..."`);
+    logAiOperation("warn", "content_moderated");
     throw new Error("[MODERATION] GigaChat content moderation triggered");
   }
 
@@ -238,29 +239,29 @@ export async function callGigaChatOnSlot(
 
   for (const m of modelsToTry) {
     try {
-      console.log(`[GigaChat][${slot.name}] Trying model: ${m}`);
+      logAiOperation("log", "request_started");
       const result = await _rawCallGigaChat(slot, messages, m, maxTokens);
-      console.log(`[GigaChat][${slot.name}] Success with model: ${m}`);
+      logAiOperation("log", "request_succeeded");
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[GigaChat][${slot.name}] Model ${m} failed: ${msg}`);
+      logAiOperation("warn", "request_failed");
 
       // Moderation: don't try other models, immediately propagate
       if (msg.includes("[MODERATION]")) {
-        console.warn(`[GigaChat][${slot.name}] Moderation detected — skipping all remaining GigaChat models`);
+        logAiOperation("warn", "content_moderated");
         throw err;
       }
 
       if (msg.includes("402")) {
-        console.log(`[GigaChat][${slot.name}] Model ${m} has no tokens (402), trying next model...`);
+        logAiOperation("log", "request_started");
         continue;
       }
 
       if (msg.includes("429")) {
         rateLimitRetries++;
         const waitTime = Math.min(15000 * rateLimitRetries, 45000);
-        console.log(`[GigaChat][${slot.name}] Rate limited on ${m}, waiting ${waitTime / 1000}s (attempt ${rateLimitRetries}/${MAX_RATE_RETRIES})...`);
+        logAiOperation("log", "rate_limited");
         await new Promise((r) => setTimeout(r, waitTime));
         if (rateLimitRetries < MAX_RATE_RETRIES) {
           // Retry same model after waiting
@@ -281,7 +282,7 @@ export async function callGigaChat(
   maxTokens = 4096,
 ): Promise<string> {
   const slotIdx = await acquireSlot();
-  console.log(`[GigaChat] Acquired ${slots[slotIdx].name}`);
+  logAiOperation("log", "request_started");
 
   try {
     return await callGigaChatOnSlot(slotIdx, messages, model, maxTokens);
@@ -297,7 +298,7 @@ export async function callGigaChat(
     if (msg.includes("exhausted") && slots.length > 1) {
       releaseSlot(slotIdx, 0);
       const triedIndices = new Set<number>([slotIdx]);
-      console.log(`[GigaChat] Slot ${slots[slotIdx].name} exhausted, trying remaining ${slots.length - 1} slots...`);
+      logAiOperation("log", "request_failed");
 
       while (triedIndices.size < slots.length) {
         const retryIdx = await acquireSlot();
@@ -307,7 +308,7 @@ export async function callGigaChat(
           break;
         }
         triedIndices.add(retryIdx);
-        console.log(`[GigaChat] Retry on ${slots[retryIdx].name} (${triedIndices.size}/${slots.length})`);
+        logAiOperation("log", "request_started");
         try {
           const result = await callGigaChatOnSlot(retryIdx, messages, model, maxTokens);
           releaseSlot(retryIdx);
@@ -318,7 +319,7 @@ export async function callGigaChat(
           if (!retryMsg.includes("exhausted")) {
             throw retryErr;
           }
-          console.log(`[GigaChat] Slot ${slots[retryIdx].name} also exhausted`);
+          logAiOperation("log", "request_failed");
         }
       }
       throw err;
@@ -345,13 +346,13 @@ export async function callLovableAI(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = attempt * 3000;
-      console.log(`[LovableAI] retry ${attempt + 1}/${MAX_RETRIES}, waiting ${delay}ms`);
+      logAiOperation("log", "retry_wait");
       await new Promise((r) => setTimeout(r, delay));
     }
 
     let response: Response;
     try {
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      response = await fetchAiResponse("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -360,37 +361,37 @@ export async function callLovableAI(
         body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: maxTokens }),
       });
     } catch (fetchErr) {
-      console.warn(`[LovableAI] fetch error attempt ${attempt + 1}:`, fetchErr);
+      logAiOperation("warn", "network_failed");
       if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway: network error after retries");
       continue;
     }
 
     if (response.status === 402) {
-      try { await response.text(); } catch {}
+      try { await readAiResponseText(response); } catch {}
       throw new Error("Требуется пополнение баланса ИИ-кредитов (402)");
     }
     if (response.status === 429) {
-      try { await response.text(); } catch {}
+      try { await readAiResponseText(response); } catch {}
       throw new Error("AI rate limit exceeded (429)");
     }
 
     let text: string;
     try {
-      text = await response.text();
+      text = await readAiResponseText(response);
     } catch (bodyErr) {
-      console.warn(`[LovableAI] body read error attempt ${attempt + 1}:`, bodyErr);
+      logAiOperation("warn", "read_failed");
       if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway: failed to read response body");
       continue;
     }
 
     if (!response.ok) {
-      console.error("Lovable AI error:", response.status, text);
+      logAiOperation("error", "request_failed", response.status);
       if (attempt === MAX_RETRIES - 1) throw new Error(`AI gateway error: ${response.status}`);
       continue;
     }
 
     if (!text || text.trim() === "") {
-      console.warn(`[LovableAI] empty response attempt ${attempt + 1}`);
+      logAiOperation("warn", "empty_response");
       if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway returned empty response");
       continue;
     }
@@ -399,7 +400,7 @@ export async function callLovableAI(
     try {
       result = JSON.parse(text);
     } catch {
-      console.error("Failed to parse AI response:", text.substring(0, 500));
+      logAiOperation("error", "invalid_response");
       if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway returned invalid JSON");
       continue;
     }
@@ -427,7 +428,7 @@ export async function callLovableAIWithTools(
     body.tool_choice = { type: "function", function: { name: tool.function.name } };
   }
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetchAiResponse("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -439,17 +440,17 @@ export async function callLovableAIWithTools(
   if (!response.ok) {
     if (response.status === 429) throw new Error("Rate limit exceeded");
     if (response.status === 402) throw new Error("Payment required, please add credits");
-    const errorText = await response.text();
-    console.error("AI error:", response.status, errorText);
+    const errorText = await readAiResponseText(response);
+    logAiOperation("error", "request_failed", response.status);
     throw new Error(`AI error: ${response.status}`);
   }
 
-  const result = await response.json();
+  const result = await readAiResponseJson(response);
 
   if (tool) {
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No tool call in response");
-    return JSON.parse(toolCall.function.arguments);
+    return parseAiToolJson(toolCall.function.arguments);
   } else {
     return { content: result.choices?.[0]?.message?.content || "" };
   }
@@ -553,16 +554,16 @@ export async function callAIRoundRobin(
   let count402 = 0;
   let lastError: Error | null = null;
 
-  console.log(`[AI-RR] ${taskLabel} → startChannel=${startIdx}/${channels.length} (${channels[startIdx].name})`);
+  logAiOperation("log", "request_started");
 
   for (let attempt = 0; attempt < channels.length; attempt++) {
     const chIdx = (startIdx + attempt) % channels.length;
     const channel = channels[chIdx];
     try {
-      console.log(`[AI-RR] ${taskLabel} → ${channel.name}${attempt > 0 ? ` (fallback after slot-${(startIdx + attempt - 1) % channels.length})` : ""}`);
+      logAiOperation("log", "provider_fallback");
       const result = await channel.call(messages, maxTokens);
       if (attempt > 0) {
-        console.log(`[AI-RR] ${taskLabel} ✓ recovered on ${channel.name} after ${attempt} failed channel(s)`);
+        logAiOperation("log", "request_succeeded");
       }
       return result;
     } catch (err) {
@@ -572,21 +573,21 @@ export async function callAIRoundRobin(
         : msg.includes("[MODERATION]") ? "moderation"
         : msg.includes("exhausted") ? "all-models-exhausted"
         : "other";
-      console.warn(`[AI-RR] ${taskLabel} ✗ ${channel.name} failed: ${reason} — ${msg.substring(0, 200)}`);
+      logAiOperation("warn", "request_failed");
       lastError = err instanceof Error ? err : new Error(msg);
       if (msg.includes("402")) count402++;
 
       // Moderation: skip remaining GigaChat slots, jump to Lovable AI fallback
       if (msg.includes("[MODERATION]")) {
-        console.warn(`[AI-RR] ${taskLabel} Moderation detected — skipping to Lovable AI fallback`);
+        logAiOperation("warn", "content_moderated");
         // Find Lovable AI channel (last one) and try it directly
         const lovableChannel = channels[channels.length - 1];
         if (lovableChannel.name.includes("Lovable AI")) {
           try {
-            console.log(`[AI-RR] ${taskLabel} → ${lovableChannel.name} (moderation fallback)`);
+            logAiOperation("log", "provider_fallback");
             return await lovableChannel.call(messages, maxTokens);
           } catch (lovErr) {
-            console.error(`[AI-RR] Lovable AI moderation fallback also failed:`, lovErr);
+            logAiOperation("error", "request_failed");
             throw lovErr;
           }
         }
@@ -595,7 +596,7 @@ export async function callAIRoundRobin(
 
       // 429 — короткая пауза перед переключением на следующий канал, чтобы не штормить пул
       if (msg.includes("429") && attempt < channels.length - 1) {
-        console.log(`[AI-RR] ${taskLabel} 429 backoff: waiting 1s before next channel`);
+        logAiOperation("log", "rate_limited");
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
@@ -623,7 +624,7 @@ export async function callAI(
       return { text, model: lModel };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[callAI] Lovable AI (preferred) failed, falling back to GigaChat:", msg);
+      logAiOperation("warn", "request_failed");
       const text = await callGigaChat(messages, gcModel, maxTokens);
       return { text, model: gcModel };
     }
@@ -638,7 +639,7 @@ export async function callAI(
       // Deterministic slot routing when taskIndex is provided
       if (taskIndex !== undefined && slots.length > 1) {
         const slotIdx = taskIndex % slots.length;
-        console.log(`[callAI] GigaChat deterministic routing: taskIndex=${taskIndex} → slot-${slotIdx}`);
+        logAiOperation("log", "request_started");
         const text = await useSlotDirect(slotIdx, messages, gcModel, maxTokens);
         return { text, model: `${gcModel} (slot-${slotIdx})` };
       }
@@ -646,7 +647,7 @@ export async function callAI(
       return { text, model: gcModel };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[callAI] GigaChat failed, falling back to Lovable AI:", msg);
+      logAiOperation("warn", "request_failed");
       const text = await callLovableAI(messages, maxTokens, lModel);
       return { text, model: lModel };
     }
@@ -658,7 +659,7 @@ export async function callAI(
     return { text, model: lModel };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[callAI] Lovable AI unavailable, falling back to GigaChat:", msg);
+    logAiOperation("warn", "provider_fallback");
     const text = await callGigaChat(messages, gcModel, maxTokens);
     return { text, model: gcModel };
   }
@@ -718,7 +719,7 @@ export async function callAIWithTools(
       if (extracted !== null) return extracted;
     }
 
-    throw new SyntaxError(`AI returned non-JSON content for tool call: ${cleaned.slice(0, 200)}`);
+    throw new SyntaxError("AI_TOOL_RESPONSE_INVALID");
   };
 
   // Round-robin mode: distribute across 3 GigaChat API slots only
@@ -739,21 +740,21 @@ export async function callAIWithTools(
 
     const startIdx = taskIndex % channels.length;
     const taskLabel = `toolsRR-task#${taskIndex}`;
-    console.log(`[callAIWithTools-RR] ${taskLabel} → startChannel=${startIdx}/${channels.length} (${channels[startIdx].name})`);
+    logAiOperation("log", "request_started");
 
     for (let attempt = 0; attempt < channels.length; attempt++) {
       const chIdx = (startIdx + attempt) % channels.length;
       const channel = channels[chIdx];
       try {
-        console.log(`[callAIWithTools-RR] ${taskLabel} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
+        logAiOperation("log", "provider_fallback");
         return await channel.call();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[callAIWithTools-RR] ${channel.name} failed: ${msg}`);
+        logAiOperation("warn", "request_failed");
 
         // Moderation: skip remaining GigaChat slots, go to Lovable AI
         if (msg.includes("[MODERATION]")) {
-          console.warn(`[callAIWithTools-RR] ${taskLabel} Moderation detected — jumping to Lovable AI`);
+          logAiOperation("warn", "content_moderated");
           break;
         }
       }
@@ -761,11 +762,11 @@ export async function callAIWithTools(
 
     // Last resort: try Lovable AI if all GigaChat slots failed
     try {
-      console.log(`[callAIWithTools-RR] ${taskLabel} → Lovable AI (last fallback)`);
+      logAiOperation("log", "provider_fallback");
       return await callLovableAIWithTools(messages, tool, lovableModel);
     } catch (fallbackErr) {
       const msg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-      console.error(`[callAIWithTools-RR] Lovable AI fallback also failed: ${msg}`);
+      logAiOperation("error", "request_failed");
     }
     throw new Error("All AI channels exhausted in callAIWithTools round-robin");
   }
@@ -774,7 +775,7 @@ export async function callAIWithTools(
     try {
       if (taskIndex !== undefined && slots.length > 1) {
         const slotIdx = taskIndex % slots.length;
-        console.log(`[callAIWithTools] GigaChat deterministic routing: taskIndex=${taskIndex} → slot-${slotIdx}`);
+        logAiOperation("log", "request_started");
         const text = await useSlotDirect(slotIdx, makeGcMessages(), gigachatModel, 8192);
         return parseGcResponse(text);
       }
@@ -782,7 +783,7 @@ export async function callAIWithTools(
       return parseGcResponse(text);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[callAIWithTools] GigaChat failed, falling back to Lovable AI:", msg);
+      logAiOperation("warn", "request_failed");
       return await callLovableAIWithTools(messages, tool, lovableModel);
     }
   }
@@ -792,7 +793,7 @@ export async function callAIWithTools(
     return await callLovableAIWithTools(messages, tool, lovableModel);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[callAIWithTools] Lovable AI failed, falling back to GigaChat:", msg);
+    logAiOperation("warn", "request_failed");
     try {
       const text = await callGigaChat(makeGcMessages(), gigachatModel, 8192);
       return parseGcResponse(text);

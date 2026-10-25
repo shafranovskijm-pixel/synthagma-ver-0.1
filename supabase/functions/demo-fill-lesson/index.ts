@@ -2,6 +2,7 @@
 // Protected by shared LOVABLE_API_KEY. Idempotent: skips lesson if already has content.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callAIWithTools } from "../_shared/gigachat-client.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -237,10 +238,11 @@ Deno.serve(async (req) => {
           const j = await imgRes.json();
           imgUrl = j.url || null;
         } else {
-          console.warn(`[demo-fill-lesson] image failed: ${imgRes.status} ${(await imgRes.text()).slice(0, 200)}`);
+          await imgRes.text();
+          logAiOperation("warn", "request_failed", imgRes.status);
         }
       } catch (e) {
-        console.warn(`[demo-fill-lesson] image error:`, e);
+        logAiOperation("warn", "request_failed");
       }
     }
 
@@ -257,7 +259,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[demo-fill-lesson] error:", msg);
+    logAiOperation("error", "request_failed");
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
