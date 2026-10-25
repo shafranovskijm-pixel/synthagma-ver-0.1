@@ -99,7 +99,7 @@ export function useConsentGenerator(organizationId: string, organizationName: st
     if (companyInn.length < 10) { toast.error("Введите корректный ИНН"); return; }
     setIsSearchingDadata(true);
     try {
-      const { data, error } = await safeInvoke<any>("dadata-company", { body: { inn: companyInn } });
+      const { data, error } = await safeInvoke<any>("dadata-company", { body: { inn: companyInn, organizationId } });
       if (error) throw error;
       if (data.success && data.company) { setDadataCompanyInfo(data.company); setCompanyName(data.company.shortName || data.company.name); setCompanyDirector(data.company.management || ""); setCompanyAddress(data.company.address || ""); toast.success("Данные компании найдены"); }
       else { setDadataCompanyInfo(null); toast.error(data.message || "Компания не найдена"); }

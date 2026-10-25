@@ -93,7 +93,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
     setIsSearching(true);
     try {
       const { data, error } = await safeInvoke<any>('dadata-company', {
-        body: { inn: requisites.inn }
+        body: { inn: requisites.inn, organizationId }
       });
 
       if (error) throw error;

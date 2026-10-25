@@ -59,30 +59,7 @@ export function useRegisterOrganization() {
   }, [user, userRole, loading, navigate, isRegistering, registrationTarget]);
 
   const loadCompanyByInn = async () => {
-    if (!inn || inn.length < 10) {
-      toast.error("Ошибка", { description: "Введите корректный ИНН (10 или 12 цифр)" });
-      return;
-    }
-    setIsLoadingInn(true);
-    try {
-      const { data, error } = await safeInvoke<any>('dadata-company', { body: { inn } });
-      if (error) throw error;
-      if (data?.success && data?.company) {
-        const company = data.company;
-        setOrgName(company.shortName || company.name || "");
-        setKpp(company.kpp || "");
-        setOgrn(company.ogrn || "");
-        setAddress(company.address || "");
-        setDirectorName(company.management || "");
-        setInnLoaded(true);
-        toast.success("Данные загружены", { description: `Найдена компания: ${company.shortName || company.name}` });
-      } else {
-        toast.error("Компания не найдена", { description: "Проверьте правильность ИНН" });
-      }
-    } catch (error) {
-      console.error("Error loading company:", error);
-      toast.error("Ошибка загрузки", { description: getErrorMessage(error, "Не удалось загрузить данные компании") });
-    } finally { setIsLoadingInn(false); }
+    toast.info("Заполните реквизиты вручную", { description: "Автопоиск доступен после входа в кабинет организации с правом работы с реквизитами. Регистрация доступна без автопоиска." });
   };
 
   const handleCheckPromo = async () => {

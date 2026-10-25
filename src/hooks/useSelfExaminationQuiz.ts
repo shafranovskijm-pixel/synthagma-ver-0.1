@@ -98,7 +98,7 @@ export const QUIZ_STEPS = [
   { id: 8, title: "Итого", description: "Проверка и отправка" },
 ];
 
-export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
+export function useSelfExaminationQuiz(organizationData?: OrganizationData, organizationId?: string) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoadingInn, setIsLoadingInn] = useState(false);
   const [innLoaded, setInnLoaded] = useState(false);
@@ -138,7 +138,7 @@ export function useSelfExaminationQuiz(organizationData?: OrganizationData) {
     const request = ++innEpoch.current;
     setIsLoadingInn(true);
     try {
-      const { data: result, error } = await safeInvoke<any>('dadata-company', { body: { inn: data.inn } });
+      const { data: result, error } = await safeInvoke<any>('dadata-company', { body: { inn: data.inn, organizationId } });
       if (!alive.current || request !== innEpoch.current) return;
       if (error) throw error;
       if (result.success && result.company) {
