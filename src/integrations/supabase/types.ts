@@ -16034,6 +16034,109 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_archive_disposal_act_revisions: {
+        Row: {
+          act_id: string
+          action_kind: string
+          actor_id: string
+          assessment: Json | null
+          blockers: Json
+          case_id: string
+          case_revision: number
+          case_state_hash: string
+          center_approval: Json | null
+          created_at: string
+          destruction_authorized: boolean
+          id: string
+          organization_id: string
+          physical_cleanup_claim: boolean
+          prior_id: string | null
+          request_id: string
+          request_sha256: string
+          retained_people: string[]
+          revision: number
+          sequence: number
+          snapshot: Json
+          snapshot_hash: string
+          state: string
+          state_hash: string
+        }
+        Insert: {
+          act_id: string
+          action_kind: string
+          actor_id: string
+          assessment?: Json | null
+          blockers: Json
+          case_id: string
+          case_revision: number
+          case_state_hash: string
+          center_approval?: Json | null
+          created_at?: string
+          destruction_authorized?: boolean
+          id?: string
+          organization_id: string
+          physical_cleanup_claim?: boolean
+          prior_id?: string | null
+          request_id: string
+          request_sha256: string
+          retained_people?: string[]
+          revision: number
+          sequence?: never
+          snapshot: Json
+          snapshot_hash: string
+          state: string
+          state_hash: string
+        }
+        Update: {
+          act_id?: string
+          action_kind?: string
+          actor_id?: string
+          assessment?: Json | null
+          blockers?: Json
+          case_id?: string
+          case_revision?: number
+          case_state_hash?: string
+          center_approval?: Json | null
+          created_at?: string
+          destruction_authorized?: boolean
+          id?: string
+          organization_id?: string
+          physical_cleanup_claim?: boolean
+          prior_id?: string | null
+          request_id?: string
+          request_sha256?: string
+          retained_people?: string[]
+          revision?: number
+          sequence?: never
+          snapshot?: Json
+          snapshot_hash?: string
+          state?: string
+          state_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_disposal_act_revisions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_archive_disposal_act_revisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_archive_disposal_act_revisions_prior_id_fkey"
+            columns: ["prior_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_disposal_act_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uc_archive_disposal_reviews: {
         Row: {
           act_source: Json | null
@@ -24841,6 +24944,15 @@ export type Database = {
         Args: { p_organization_id: string; p_query: Json; p_scope: Json }
         Returns: Json
       }
+      read_archive_disposal_acts: {
+        Args: {
+          p_case_id: string
+          p_organization_id: string
+          p_query: Json
+          p_scope: Json
+        }
+        Returns: Json
+      }
       read_conducted_sessions: {
         Args: { p_group_id: string; p_organization_id: string; p_query: Json }
         Returns: Json
@@ -24935,6 +25047,18 @@ export type Database = {
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
         Returns: undefined
+      }
+      record_archive_disposal_act: {
+        Args: {
+          p_case_id: string
+          p_case_revision: number
+          p_case_state_hash: string
+          p_command: Json
+          p_organization_id: string
+          p_request_id: string
+          p_scope: Json
+        }
+        Returns: Json
       }
       record_mailing_campaign_result: {
         Args: { p_failed: number; p_ledger_id: string; p_sent: number }
@@ -26561,6 +26685,31 @@ export type Database = {
       uc_custom_journal_values: {
         Args: { p_fields: Json; p_values: Json }
         Returns: boolean
+      }
+      uc_da_blockers: {
+        Args: { p_assessment: Json; p_snapshot: Json }
+        Returns: Json
+      }
+      uc_da_evidence: {
+        Args: {
+          p_lock?: boolean
+          p_row: Database["public"]["Tables"]["uc_archive_disposal_act_revisions"]["Row"]
+        }
+        Returns: boolean
+      }
+      uc_da_projection: {
+        Args: {
+          p_current: Json
+          p_row: Database["public"]["Tables"]["uc_archive_disposal_act_revisions"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_da_snapshot: {
+        Args: {
+          p_head: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+          p_lock?: boolean
+        }
+        Returns: Json
       }
       uc_document_action_allowed: {
         Args: {
