@@ -16,6 +16,7 @@ import { renderHtml } from "./utils";
 import { getEmbedSrc } from "./embedSrc";
 import { FormulaRender } from "./FormulaRender";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 
 // ── Callout config: maps callout type → icon + colour scheme. Kills 6 duplicate cases.
 type CalloutKind = Extract<BlockType, "callout-info" | "callout-warning" | "callout-tip" | "callout-success" | "callout-danger">;
@@ -135,11 +136,8 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "document":
       if (!block.documentUrl) return null;
       const docExt = block.documentName?.split('.').pop()?.toLowerCase();
-      const isPdf = docExt === 'pdf';
-      const documentUrl = proxiedAssetUrl(block.documentUrl);
-      const previewUrl = isPdf
-        ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
-        : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`;
+      const preview = courseDocumentPreview(block.documentUrl, docExt ?? null, [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
+      const documentUrl = preview.sourceUrl;
       return (
         <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden not-prose">
           <div className="flex items-center gap-3 p-3 border-b border-indigo-500/20">
@@ -147,10 +145,11 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
               <BookOpen className="w-4 h-4 text-indigo-500" />
             </div>
             <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
-            <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
+            {documentUrl && <a href={documentUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>}
           </div>
           <div className="aspect-[4/3]">
-            <iframe src={previewUrl} className="w-full h-full border-0" />
+            {preview.previewUrl ? <iframe src={preview.previewUrl} referrerPolicy="no-referrer" sandbox={preview.mode === "native_pdf" ? "allow-downloads" : undefined} title={block.documentName || "Документ"} className="w-full h-full border-0" />
+              : <div className="flex items-center justify-center h-full p-6 text-sm text-muted-foreground">{documentUrl ? "Откройте документ по ссылке «Скачать»." : "Ссылка на файл недоступна"}</div>}
           </div>
         </div>
       );

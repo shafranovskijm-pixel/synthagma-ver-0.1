@@ -1,0 +1,20 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { SliderLessonEditor } from '@/components/course-builder/SliderLessonEditor';
+import { BlockRenderer } from '@/components/course-builder/block-editor/BlockRenderer';
+import { ports } from './setup';
+const pub='https://platform.example/storage/v1/object/public/course-files/qa/slides.pptx';
+const priv='https://platform.example/storage/v1/object/sign/course-files/qa/slides.pptx?token=SYNTHETIC';
+const lesson=(url:any)=>({id:'lesson',title:'QA',type:'slider',content:JSON.stringify({slides:[{id:'a',content:'Internal'}],pptxFileUrl:url})} as any);
+const office=(url:string)=>'https://view.officeapps.live.com/op/embed.aspx?src='+encodeURIComponent(url);
+const block=(url:string,name:string)=>[{id:'doc',type:'document',content:'',documentUrl:url,documentName:name}] as any;
+describe('editor and lesson document privacy',()=>{
+ it('PB01 private editor presentation keeps download with zero storage writes and no iframe',()=>{const update=vi.fn();render(<SliderLessonEditor lesson={lesson(priv)} courseId="course" onUpdate={update}/>);expect(document.querySelector('iframe')).toBeNull();expect(screen.getByRole('link',{name:'Скачать'})).toHaveAttribute('href',priv);expect(screen.getByText('Откройте или скачайте презентацию по ссылке выше.')).toBeInTheDocument();expect(update).not.toHaveBeenCalled();});
+ it('PB02 public editor presentation preserves Office preview and fullscreen target',()=>{render(<SliderLessonEditor lesson={lesson(pub)} courseId="course" onUpdate={vi.fn()}/>);expect(document.querySelector('iframe')).toHaveAttribute('src',office(pub));expect(document.querySelector('iframe')).toHaveAttribute('referrerpolicy','no-referrer');expect(screen.getByRole('link',{name:'На весь экран'})).toHaveAttribute('href',office(pub));});
+ it('PB03 invalid editor sources cannot create executable links or external iframes',()=>{for(const url of ['javascript:alert(1)','data:text/html,qa',{url:priv}]){const v=render(<SliderLessonEditor lesson={lesson(url)} onUpdate={vi.fn()} courseId="course"/>);expect(document.querySelector('iframe')).toBeNull();expect(screen.queryByRole('link')).toBeNull();v.unmount();}});
+ it('PB04 editor public-to-private transition removes both vendor targets without changing lesson',()=>{const update=vi.fn();const v=render(<SliderLessonEditor lesson={lesson(pub)} courseId="course" onUpdate={update}/>);v.rerender(<SliderLessonEditor lesson={lesson(priv)} courseId="course" onUpdate={update}/>);expect(document.querySelector('iframe')).toBeNull();expect(screen.queryByRole('link',{name:'На весь экран'})).toBeNull();expect(update).not.toHaveBeenCalled();});
+ it('PB05 signed PDF document uses its original URL in a sandboxed native frame and never calls proxy',()=>{const pdf=priv.replace('.pptx?', '.pdf?');render(<BlockRenderer blocks={block(pdf,'Material.pdf')}/>);const f=document.querySelector('iframe');expect(f).toHaveAttribute('src',pdf);expect(f).toHaveAttribute('sandbox','allow-downloads');expect(f).toHaveAttribute('referrerpolicy','no-referrer');expect(ports.proxy).toBe(0);});
+ it('PB06 private Office document remains a direct download without vendor iframe',()=>{render(<BlockRenderer blocks={block(priv,'Material.pptx')}/>);expect(document.querySelector('iframe')).toBeNull();expect(screen.getByRole('link',{name:/Скачать/})).toHaveAttribute('href',priv);expect(ports.proxy).toBe(0);});
+ it('PB07 known public document preserves the validated Office preview',()=>{render(<BlockRenderer blocks={block(pub,'Material.pptx')}/>);expect(document.querySelector('iframe')).toHaveAttribute('src',office(pub));expect(screen.getByRole('link',{name:/Скачать/})).toHaveAttribute('href',pub);});
+ it('PB08 invalid document locators expose neither download nor iframe',()=>{render(<BlockRenderer blocks={block('javascript:alert(1)','Material.pdf')}/>);expect(document.querySelector('iframe')).toBeNull();expect(screen.queryByRole('link')).toBeNull();expect(screen.getByText('Ссылка на файл недоступна')).toBeInTheDocument();expect(ports.proxy).toBe(0);});
+});
