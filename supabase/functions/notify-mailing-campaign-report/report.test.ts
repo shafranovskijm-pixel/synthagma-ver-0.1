@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildMailingReport, deliverMailingReport } from "./report.ts";
+import { buildMailingReport, deliverMailingReport } from "./report";
 
 const campaignId = "11111111-1111-4111-8111-111111111111";
 const eventId = "22222222-2222-4222-8222-222222222222";

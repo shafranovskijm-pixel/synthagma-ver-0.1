@@ -20,8 +20,7 @@ export interface XmlRuntime { parse(text: string): XmlDocument }
 /** Selected explicitly by each operation. Never reassign globalThis.DOMParser. */
 export const browserXmlRuntime: XmlRuntime = Object.freeze({
   parse(text: string): XmlDocument {
-    const Parser = (globalThis as { DOMParser?: new () => { parseFromString(text: string, mime: string): XmlDocument } }).DOMParser;
-    if (!Parser) return refuse('DEPENDENCY_UNAVAILABLE');
-    return new Parser().parseFromString(text, 'application/xml');
+    if (typeof DOMParser === 'undefined') return refuse('DEPENDENCY_UNAVAILABLE');
+    return new DOMParser().parseFromString(text, 'application/xml');
   },
 });

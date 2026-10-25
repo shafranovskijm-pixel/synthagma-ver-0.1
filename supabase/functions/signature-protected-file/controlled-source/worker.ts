@@ -10,7 +10,7 @@ export type SignatureSourceFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'
 export class SignatureSourceError extends Error{
  constructor(readonly code:SignatureSourceFailure){super(code);this.name='SignatureSourceError';}
 }
-function fail(code:SignatureSourceFailure):never{throw new SignatureSourceError(code);}
+const fail=(code:SignatureSourceFailure):never=>{throw new SignatureSourceError(code);};
 export interface SignatureSourceServiceRequest{
  p_action:SignatureFileAction;p_observed_actor_user_id:string;p_request_ip:null;p_request_user_agent:null;
  p_original_proof:TrustedSignatureFileProof|null;p_scan_proof:null;
@@ -51,14 +51,14 @@ function boundedAwait<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
   operation.then(value=>{signal.removeEventListener('abort',abort);if(signal.aborted)reject(new SignatureSourceError('ACCESS_DENIED'));else resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
  });
 }
-async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array<ArrayBuffer>>{
+async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8Array>{
  if(!response.ok||response.redirected)fail(response.status===404?'SOURCE_UNAVAILABLE':'DEPENDENCY_UNAVAILABLE');
  const rawLength=response.headers.get('content-length');
  if(rawLength!==null&&(!/^\d{1,12}$/.test(rawLength)||Number(rawLength)>SIGNATURE_SOURCE_MAX_BYTES))fail('LIMIT_EXCEEDED');
   const encoding=response.headers.get('content-encoding')?.trim().toLowerCase()??'identity';
   if(!['identity','gzip','br','deflate'].includes(encoding))fail('DEPENDENCY_UNAVAILABLE');
- const body=response.body;if(!body)fail('SOURCE_UNAVAILABLE');
- const reader=body.getReader();let total=0;let complete=false;const parts:Uint8Array[]=[];
+ if(!response.body)fail('SOURCE_UNAVAILABLE');
+ const reader=response.body.getReader();let total=0;let complete=false;const parts:Uint8Array[]=[];
  try{
   for(;;){if(signal.aborted)fail('ACCESS_DENIED');const next=await boundedAwait(reader.read(),signal);if(signal.aborted)fail('ACCESS_DENIED');if(next.done)break;
    total+=next.value.byteLength;if(total>SIGNATURE_SOURCE_MAX_BYTES)fail('LIMIT_EXCEEDED');parts.push(next.value);
@@ -70,7 +70,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
   const bytes=new Uint8Array(total);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.byteLength;}complete=true;return bytes;
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
-async function digest(bytes:Uint8Array<ArrayBuffer>):Promise<string>{
+async function digest(bytes:Uint8Array):Promise<string>{
  const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 /** Technical source verification ONLY. No caller PDF/proof, signature status/event, bind or finalizer. */
@@ -92,7 +92,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
  const action={address:request.address,expected_document_revision_id:request.expected_document_revision_id,document_html_sha256:request.document_html_sha256,purpose:'source' as const,scan_path:null};
  const attest={action:'attest_file' as const,...action,verification_request_id:request.verification_request_id};
  const finish=async(value:unknown,proof:TrustedSignatureFileProof|null)=>{
-  const receipt=signatureFileVerificationReceiptSchema.safeParse(value);if(!receipt.success)fail('DEPENDENCY_UNAVAILABLE');const r=receipt.data!;
+  const receipt=signatureFileVerificationReceiptSchema.safeParse(value);if(!receipt.success)fail('DEPENDENCY_UNAVAILABLE');const r=receipt.data;
   if(r.verification_request_id!==request.verification_request_id||!sameScope(r.source,request))fail('SOURCE_CHANGED');
   if(proof===null&&r.outcome!=='replayed')fail('DEPENDENCY_UNAVAILABLE');
   if(proof&&(!same(r.source,proof.source)||!same(r.object,proof.object_after)||!same(r.file,proof.file)))fail('SOURCE_CHANGED');
@@ -103,7 +103,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
   // cannot create a new receipt. A missing UUID returns SOURCE_UNAVAILABLE, not a fake proof.
   try{return await finish(await invoke(attest,null),null);}catch(error){if(!(error instanceof SignatureSourceError)||error.code!=='SOURCE_UNAVAILABLE')throw error;}
   const parseContext=(value:unknown):SignatureFileContext=>{
-   const ctx=signatureFileContextSchema.safeParse(value);if(!ctx.success||!ctx.data)fail('DEPENDENCY_UNAVAILABLE');
+   const ctx=signatureFileContextSchema.safeParse(value);if(!ctx.success)fail('DEPENDENCY_UNAVAILABLE');
    if(!sameScope(ctx.data.source,request))fail('SOURCE_CHANGED');return ctx.data;
   };
   const context=parseContext(await invoke({action:'file_context',...action},null));
@@ -116,7 +116,7 @@ export async function verifySignatureSource(input:unknown,deps:SignatureSourceDe
   const checked=trustedSignatureFileProofSchema.safeParse({assurance:'trusted_service_reread',source:context.source,object_before:context.object,file:{bucket:context.source.bucket,path:context.source.path,sha256:sha,bytes:bytes.byteLength,mime:declaredMime},object_after:after.object});
   if(!checked.success)fail('SOURCE_CHANGED');
   const proof=checked.data;return await finish(await invoke(attest,proof),proof);
- }catch(error){if(error instanceof SignatureSourceError)throw error;return fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
+ }catch(error){if(error instanceof SignatureSourceError)throw error;fail(signal.aborted?'ACCESS_DENIED':'DEPENDENCY_UNAVAILABLE');}
  finally{clearTimeout(timer);outerSignal?.removeEventListener('abort',abort);controller.abort();}
 }
 
