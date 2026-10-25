@@ -311,6 +311,8 @@ export function useLessonMedia(
       const { data: initData, error: initError } = await supabase.functions.invoke("kinescope-proxy", {
         body: {
           action: "upload_init",
+          course_id: courseId,
+          lesson_id: lessonId,
           title: `${courseId}_${lessonId}_${file.name}`,
           file_size: file.size,
         },

@@ -8,7 +8,7 @@ import { FrdoPacketBuilder } from './PacketBuilder';
 import { FrdoPacketDetail } from './PacketDetail';
 import { FrdoOperatorsPanel } from './OperatorsPanel';
 import { packetStateLabels, sourceCurrencyLabels, formatFrdoTime } from '@/lib/frdoPackets/presentation';
-import type { FrdoAction } from '@/lib/frdoPackets/client';
+import type { FrdoAction, FrdoFileRequestedEvent } from '@/lib/frdoPackets/client';
 
 type View = 'packets' | 'new' | 'operators' | 'packet';
 export function FrdoPacketWorkbench({ organizationId, groupId, onBlockingChange }: { organizationId: string; groupId?: string | null; onBlockingChange?: (blocking: boolean) => void }) {
@@ -24,6 +24,7 @@ export function FrdoPacketWorkbench({ organizationId, groupId, onBlockingChange 
     }
     await flow.refresh(false); return result;
   };
+  const resume = async (event: FrdoFileRequestedEvent) => { const result = await flow.resumeBuild(event); await flow.refresh(false); return result; };
   const retry = async () => { try { const result = await flow.run(); const next = result.packets[result.packets.length - 1]; if (next) { setSelected(next.ref.id); setView('packet'); } await flow.refresh(false); } catch { /* The hook retains the exact request and displays a closed error. */ } };
   const locked = flow.busy || !!flow.pending;
   useEffect(() => { onBlockingChange?.(locked); return () => onBlockingChange?.(false); }, [locked, onBlockingChange]);
@@ -37,7 +38,7 @@ export function FrdoPacketWorkbench({ organizationId, groupId, onBlockingChange 
     {view === 'packets' && <section className="space-y-3"><div className="flex justify-end"><Button type="button" variant="outline" disabled={flow.busy} onClick={() => void flow.refresh(false)}>Обновить пакеты</Button></div>{flow.packets.map(packet => <button key={packet.ref.id} type="button" disabled={flow.busy} onClick={() => open(packet.ref.id)} className="w-full text-left rounded-xl border bg-card p-4 hover:bg-accent/40 transition-colors disabled:opacity-60"><div className="flex flex-wrap justify-between gap-2"><p className="font-medium">{packet.stream.toUpperCase()} · {formatFrdoTime(packet.created_at)} · {packet.row_count} строк</p><Badge variant="outline">{packetStateLabels[packet.state]}</Badge></div><p className="text-sm text-muted-foreground mt-2">{sourceCurrencyLabels[packet.source_currency]}</p></button>)}{!flow.busy && !flow.packets.length && <p className="text-sm text-muted-foreground py-6 text-center">На этой странице доступных пакетов нет. Новый пакет создаётся из уже выданных документов.</p>}{flow.after && <Button type="button" variant="outline" disabled={flow.busy} onClick={() => void flow.refresh(true)}>Продолжить просмотр пакетов</Button>}</section>}
     {view === 'new' && <FrdoPacketBuilder key={key} scope={flow.scope} onAction={action} onCreated={() => setView('packet')} disabled={locked} />}
     {view === 'operators' && <FrdoOperatorsPanel key={key} scope={flow.scope} onAction={action} disabled={locked} />}
-    {view === 'packet' && <section className="space-y-3"><Button type="button" variant="ghost" disabled={flow.busy} onClick={() => setView('packets')}>← К списку пакетов</Button>{flow.packet && flow.packet.ref.id === selected ? <FrdoPacketDetail key={flow.packet.ref.id} scope={flow.scope} packet={flow.packet} onAction={action} onOpen={open} disabled={locked} /> : !flow.busy && <p className="text-sm text-muted-foreground">Пакет не загружен. Обновите список и откройте его снова.</p>}</section>}
+    {view === 'packet' && <section className="space-y-3"><Button type="button" variant="ghost" disabled={flow.busy} onClick={() => setView('packets')}>← К списку пакетов</Button>{flow.packet && flow.packet.ref.id === selected ? <FrdoPacketDetail key={flow.packet.ref.id} scope={flow.scope} packet={flow.packet} onAction={action} onResume={resume} onOpen={open} disabled={locked} /> : !flow.busy && <p className="text-sm text-muted-foreground">Пакет не загружен. Обновите список и откройте его снова.</p>}</section>}
     {flow.busy && <SigmaSpinner size="sm" />}
   </div>;
 }

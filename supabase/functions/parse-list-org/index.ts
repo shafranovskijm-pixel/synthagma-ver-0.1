@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +31,7 @@ function parseListOrgHtml(html: string): ParsedCompany[] {
   const matches = [...html.matchAll(linkRe)];
   console.log(`[parse-list-org] found ${matches.length} company links in html (length=${html.length})`);
   if (matches.length === 0) {
-    console.log('[parse-list-org] html sample:', html.slice(0, 1500));
+    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "company_html_unmatched"))('[parse-list-org] html sample:', html.slice(0, 1500));
   }
 
   const seen = new Set<string>();
