@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createTbankWebhookHandler } from "./handler";
+import { createTbankWebhookHandler } from './handler.ts';
 
 const order = "sub_1234567890123456789012345678";
 const terminal = "fixture-terminal", password = "fixture-password";

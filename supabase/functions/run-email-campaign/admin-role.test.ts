@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { hasVerifiedAdminRole, type RoleLookupClient } from "./admin-role";
+import { hasVerifiedAdminRole, type RoleLookupClient } from './admin-role.ts';
 
 const verifiedUserId = "00000000-0000-4000-8000-000000000001";
 

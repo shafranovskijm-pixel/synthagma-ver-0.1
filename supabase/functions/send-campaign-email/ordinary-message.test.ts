@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ordinaryMessageFacts } from "./ordinary-message";
+import { ordinaryMessageFacts } from './ordinary-message.ts';
 
 const input = {
   smtp: { host: "smtp.fixture.invalid", port: 465, username: "sender@example.com", password: "fixture-only", from_email: "sender@example.com", from_name: "Mailbox" },

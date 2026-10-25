@@ -12,7 +12,7 @@ import {
   TelegramRelayContractError,
   validateTelegramRelayPayload,
   type EnvReader,
-} from "./contract";
+} from './contract.ts';
 
 const SERVICE_ROLE_KEY = `service-role-${"s".repeat(64)}`;
 const BOT_TOKEN = `123456789:${"b".repeat(35)}`;

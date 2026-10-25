@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isPublicPublicationIpv4, observePublicPublication, parsePublicPublicationResponse, type PublicationConnection, type PublicationNetwork } from "./uc-publication-http";
+import { isPublicPublicationIpv4, observePublicPublication, parsePublicPublicationResponse, type PublicationConnection, type PublicationNetwork } from './uc-publication-http.ts';
 const encode=(s:string)=>new TextEncoder().encode(s);const body=encode("public edition bytes");
 const hash=async(bytes:Uint8Array)=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",Uint8Array.from(bytes)))).map(x=>x.toString(16).padStart(2,"0")).join("");
 const response=(text="public edition bytes",mime="application/pdf")=>encode("HTTP/1.1 200 OK\r\nContent-Type: "+mime+"\r\nContent-Length: "+encode(text).length+"\r\n\r\n"+text);

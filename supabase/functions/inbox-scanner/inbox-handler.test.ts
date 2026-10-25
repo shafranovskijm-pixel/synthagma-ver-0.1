@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import { parseRfc822 } from "../_shared/imap-mini";
-import { inboxMessagePayload } from "./message-payload";
+import { parseRfc822 } from '../_shared/imap-mini.ts';
+import { inboxMessagePayload } from './message-payload.ts';
 
 // Actual Deno handler, with in-memory transport/DB adapters only. No network.
 const compiled = ts.transpileModule(readFileSync(resolve(process.cwd(), "supabase/functions/inbox-scanner/index.ts"), "utf8"), {

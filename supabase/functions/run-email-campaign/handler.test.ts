@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { webcrypto } from "node:crypto";
-import { dispatchOrdinaryBatch, requireQuotaDecision, reserveOrdinarySenderBatch, ORDINARY_SENDER_BATCH_SIZE } from "./run-lifecycle";
-import { platformSenderId, platformSmtp } from "../_shared/platform-sender";
-import { hasVerifiedAdminRole } from "./admin-role";
+import { dispatchOrdinaryBatch, requireQuotaDecision, reserveOrdinarySenderBatch, ORDINARY_SENDER_BATCH_SIZE } from './run-lifecycle.ts';
+import { platformSenderId, platformSmtp } from '../_shared/platform-sender.ts';
+import { hasVerifiedAdminRole } from './admin-role.ts';
 
 const source = readFileSync(resolve(__dirname, "index.ts"), "utf8")
   .replace(/^import[^;]+;\s*$/gm, "");

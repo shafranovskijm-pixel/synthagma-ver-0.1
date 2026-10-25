@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { OrdinaryDispatch, type OrdinaryAttemptIdentity, type OrdinaryAttemptStore, type OrdinaryState } from "./ordinary-dispatch";
-import { SmtpDeliveryError } from "../_shared/smtp-sender";
+import { OrdinaryDispatch, type OrdinaryAttemptIdentity, type OrdinaryAttemptStore, type OrdinaryState } from './ordinary-dispatch.ts';
+import { SmtpDeliveryError } from '../_shared/smtp-sender.ts';
 
 vi.mock("../_shared/rate-limiter.ts", () => ({ checkRateLimit: vi.fn() }));
 

@@ -2,9 +2,9 @@ import {vi} from "vitest";
 import {deflateSync} from "node:zlib";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
-import {admissionHash, admissionFetch, ADMISSION_EVIDENCE_BUCKET, type AdmissionMime, type AdmissionDbResult} from "../admission-case-access";
-import {admissionEvidenceCommitRequest} from "../admission-case-evidence-commit";
-import {admissionEvidenceFileRequest} from "../admission-case-evidence-file";
+import {admissionHash, admissionFetch, ADMISSION_EVIDENCE_BUCKET, type AdmissionMime, type AdmissionDbResult} from '../admission-case-access.ts';
+import {admissionEvidenceCommitRequest} from '../admission-case-evidence-commit.ts';
+import {admissionEvidenceFileRequest} from '../admission-case-evidence-file.ts';
 
 export const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const actor = id(1), caseId = id(2), reservation = id(3), evidence = id(4), requirement = id(5), sourceId = id(6), sealedId = id(7), requestId = id(8);

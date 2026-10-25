@@ -3,7 +3,7 @@ import {
   runWithRegistrationCleanup,
   type RegistrationCleanupAdapter,
   type RegistrationCreationTracker,
-} from "./registrationFlow";
+} from './registrationFlow.ts';
 
 type FailureStage = "create-user" | "organization" | "free-plan" | "profile" | "role" | "after-role";
 

@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import { hasVerifiedAdminRole } from "./admin-role";
-import { platformSenderId, platformSmtp } from "../_shared/platform-sender";
-import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle";
+import { hasVerifiedAdminRole } from './admin-role.ts';
+import { platformSenderId, platformSmtp } from '../_shared/platform-sender.ts';
+import { dispatchOrdinaryBatch, requireQuotaDecision } from './run-lifecycle.ts';
 import { webcrypto } from "node:crypto";
 
 // Execute the actual Edge handler with injected, fail-closed local dependencies.

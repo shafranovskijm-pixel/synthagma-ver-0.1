@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseRfc822 } from "../_shared/imap-mini";
-import { inboxMessagePayload, messageIds } from "./message-payload";
+import { parseRfc822 } from '../_shared/imap-mini.ts';
+import { inboxMessagePayload, messageIds } from './message-payload.ts';
 
 const message = (headers = "", body = "Reply") => `From: School <school@example.com>\r\nTo: list@example.com\r\nSubject: Re: same subject\r\n${headers}\r\n\r\n${body}`;
 describe("inbox header-only attribution payload", () => {
