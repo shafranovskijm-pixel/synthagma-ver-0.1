@@ -1,4 +1,5 @@
 import { selfExaminationPriceLabel } from '@/lib/selfExamination/policy';
+import { selfExaminationSummaryCount, type SummaryCollectionFact } from '@/lib/selfExamination/summary';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles } from "lucide-react";
@@ -6,10 +7,11 @@ import type { QuizData } from "@/hooks/useSelfExaminationQuiz";
 
 interface Props {
   data: QuizData;
+  facts?: readonly SummaryCollectionFact[];
   updateData: (updates: Partial<QuizData>) => void;
 }
 
-export function QuizStepSummary({ data, updateData }: Props) {
+export function QuizStepSummary({ data, updateData, facts }: Props) {
   return (
     <div className="space-y-4">
       <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-2xl p-6 border border-primary/20">
@@ -36,7 +38,7 @@ export function QuizStepSummary({ data, updateData }: Props) {
           </div>
           <div>
             <span className="text-muted-foreground">Программ:</span>
-            <div className="font-medium">{data.programs.filter(p => p.name).length}</div>
+            <div className="font-medium">{selfExaminationSummaryCount(data.programs.map(p => p.name), 'answer:programs', facts) ?? "Не указано"}</div>
           </div>
           <div>
             <span className="text-muted-foreground">Обучающихся:</span>
@@ -44,7 +46,7 @@ export function QuizStepSummary({ data, updateData }: Props) {
           </div>
           <div>
             <span className="text-muted-foreground">Педагогов:</span>
-            <div className="font-medium">{data.staff.filter(s => s.fio).length}</div>
+            <div className="font-medium">{selfExaminationSummaryCount(data.staff.map(s => s.fio), 'answer:staff', facts) ?? "Не указано"}</div>
           </div>
         </div>
       </div>
