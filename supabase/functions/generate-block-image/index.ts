@@ -2,6 +2,7 @@
 // Returns { url } where url is a data:image/png;base64,... that the client uploads to storage if needed.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,7 @@ serve(async (req) => {
 
     if (!aiResp.ok) {
       const t = await aiResp.text().catch(() => "");
-      console.error("Lovable AI image gateway error:", aiResp.status, t);
+      ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "request_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("Lovable AI image gateway error:", aiResp.status, t);
       if (aiResp.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), {
           status: 429,

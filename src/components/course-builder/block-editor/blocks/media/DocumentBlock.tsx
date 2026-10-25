@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, BookOpen, Trash2 } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 
 export function DocumentBlock({ block, onUpdate, courseId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseId?: string }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -34,7 +35,7 @@ export function DocumentBlock({ block, onUpdate, courseId }: { block: ContentBlo
   };
 
   const docExt = documentName.split('.').pop()?.toLowerCase();
-  const isPdf = docExt === 'pdf';
+  const preview = courseDocumentPreview(documentUrl, docExt ?? null, [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
 
   return (
     <div className="py-2">
@@ -44,13 +45,13 @@ export function DocumentBlock({ block, onUpdate, courseId }: { block: ContentBlo
             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center"><BookOpen className="w-4 h-4 text-indigo-500" /></div>
             <span className="font-medium text-sm truncate flex-1">{documentName || 'Документ'}</span>
             <div className="flex gap-1">
-              <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline px-2 py-1">Скачать</a>
+              {preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline px-2 py-1">Скачать</a>}
               <Button variant="ghost" size="sm" className="h-7 text-destructive" onClick={() => onUpdate({ documentUrl: "", documentName: "" })}><Trash2 className="w-4 h-4" /></Button>
             </div>
           </div>
           <LazyMediaPreview type="document" className="aspect-[4/3]">
             <div className="aspect-[4/3]">
-              <iframe src={isPdf ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true` : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`} className="w-full h-full border-0" />
+              {preview.previewUrl ? <iframe src={preview.previewUrl} referrerPolicy="no-referrer" sandbox={preview.mode === "native_pdf" ? "allow-downloads" : undefined} className="w-full h-full border-0" title={documentName || "Документ"} /> : <div className="h-full flex items-center justify-center p-6 text-sm text-muted-foreground">Откройте документ в новой вкладке или скачайте его.</div>}
             </div>
           </LazyMediaPreview>
         </div>

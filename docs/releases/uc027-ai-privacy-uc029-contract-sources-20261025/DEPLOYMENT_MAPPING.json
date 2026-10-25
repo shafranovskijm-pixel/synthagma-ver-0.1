@@ -1,0 +1,243 @@
+{
+  "schema": 1,
+  "status": "SOURCE_MAPPING_NATIVE_DEPLOY_AND_LIVE_ACCEPTANCE_SEPARATE",
+  "baseCommit": "eb73d27d24deded61eb734cd5af1aa6180c090d3",
+  "sourceTree": "77a3cec34c1e2676d721903d4c7e4bfb4cc22a8d",
+  "functionNames": [
+    "ai-avatar-generate-image",
+    "ai-avatar-generate-prompt",
+    "bulk-pipeline",
+    "demo-fill-lesson",
+    "generate-achievements",
+    "generate-block-image",
+    "generate-blog-post",
+    "generate-course-content",
+    "generate-course-structure",
+    "generate-cover",
+    "generate-explanation",
+    "generate-image",
+    "generate-image-alt",
+    "generate-lesson-content",
+    "generate-seo",
+    "gigachat",
+    "process-contract-template",
+    "review-course",
+    "student-chat",
+    "suggest-template-variables",
+    "support-chat"
+  ],
+  "files": [
+    {
+      "path": "supabase/functions/_shared/ai-observability.ts",
+      "bytes": 1989,
+      "sha256": "ed166f0ccbd643f42d2b1b2212edad595362834b667a95ac4d7ec83920866c59",
+      "gitBlob": "315d1054732cdc78a7132089f69d768d6f63b691"
+    },
+    {
+      "path": "supabase/functions/_shared/data-subject-deadline-rules.ts",
+      "bytes": 8040,
+      "sha256": "16bb93975c9d039e993ada0a7f09395a45b9daa1c8305d120d1427fb7ae5952d",
+      "gitBlob": "b8f01277ff3594da828fbe08b3bc68e31cc3e6ae"
+    },
+    {
+      "path": "supabase/functions/_shared/gigachat-client.ts",
+      "bytes": 29295,
+      "sha256": "d827825b2b63cdee45d01b1e46f54b45cbcde9909a5021c626f1dd6ad84576de",
+      "gitBlob": "2643854024b1af3544fd67bcf1b33b147a5b9c82"
+    },
+    {
+      "path": "supabase/functions/_shared/handler.ts",
+      "bytes": 5365,
+      "sha256": "24c8214505e437f0635531beae83af7ffad5faa019600dc5ee1ada6b219a7b11",
+      "gitBlob": "8608c672dbda0963b494323ea7232523ab5bb8a1"
+    },
+    {
+      "path": "supabase/functions/_shared/platform-support-contacts.ts",
+      "bytes": 8611,
+      "sha256": "4e70817362de61aab1fe76217f1b59cf675cf84151783d97d695a9e992d54956",
+      "gitBlob": "57842dc19d59b81c62a4691dc7b621b19ba26369"
+    },
+    {
+      "path": "supabase/functions/_shared/privileged-access.ts",
+      "bytes": 5797,
+      "sha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0",
+      "gitBlob": "0edf3f38118826d2d38f475eba43bd49e35a217e"
+    },
+    {
+      "path": "supabase/functions/_shared/rate-limiter.ts",
+      "bytes": 2268,
+      "sha256": "588eb2774f91c5afd397244540f52bd2f2abee19f2cf702c872a6c81bd573085",
+      "gitBlob": "799b866d7d5ce29802d02ba7f41805935cb513b1"
+    },
+    {
+      "path": "supabase/functions/_shared/russian-ca.ts",
+      "bytes": 5857,
+      "sha256": "6e65ea551950b7d87c0dce1e64f784d10337b744b15b33f4c9d331e324697518",
+      "gitBlob": "82a93c29943395cb408427f3fef31969e3c5172e"
+    },
+    {
+      "path": "supabase/functions/_shared/student-quota-rules.ts",
+      "bytes": 3021,
+      "sha256": "c5f423cfff6ed25af232b4338ffd7b2c7a583e3bd9c60adea7a74d0251d76c85",
+      "gitBlob": "dd124cb58666f075bc80514195b4d8564a7ef29f"
+    },
+    {
+      "path": "supabase/functions/ai-avatar-generate-image/index.ts",
+      "bytes": 4297,
+      "sha256": "5c1cfb6014d42e220e060a866bc6cbc1e1af8698f9ba6ee5ac1d3cc0820b6353",
+      "gitBlob": "d10950c1f290e2bab72eadda4c9471978006a161"
+    },
+    {
+      "path": "supabase/functions/ai-avatar-generate-prompt/index.ts",
+      "bytes": 4401,
+      "sha256": "f56126cef2504a3bf49c0c543f8f8c829849a05cdada4706cb0e85ccd5429583",
+      "gitBlob": "2456655bc3461426057144b67f4e608f9b8cb742"
+    },
+    {
+      "path": "supabase/functions/bulk-pipeline/index.ts",
+      "bytes": 25530,
+      "sha256": "e650d799535f351fa7685ab693fe602ef375f5d7d4477d1aff1dd448ac26ea9e",
+      "gitBlob": "1bec118d67147c17d3a30e6669842970bf9cd462"
+    },
+    {
+      "path": "supabase/functions/demo-fill-lesson/index.ts",
+      "bytes": 12129,
+      "sha256": "b285d4d4d770678a88fbd960d5f4a6d906d809fa693336080d270344ac7b9bea",
+      "gitBlob": "fe99493258b98ea2503ffea8586452cddc71e3e8"
+    },
+    {
+      "path": "supabase/functions/generate-achievements/index.ts",
+      "bytes": 2509,
+      "sha256": "bfa136847d8d6c37a5eb3fd74017443560b2620e049221673e2d3ae90d488e58",
+      "gitBlob": "ee6bdc8177b9373e4256d747510c1e5b7a7e5877"
+    },
+    {
+      "path": "supabase/functions/generate-block-image/index.ts",
+      "bytes": 5365,
+      "sha256": "52ba70e2c6e53942a3a87e5c9aaab4d7384cb461fe9a2aac87b564859478eec3",
+      "gitBlob": "7c667d7525b237282833bd5cee3faa7b0eb57573"
+    },
+    {
+      "path": "supabase/functions/generate-blog-post/index.ts",
+      "bytes": 4702,
+      "sha256": "95b0fb26897970ce14675a526ce74aea4247482bbc7420a0f858369be0f086b6",
+      "gitBlob": "b15a75f20308f1e0e8becd0e1f6932f1ad659c56"
+    },
+    {
+      "path": "supabase/functions/generate-course-content/index.ts",
+      "bytes": 45431,
+      "sha256": "f4c678361fadbc3d64132df73629c07746a09273c441af0f3d17063db297ba09",
+      "gitBlob": "1fd5b5deed89dc527d4fc2abb4391440a12bee70"
+    },
+    {
+      "path": "supabase/functions/generate-course-structure/index.ts",
+      "bytes": 13681,
+      "sha256": "e487a7c0a09dcb159c1f9247f492742e5f17add576f5b4df14dd2210ac9cf0f9",
+      "gitBlob": "114ccd13aef2b3a8adf1fd732438d46c8e8fb504"
+    },
+    {
+      "path": "supabase/functions/generate-cover/index.ts",
+      "bytes": 11518,
+      "sha256": "12a52404aa5d7c28544e102689137ba27d5514ed855a0178a3a1d3a354d7845b",
+      "gitBlob": "311fc72e995138e931991b3a87c9ac9333a007ef"
+    },
+    {
+      "path": "supabase/functions/generate-explanation/index.ts",
+      "bytes": 2769,
+      "sha256": "05e1ee634b833878dcc915be6c2868fd5f156bc6ab1080982dc12a1cde864983",
+      "gitBlob": "c8c04c133a068dfcb9afe63d26ee3575fa1b36df"
+    },
+    {
+      "path": "supabase/functions/generate-image-alt/index.ts",
+      "bytes": 2764,
+      "sha256": "76afb85e5a0945f511d5f1f525ffd66c9a8f9ba882cf466b8f29fe3038da36ff",
+      "gitBlob": "15a6f1690c19f1e3f14abcb2d63891b11226ac99"
+    },
+    {
+      "path": "supabase/functions/generate-image/index.ts",
+      "bytes": 13300,
+      "sha256": "c11a7617196c0855af52c84d9b675ef44395e1f89011a39e9180a6198aabd784",
+      "gitBlob": "e0ec44c17547c7080d7c04d0bc1e415a1132363c"
+    },
+    {
+      "path": "supabase/functions/generate-lesson-content/index.ts",
+      "bytes": 20241,
+      "sha256": "78d97e5f3a5470d52715ce8524e0fc1131d89ef4e92220cf03f6f9396a22ad81",
+      "gitBlob": "fc47bd12edae9aac5fcaaa9fc4b527e4bf26e9ec"
+    },
+    {
+      "path": "supabase/functions/generate-seo/index.ts",
+      "bytes": 3932,
+      "sha256": "9a374a0eeb9ae73cfde28a3a88394b6a3a00b99373a1fda4a897648c601afef7",
+      "gitBlob": "9dc9afebf78ffc768508c3ed248b4a0a5a069d26"
+    },
+    {
+      "path": "supabase/functions/gigachat/index.ts",
+      "bytes": 35787,
+      "sha256": "039fef9a7eb32516a6df4c680e4acc3b970fe6cdb5b236742ed7be8e40de092f",
+      "gitBlob": "9d237fb4e7195322dcccf83ff3476a03a5aa864a"
+    },
+    {
+      "path": "supabase/functions/process-contract-template/index.ts",
+      "bytes": 8545,
+      "sha256": "21b29b2746a1819ed22e31c747cbb666c9dd54667b043e73dd7720eb17dd5a61",
+      "gitBlob": "673a60d829c410912025a18ff7b62d660172ee98"
+    },
+    {
+      "path": "supabase/functions/review-course/authorization.ts",
+      "bytes": 1194,
+      "sha256": "b389601476a8d05c4f5e9821ccdddf236ff4035440d3a506b3022dcd22e41488",
+      "gitBlob": "f43d9b6a6aae440600ce933d01b09013e8b27061"
+    },
+    {
+      "path": "supabase/functions/review-course/index.ts",
+      "bytes": 9248,
+      "sha256": "41302d49ea9ea1673e4a613bda8df1433d6fdb404a62ba8e8ea888ad04d043f3",
+      "gitBlob": "d7ea68520782c045d50b655541347b866e431600"
+    },
+    {
+      "path": "supabase/functions/review-course/review-policy.ts",
+      "bytes": 11704,
+      "sha256": "5704de98a28162e6a1b67a09bbea98924d6e5933ab8c8dd15b9ed3c542a37fe7",
+      "gitBlob": "b3148d1418a18d638ae0ffd403825469bd40f9d4"
+    },
+    {
+      "path": "supabase/functions/student-chat/index.ts",
+      "bytes": 5128,
+      "sha256": "95574dedcc2cb6eb089871d3aa98e077b0d52372350633064df25d02bd6dc939",
+      "gitBlob": "cff7310631debbfa4c6994a9cd3f2accfc522142"
+    },
+    {
+      "path": "supabase/functions/suggest-template-variables/index.ts",
+      "bytes": 5377,
+      "sha256": "ddb0dc2d20abca7ea971b7a4bf41a8e253938a5bc163882b04b4a0bf63598f20",
+      "gitBlob": "468e8701d759d7f8ac9df66171f49d9275cb363b"
+    },
+    {
+      "path": "supabase/functions/support-chat/index.ts",
+      "bytes": 16819,
+      "sha256": "627b4d7598a9c21a860c1194ea5b87bbba73b72001a9fb1b0021692df899e9e0",
+      "gitBlob": "c7225d1611e68d8b7b8952f5c88e2fa5f4598019"
+    }
+  ],
+  "config": {
+    "path": "supabase/config.toml",
+    "change": false,
+    "note": "Preserve existing deployed gateway settings. Source config is not an independent readback of deployed settings."
+  },
+  "existingSDKSpecifiers": [
+    "https://deno.land/std@0.168.0/http/server.ts",
+    "https://esm.sh/@supabase/supabase-js@2",
+    "https://esm.sh/@supabase/supabase-js@2.45.0",
+    "https://esm.sh/@supabase/supabase-js@2.57.4",
+    "npm:@supabase/supabase-js@2"
+  ],
+  "SDKPinChanges": false,
+  "sourceChanges": 21,
+  "nativeAffectedRoots": 21,
+  "localClosureFiles": 32,
+  "requireExactAuthorizedReviewIndex": "41302d49ea9ea1673e4a613bda8df1433d6fdb404a62ba8e8ea888ad04d043f3",
+  "requireAuthorizationHelper": "b389601476a8d05c4f5e9821ccdddf236ff4035440d3a506b3022dcd22e41488",
+  "providerDeploymentVerified": false,
+  "workingSiteVerified": false
+}

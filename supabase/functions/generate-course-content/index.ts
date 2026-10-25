@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 import { callAIWithTools, callLovableAIWithTools } from "../_shared/gigachat-client.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -262,7 +263,7 @@ function createImageHttpClient(): Deno.HttpClient | undefined {
       return Deno.createHttpClient({ caCerts: [RUSSIAN_ROOT_CA, RUSSIAN_SUB_CA] });
     }
   } catch (e) {
-    console.warn("[generate-image] Failed to create HTTP client with Russian CA:", e);
+    logAiOperation("warn", "network_failed");
   }
   return undefined;
 }
@@ -286,7 +287,7 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
   if (!authKey) return null;
 
   const slotName = `img-slot-${keyIndex}`;
-  console.log(`[GigaChat][${slotName}] Generating image for: ${prompt}`);
+  logAiOperation("log", "request_started");
 
   // Step 1: Get OAuth token
   const tokenFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
@@ -304,7 +305,7 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
   const tokenRes = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", tokenFetchOpts);
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
-    console.error(`[GigaChat][${slotName}] OAuth error:`, tokenRes.status, text);
+    logAiOperation("error", "oauth_failed", tokenRes.status);
     if (tokenRes.status === 402 || /payment|exhausted|insufficient/i.test(text)) {
       throw { dead: true, status: 402, message: `[${slotName}] OAuth 402: tokens exhausted` };
     }
@@ -333,7 +334,7 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
   const chatRes = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts);
   if (!chatRes.ok) {
     const text = await chatRes.text();
-    console.error(`[GigaChat][${slotName}] Generation error:`, chatRes.status, text);
+    logAiOperation("error", "request_failed", chatRes.status);
     if (chatRes.status === 402 || /payment|exhausted|insufficient/i.test(text)) {
       throw { dead: true, status: 402, message: `[${slotName}] 402: tokens exhausted` };
     }
@@ -350,7 +351,7 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
   // Extract image file_id
   const fileIdMatch = content.match(/<img\s+src="([^"]+)"/);
   if (!fileIdMatch) {
-    console.error(`[GigaChat][${slotName}] No image in response:`, content.substring(0, 200));
+    logAiOperation("error", "invalid_response");
     return null;
   }
 
@@ -408,7 +409,7 @@ async function generateImage(prompt: string): Promise<string | null> {
             deadImageSlots.add(slotIdx);
             console.warn(`[Image] GigaChat slot-${slotIdx} marked DEAD for this run (402). Live slots left: ${GIGACHAT_IMAGE_KEYS.length - deadImageSlots.size}`);
           } else {
-            console.warn(`[Image] GigaChat slot-${slotIdx} transient failure:`, e?.message || e);
+            logAiOperation("warn", "request_failed", e?.status);
           }
         }
       }
@@ -419,7 +420,7 @@ async function generateImage(prompt: string): Promise<string | null> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (LOVABLE_API_KEY) {
     try {
-      console.log("[Image] Falling back to Lovable AI for:", prompt);
+      logAiOperation("log", "provider_fallback");
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -444,14 +445,15 @@ async function generateImage(prompt: string): Promise<string | null> {
           return imageUrl;
         }
       } else {
-        console.warn("[Image] Lovable AI error:", response.status, await response.text());
+        await response.text();
+        logAiOperation("warn", "request_failed", response.status);
       }
     } catch (e) {
-      console.warn("[Image] Lovable AI failed:", e);
+      logAiOperation("warn", "network_failed");
     }
   }
 
-  console.error("[Image] All providers failed for:", prompt);
+  logAiOperation("error", "request_failed");
   return null;
 }
 
@@ -508,7 +510,7 @@ async function generateSlides(topic: string, courseTitle: string): Promise<any[]
         imageUrl = await generateImage(s.imagePrompt);
         await new Promise(r => setTimeout(r, 1500)); // Rate limit delay
       } catch (e) {
-        console.error("Failed to generate image for slide:", e);
+        logAiOperation("error", "request_failed");
       }
     }
     slidesWithImages.push({
@@ -590,17 +592,17 @@ async function setProgress(
       })
       .eq("id", courseId);
   } catch (e) {
-    console.error("setProgress failed:", e);
+    logAiOperation("error", "request_failed");
   }
 }
 
 async function processOneCourse(supabase: any, courseId: string, courseTitle: string) {
-  console.log(`Starting generation for course: ${courseTitle}`);
+  logAiOperation("log", "request_started");
 
   try {
     await setProgress(supabase, courseId, "structure", 0, 1, "Создаём структуру курса…");
     const lessons = await generateCourseStructure(courseTitle);
-    console.log(`Generated ${lessons.length} lessons for ${courseTitle}`);
+    logAiOperation("log", "request_succeeded");
 
     const total = lessons.length;
     let current = 0;
@@ -629,7 +631,7 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
         .single();
 
       if (lessonError) {
-        console.error(`Error inserting lesson: ${lessonError.message}`);
+        logAiOperation("error", "request_failed");
         continue;
       }
 
@@ -644,7 +646,7 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
           .update({ content: markdown })
           .eq("id", lessonData.id);
 
-        console.log(`Generated content for lesson: ${lesson.title}`);
+        logAiOperation("log", "request_succeeded");
       } else {
         const questions = await generateTestQuestions(lesson.title, courseTitle);
 
@@ -664,18 +666,18 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
           .update({ test_questions_count: questions.length })
           .eq("id", lessonData.id);
 
-        console.log(`Generated ${questions.length} questions for test: ${lesson.title}`);
+        logAiOperation("log", "request_succeeded");
       }
 
       await new Promise(r => setTimeout(r, 3000));
     }
 
     await setProgress(supabase, courseId, "done", total, total, "Генерация завершена");
-    console.log(`Completed generation for course: ${courseTitle}`);
+    logAiOperation("log", "request_succeeded");
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     await setProgress(supabase, courseId, "error", 0, 0, `Ошибка: ${msg}`);
-    console.error(`Error processing course ${courseTitle}:`, error);
+    logAiOperation("error", "request_failed");
   }
 }
 
@@ -758,7 +760,7 @@ serve(async (req) => {
 
     // Handle description generation
     if (contentType === "description" && courseTitle) {
-      console.log(`Generating description for course: ${courseTitle} (user: ${user.id})`);
+      logAiOperation("log", "request_started");
       const systemPrompt = `Ты эксперт по созданию описаний учебных курсов. Напиши привлекательное и информативное описание курса.
 Правила:
 1. 2-4 абзаца
@@ -777,7 +779,7 @@ serve(async (req) => {
 
     // Handle short description generation
     if (contentType === "short_description" && courseTitle) {
-      console.log(`Generating short description for course: ${courseTitle} (user: ${user.id})`);
+      logAiOperation("log", "request_started");
       const systemPrompt = `Ты эксперт по маркетингу образовательных курсов. Напиши краткое, цепляющее описание курса для каталога.
 Правила:
 1. Максимум 2-3 предложения
@@ -796,7 +798,7 @@ serve(async (req) => {
 
     // Handle individual content generation requests
     if (contentType && lessonTitle) {
-      console.log(`Generating ${contentType} for: ${lessonTitle} (user: ${user.id})`);
+      logAiOperation("log", "request_started");
       
       switch (contentType) {
         case "test": {
@@ -1055,7 +1057,7 @@ serve(async (req) => {
         await processOneCourse(supabase, course.id, course.title);
         await new Promise(r => setTimeout(r, 5000));
       }
-      console.log(`Completed processing all ${coursesToProcess.length} courses for user ${user.id}`);
+      logAiOperation("log", "request_succeeded");
     };
 
     (globalThis as any).EdgeRuntime?.waitUntil?.(backgroundTask());
@@ -1069,7 +1071,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error:", error);
+    logAiOperation("error", "request_failed");
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

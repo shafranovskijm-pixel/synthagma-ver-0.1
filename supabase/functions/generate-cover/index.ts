@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,7 +106,7 @@ serve(async (req) => {
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI prompt generation error:", aiResponse.status, errorText);
+      ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "request_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("AI prompt generation error:", aiResponse.status, errorText);
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Превышен лимит запросов, попробуйте позже" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -121,7 +122,7 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const imagePrompt = aiData.choices?.[0]?.message?.content?.trim() || "";
-    console.log(`[generate-cover] Generated prompt: "${imagePrompt}"`);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("log", "request_started"))(`[generate-cover] Generated prompt: "${imagePrompt}"`);
 
     if (!imagePrompt) throw new Error("AI returned empty prompt");
 

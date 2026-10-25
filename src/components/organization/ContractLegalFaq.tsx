@@ -1,6 +1,6 @@
 import { Info, FileCheck, FileText, Wrench, ScrollText } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { LEGAL_SOURCES } from "@/lib/uc-compliance/catalog";
+import { CONTRACT_REVIEW_FIELDS_20261025, CONTRACT_SOURCE_EDITION_20261025 } from "@/lib/uc-compliance/contractSourceEdition20261025";
 
 export function ContractLegalFaq() {
   return (
@@ -39,24 +39,8 @@ export function ContractLegalFaq() {
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-1.5 text-xs">
-              <p className="text-muted-foreground">Рабочий перечень для подготовки. Актуальный состав обязательных условий и применимость проверьте по первоисточникам.</p>
-              {[
-                "Полное наименование и фирменное наименование Исполнителя",
-                "Место нахождения или место жительства Исполнителя",
-                "Наименование / ФИО Заказчика, телефон",
-                "Место нахождения или место жительства Заказчика",
-                "ФИО и реквизиты документа представителя Исполнителя/Заказчика",
-                "ФИО, место жительства, телефон обучающегося (если не Заказчик)",
-                "Права, обязанности и ответственность всех сторон",
-                "Полная стоимость + порядок оплаты",
-                "Сведения о лицензии (орган, номер, дата)",
-                "Вид, уровень и направленность программы",
-                "Форма обучения",
-                "Сроки освоения программы (продолжительность)",
-                "Вид выдаваемого документа об образовании",
-                "Порядок изменения и расторжения договора",
-                "Другие сведения по специфике (доступ к СДО, требования к оборудованию)",
-              ].map((item, i) => (
+              <p className="text-muted-foreground">Перечень для подготовки по пункту 13 сохранённой копии Правил № 1441. Актуальность и применимость условий проверьте по источникам ниже.</p>
+              {CONTRACT_REVIEW_FIELDS_20261025.map((item, i) => (
                 <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
                   <span className="font-mono text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5 shrink-0">{i + 1}</span>
                   <span>{item}</span>
@@ -136,15 +120,14 @@ export function ContractLegalFaq() {
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2 text-xs">
-              {[LEGAL_SOURCES.education, LEGAL_SOURCES.paid].map(source => <div key={source.id} className="p-3 rounded-lg bg-muted/50">
+              <p className="text-muted-foreground">Сверены указанные положения источников. Это не утверждение проекта договора и не подтверждение применимости ко всем центрам.</p>
+              {CONTRACT_SOURCE_EDITION_20261025.sources.map(source => <div key={source.id} className="p-3 rounded-lg bg-muted/50">
                 <a className="font-semibold text-primary underline" href={source.primaryUrl} target="_blank" rel="noopener noreferrer">{source.title}</a>
-                <p className="text-muted-foreground">Зафиксировано в каталоге: {source.checkedOn}. {source.reviewStatus === "needs_legal_review" ? "Актуальная редакция требует отдельной сверки." : "Проверенные положения и ограничения указаны ниже."}</p>
-                {source.limitation && <p className="text-muted-foreground">{source.limitation}</p>}
+                <p className="text-muted-foreground">Сверка источника: {source.checkedOnLabel}. {source.summary}</p>
+                <p className="text-muted-foreground">{source.limitation}</p>
+                <div className="space-y-1">{source.references.map(reference => <p key={reference.url}><a className="text-primary underline" href={reference.url} target="_blank" rel="noopener noreferrer">{reference.label}</a></p>)}</div>
               </div>)}
-              <div className="p-3 rounded-lg bg-muted/50">
-                <div className="font-semibold mb-1">Закон РФ от 07.02.1992 № 2300-1</div>
-                <p className="text-muted-foreground">Применимость и актуальный первоисточник требуют отдельной проверки; в этом каталоге подтверждённая ссылка для него не закреплена.</p>
-              </div>
+              <p className="text-muted-foreground">Следующий шаг: сопоставьте этот перечень, состав сторон, лицензию и цену с проектом договора и подтверждёнными данными вашего центра.</p>
             </div>
           </AccordionContent>
         </AccordionItem>

@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 import { callAI } from "../_shared/gigachat-client.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,7 +110,7 @@ serve(async (req) => {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
         result = { answers: JSON.parse(cleaned), model };
       } catch {
-        console.error("Failed to parse AI response:", response);
+        logAiOperation("error", "invalid_response");
         result = { answers: [], raw: response, parseError: true, model };
       }
 
@@ -341,7 +342,7 @@ serve(async (req) => {
         const parsed = JSON.parse(cleaned);
         result = { lessons: parsed.lessons || parsed, model };
       } catch {
-        console.error("Failed to parse structure response:", response);
+        logAiOperation("error", "invalid_response");
         result = { lessons: [], raw: response, parseError: true, model };
       }
 
@@ -380,7 +381,7 @@ serve(async (req) => {
         const parsed = JSON.parse(cleaned);
         result = { visuals: parsed.visuals || [], model };
       } catch {
-        console.error("Failed to parse analyze_visuals response:", response);
+        logAiOperation("error", "invalid_response");
         result = { visuals: [], raw: response, parseError: true, model };
       }
 
@@ -423,7 +424,7 @@ serve(async (req) => {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
         result = { answers: JSON.parse(cleaned), model, isVerification: true };
       } catch {
-        console.error("Failed to parse verification response:", response);
+        logAiOperation("error", "invalid_response");
         result = { answers: [], raw: response, parseError: true, model, isVerification: true };
       }
 
@@ -438,7 +439,7 @@ serve(async (req) => {
     });
 
   } catch (error: unknown) {
-    console.error("GigaChat function error:", error);
+    logAiOperation("error", "request_failed");
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("rate limit") ? 429 : message.includes("402") ? 402 : 500;
     return new Response(JSON.stringify({ error: message }), {

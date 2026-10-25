@@ -1,4 +1,5 @@
 import { withAuth } from "../_shared/handler.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
 
 interface AltBody {
   imageUrl?: string;
@@ -47,7 +48,7 @@ Deno.serve(withAuth(async ({ body }) => {
 
   if (!resp.ok) {
     const errText = await resp.text();
-    console.error("AI gateway error:", resp.status, errText);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("error", "request_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("AI gateway error:", resp.status, errText);
     if (resp.status === 429) {
       return new Response(JSON.stringify({ error: "Слишком много запросов, попробуйте позже" }), {
         status: 429,

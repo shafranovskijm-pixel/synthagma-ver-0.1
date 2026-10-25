@@ -6,6 +6,9 @@ import {
   guardUnverifiedLegalFindings,
   REVIEW_REVISION,
 } from "./review-policy.ts";
+import { logAiOperation } from "../_shared/ai-observability.ts";
+import { AccessError, accessErrorResponse } from "../_shared/privileged-access.ts";
+import { requireReviewCourseAccess } from "./authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,17 +35,14 @@ serve(async (req) => {
   }
 
   try {
-    const { courseId } = await req.json();
-    if (!courseId) {
-      return new Response(JSON.stringify({ error: "courseId is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const caller = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: req.headers.get("authorization") || "" } },
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const courseId = await requireReviewCourseAccess(req, supabase, caller);
 
     // Load course
     const { data: course, error: courseError } = await supabase
@@ -195,7 +195,7 @@ ${lessonSummaries.join("\n\n")}`;
       },
     };
 
-    console.log(`[review-course] Reviewing course "${course.title}" (${lessons.length} lessons)`);
+    ((..._uc027LogArgs: unknown[]) => logAiOperation("log", "request_started"))(`[review-course] Reviewing course "${course.title}" (${lessons.length} lessons)`);
 
     const aiResult = await callAIWithTools(
       [
@@ -214,6 +214,7 @@ ${lessonSummaries.join("\n\n")}`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    if (err instanceof AccessError) return accessErrorResponse(err, corsHeaders);
     console.error("[review-course] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     const status = message.includes("402") ? 402 : message.includes("429") ? 429 : 500;
