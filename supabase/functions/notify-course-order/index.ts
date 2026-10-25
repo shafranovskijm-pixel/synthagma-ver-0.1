@@ -2,23 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 import { logExternalOperation } from "../_shared/external-operation-observability.ts";
+import { AccessError } from "../_shared/privileged-access.ts";
+import { PLATFORM_CONTACTS } from "../_shared/platform-support-contacts.ts";
+import { requireOrderNotificationAccess, escapeOrderNotificationText, claimOrderNotificationDelivery } from "./authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-interface OrderNotificationRequest {
-  orderId: string;
-  courseName: string;
-  buyerName: string;
-  buyerType: string;
-  studentsCount: number;
-  price: number;
-  notes?: string;
-  sellerOrganizationId: string;
-}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -28,8 +20,9 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
       console.error("Supabase credentials not configured");
       return new Response(
         JSON.stringify({ error: "Supabase not configured", success: false }),
@@ -37,20 +30,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const {
-      orderId,
-      courseName,
-      buyerName,
-      buyerType,
-      studentsCount,
-      price,
-      notes,
-      sellerOrganizationId,
-    }: OrderNotificationRequest = await req.json();
-
-    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_notification_started"))("Processing order notification:", { orderId, courseName, sellerOrganizationId });
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const trusted = await requireOrderNotificationAccess(req, supabase, originalHeader => createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { headers: { Authorization: originalHeader } },
+    }));
+    const { orderId, buyerType, studentsCount, price, sellerOrganizationId } = trusted;
+    const courseName = escapeOrderNotificationText(trusted.courseName);
+    const buyerName = escapeOrderNotificationText(trusted.buyerName);
+    const notes = trusted.notes === null ? null : escapeOrderNotificationText(trusted.notes);
+    if (sellerOrganizationId === null) return new Response(JSON.stringify({ success: true, message: "No recipients found" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_notification_started"))("Processing order notification:", { orderId, courseName, sellerOrganizationId });
 
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
@@ -58,11 +47,11 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", sellerOrganizationId)
       .single();
 
-    if (orgError) {
-      console.error("Error fetching organization:", orgError);
+    if (orgError || !orgData || typeof orgData.name !== "string") {
+      throw new AccessError(503, "Не удалось подтвердить получателей уведомления. Повторите попытку.");
     }
 
-    const organizationName = orgData?.name || "Ваша организация";
+    const organizationName = escapeOrderNotificationText(orgData?.name || "Ваша организация");
 
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
@@ -71,11 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
       .not("email", "is", null);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch seller emails", success: false }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new AccessError(503, "Не удалось подтвердить получателей уведомления. Повторите попытку.");
     }
 
     if (!profiles || profiles.length === 0) {
@@ -89,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emails = profiles.filter(p => p.email).map(p => p.email as string);
     ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_recipients_ready"))("Sending notification to:", emails);
 
-    const buyerTypeLabel = buyerType === "student" ? "Студент" : "Организация";
+    const buyerTypeLabel = "Организация";
     const formattedPrice = new Intl.NumberFormat("ru-RU", {
       style: "currency",
       currency: "RUB",
@@ -161,7 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
 
             <div class="cta">
               <p>Перейдите в личный кабинет для обработки заявки:</p>
-              <a href="${req.headers.get("origin") || "https://sintagma.com.ru"}/organization" class="button">
+              <a href="${PLATFORM_CONTACTS.website}/organization" class="button">
                 Открыть заявки
               </a>
             </div>
@@ -175,9 +160,10 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send to all organization members
-    const subject = `Новая заявка на курс "${courseName}"`;
+    const subject = `Новая заявка на курс "${trusted.courseName.replace(/[\r\n]+/g, " ")}"`;
     let sent = 0;
     for (const email of emails) {
+      if (!await claimOrderNotificationDelivery(supabase, orderId, "smtp", email)) continue;
       const r = await sendPlatformEmail({ to: email, subject, html: htmlBody });
       if (r.ok) { sent++; ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_delivery_succeeded"))("Email sent to:", email); }
       else { ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "smtp_delivery_failed"))("Failed to send to:", email, r.error); }
@@ -187,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const TELEGRAM_SUPPORT_CHAT_ID = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID");
 
-    if (TELEGRAM_BOT_TOKEN && TELEGRAM_SUPPORT_CHAT_ID) {
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_SUPPORT_CHAT_ID && await claimOrderNotificationDelivery(supabase, orderId, "telegram", TELEGRAM_SUPPORT_CHAT_ID)) {
       try {
         const tgMessage = [
           "🛒 <b>Новая заявка на курс!</b>",
@@ -231,10 +217,10 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: unknown) {
     console.error("Error in notify-course-order function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof AccessError ? error.message : "Не удалось отправить уведомление по заказу. Повторите попытку.";
     return new Response(
       JSON.stringify({ error: errorMessage, success: false }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: error instanceof AccessError ? error.status : 500, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
     );
   }
 };
