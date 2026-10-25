@@ -1,5 +1,6 @@
 import {OFFICIAL_TEMPLATES} from './officialMetadata';
 import {nativeDefinition} from './dictionaries';
+import {indexPinnedImmutableElements,PINNED_IMMUTABLE_WINDOW} from './verifiedImmutableProjection';
 import {BOUNDS,decodeUtf8,FrdoFoundationError,refuse,utf8} from './hash';
 import type {OfficialCell,Stream} from './types';
 import {browserXmlRuntime,type XmlDocument,type XmlElement,type XmlRuntime} from './xmlRuntime';
@@ -21,16 +22,16 @@ export function columnLetter(index:number):string{let text='';for(let n=index;n>
 /** Independently read every named native dictionary, including the structured table
  * reference with its significant leading-space header. No dictionary is rewritten. */
 export interface VerifiedPublicDonorStructure{sheet:XmlDocument;styles:XmlDocument;strings:readonly string[];}
-export function verifyNativeStructure(parts:ReadonlyMap<string,Uint8Array>,stream:Stream,runtime:XmlRuntime=browserXmlRuntime):VerifiedPublicDonorStructure{
+function nativeStructure(parts:ReadonlyMap<string,Uint8Array>,stream:Stream,runtime:XmlRuntime,boundedImmutable:boolean):VerifiedPublicDonorStructure{
  const required=(path:string)=>{const raw=parts.get(path);if(!raw)return refuse();return raw;};
- const strings=sharedStrings(parts,runtime),sheet=parseXml(required(OFFICIAL_TEMPLATES[stream].sheet_path),runtime);
+ const strings=boundedImmutable?readPinnedSharedStrings(parts,runtime):sharedStrings(parts,runtime),sheet=parseXml(required(OFFICIAL_TEMPLATES[stream].sheet_path),runtime);
  if(elements(sheet,'dimension').length!==1||elements(sheet,'dimension')[0].getAttribute('ref')!==OFFICIAL_TEMPLATES[stream].native_dimension||elements(sheet,'hyperlink').length)return refuse();
  // The exact donor SHA and all part hashes already pin every untouched data row.
  // Native structure needs header values, not a map of all40000 pre-styled blanks.
  const header=elements(sheet,'row')[0];if(!header||header.getAttribute('r')!=='1')return refuse('TEMPLATE_CHANGED');const headerCells=direct(header,'c');if(headerCells.length!==OFFICIAL_TEMPLATES[stream].column_count)return refuse('TEMPLATE_CHANGED');
  OFFICIAL_TEMPLATES[stream].columns.forEach((col,index)=>{const cell=headerCells[index];if(cell.getAttribute('r')!==col.letter+'1'||cellValue(cell,strings)!==col.header)return refuse('TEMPLATE_CHANGED');});
  const workbook=parseXml(required('xl/workbook.xml'),runtime),names=new Map<string,string>();for(const entry of elements(workbook,'definedName')){const name=entry.getAttribute('name');if(!name||names.has(name))return refuse();names.set(name,entry.textContent??'');}
- const validationGrid=cellGrid(parseXml(required('xl/worksheets/sheet2.xml'),runtime),strings),table=parseXml(required('xl/tables/table1.xml'),runtime);
+ const validationGrid=boundedImmutable?readPinnedValidationGrid(parts,strings,runtime):cellGrid(parseXml(required('xl/worksheets/sheet2.xml'),runtime),strings),table=parseXml(required('xl/tables/table1.xml'),runtime);
  const dictionaries=nativeDefinition(stream).dictionaries as unknown as Record<string,{reference:string;values:readonly(string|number)[]}>;
  for(const [name,data]of Object.entries(dictionaries)){
   if(names.get(name)!==data.reference)return refuse('TEMPLATE_CHANGED');let values:OfficialCell[]=[];
@@ -45,6 +46,24 @@ export function verifyNativeStructure(parts:ReadonlyMap<string,Uint8Array>,strea
  }
  return {sheet,strings,styles:parseXml(required('xl/styles.xml'),runtime)};
 }
+
+/** Existing generic full-DOM API remains unchanged for non-pinned callers. */
+export function verifyNativeStructure(parts:ReadonlyMap<string,Uint8Array>,stream:Stream,runtime:XmlRuntime=browserXmlRuntime):VerifiedPublicDonorStructure{return nativeStructure(parts,stream,runtime,false);}
+/** PRECONDITION: openDonor has checked exact donor SHA and every14 part hash/size.
+ * Full immutable contents and all dictionary values remain independently parsed. */
+export function verifyPinnedNativeStructure(parts:ReadonlyMap<string,Uint8Array>,stream:Stream,runtime:XmlRuntime=browserXmlRuntime):VerifiedPublicDonorStructure{return nativeStructure(parts,stream,runtime,true);}
+export function readPinnedSharedStrings(parts:ReadonlyMap<string,Uint8Array>,runtime:XmlRuntime=browserXmlRuntime):string[]{
+ const raw=parts.get('xl/sharedStrings.xml');if(!raw)return refuse();const windows=indexPinnedImmutableElements(decodeUtf8(raw,BOUNDS.xmlBytes),'sst','si'),result:string[]=[];
+ for(let first=0;first<windows.count;first+=PINNED_IMMUTABLE_WINDOW){const count=Math.min(PINNED_IMMUTABLE_WINDOW,windows.count-first),doc=parseXml(utf8(windows.project(first,count),BOUNDS.xmlBytes),runtime),values=elements(doc,'si');if(values.length!==count)return refuse();for(const si of values)result.push(elements(si,'t').map(t=>t.textContent??'').join(''));}
+ if(!windows.count)parseXml(utf8(windows.project(0,0),BOUNDS.xmlBytes),runtime);
+ return result;
+}
+export function readPinnedValidationGrid(parts:ReadonlyMap<string,Uint8Array>,strings:readonly string[],runtime:XmlRuntime=browserXmlRuntime):Map<string,OfficialCell>{
+ const raw=parts.get('xl/worksheets/sheet2.xml');if(!raw)return refuse();const windows=indexPinnedImmutableElements(decodeUtf8(raw,BOUNDS.xmlBytes),'sheetData','row'),result=new Map<string,OfficialCell>();
+ for(let first=0;first<windows.count;first+=PINNED_IMMUTABLE_WINDOW){const count=Math.min(PINNED_IMMUTABLE_WINDOW,windows.count-first),doc=parseXml(utf8(windows.project(first,count),BOUNDS.xmlBytes),runtime),rows=elements(doc,'row');if(rows.length!==count)return refuse();const values=cellGrid(doc,strings);for(const [ref,value]of values){if(result.has(ref))return refuse();result.set(ref,value);}}
+ if(!windows.count){const doc=parseXml(utf8(windows.project(0,0),BOUNDS.xmlBytes),runtime);if(cellGrid(doc,strings).size)return refuse();}
+ return result;
+}
 function escapeXml(value:string):string{utf8(value,BOUNDS.cellBytes);if(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/.test(value))return refuse('INVALID_REQUEST');return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
 /** Exact donor row surgery: existing styles/row attributes, headers, validations,
  * unused rows, named ranges, relationships and all non-target bytes stay intact. */
@@ -57,10 +76,10 @@ export function fillTargetRows(donor:string,stream:Stream,rows:readonly(readonly
 }
 /** A second XML reader checks exact order, literal types, styles and every value;
  * passing string replacement alone is not a readback proof. */
-export function verifyWrittenCells(output:XmlDocument,donor:XmlDocument,stream:Stream,rows:readonly(readonly OfficialCell[])[],strings:readonly string[],styles:XmlDocument):void{
+export function verifyWrittenCells(output:XmlDocument,donor:XmlDocument,stream:Stream,rows:readonly(readonly OfficialCell[])[],strings:readonly string[],styles:XmlDocument,firstDataRow=2):void{
  const outRows=elements(output,'row'),oldRows=elements(donor,'row'),metadata=OFFICIAL_TEMPLATES[stream];if(outRows.length!==oldRows.length||elements(output,'f').length||elements(output,'hyperlink').length)return refuse();
  const xfs=elements(styles,'cellXfs');if(xfs.length!==1)return refuse();const styleList=direct(xfs[0],'xf');
- rows.forEach((values,index)=>{const n=index+2,out=outRows[index+1],old=oldRows[index+1];if(out.getAttribute('r')!==String(n)||old.getAttribute('r')!==String(n))return refuse();const cells=direct(out,'c'),oldCells=direct(old,'c');if(cells.length!==metadata.column_count||oldCells.length!==metadata.column_count)return refuse();cells.forEach((cell,col)=>{
+ rows.forEach((values,index)=>{const n=index+firstDataRow,out=outRows[index+1],old=oldRows[index+1];if(out.getAttribute('r')!==String(n)||old.getAttribute('r')!==String(n))return refuse();const cells=direct(out,'c'),oldCells=direct(old,'c');if(cells.length!==metadata.column_count||oldCells.length!==metadata.column_count)return refuse();cells.forEach((cell,col)=>{
   if(cell.getAttribute('r')!==metadata.columns[col].letter+n||cell.getAttribute('s')!==oldCells[col].getAttribute('s')||cellValue(cell,strings)!==values[col])return refuse();
   const value=values[col],type=cell.getAttribute('t');if(value!==null&&type!==(typeof value==='number'?'n':'inlineStr'))return refuse();
   if(value!==null&&metadata.date_columns.includes(col+1 as never)){const style=Number(cell.getAttribute('s'));if(styleList[style]?.getAttribute('numFmtId')!=='14')return refuse('TEMPLATE_CHANGED');}

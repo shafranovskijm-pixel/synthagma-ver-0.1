@@ -5,8 +5,8 @@
   "entry": "nativeEntry.ts",
   "output": {
     "path": "runtime.bundle.js",
-    "bytes": 1385156,
-    "sha256": "413345606a4e022a34fea9ff32f2f7726832978b125bc3aa0cd3dab6e50fd357"
+    "bytes": 1388862,
+    "sha256": "e6092958dcafdecb1f63e545219401f48e0c0c34c1cfaa4f02ae740d60f22eae"
   },
   "index": {
     "path": "index.ts",
@@ -142,8 +142,8 @@
     },
     {
       "id": "src/lib/frdoFoundation/hash.ts",
-      "bytes": 3553,
-      "sha256": "b124c667c12c450935e04f6a67ada0490caea028b72e3ac6eb85044faf196d35"
+      "bytes": 4476,
+      "sha256": "a75097ddd5792da63d947ba2e1c179df3637916b2d32a498690b24b3305d9e76"
     },
     {
       "id": "src/lib/frdoFoundation/mapper.ts",
@@ -162,8 +162,8 @@
     },
     {
       "id": "src/lib/frdoFoundation/ooxml.ts",
-      "bytes": 9714,
-      "sha256": "735bed19646a66050af774647250f43956cf8dc1ce6c426a725ac49d601e7564"
+      "bytes": 12322,
+      "sha256": "52475a8b99a07604134eb752c57825845b8b5b4ce23ffe9fa7a86ec6773ad2a5"
     },
     {
       "id": "src/lib/frdoFoundation/sealedBatch.ts",
@@ -172,8 +172,18 @@
     },
     {
       "id": "src/lib/frdoFoundation/template.ts",
-      "bytes": 7893,
-      "sha256": "8928d72eb3c48a6e3bb0a62398d0a20ac0078cb6d4c874f8191f5840e5f06701"
+      "bytes": 9161,
+      "sha256": "4ac01bb2cc5ffe7be0a40cf40e0e4de332a236f53a10f679a13f17c9a89cf976"
+    },
+    {
+      "id": "src/lib/frdoFoundation/verifiedImmutableProjection.ts",
+      "bytes": 2160,
+      "sha256": "f9e71737bfe56676e8283330d230a36c286fac2ed9df2edf54b7bd98baad54a9"
+    },
+    {
+      "id": "src/lib/frdoFoundation/verifiedWorksheetProjection.ts",
+      "bytes": 2592,
+      "sha256": "eb0c73449499a81412cbb5f721fd933b59894e681fd8f080fe6f81369b988772"
     },
     {
       "id": "src/lib/frdoFoundation/xmlRuntime.ts",
