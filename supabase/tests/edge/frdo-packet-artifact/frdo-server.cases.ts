@@ -2,7 +2,7 @@ import {afterAll,beforeAll,describe,expect,it,vi} from 'vitest';
 import {webcrypto} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import JSZip from 'jszip';
-import {trustedFrdoXmlRuntime} from '../xmlRuntime';
+import {trustedFrdoXmlRuntime} from '../../../functions/frdo-packet-artifact/xmlRuntime';
 import {captureFrozenPacket} from '../../../../src/lib/frdoPackets/canonicalCapture';
 import {generateMappedOfficialWorkbook,generateOfficialWorkbook,verifyMappedOfficialWorkbook} from '../../../../src/lib/frdoFoundation/template';
 import {cellValue,elements,parseXml,sharedStrings} from '../../../../src/lib/frdoFoundation/ooxml';
