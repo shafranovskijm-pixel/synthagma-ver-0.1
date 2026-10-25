@@ -1,9 +1,9 @@
 import{afterEach,beforeEach,describe,expect,it,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{loadSealedArchivePackage,readSealedArchiveFile,readSealedArchiveManifest}from'../sealedRead';
-import{archiveSha256,archiveUtf8}from'../package';
+import{loadSealedArchivePackage,readSealedArchiveFile,readSealedArchiveManifest}from'../sealedRead.ts';
+import{archiveSha256,archiveUtf8}from'../package.ts';
 import{sealedFixture}from'./sealed.fixtures';
-import{id}from'./fixtures';
+import{id}from'./fixtures.ts';
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
 describe('sealed archive original-scope reads',()=>{
  it('reads both exact historical files and verifies the complete graph',async()=>{const f=await sealedFixture();const result=await loadSealedArchivePackage(f.port);expect(result.verified.status).toBe('verified_complete');expect(result.verified.file_count).toBe(2);expect([...result.verified.files.values()].map(bytes=>Array.from(bytes))).toEqual([...f.input.files.values()].map(bytes=>Array.from(bytes)));expect(f.port.fileContext).toHaveBeenCalledTimes(4);});

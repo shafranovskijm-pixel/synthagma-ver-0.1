@@ -1,4 +1,4 @@
-import { journalFieldsSchema, legacyDefinitionSchema, type JournalField, type LegacyDefinition } from './contract';
+import { journalFieldsSchema, legacyDefinitionSchema, type JournalField, type LegacyDefinition } from './contract.ts';
 export const builtinJournalFields:Record<string,JournalField>={
  full_name:{id:'full_name',label:'ФИО',type:'text',semantic:'full_name'},phone:{id:'phone',label:'Телефон',type:'text',semantic:'phone'},email:{id:'email',label:'Email',type:'text',semantic:'email'},
  position:{id:'position',label:'Должность',type:'text',semantic:'position'},organization:{id:'organization',label:'Организация',type:'text',semantic:'organization'},

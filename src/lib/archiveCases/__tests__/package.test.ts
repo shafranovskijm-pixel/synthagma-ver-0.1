@@ -1,8 +1,8 @@
 import{beforeEach,afterEach,describe,it,expect,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{ArchiveError}from'../contract';
-import{archiveSha256,archiveUtf8,canonicalArchiveJson,restoreArchiveIntoQuarantine,serializeArchiveManifest,verifyArchivePackage,type ArchivePackageBytes,type ArchiveQuarantinePort,type ArchiveQuarantineProjection}from'../package';
-import{packageInput,changed,guard,id,org}from'./fixtures';
+import{ArchiveError}from'../contract.ts';
+import{archiveSha256,archiveUtf8,canonicalArchiveJson,restoreArchiveIntoQuarantine,serializeArchiveManifest,verifyArchivePackage,type ArchivePackageBytes,type ArchiveQuarantinePort,type ArchiveQuarantineProjection}from'../package.ts';
+import{packageInput,changed,guard,id,org}from'./fixtures.ts';
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();});
 function port(){const objects=new Map<string,Uint8Array>();let saved:ArchiveQuarantineProjection|null=null,current=true;const p:ArchiveQuarantinePort={target_kind:'isolated_archive_quarantine_v1',restore_id:id(800),source_organization_id:org,target_organization_id:id(801),assertCurrent(){if(!current)throw new ArchiveError('ACCESS_DENIED');},async writeImmutable(path,bytes){if(objects.has(path))throw new Error('immutable object already exists');objects.set(path,bytes.slice());},async readImmutable(path){const bytes=objects.get(path);if(!bytes)throw new Error('missing native fixture');return bytes.slice();},async saveProjection(value){saved=JSON.parse(canonicalArchiveJson(value));},async readProjection(){if(!saved)throw new Error('missing projection');return JSON.parse(canonicalArchiveJson(saved));}};return{p,objects,revoke(){current=false;},projection:()=>saved};}
 describe('complete case package integrity and historical graph',()=>{

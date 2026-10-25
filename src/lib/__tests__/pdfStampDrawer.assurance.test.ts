@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { appendStampPage, applyWatermarkToAllPages } from '../pdfStampDrawer';
+import { appendStampPage, applyWatermarkToAllPages } from '../pdfStampDrawer.ts';
 it('draws stored-party facts without asserting verified PEP or legal equivalence from a legacy method flag', () => {
   const texts: string[] = [], page: any = { getSize: () => ({ width: 595, height: 842 }), drawText: (s: string) => texts.push(s), drawLine: vi.fn(), drawRectangle: vi.fn() };
   const pdf: any = { addPage: () => page, getPages: () => [page] }, font: any = { widthOfTextAtSize: (s: string, n: number) => s.length * n / 2 };

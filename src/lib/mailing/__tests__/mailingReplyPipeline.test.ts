@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import {
   classifyMailingReply,
   extractLatestReplyText,
-} from "../../../../supabase/functions/_shared/mailing-reply-classifier";
-import { buildProgramReplyTemplate } from "../programReplyTemplate";
+} from '../../../../supabase/functions/_shared/mailing-reply-classifier.ts';
+import { buildProgramReplyTemplate } from '../programReplyTemplate.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const read = (path: string) => readFileSync(resolve(repoRoot, path), "utf8");

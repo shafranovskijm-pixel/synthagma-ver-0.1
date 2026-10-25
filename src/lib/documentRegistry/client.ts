@@ -2,9 +2,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { captureCustomJournalScope, customJournalScopeCurrent, type CustomJournalScope } from '@/lib/customJournals/client';
 import { journalUuid } from '@/lib/customJournals/contract';
 import { sameCopyValue } from '@/lib/copyRegistry/value';
-import * as c from './contract';
-import { DocumentRegistryError, normalizeRegistryError } from './errors';
-export { DocumentRegistryError, normalizeRegistryError, registryMessages } from './errors';
+import * as c from './contract.ts';
+import { DocumentRegistryError, normalizeRegistryError } from './errors.ts';
+export { DocumentRegistryError, normalizeRegistryError, registryMessages } from './errors.ts';
 
 export interface DocumentRegistryScope extends CustomJournalScope { registryScope: c.RegistryScope }
 export function captureDocumentRegistryScope(organizationId: string, registryScope: c.RegistryScope, current: () => boolean): DocumentRegistryScope {

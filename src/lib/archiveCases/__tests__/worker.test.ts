@@ -1,9 +1,9 @@
 import{afterEach,beforeEach,describe,expect,it,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{ArchiveError,type ArchiveManifest}from'../contract';
-import{buildArchivePackage,type ArchivePackageWorkerPort}from'../worker';
-import{archiveSha256,archiveUtf8,verifyArchivePackage}from'../package';
-import{actor,id,org,packageInput}from'./fixtures';
+import{ArchiveError,type ArchiveManifest}from'../contract.ts';
+import{buildArchivePackage,type ArchivePackageWorkerPort}from'../worker.ts';
+import{archiveSha256,archiveUtf8,verifyArchivePackage}from'../package.ts';
+import{actor,id,org,packageInput}from'./fixtures.ts';
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
 async function fixture(){
  const original=await packageInput(),manifest:ArchiveManifest=JSON.parse(new TextDecoder().decode(original.manifest_bytes));

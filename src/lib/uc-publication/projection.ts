@@ -1,5 +1,5 @@
 import { publicEditionSchema, publicationCheckSchema, publicationEventSchema, publicationUuid, calendarDate, publicationBasisSchema, publicationInstant,
-  type PublicEdition, type PublicationCurrentScope, type PublicationEvent, type PublicationProjection } from "./model";
+  type PublicEdition, type PublicationCurrentScope, type PublicationEvent, type PublicationProjection } from './model.ts';
 
 function sameBasis(edition: PublicEdition, scope: PublicationCurrentScope): boolean {
   const a = edition.basis, b = scope.basis;

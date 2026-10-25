@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { EducationIssuanceError, requireIssuanceScope, type EducationIssuanceScope } from './client';
+import { EducationIssuanceError, requireIssuanceScope, type EducationIssuanceScope } from './client.ts';
 import { journalUuid } from '@/lib/customJournals/contract';
 
 export interface EnrollmentGroupChoice { id:string; label:string; }

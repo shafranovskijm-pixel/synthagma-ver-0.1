@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunkSenderRows, parseSenderBatch, senderRowsForRpc } from "../senderBatch";
+import { chunkSenderRows, parseSenderBatch, senderRowsForRpc } from '../senderBatch.ts';
 
 describe("sender batch parser", () => {
   it("normalizes and deduplicates sender lines without changing secrets", () => {

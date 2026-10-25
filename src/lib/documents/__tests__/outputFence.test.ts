@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setOfflineAuthActor, observeOfflineAccess } from '@/utils/courseCache';
-import { captureDocumentOutputFence } from '../outputFence';
+import { captureDocumentOutputFence } from '../outputFence.ts';
 afterEach(() => setOfflineAuthActor(null));
 describe('document output fence', () => {
     it('blocks a same-user access downgrade before React updates', () => { setOfflineAuthActor('QA'); const current = captureDocumentOutputFence(); current(); observeOfflineAccess('QA', 'downgraded'); expect(current).toThrow('Доступ изменился'); });

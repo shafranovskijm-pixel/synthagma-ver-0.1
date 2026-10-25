@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { downloadVerifiedCopyRegistryExport, verifyCopyRegistryExport } from '../export';
-import { group, org, record, savedExport, sha } from './fixtures';
+import { downloadVerifiedCopyRegistryExport, verifyCopyRegistryExport } from '../export.ts';
+import { group, org, record, savedExport, sha } from './fixtures.ts';
 
 beforeEach(() => { vi.stubGlobal('crypto', webcrypto); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });

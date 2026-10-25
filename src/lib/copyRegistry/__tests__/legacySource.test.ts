@@ -3,7 +3,7 @@ import { webcrypto } from 'node:crypto';
 import {
   assertCopyImportSourceCurrent, captureBrowserCopySource, captureCopyFileSource,
   COPY_IMPORT_MAX_BYTES, downloadCopySourceBackup,
-} from '../legacySource';
+} from '../legacySource.ts';
 
 const key = 'copies_duplicates_org-a';
 let current = true;

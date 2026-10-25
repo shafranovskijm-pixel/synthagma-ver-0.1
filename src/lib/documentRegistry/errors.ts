@@ -1,4 +1,4 @@
-import { registryErrorCodeSchema, type RegistryErrorCode } from './contract';
+import { registryErrorCodeSchema, type RegistryErrorCode } from './contract.ts';
 export const registryMessages: Record<RegistryErrorCode, string> = {
   INVALID_INPUT: 'Проверьте обязательные поля, файл и выбранные связи.', ACCESS_DENIED: 'Доступ к этому действию больше не подтверждён. Обновите кабинет.',
   NOT_FOUND: 'Запись недоступна с текущими правами.', SOURCE_UNAVAILABLE: 'Сохранённая версия файла недоступна. История регистрации сохранена.',

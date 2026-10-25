@@ -1,4 +1,4 @@
-import{beforeEach,describe,it,expect,vi}from'vitest';import{prepareSelfExaminationOrder,saveSelfExaminationOrder}from'./order';
+import{beforeEach,describe,it,expect,vi}from'vitest';import{prepareSelfExaminationOrder,saveSelfExaminationOrder}from'./order.ts';
 const h=vi.hoisted(()=>({insert:vi.fn(),read:vi.fn(),filters:[]as any[]}));vi.mock('@/integrations/supabase/client',()=>({supabase:{from:(table:string)=>{expect(table).toBe('service_orders');const q:any={insert:(row:any)=>h.insert(row),select:()=>q,eq:(...args:any[])=>{h.filters.push(args);return q;},single:()=>h.read()};return q;}}}));
 const reference:any={schema_version:1,kind:'self_examination_draft',organization_id:'org',draft_id:'draft',reporting_year:2025,revision:2,fact_hash:'hash'};
 beforeEach(()=>{h.insert.mockReset().mockResolvedValue({error:null});h.read.mockReset();h.filters=[];});

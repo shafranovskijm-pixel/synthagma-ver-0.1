@@ -1,9 +1,9 @@
-import * as c from './contract';
-import { canonicalJson, ensureCurrent, sha256 } from '../frdoFoundation/hash';
-import type { CurrentGuard, Row } from '../frdoFoundation/types';
-import type { ArtifactRef, Authority, AuthorityRef, FrozenCapture, ManifestSubject, PacketContext, PacketRef } from './types';
+import * as c from './contract.ts';
+import { canonicalJson, ensureCurrent, sha256 } from '../frdoFoundation/hash.ts';
+import type { CurrentGuard, Row } from '../frdoFoundation/types.ts';
+import type { ArtifactRef, Authority, AuthorityRef, FrozenCapture, ManifestSubject, PacketContext, PacketRef } from './types.ts';
 import type { z } from 'zod';
-import { receiptInputSchema } from '../frdoFoundation/contract';
+import { receiptInputSchema } from '../frdoFoundation/contract.ts';
 
 export class PacketInvariantError extends Error {
   constructor(readonly code: 'INVALID_REQUEST' | 'ACCESS_DENIED' | 'SOURCE_CHANGED' | 'READINESS_BLOCKED' |

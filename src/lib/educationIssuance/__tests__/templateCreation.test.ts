@@ -1,10 +1,10 @@
 import { File as NodeFile } from 'node:buffer';
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
-import { actor,org,uid as id } from './fixtures';
+import { actor,org,uid as id } from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true,session:vi.fn(),upload:vi.fn(),rpc:vi.fn(),from:vi.fn(),header:vi.fn(),read:vi.fn(),fetch:vi.fn()}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:'00000000-0000-4000-8000-000000000001',revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mock.session},storage:{from:()=>({upload:mock.upload,getPublicUrl:(path:string)=>({data:{publicUrl:'https://safe.invalid/storage/v1/object/public/org-documents/'+path}})})},rpc:mock.rpc,from:mock.from}}));
-import { listIssuanceTemplateDocuments,readIssuanceTemplateDocument,prepareIssuanceTemplateCreation,validateIssuanceTemplate,ISSUANCE_TEMPLATE_MAX_BYTES } from '../templateCreation';
+import { listIssuanceTemplateDocuments,readIssuanceTemplateDocument,prepareIssuanceTemplateCreation,validateIssuanceTemplate,ISSUANCE_TEMPLATE_MAX_BYTES } from '../templateCreation.ts';
 const scope={actorId:actor,accessRevision:1,organizationId:org,issuanceScope:{kind:'organization' as const},current:()=>true};
 const version=id(960),saved=(documentId:string,name='Макет')=>({id:documentId,organization_id:org,type:'education_issuance_template',name,document_revision:1,current_version_id:version,status:'active',deleted_at:null});
 const file=(body:BlobPart='<!doctype html><html><body>Тест</body></html>',name='макет.html')=>new File([body],name,{type:'application/octet-stream'});

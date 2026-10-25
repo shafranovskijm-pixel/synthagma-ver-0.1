@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { actor, base, data, group, org, preview, record, sha, uid } from './fixtures';
+import { actor, base, data, group, org, preview, record, sha, uid } from './fixtures.ts';
 
 const mock = vi.hoisted(() => ({ session: vi.fn(), rpc: vi.fn(), current: true, afterAuth: null as null | (() => void), afterRpc: null as null | (() => void), queue: [] as any[], calls: [] as any[] }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mock.session }, rpc: mock.rpc } }));
 vi.mock('@/lib/customJournals/client', () => ({ captureCustomJournalScope: (organizationId: string, current?: () => boolean) => ({ organizationId, actorId: '00000000-0000-4000-8000-000000000002', current }), customJournalScopeCurrent: (scope: any) => mock.current && (!scope.current || scope.current()) }));
-import { captureCopyRegistryScope, prepareCopyRegistryMutation, readCopyRegistry } from '../client';
-import { copyActionSchema, copyReadSchema } from '../contract';
+import { captureCopyRegistryScope, prepareCopyRegistryMutation, readCopyRegistry } from '../client.ts';
+import { copyActionSchema, copyReadSchema } from '../contract.ts';
 
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubGlobal('crypto', webcrypto); mock.current = true; mock.afterAuth = null; mock.afterRpc = null; mock.queue = []; mock.calls = [];

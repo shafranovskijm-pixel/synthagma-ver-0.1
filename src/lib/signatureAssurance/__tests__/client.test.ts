@@ -1,14 +1,14 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {webcrypto} from 'node:crypto';
-import {actor,actorFact,caps,id,legacy,manifest,org,policy,signature,stamp,twoPartyManifest,zero} from './fixtures';
-import type * as t from '../types';
+import {actor,actorFact,caps,id,legacy,manifest,org,policy,signature,stamp,twoPartyManifest,zero} from './fixtures.ts';
+import type * as t from '../types.ts';
 const state=vi.hoisted(()=>({actor:'',revision:1,sessionActor:'',response:null as unknown,error:null as unknown,status:200,wait:null as Promise<unknown>|null,calls:[]as {name:string;args:unknown;header:string;token:string}[]}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>state.actor?{actorId:state.actor,revision:state.revision}:null,isOfflineActorCurrent:(actorId:string,revision:number)=>actorId===state.actor&&revision===state.revision}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:vi.fn(async()=>({data:{session:{user:{id:state.sessionActor},access_token:'SYNTHETIC_TRANSPORT_ONLY'}},error:null}))},rpc:vi.fn((name:string,args:unknown)=>({setHeader:async(header:string,token:string)=>{
  state.calls.push({name,args:structuredClone(args),header,token});return state.wait?await state.wait:{data:state.response,error:state.error,status:state.status};
 }}))}}));
-import {captureSignatureAssuranceScope,normalizeSignatureEvidenceError,prepareSignatureAssuranceMutation,readSignatureAssurance} from '../client';
-import {evidenceSha256} from '../validation';
+import {captureSignatureAssuranceScope,normalizeSignatureEvidenceError,prepareSignatureAssuranceMutation,readSignatureAssurance} from '../client.ts';
+import {evidenceSha256} from '../validation.ts';
 const query:t.ReadQuery={kind:'policy_list',after_id:null,limit:2};
 const success=(result:t.ReadResult):t.ReadSuccess=>({version:1,ok:true,scope:{actor_user_id:actor,organization_id:org},capabilities:structuredClone(caps),result});
 beforeEach(()=>{vi.stubGlobal('crypto',webcrypto);state.actor=actor;state.revision=1;state.sessionActor=actor;state.response=success({kind:'policy_list',policies:[],next_after_id:null});state.error=null;state.status=200;state.wait=null;state.calls=[];});

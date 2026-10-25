@@ -4,9 +4,9 @@
  * Договор НИКОГДА не входит в пакет docs: он создаётся только через
  * GenerateContractDialog (сценарии «Физическое лицо» / «Компания»).
  */
-import { GROUP_DOCUMENT_TYPES } from "./groupDocuments";
-import type { DocType } from "./schema";
-import type { DocumentFillMode } from "./factualData";
+import { GROUP_DOCUMENT_TYPES } from './groupDocuments.ts';
+import type { DocType } from './schema.ts';
+import type { DocumentFillMode } from './factualData.ts';
 
 export type ContractScenarioKind = "individual" | "legal";
 

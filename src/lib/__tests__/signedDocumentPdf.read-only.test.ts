@@ -5,7 +5,7 @@ vi.mock('pdf-lib',()=>({PDFDocument:{create:async()=>({registerFontkit(){},embed
 vi.mock('@pdf-lib/fontkit',()=>({default:{}}));
 vi.mock('../pdfStampDrawer',()=>({appendStampPage:effects.stamp,appendImagePage:vi.fn(),appendAcceptedEditsListPage:vi.fn(),applyWatermarkToAllPages:effects.watermark}));
 vi.mock('../htmlToPdfPages',()=>({appendHtmlAsRenderedPages:effects.render}));
-import {generateSignedPdf} from '../signedDocumentPdf';
+import {generateSignedPdf} from '../signedDocumentPdf.ts';
 it('builds a local copy without any Storage, database, evidence or signing mutation',async()=>{
  const fetch=vi.fn(async()=>({ok:true,headers:new Headers(),arrayBuffer:async()=>new ArrayBuffer(1)}));vi.stubGlobal('fetch',fetch);const create=vi.fn(()=> 'blob:local-copy');vi.stubGlobal('URL',class{static createObjectURL=create});
  try{

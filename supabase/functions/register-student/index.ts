@@ -83,7 +83,8 @@ serve(async (req) => {
     let callerUserId: string | null = null;
     let callerProfile: { organization_id: string | null } | null = null;
     let callerStaffAuthorized = false;
-    let callerClient: ReturnType<typeof createClient> | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let callerClient: any = null;
 
     if (registration_token) {
       const { data: link, error: linkError } = await supabaseAdmin

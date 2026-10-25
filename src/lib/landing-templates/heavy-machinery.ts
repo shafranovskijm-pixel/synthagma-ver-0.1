@@ -1,4 +1,4 @@
-import type { LandingTemplate } from "./types";
+import type { LandingTemplate } from './types.ts';
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import heavyHero from "@/assets/landing-templates/heavy-hero.jpg";
 

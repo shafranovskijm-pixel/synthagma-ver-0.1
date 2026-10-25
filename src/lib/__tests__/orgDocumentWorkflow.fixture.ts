@@ -1,4 +1,4 @@
-import type { OrgDocumentWorkflow, WorkflowEnvelope, WorkflowCandidates, WorkflowComment } from "../orgDocumentWorkflow";
+import type { OrgDocumentWorkflow, WorkflowEnvelope, WorkflowCandidates, WorkflowComment } from '../orgDocumentWorkflow.ts';
 export const workflowId = (n: number) => `a0000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const ids = { org: workflowId(1), doc: workflowId(2), version: workflowId(3), responsible: workflowId(4), reviewer: workflowId(5), review: workflowId(6) };
 export function workflowComment(overrides: Partial<WorkflowComment> = {}): WorkflowComment {

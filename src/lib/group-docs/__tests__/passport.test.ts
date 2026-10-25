@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolvePassport, passportString } from "../variables";
+import { resolvePassport, passportString } from '../variables.ts';
 
 describe("resolvePassport", () => {
   it("предпочитает структурированные поля", () => {

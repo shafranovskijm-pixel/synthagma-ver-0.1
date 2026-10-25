@@ -5,7 +5,7 @@ import {
   isGroupSupportedJournal,
   countUnlinkedRows,
   type GroupJournalContext,
-} from "../groupJournalContext";
+} from '../groupJournalContext.ts';
 
 const ready = (over: Partial<GroupJournalContext> = {}): GroupJournalContext => ({
   groupId: "g1",

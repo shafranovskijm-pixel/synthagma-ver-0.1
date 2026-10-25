@@ -4,7 +4,7 @@ import {
   formatReviewDate,
   guardUnverifiedLegalFindings,
   REVIEW_REVISION,
-} from "../../../supabase/functions/review-course/review-policy";
+} from '../../../supabase/functions/review-course/review-policy.ts';
 
 describe("course review legal safety policy", () => {
   it("exposes a deployment revision marker", () => {

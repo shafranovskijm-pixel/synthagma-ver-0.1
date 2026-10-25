@@ -1,8 +1,8 @@
 import { getXLSX } from '@/utils/xlsxHelper';
 import { sameCopyValue } from '@/lib/copyRegistry/value';
-import { registryExportSchema, registrySnapshotSchema, sameRegistryScope, registryBindingMatches, type RegistryExport, type RegistryFilters, type RegistryScope, type RegistryRecord } from './contract';
-import { DocumentRegistryError } from './errors';
-import { downloadRegistryBlob } from './files';
+import { registryExportSchema, registrySnapshotSchema, sameRegistryScope, registryBindingMatches, type RegistryExport, type RegistryFilters, type RegistryScope, type RegistryRecord } from './contract.ts';
+import { DocumentRegistryError } from './errors.ts';
+import { downloadRegistryBlob } from './files.ts';
 import { captureDocumentOutputFence } from '@/lib/documents/outputFence';
 
 export async function verifyRegistryExport(value: RegistryExport, expected: { organizationId: string; scope: RegistryScope; filters: RegistryFilters }, current: () => boolean) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import * as c from '../contract';
-import { uid, org, actor, hash, stamp, source } from '../../educationIssuance/__tests__/fixtures';
+import * as c from '../contract.ts';
+import { uid, org, actor, hash, stamp, source } from '../../educationIssuance/__tests__/fixtures.ts';
 const packet = { id: uid(501), revision: 1, state_hash: hash, snapshot_sha256: hash };
 const artifact = { artifact_id: uid(502), packet_id: packet.id, snapshot_sha256: hash, byte_sha256: hash, byte_size: 100, binding_sha256: hash };
 const authority = { id: uid(503), organization_id: org, operator_user_id: actor, revision: 1, state_hash: hash };

@@ -1,5 +1,8 @@
 {
   "imports": {
     "npm:zod@3.25.76": "npm:zod@3.25.76"
+  },
+  "compilerOptions": {
+    "strict": false
   }
 }

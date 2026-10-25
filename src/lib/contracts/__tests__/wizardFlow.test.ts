@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canProceedStep, nextStep, prevStep, type WizardState } from "../wizardFlow";
+import { canProceedStep, nextStep, prevStep, type WizardState } from '../wizardFlow.ts';
 
 const base: WizardState = {
   step: 1,

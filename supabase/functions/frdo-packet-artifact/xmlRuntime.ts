@@ -6,6 +6,6 @@ import type { XmlRuntime } from '../../../src/lib/frdoFoundation/xmlRuntime.ts';
 export const trustedFrdoXmlRuntime: XmlRuntime = Object.freeze({
   parse(text: string) {
     if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('FRDO_XML_REJECTED');
-    return new DOMParser({ onError: () => { throw new Error('FRDO_XML_REJECTED'); } }).parseFromString(text, 'application/xml');
+    return new DOMParser({ onError: () => { throw new Error('FRDO_XML_REJECTED'); } } as unknown as ConstructorParameters<typeof DOMParser>[0]).parseFromString(text, 'application/xml');
   },
 });

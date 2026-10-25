@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptedContentChange, canApproveWorkflow, normalizeWorkflowLinks, parseWorkflowEnvelope, sanitizeWorkflowHtml, validApprovalDate } from "../orgDocumentWorkflow";
+import { acceptedContentChange, canApproveWorkflow, normalizeWorkflowLinks, parseWorkflowEnvelope, sanitizeWorkflowHtml, validApprovalDate } from '../orgDocumentWorkflow.ts';
 import { ids, workflow, workflowComment, workflowEnvelope, workflowId } from "./orgDocumentWorkflow.fixture";
 describe("exact-version internal review model", () => {
   it("never inherits approval from a historical version", () => {

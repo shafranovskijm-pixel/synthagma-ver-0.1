@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { handleNotificationClick } from "../orgNotificationClick";
+import { handleNotificationClick } from '../orgNotificationClick.ts';
 
 const courseFallbackPath = (id: string) => `/organization?tab=course-details&courseId=${id}`;
 

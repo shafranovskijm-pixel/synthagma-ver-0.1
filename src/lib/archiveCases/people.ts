@@ -1,8 +1,8 @@
 import {z} from 'zod';
 import {supabase} from '@/integrations/supabase/client';
 import {captureDocumentRegistryScope,readDocumentRegistry} from '@/lib/documentRegistry/client';
-import {assertArchiveScope,requireArchiveJwt,type ArchiveClientScope} from './client';
-import {ArchiveError,archiveUuid} from './contract';
+import {assertArchiveScope,requireArchiveJwt,type ArchiveClientScope} from './client.ts';
+import {ArchiveError,archiveUuid} from './contract.ts';
 export interface ArchivePersonChoice{id:string;label:string}
 /** Reuses the current original-JWT registry party search; no new broad learner directory. */
 export async function readArchiveStudentChoices(scope:ArchiveClientScope,search:string,afterId:string|null=null){

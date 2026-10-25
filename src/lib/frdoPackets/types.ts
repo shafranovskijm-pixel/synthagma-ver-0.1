@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type * as c from './contract';
+import type * as c from './contract.ts';
 export type PacketRef = z.infer<typeof c.packetRefSchema>;
 export type ArtifactRef = z.infer<typeof c.artifactRefSchema>;
 export type AuthorityRef = z.infer<typeof c.authorityRefSchema>;

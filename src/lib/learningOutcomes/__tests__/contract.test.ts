@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { learningCriteriaOptionsSchema, learningDecisionOptionsSchema, outcomeEnvelopeSchema, outcomeMutationSchema, outcomeScopeSchema } from '../contract';
-import * as f from './fixtures';
+import { learningCriteriaOptionsSchema, learningDecisionOptionsSchema, outcomeEnvelopeSchema, outcomeMutationSchema, outcomeScopeSchema } from '../contract.ts';
+import * as f from './fixtures.ts';
 
 describe('strict canonical learning outcome wire', () => {
   it('retains server microseconds and separates an eligible calculation from a human decision', () => {

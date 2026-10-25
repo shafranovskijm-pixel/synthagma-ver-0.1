@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import type { DrivingAdapter, State, Row, Entry } from './types';
+import type { DrivingAdapter, State, Row, Entry } from './types.ts';
 
 const id = z.string().min(1);
 const date = z.string().refine(v => Number.isFinite(Date.parse(v)), 'Некорректная временная отметка');

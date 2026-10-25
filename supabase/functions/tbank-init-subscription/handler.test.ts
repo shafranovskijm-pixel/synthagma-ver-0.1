@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createSubscriptionCheckoutHandler } from "./handler";
-import { SUBSCRIPTION_PLANS, getSubscriptionInvoiceMonthlyAmount } from "../../../src/constants/subscriptionPlans";
-import { SUBSCRIPTION_MONTHLY_PRICES } from "../_shared/subscription-pricing";
+import { createSubscriptionCheckoutHandler } from './handler.ts';
+import { SUBSCRIPTION_PLANS, getSubscriptionInvoiceMonthlyAmount } from '../../../src/constants/subscriptionPlans.ts';
+import { SUBSCRIPTION_MONTHLY_PRICES } from '../_shared/subscription-pricing.ts';
 
 const organizationId = "12345678-1234-1234-1234-123456789012";
 function fixture(options: { postpaid?: boolean; billingError?: boolean; allowed?: boolean; insertError?: boolean; saveError?: boolean; price?: number; discount?: number; currentPlan?: string } = {}) {

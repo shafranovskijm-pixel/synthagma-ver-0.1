@@ -197,7 +197,7 @@ describe("акт только по оплате", () => {
 
 describe("scope-guard организации", () => {
   it("не даёт создать документы без валидного organization_id", async () => {
-    const { assertOrganizationScope } = await import("../commercialSet");
+    const { assertOrganizationScope } = await import('../commercialSet.ts');
     expect(() => assertOrganizationScope("")).toThrow();
     expect(() => assertOrganizationScope("org-1")).toThrow();
     expect(assertOrganizationScope(ORG_ID)).toBe(ORG_ID);

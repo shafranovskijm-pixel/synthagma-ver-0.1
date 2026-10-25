@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { knownPrograms } from "@/data/knownPrograms";
-import { AdminMarketplaceImportError, findProgramsInImportedText, importAdminMarketplaceFile, readAdminImportedDocument, resolveAdminMarketplaceImportScope, type AdminMarketplaceImportOperation } from "../adminMarketplaceImport";
+import { AdminMarketplaceImportError, findProgramsInImportedText, importAdminMarketplaceFile, readAdminImportedDocument, resolveAdminMarketplaceImportScope, type AdminMarketplaceImportOperation } from '../adminMarketplaceImport.ts';
 
 const mocks = vi.hoisted(() => ({ role: vi.fn(), permission: vi.fn(), organization: vi.fn(), invoke: vi.fn(), from: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {

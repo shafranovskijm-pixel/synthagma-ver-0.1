@@ -1,10 +1,10 @@
 import { beforeEach,describe,expect,it,vi } from 'vitest';
-import { actor,org,group,course,pupil,enrollment,uid } from './fixtures';
+import { actor,org,group,course,pupil,enrollment,uid } from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true,session:vi.fn(),from:vi.fn(),rows:{} as Record<string,any[]>,queries:[] as any[],pageRows:null as null|((page:number)=>any[])}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:'00000000-0000-4000-8000-000000000001',revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mock.session},from:mock.from}}));
-import {captureIssuanceScope} from '../client';
-import {readEnrollmentGroupChoices} from '../groupScope';
+import {captureIssuanceScope} from '../client.ts';
+import {readEnrollmentGroupChoices} from '../groupScope.ts';
 const scope=()=>captureIssuanceScope(org,{kind:'organization'},()=>true);
 beforeEach(()=>{vi.clearAllMocks();mock.current=true;mock.queries=[];mock.pageRows=null;mock.session.mockResolvedValue({data:{session:{user:{id:actor},access_token:'synthetic'}},error:null});
  mock.rows={enrollments:[{id:enrollment,user_id:pupil,course_id:course,courses:{organization_id:org}}],student_group_memberships_effective:[{organization_id:org,group_id:group,user_id:pupil}],student_groups:[{id:group,name:'Фактическая группа',course_id:course,organization_id:org}]};

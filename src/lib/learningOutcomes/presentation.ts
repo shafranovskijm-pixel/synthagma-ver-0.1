@@ -1,4 +1,4 @@
-import type { OutcomeComponent, OutcomeEnvelope } from './contract';
+import type { OutcomeComponent, OutcomeEnvelope } from './contract.ts';
 
 export const machineEligibilityLabels: Record<NonNullable<OutcomeEnvelope['machine']>['eligibility'], string> = {
   eligible: 'Требования расчёта выполнены', not_eligible: 'Требования расчёта не выполнены',

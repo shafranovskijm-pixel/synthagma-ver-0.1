@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { downloadCopyRegistryExcel } from '../excel';
-import { org, record, savedExport } from './fixtures';
+import { downloadCopyRegistryExcel } from '../excel.ts';
+import { org, record, savedExport } from './fixtures.ts';
 
 const mock = vi.hoisted(() => ({ lazy: vi.fn(), sheets: [] as any[], write: vi.fn() }));
 vi.mock('@/utils/xlsxHelper', () => ({ getXLSX: mock.lazy }));

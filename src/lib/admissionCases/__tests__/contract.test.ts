@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import * as c from '../contract';
-import * as f from './fixtures';
+import * as c from '../contract.ts';
+import * as f from './fixtures.ts';
 
 describe('finite admission wire: strict private and human projections',()=>{
   it('first read exposes exact UC011 input before initialize, without creating a case',()=>{

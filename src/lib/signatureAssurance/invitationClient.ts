@@ -1,8 +1,8 @@
 import {supabase}from '@/integrations/supabase/client';
-import {publicEdgeRequest,publicEdgeSuccess,failure}from './contract';
-import {SignatureEvidenceError,sameEvidenceValue,verifyLiteral}from './validation';
-import type {PublicEdgeRequest,PublicEdgeSuccess,PublicContext}from './types';
-import type {SignatureFileReadScope}from './protectedFile';
+import {publicEdgeRequest,publicEdgeSuccess,failure}from './contract.ts';
+import {SignatureEvidenceError,sameEvidenceValue,verifyLiteral}from './validation.ts';
+import type {PublicEdgeRequest,PublicEdgeSuccess,PublicContext}from './types.ts';
+import type {SignatureFileReadScope}from './protectedFile.ts';
 const fail=(code:ConstructorParameters<typeof SignatureEvidenceError>[0]='DEPENDENCY_UNAVAILABLE'):never=>{throw new SignatureEvidenceError(code);};
 /** The invitation stays in transient transport; callers cannot provide an observed actor. */
 export function prepareInvitationAssurance(scope:SignatureFileReadScope,input:PublicEdgeRequest,expectedContext:PublicContext|null=null){

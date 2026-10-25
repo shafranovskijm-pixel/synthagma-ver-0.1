@@ -3,7 +3,7 @@ const {invoke,getUser,getSession,storage,signed}=vi.hoisted(()=>({invoke:vi.fn()
 vi.mock('@/integrations/supabase/client',()=>({supabase:{functions:{invoke},auth:{getUser,getSession},storage:{from:storage}}}));
 vi.mock('@/utils/proxyFetch',()=>({proxiedAssetUrl:(url:string)=>`proxy:${url}`}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:'synthetic-user',revision:1}),captureOfflineAuthRevision:()=>1,isOfflineActorCurrent:(id:string,revision:number)=>id==='synthetic-user'&&revision===1}));
-import {getSignatureTokenFile,getAuthenticatedSignatureFile,isHistoricalSignatureFileError,downloadStoredSignatureArtifact,downloadSignatureRevisionFile} from '../signatureTokenFile';
+import {getSignatureTokenFile,getAuthenticatedSignatureFile,isHistoricalSignatureFileError,downloadStoredSignatureArtifact,downloadSignatureRevisionFile} from '../signatureTokenFile.ts';
 const token='synthetic-invitation-token',signatureId='synthetic-signature',revisionId='synthetic-revision';
 beforeEach(()=>{vi.clearAllMocks();invoke.mockReset();getUser.mockResolvedValue({data:{user:{id:'synthetic-user'}},error:null});getSession.mockResolvedValue({data:{session:{user:{id:'synthetic-user'},access_token:'original-jwt'}},error:null});storage.mockReturnValue({createSignedUrl:signed});signed.mockResolvedValue({data:{signedUrl:'https://safe.invalid/renewed'},error:null});vi.stubEnv('VITE_SUPABASE_URL','https://safe.invalid');vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY','public-project-key')});
 it('posts only token and exact revision selector, with no caller path or bucket',async()=>{

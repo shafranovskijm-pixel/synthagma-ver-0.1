@@ -11,7 +11,7 @@ import {
 
   PROPOSAL_WORKFLOW,
   getPublicPlanSummaries,
-} from "./proposalContent";
+} from './proposalContent.ts';
 
 /**
  * Единый генератор PDF коммерческого предложения СИНТАГМЫ.

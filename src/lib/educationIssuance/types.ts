@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type * as c from './contract';
+import type * as c from './contract.ts';
 
 /** Values enter these types only after strict wire validation. */
 type Wire<T> = T extends (infer I)[] ? Wire<I>[] : T extends object ? { [K in keyof T]-?: Wire<T[K]> } : T;

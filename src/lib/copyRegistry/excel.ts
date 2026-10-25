@@ -1,7 +1,7 @@
 import { getXLSX } from '@/utils/xlsxHelper';
-import { CopyRegistryError } from './errors';
-import { verifyCopyRegistryExport } from './export';
-import type { CopyExport, CopyScope } from './contract';
+import { CopyRegistryError } from './errors.ts';
+import { verifyCopyRegistryExport } from './export.ts';
+import type { CopyExport, CopyScope } from './contract.ts';
 
 /** Convenience workbook from a fresh authorized saved snapshot, never from a partial screen or localStorage. */
 export async function downloadCopyRegistryExcel(readCurrentExport: () => Promise<CopyExport>, expected: { organizationId: string; scope: CopyScope; exportId: string }, current: () => boolean) {

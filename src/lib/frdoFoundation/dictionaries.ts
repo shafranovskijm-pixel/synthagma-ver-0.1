@@ -1,7 +1,7 @@
-import nativeData from './nativeData';
-import {OFFICIAL_TEMPLATES} from './officialMetadata';
-import {canonicalJson,deepFreeze,ensureCurrent,refuse,sha256} from './hash';
-import type {CurrentGuard,Stream} from './types';
+import nativeData from './nativeData.ts';
+import {OFFICIAL_TEMPLATES} from './officialMetadata.ts';
+import {canonicalJson,deepFreeze,ensureCurrent,refuse,sha256} from './hash.ts';
+import type {CurrentGuard,Stream} from './types.ts';
 deepFreeze(nativeData);deepFreeze(OFFICIAL_TEMPLATES);
 const memo=new Map<string,readonly string[]>();
 export function nativeValues(stream:Stream,name:string):readonly string[]{

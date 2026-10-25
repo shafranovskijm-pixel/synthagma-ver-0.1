@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parsePublicationRecord, parsePublicationRules, parsePublicationCalendar, parsePublicationEditions, validatePublicationMutationReply } from "../api";
-import { actor, basis, calendar, createArgs, created, id, now, org, record, rule, rules } from "./fixtures";
+import { parsePublicationRecord, parsePublicationRules, parsePublicationCalendar, parsePublicationEditions, validatePublicationMutationReply } from '../api.ts';
+import { actor, basis, calendar, createArgs, created, id, now, org, record, rule, rules } from './fixtures.ts';
 describe("UC026 persisted contract and exact operation confirmation", () => {
   it("accepts exact original records and retained source-changed editions without losing microseconds", () => {
     expect(parsePublicationRecord(record(), org).server_as_of).toBe(now);

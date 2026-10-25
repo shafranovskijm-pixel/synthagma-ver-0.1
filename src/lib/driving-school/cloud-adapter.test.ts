@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 const { rpcMock, invokeMock } = vi.hoisted(() => ({ rpcMock: vi.fn(), invokeMock: vi.fn() }));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:rpcMock,functions:{invoke:invokeMock}}}));
-import { adaptCloudState, createCloudAdapter, drivingError } from './cloud-adapter';
+import { adaptCloudState, createCloudAdapter, drivingError } from './cloud-adapter.ts';
 import { supabase } from '@/integrations/supabase/client';
 const read=(role:string)=>JSON.parse(readFileSync(`src/lib/driving-school/__fixtures__/booking-state-${role}.json`,'utf8'));
 describe('Cloud adapter against isolated PostgreSQL get_state exports',()=>{

@@ -6,7 +6,7 @@ import {
   resolveFrdoReadinessStage,
   resolveLearningReadiness,
   resolveParticipantsReadiness,
-} from "../releaseReadiness";
+} from '../releaseReadiness.ts';
 
 const participants = ["u1", "u2"];
 

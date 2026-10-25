@@ -1,19 +1,19 @@
-import type { DocType, GeneratedDocument, GenerationContext } from "./schema";
-import { buildVariables, findMissing, renderTemplate } from "./variables";
-import { getTemplate } from "./templates";
+import type { DocType, GeneratedDocument, GenerationContext } from './schema.ts';
+import { buildVariables, findMissing, renderTemplate } from './variables.ts';
+import { getTemplate } from './templates.ts';
 import {
   LEGACY_LAYOUT_FORMAT,
   LEGACY_LAYOUT_NOTICE,
   documentDataReadiness,
   type DocumentFillMode,
   type GroupFactualData,
-} from "./factualData";
-import { requiresDocumentNumber, willBeFinalDocument } from "./documentNumbers";
+} from './factualData.ts';
+import { requiresDocumentNumber, willBeFinalDocument } from './documentNumbers.ts';
 import { localDateIso } from "@/lib/date/localDate";
-import { UNCONFIRMED_PROGRAM_NOTICE, type ProgramFactsProof } from "../../../supabase/functions/_shared/program-facts";
-import { withEducationArtifact, educationArtifactDocumentSnapshot, EDUCATION_GENERIC_ARTIFACT_NOTICE, EDUCATION_ARTIFACT_NOTICE, type EducationArtifactSnapshot, type EducationArtifactLayout } from '../../../supabase/functions/_shared/group-education-artifact';
-import { signatoriesToGenerationExtras,type GroupDocumentSignatories } from './signatories';
-import { isGenericEducationDraftType, renderRetainedGenericDraft } from './retainedGenericDrafts';
+import { UNCONFIRMED_PROGRAM_NOTICE, type ProgramFactsProof } from '../../../supabase/functions/_shared/program-facts.ts';
+import { withEducationArtifact, educationArtifactDocumentSnapshot, EDUCATION_GENERIC_ARTIFACT_NOTICE, EDUCATION_ARTIFACT_NOTICE, type EducationArtifactSnapshot, type EducationArtifactLayout } from '../../../supabase/functions/_shared/group-education-artifact.ts';
+import { signatoriesToGenerationExtras,type GroupDocumentSignatories } from './signatories.ts';
+import { isGenericEducationDraftType, renderRetainedGenericDraft } from './retainedGenericDrafts.ts';
 
 export interface GenerateOptions {
   educationSnapshot?: EducationArtifactSnapshot;

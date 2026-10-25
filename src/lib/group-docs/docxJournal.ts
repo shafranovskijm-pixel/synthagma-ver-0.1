@@ -1,4 +1,4 @@
-import type { GeneratedDocument } from "./schema";
+import type { GeneratedDocument } from './schema.ts';
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { educationSourceSchema, type EducationSource } from '@/lib/groupEducationFacts/contract';

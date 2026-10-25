@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {journalUuid,journalHash,journalRevision,journalSchemaVersion,journalFieldsSchema,journalValuesSchema,validateJournalValues} from './contract';
+import {journalUuid,journalHash,journalRevision,journalSchemaVersion,journalFieldsSchema,journalValuesSchema,validateJournalValues} from './contract.ts';
 const instant=z.string().max(64).datetime({offset:true}),expected=z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),page=journalUuid.nullable();
 const title=z.string().trim().min(1).max(200),description=z.string().max(2000),reason=z.string().trim().min(1).max(1000);
 export const scopedContextInputSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('organization')}).strict(),z.object({kind:z.literal('group'),group_id:journalUuid}).strict()]);

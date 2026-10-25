@@ -1,8 +1,8 @@
 import {z} from 'zod';
-import * as held from './contract';
-import * as foundation from '../frdoFoundation/contract';
-import {canonicalJson} from '../frdoFoundation/hash';
-import {issuerReviewIntentSchema,issuerReviewProjectionSchema,unconfirmedIssuerReview} from './issuerReview';
+import * as held from './contract.ts';
+import * as foundation from '../frdoFoundation/contract.ts';
+import {canonicalJson} from '../frdoFoundation/hash.ts';
+import {issuerReviewIntentSchema,issuerReviewProjectionSchema,unconfirmedIssuerReview} from './issuerReview.ts';
 
 /** First persisted runtime evolves the source-only V4 wire explicitly. The inner
  * V4 capture/J hash domain is preserved; V5 adds a real per-packet issuer review.

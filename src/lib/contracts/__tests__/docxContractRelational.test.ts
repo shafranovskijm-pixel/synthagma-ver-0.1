@@ -1,6 +1,6 @@
 /** Серверная реляционная валидация и согласованность манифеста/реестра. */
 import { describe, expect, it } from "vitest";
-import { validateExactContractRoster, validateRelations, validateTemplateConsistency } from "../../../../supabase/functions/_shared/docx-ooxml/relational";
+import { validateExactContractRoster, validateRelations, validateTemplateConsistency } from '../../../../supabase/functions/_shared/docx-ooxml/relational.ts';
 
 const ORG = "11111111-1111-1111-1111-111111111111";
 const OTHER_ORG = "22222222-2222-2222-2222-222222222222";

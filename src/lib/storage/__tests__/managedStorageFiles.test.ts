@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadManagedStorageEntries, MANAGED_PRIVATE_BUCKETS, managedObjectPath, managedStorageReference } from "../managedStorageFiles";
+import { loadManagedStorageEntries, MANAGED_PRIVATE_BUCKETS, managedObjectPath, managedStorageReference } from '../managedStorageFiles.ts';
 const ORG = "org-a";
 const BASE = "https://project.supabase.co";
 const stored = (name: string, size = 10) => ({ id: name, name, metadata: { size }, created_at: "2026-10-21T00:00:00Z" });

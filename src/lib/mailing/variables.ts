@@ -4,7 +4,7 @@
  * и в предпросмотре по конкретному контакту.
  */
 
-import { CORE_MAILING_VARIABLE_KEYS } from "./variableRegistry";
+import { CORE_MAILING_VARIABLE_KEYS } from './variableRegistry.ts';
 
 export const MAILING_VARIABLES = CORE_MAILING_VARIABLE_KEYS;
 

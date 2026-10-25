@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadAllReportPages } from "../reportPagination";
+import { loadAllReportPages } from '../reportPagination.ts';
 
 describe("campaign report pagination", () => {
   it("loads every row past the former 500-row UI cap", async () => {

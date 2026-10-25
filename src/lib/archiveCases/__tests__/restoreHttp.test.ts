@@ -1,8 +1,8 @@
 import{afterEach,beforeEach,describe,expect,it,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{archiveRestoreRequest,type ArchiveRestoreRuntime}from'../../../../supabase/functions/archive-case-restore/http';
+import{archiveRestoreRequest,type ArchiveRestoreRuntime}from'../../../../supabase/functions/archive-case-restore/http.ts';
 import{sealedFixture}from'./sealed.fixtures';
-import{id,org,actor}from'./fixtures';
+import{id,org,actor}from'./fixtures.ts';
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
 async function fixture(){const f=await sealedFixture();const restoreId=id(990),requestId=id(991),leaseId=id(992);const run={id:restoreId,organization_id:org,package_id:f.manifest.package_id,actor_id:actor,request_id:requestId,manifest_sha256:f.input.manifest_sha256,state:'verifying',verified_file_ids:[]as string[],projection_sha256:null as string|null,created_at:'2026-10-23T01:02:03Z',completed_at:null as string|null,historical_only:true,live_business_actions:0,source_reissued:false};const restoreContext={version:1,organization_id:org,scope:{kind:'organization'}as const,actor_id:actor,restore:run,manifest_json:f.context.manifest_json,lease_id:leaseId,lease_until:'2099-01-01T00:00:00Z'};const copies=new Map<string,{bytes:Uint8Array;object_id:string;object_updated_at:string}>();
  const auth={getUser:vi.fn(async():Promise<{data:{user:{id:string}|null};error:unknown}>=>({data:{user:{id:actor}},error:null}))};

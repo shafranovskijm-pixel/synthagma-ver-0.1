@@ -1,6 +1,6 @@
-import { copyExportManifestSchema, copyExportSchema, sameCopyScope, type CopyExport, type CopyExportManifest, type CopyScope } from './contract';
-import { CopyRegistryError } from './errors';
-import { sameCopyValue } from './value';
+import { copyExportManifestSchema, copyExportSchema, sameCopyScope, type CopyExport, type CopyExportManifest, type CopyScope } from './contract.ts';
+import { CopyRegistryError } from './errors.ts';
+import { sameCopyValue } from './value.ts';
 
 const encoder = new TextEncoder();
 async function hash(bytes: Uint8Array) {

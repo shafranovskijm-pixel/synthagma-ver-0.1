@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TEMPLATES } from "../templates";
-import { generateDocument } from "../generate";
-import { SAMPLE_CONTEXT } from "../sampleContext";
+import { TEMPLATES } from '../templates.ts';
+import { generateDocument } from '../generate.ts';
+import { SAMPLE_CONTEXT } from '../sampleContext.ts';
 
 const byType = (type: string) => {
   const template = TEMPLATES.find((item) => item.doc_type === type);

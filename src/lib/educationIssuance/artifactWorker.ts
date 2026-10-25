@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { sameCopyValue } from "@/lib/copyRegistry/value";
 import { supabase } from "@/integrations/supabase/client";
-import { issuancePreparedArtifactSchema, issuanceErrorSchema } from "./contract";
-import { assertIssuancePreparation, EducationIssuanceError, normalizeIssuanceError, readEducationIssuance, requireIssuanceScope, type EducationIssuanceScope } from "./client";
-import type { IssuancePreparation } from "./types";
+import { issuancePreparedArtifactSchema, issuanceErrorSchema } from './contract.ts';
+import { assertIssuancePreparation, EducationIssuanceError, normalizeIssuanceError, readEducationIssuance, requireIssuanceScope, type EducationIssuanceScope } from './client.ts';
+import type { IssuancePreparation } from './types.ts';
 
 const uuid=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 const fields={organization_id:uuid,preparation_id:uuid,item_id:uuid,input_revision:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),request_id:uuid};

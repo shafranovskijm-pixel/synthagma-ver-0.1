@@ -1,4 +1,4 @@
-import { runBoundedStorageScans } from "./boundedStorageScans";
+import { runBoundedStorageScans } from './boundedStorageScans.ts';
 
 const STORAGE_USAGE_CACHE_TTL_MS = 30_000;
 

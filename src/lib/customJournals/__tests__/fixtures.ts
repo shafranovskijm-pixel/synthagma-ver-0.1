@@ -1,4 +1,4 @@
-import type { JournalDetail, JournalRecord, JournalMutation } from '../contract';
+import type { JournalDetail, JournalRecord, JournalMutation } from '../contract.ts';
 export const ids={org:'10000000-0000-4000-8000-000000000001',actor:'20000000-0000-4000-8000-000000000001',subject:'20000000-0000-4000-8000-000000000002',journal:'30000000-0000-4000-8000-000000000001',schema:'40000000-0000-4000-8000-000000000001',record:'50000000-0000-4000-8000-000000000001',request:'60000000-0000-4000-8000-000000000001',history:'70000000-0000-4000-8000-000000000001'};
 export const at='2026-10-20T00:00:00.000Z';
 export const schema={id:ids.schema,journal_id:ids.journal,version:1,hash:'a'.repeat(64),fields:[{id:'doc_number',label:'Номер документа',type:'text' as const,semantic:'doc_number' as const}],created_at:at,created_by:ids.actor,redacted:false};

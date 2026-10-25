@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { createDocumentUploadOperation, saveDocumentUpload, type OrgDocumentClient } from '@/lib/orgDocumentLifecycle';
-import { EducationIssuanceError, requireIssuanceScope, type EducationIssuanceScope } from './client';
+import { EducationIssuanceError, requireIssuanceScope, type EducationIssuanceScope } from './client.ts';
 import { sameCopyValue } from '@/lib/copyRegistry/value';
 
 export const ISSUANCE_TEMPLATE_MAX_BYTES=1048576;

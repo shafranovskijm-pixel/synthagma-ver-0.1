@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
-import * as c from '../contract';
-import {authority,caps,id,legacy,manifest,org,policyBody,selection,signature,twoPartyManifest,zero} from './fixtures';
+import * as c from '../contract.ts';
+import {authority,caps,id,legacy,manifest,org,policyBody,selection,signature,twoPartyManifest,zero} from './fixtures.ts';
 describe('strict signature method and provenance inputs',()=>{
   it('accepts only canonical UC018 metadata references and rejects caller-invented byte or authority verification',()=>{
     expect(c.exactDocumentSelection.parse(selection).source.content_hash).toBe('a'.repeat(64));

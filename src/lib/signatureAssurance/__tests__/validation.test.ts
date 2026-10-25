@@ -1,7 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {webcrypto} from 'node:crypto';
-import {assertEventPage,assertPage,evidenceSha256,verifyAgreement,verifyLiteral,verifyManifest,verifyPolicy} from '../validation';
-import {id,legacy,manifest,org,policy,rehash,signature,twoPartyManifest} from './fixtures';
+import {assertEventPage,assertPage,evidenceSha256,verifyAgreement,verifyLiteral,verifyManifest,verifyPolicy} from '../validation.ts';
+import {id,legacy,manifest,org,policy,rehash,signature,twoPartyManifest} from './fixtures.ts';
 beforeEach(()=>{vi.stubGlobal('crypto',webcrypto);});
 describe('immutable evidence domains and complete scoped history',()=>{
   it('checks original body and scoped projection against different literal SHA domains',async()=>{

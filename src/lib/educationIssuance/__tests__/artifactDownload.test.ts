@@ -1,13 +1,13 @@
 import {webcrypto} from 'node:crypto';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
-import {actor,org,issuedRecord} from './fixtures';
+import {actor,org,issuedRecord} from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true,read:vi.fn(),session:vi.fn(),from:vi.fn(),download:vi.fn(),save:vi.fn(),versions:[] as any[]}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:'00000000-0000-4000-8000-000000000001',revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mock.session},from:mock.from,storage:{from:()=>({download:mock.download})}}}));
-vi.mock('../client',async original=>({...await original<typeof import('../client')>(),readEducationIssuance:mock.read}));
+vi.mock('../client',async original=>({...await original<typeof import('../client.ts')>(),readEducationIssuance:mock.read}));
 vi.mock('../export',()=>({downloadIssuanceBlob:mock.save}));
-import {captureIssuanceScope} from '../client';
-import {downloadIssuedPdf} from '../artifactDownload';
+import {captureIssuanceScope} from '../client.ts';
+import {downloadIssuedPdf} from '../artifactDownload.ts';
 const scope=()=>captureIssuanceScope(org,{kind:'organization'},()=>true);
 const bytes=new TextEncoder().encode('%PDF-1.7\nSynthetic immutable test bytes');
 async function setup(){const record=issuedRecord(),proof=record.artifact.artifact!;proof.byte_size=bytes.length;proof.byte_sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');

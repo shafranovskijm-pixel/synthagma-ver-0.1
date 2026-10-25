@@ -1,7 +1,7 @@
 import {z}from 'zod';
 import {supabase}from '@/integrations/supabase/client';
-import {failure,hash,uuid}from './contract';
-import {SignatureEvidenceError}from './client';
+import {failure,hash,uuid}from './contract.ts';
+import {SignatureEvidenceError}from './client.ts';
 const MAX=20*1024*1024;
 const address=z.discriminatedUnion('kind',[z.object({kind:z.literal('invitation'),token:z.string().min(16).max(200).regex(/^[^\s\x00-\x1f\x7f]+$/)}).strict(),z.object({kind:z.literal('authenticated_signature'),organization_id:uuid,signature_id:uuid,chosen_party:z.enum(['sender','recipient'])}).strict()]);
 export const signatureProtectedFileRequestSchema=z.object({version:z.literal(1),action:z.literal('read_file'),address,file_kind:z.enum(['source','scan']),binding_id:uuid.nullable(),event_revision:z.number().int().positive().nullable(),expected_document_revision_id:uuid.nullable(),document_html_sha256:hash}).strict().refine(v=>v.file_kind!=='source'||v.event_revision===null);

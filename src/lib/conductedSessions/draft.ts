@@ -1,4 +1,4 @@
-import type { DraftResponse } from './contract';
+import type { DraftResponse } from './contract.ts';
 const escape=(value:unknown)=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]!));
 export const attendanceLabels={present:'Присутствовал',absent:'Отсутствовал',excused:'Уважительная причина'};
 export const draftLabels={journal:'Журнал занятия',protocol:'Протокол результатов',education_document:'Документ об обучении'};

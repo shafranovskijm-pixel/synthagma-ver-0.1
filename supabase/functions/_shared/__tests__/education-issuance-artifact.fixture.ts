@@ -1,7 +1,7 @@
 import {vi} from 'vitest';
-import {admissionHash} from '../admission-case-access';
-import {educationArtifactRequest, type EducationArtifactDependencies} from '../education-issuance-artifact';
-import type {EducationArtifactContext} from '../education-issuance-artifact-contract';
+import {admissionHash} from '../admission-case-access.ts';
+import {educationArtifactRequest, type EducationArtifactDependencies} from '../education-issuance-artifact.ts';
+import type {EducationArtifactContext} from '../education-issuance-artifact-contract.ts';
 
 export const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 export const actor = id(1), subject = id(2), org = id(3), prep = id(4), item = id(5), requestId = id(6);

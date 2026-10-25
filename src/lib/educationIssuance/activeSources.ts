@@ -1,6 +1,6 @@
-import { loadIssuanceExport } from './export';
-import { EducationIssuanceError, requireIssuanceScope, type EducationIssuanceScope } from './client';
-import type { IssuanceRecord } from './types';
+import { loadIssuanceExport } from './export.ts';
+import { EducationIssuanceError, requireIssuanceScope, type EducationIssuanceScope } from './client.ts';
+import type { IssuanceRecord } from './types.ts';
 export type ActiveIssuanceSource={kind:'confirmed';record:IssuanceRecord}|{kind:'unavailable';reason:'NOT_ISSUED'|'ANNULLED_ONLY'|'AMBIGUOUS'|'LEGACY_UNVERIFIED'};
 export function selectActiveIssuanceSources(records:IssuanceRecord[],assignments:{enrollmentId:string;courseId:string;userId:string}[],missing:{enrollment_id:string;code:string}[]=[]):Map<string,ActiveIssuanceSource>{
  const result=new Map<string,ActiveIssuanceSource>();

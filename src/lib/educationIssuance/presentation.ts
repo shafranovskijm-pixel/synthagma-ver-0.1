@@ -1,4 +1,4 @@
-import type { IssuanceErrorCode, IssuanceEvent, IssuanceRecord, WithdrawalState } from './types';
+import type { IssuanceErrorCode, IssuanceEvent, IssuanceRecord, WithdrawalState } from './types.ts';
 
 export const issuanceMessages: Record<IssuanceErrorCode, string> = {
   INVALID_INPUT: 'Проверьте поля и точные зачисления.',

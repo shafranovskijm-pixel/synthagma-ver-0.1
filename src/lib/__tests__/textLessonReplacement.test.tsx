@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { describe, expect, it } from 'vitest';
-import { prepareTextLessonReplacement } from '../textLessonReplacement';
+import { prepareTextLessonReplacement } from '../textLessonReplacement.tsx';
 import { htmlToBlocks } from '@/components/course-builder/block-editor/parsers';
 import { BlockRenderer } from '@/components/course-builder/block-editor/BlockRenderer';
 

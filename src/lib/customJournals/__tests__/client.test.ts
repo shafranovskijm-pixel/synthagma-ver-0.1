@@ -1,9 +1,9 @@
 import { beforeEach,describe,it,expect,vi } from 'vitest';
-import { ids,base,summary,record,mutation } from './fixtures';
+import { ids,base,summary,record,mutation } from './fixtures.ts';
 const fixture=vi.hoisted(()=>({actor:'20000000-0000-4000-8000-000000000001',revision:1,sessionActor:'20000000-0000-4000-8000-000000000001',data:null as unknown,error:null as unknown,wait:null as Promise<any>|null,calls:[] as {name:string;args:any;header:any}[]}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>fixture.actor?{actorId:fixture.actor,revision:fixture.revision}:null,isOfflineActorCurrent:(id:string,revision:number)=>fixture.actor===id&&fixture.revision===revision}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:vi.fn(async()=>({data:{session:{user:{id:fixture.sessionActor},access_token:'SYN_TOKEN'}},error:null}))},rpc:vi.fn((name:string,args:any)=>({setHeader:vi.fn(async(header:string,value:string)=>{fixture.calls.push({name,args:structuredClone(args),header:{header,value}});return fixture.wait?await fixture.wait:{data:fixture.data,error:fixture.error,status:200};})}))}}));
-import { captureCustomJournalScope,prepareCustomJournalMutation,readCustomJournals,normalizeCustomJournalError } from '../client';
+import { captureCustomJournalScope,prepareCustomJournalMutation,readCustomJournals,normalizeCustomJournalError } from '../client.ts';
 const query={kind:'list' as const,after_id:null,limit:50,include_archived:true};
 beforeEach(()=>{fixture.actor=ids.actor;fixture.sessionActor=ids.actor;fixture.revision=1;fixture.data={...base,kind:'list',journals:[summary],next_after_id:null};fixture.error=null;fixture.wait=null;fixture.calls=[];});
 describe('custom journal original actor and response fences',()=>{

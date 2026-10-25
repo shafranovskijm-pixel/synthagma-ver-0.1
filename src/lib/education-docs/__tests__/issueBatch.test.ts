@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildIssueBatchPayload, issueEducationDocumentBatch, issueEducationDocumentsByCourse } from "../issueBatch";
+import { buildIssueBatchPayload, issueEducationDocumentBatch, issueEducationDocumentsByCourse } from '../issueBatch.ts';
 const item={user_id:"u1",enrollment_id:"e1",course_id:"c1",document_type:"certificate",full_name:"Иванов Иван",specialty_name:"Курс"};
 describe("historical payload compatibility cannot issue new documents",()=>{
   it("retains pure historical normalization without sending data anywhere",()=>{

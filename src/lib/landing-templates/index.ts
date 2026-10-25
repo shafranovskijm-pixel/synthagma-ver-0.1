@@ -1,13 +1,13 @@
-import { auroraTemplate } from "./aurora";
-import { beautyTemplate } from "./beauty";
-import { safetyTemplate } from "./safety";
-import { labTemplate } from "./lab";
-import { languageTemplate } from "./language";
-import { harmonyTemplate } from "./harmony";
-import { mysticTemplate } from "./mystic";
-import { maritimeTemplate } from "./maritime";
-import { heavyMachineryTemplate } from "./heavy-machinery";
-import type { LandingTemplate } from "./types";
+import { auroraTemplate } from './aurora.ts';
+import { beautyTemplate } from './beauty.ts';
+import { safetyTemplate } from './safety.ts';
+import { labTemplate } from './lab.ts';
+import { languageTemplate } from './language.ts';
+import { harmonyTemplate } from './harmony.ts';
+import { mysticTemplate } from './mystic.ts';
+import { maritimeTemplate } from './maritime.ts';
+import { heavyMachineryTemplate } from './heavy-machinery.ts';
+import type { LandingTemplate } from './types.ts';
 
 export const LANDING_TEMPLATES: LandingTemplate[] = [
   auroraTemplate,
@@ -21,4 +21,4 @@ export const LANDING_TEMPLATES: LandingTemplate[] = [
   heavyMachineryTemplate,
 ];
 
-export type { LandingTemplate, TemplateTier, TemplateCategory } from "./types";
+export type { LandingTemplate, TemplateTier, TemplateCategory } from './types.ts';

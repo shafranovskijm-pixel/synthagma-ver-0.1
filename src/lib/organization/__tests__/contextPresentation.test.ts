@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getOrganizationContextPresentation } from "../contextPresentation";
+import { getOrganizationContextPresentation } from '../contextPresentation.ts';
 
 describe("organization context presentation", () => {
   it.each([

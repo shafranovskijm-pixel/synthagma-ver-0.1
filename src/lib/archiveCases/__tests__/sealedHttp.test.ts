@@ -1,8 +1,8 @@
 import{afterEach,beforeEach,describe,expect,it,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{archiveReadRequest,type ArchiveReadRuntime}from'../../../../supabase/functions/archive-case-read/http';
+import{archiveReadRequest,type ArchiveReadRuntime}from'../../../../supabase/functions/archive-case-read/http.ts';
 import{sealedFixture}from'./sealed.fixtures';
-import{id,actor,org}from'./fixtures';
+import{id,actor,org}from'./fixtures.ts';
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
 async function fixture(){const f=await sealedFixture();const auth={getUser:vi.fn(async():Promise<{data:{user:{id:string}|null};error:unknown}>=>({data:{user:{id:actor}},error:null}))};const rpc=vi.fn(async(name:string,args:Record<string,unknown>):Promise<{data:unknown;error:unknown;status:number}>=>{if(name==='archive_sealed_package_context')return{data:structuredClone(f.context),error:null,status:200};if(name==='archive_sealed_file_context')return{data:structuredClone(f.fileContexts.find(row=>row.file_id===args.p_file)),error:null,status:200};throw Error('Unexpected public RPC');});const download=vi.fn(async(path:string)=>{const context=f.fileContexts.find(row=>row.path===path)!;const file=f.manifest.files.find(row=>row.id===context.file_id)!;return{data:new Blob([f.input.files.get(file.archive_path)!as unknown as BlobPart]),error:null};});const runtime:ArchiveReadRuntime={configured:true,createCaller:vi.fn(()=>({auth,rpc,storage:{from:()=>({download})}})),createService:vi.fn(()=>({rpc,storage:{from:()=>({download})}}))};const request=(action:'manifest'|'file'='file',extra:Record<string,unknown>={})=>new Request('https://fixture.invalid/archive-case-read',{method:'POST',headers:{authorization:'Bearer synthetic.original.jwt','content-type':'application/json'},body:JSON.stringify({version:1,action,organization_id:org,scope:{kind:'organization'},package_id:f.manifest.package_id,...(action==='file'?{file_id:f.manifest.files[0].id}:{}),...extra})});return{...f,auth,rpc,download,runtime,request};}
 describe('original-JWT archive binary gateway',()=>{

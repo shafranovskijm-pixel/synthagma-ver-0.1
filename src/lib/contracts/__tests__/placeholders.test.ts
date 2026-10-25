@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { findUnresolvedPlaceholders } from "../placeholders";
-import { builtinTemplateFor, isBuiltinTemplateId, BUILTIN_TEMPLATE_PREFIX } from "../builtinTemplates";
+import { findUnresolvedPlaceholders } from '../placeholders.ts';
+import { builtinTemplateFor, isBuiltinTemplateId, BUILTIN_TEMPLATE_PREFIX } from '../builtinTemplates.ts';
 
 describe("placeholders", () => {
   it("находит незаполненные переменные", () => {

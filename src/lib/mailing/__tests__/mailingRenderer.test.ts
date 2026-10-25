@@ -7,12 +7,12 @@ import {
   renderMailingTemplate,
   ALL_MAILING_VARIABLE_KEYS as EDGE_KEYS,
   URL_MAILING_VARIABLE_KEYS as EDGE_URL_KEYS,
-} from "../../../../supabase/functions/_shared/mailing-variables";
+} from '../../../../supabase/functions/_shared/mailing-variables.ts';
 import {
   ALL_MAILING_VARIABLE_KEYS,
   URL_MAILING_VARIABLE_KEYS,
-} from "../variableRegistry";
-import { MAILING_VARIABLES as CORE_LIST } from "../variables";
+} from '../variableRegistry.ts';
+import { MAILING_VARIABLES as CORE_LIST } from '../variables.ts';
 import { MAILING_VARIABLES as UI_LIST, LEGACY_VARIABLES } from "@/utils/mailing/mailingVariables";
 
 describe("единый allowlist переменных", () => {

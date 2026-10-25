@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
-import {buildSignatureEvidencePack,type EvidencePackScope} from '../evidencePack';
-import {evidenceSha256,verifyManifest} from '../validation';
-import {manifest,twoPartyManifest,org,signature,actor,id} from './fixtures';
+import {buildSignatureEvidencePack,type EvidencePackScope} from '../evidencePack.ts';
+import {evidenceSha256,verifyManifest} from '../validation.ts';
+import {manifest,twoPartyManifest,org,signature,actor,id} from './fixtures.ts';
 const scopeOf=(body:Awaited<ReturnType<typeof manifest>>['body']):EvidencePackScope=>({organization_id:org,signature_id:signature,actor_user_id:actor,party_role:body.context.chosen_party,source_manifest_id:body.source_manifest_id,source_manifest_sha256:body.source_manifest_sha256,through_revision:body.through_revision});
 describe('scoped signature evidence pack',()=>{
  it('builds and independently verifies the complete two-party event/reference chain',async()=>{

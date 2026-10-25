@@ -8,12 +8,12 @@ import {
   reserveGroupDocumentNumbers,
   typesRequiringReservation,
 
-} from "../documentNumbers";
-import { generateDocument } from "../generate";
-import { pickPassportIdentityDoc } from "../factualResolvers";
-import { buildVariables } from "../variables";
-import { SAMPLE_CONTEXT } from "../sampleContext";
-import { GORELTECH_ORGANIZATION_ID } from "../clientProfile";
+} from '../documentNumbers.ts';
+import { generateDocument } from '../generate.ts';
+import { pickPassportIdentityDoc } from '../factualResolvers.ts';
+import { buildVariables } from '../variables.ts';
+import { SAMPLE_CONTEXT } from '../sampleContext.ts';
+import { GORELTECH_ORGANIZATION_ID } from '../clientProfile.ts';
 
 /** Серверная последовательность: состояние живёт в БД, а не в модуле. */
 function fakeServer() {

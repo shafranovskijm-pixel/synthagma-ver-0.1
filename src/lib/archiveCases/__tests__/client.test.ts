@@ -1,6 +1,6 @@
 import{afterEach,beforeEach,describe,expect,it,vi}from'vitest';
-import{applyArchive,captureArchiveScope,readArchive}from'../client';
-import{archiveCase,actor,caseId,hash,id,org}from'./fixtures';
+import{applyArchive,captureArchiveScope,readArchive}from'../client.ts';
+import{archiveCase,actor,caseId,hash,id,org}from'./fixtures.ts';
 import{observeOfflineAccess,setOfflineAuthActor}from'@/utils/courseCache';
 const mocks=vi.hoisted(()=>({session:vi.fn(),rpc:vi.fn(),header:vi.fn(),signals:[]as AbortSignal[],reply:null as any}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mocks.session},rpc:mocks.rpc}}));

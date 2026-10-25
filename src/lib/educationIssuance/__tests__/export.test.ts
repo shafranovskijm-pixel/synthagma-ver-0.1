@@ -1,11 +1,11 @@
 import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { actor,org,course,enrollment,uid } from "./fixtures";
+import { actor,org,course,enrollment,uid } from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true}));
 vi.mock("@/utils/courseCache",()=>({captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock("@/integrations/supabase/client",()=>({supabase:{}}));
-import { captureIssuanceScope } from "../client";
-import { downloadIssuanceBlob, verifyIssuanceExport } from "../export";
+import { captureIssuanceScope } from '../client.ts';
+import { downloadIssuanceBlob, verifyIssuanceExport } from '../export.ts';
 const scope=()=>captureIssuanceScope(org,{kind:"organization"},()=>true);
 const query={kind:"export" as const,selection:{kind:"enrollments" as const,course_id:course,enrollment_ids:[enrollment]},format:"canonical_snapshot" as const};
 const snapshot=()=>({schema_version:1,kind:"education_issuance_snapshot",organization_id:org,scope:{kind:"organization"},captured_at:"2026-10-22T10:00:00Z",captured_by:actor,

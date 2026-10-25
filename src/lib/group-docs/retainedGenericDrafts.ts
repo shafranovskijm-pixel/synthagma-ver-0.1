@@ -1,6 +1,6 @@
-import type { EducationArtifactCalendar, EducationArtifactSnapshot } from "../../../supabase/functions/_shared/group-education-artifact";
-import { parseEducationArtifactSnapshot, EDUCATION_GENERIC_ARTIFACT_NOTICE } from "../../../supabase/functions/_shared/group-education-artifact";
-import type { DocType, GenerationContext } from "./schema";
+import type { EducationArtifactCalendar, EducationArtifactSnapshot } from '../../../supabase/functions/_shared/group-education-artifact.ts';
+import { parseEducationArtifactSnapshot, EDUCATION_GENERIC_ARTIFACT_NOTICE } from '../../../supabase/functions/_shared/group-education-artifact.ts';
+import type { DocType, GenerationContext } from './schema.ts';
 
 export const GENERIC_EDUCATION_DRAFT_TYPES = ["enrollment_order", "class_journal", "attestation_sheet"] as const;
 export type GenericEducationDraftType = typeof GENERIC_EDUCATION_DRAFT_TYPES[number];

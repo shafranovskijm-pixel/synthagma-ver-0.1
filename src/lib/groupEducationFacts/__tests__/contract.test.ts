@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import * as c from '../contract';import {calendar,envelope,row,history,roster,id,program,compatibleArtifactSnapshot} from './fixtures';
+import * as c from '../contract.ts';import {calendar,envelope,row,history,roster,id,program,compatibleArtifactSnapshot} from './fixtures.ts';
 describe('bounded education facts wire',()=>{
  it('parses original microseconds and strict first-read envelope',()=>{expect(c.groupEducationEnvelopeSchema.parse(envelope()).state?.recorded_at).toContain('.123456');});
  it.each(['root','state','program'])('rejects unknown keys at %s',where=>{const v=envelope() as any;if(where==='root')v.extra=true;if(where==='state')v.state.extra=true;if(where==='program')v.program_ref.extra=true;expect(c.groupEducationEnvelopeSchema.safeParse(v).success).toBe(false);});

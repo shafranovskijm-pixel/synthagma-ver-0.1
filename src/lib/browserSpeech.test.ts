@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BROWSER_SPEECH_CHUNK_SIZE, BROWSER_VOICES_WAIT_MS, MISSING_RUSSIAN_VOICE, speakBrowserText, splitSpeechText, waitForRussianVoice } from './browserSpeech';
+import { BROWSER_SPEECH_CHUNK_SIZE, BROWSER_VOICES_WAIT_MS, MISSING_RUSSIAN_VOICE, speakBrowserText, splitSpeechText, waitForRussianVoice } from './browserSpeech.ts';
 
 const russian = { voiceURI: 'ru-one', name: 'Русский', lang: 'ru-RU', default: false } as SpeechSynthesisVoice;
 const english = { voiceURI: 'en-one', name: 'English', lang: 'en-US', default: true } as SpeechSynthesisVoice;

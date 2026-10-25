@@ -1,7 +1,7 @@
 import {z}from'zod';
-import {issuanceArtifactFinalRefSchema}from'../educationIssuance/contract';
-import {hash,utc,uuid}from'./contract';
-import {sameEvidenceValue,SignatureEvidenceError}from'./validation';
+import {issuanceArtifactFinalRefSchema}from'../educationIssuance/contract.ts';
+import {hash,utc,uuid}from'./contract.ts';
+import {sameEvidenceValue,SignatureEvidenceError}from'./validation.ts';
 const count=z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const rawPath=z.string().max(2000).regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/);
 /** Separate K622 descriptor. This does not widen legacy ExactFile bucket permissions.

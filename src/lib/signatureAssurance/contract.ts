@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {registrySourceSchema} from '../documentRegistry/contract';
-export {AUTHENTICATED_RPC_ABI, SERVICE_RPC_ABI, LIMITS} from './types';
+import {registrySourceSchema} from '../documentRegistry/contract.ts';
+export {AUTHENTICATED_RPC_ABI, SERVICE_RPC_ABI, LIMITS} from './types.ts';
 
 export const uuid=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 export const hash=z.string().regex(/^[0-9a-f]{64}$/);

@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ auth: { user: { id: "aaaaaaaa-bbbb-cccc-dddd-e
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (name: string, args: unknown) => ({ abortSignal: (signal: AbortSignal) => mocks.rpc(name, args, signal) }), functions: { invoke: (...args: unknown[]) => mocks.edge(...args) } } }));
 import { usePublicationCalendar } from "@/hooks/usePublicationCalendar";
-import { actor, calendar, createArgs, created, id, list, org, rules } from "./fixtures";
+import { actor, calendar, createArgs, created, id, list, org, rules } from './fixtures.ts';
 const reads = (name: string) => name === "list_publication_rule_versions" ? rules() : name === "list_organization_publications" ? list() : calendar();
 const deferred = <T,>() => { let resolve!: (v: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; };
 beforeEach(() => { mocks.auth = { user: { id: actor }, loading: false }; mocks.rpc.mockReset(); mocks.edge.mockReset(); mocks.rpc.mockImplementation(async (name: string) => ({ data: reads(name), error: null })); });

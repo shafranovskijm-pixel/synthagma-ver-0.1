@@ -1,4 +1,4 @@
-import type * as c from '../contract';
+import type * as c from '../contract.ts';
 export const id = (n:number) => `11111111-1111-4111-8111-${String(n).padStart(12,'0')}`;
 export const actor=id(1), org=id(2), learner=id(3), group=id(4), enrollment=id(5), course=id(6), caseId=id(7), requestId=id(8);
 export const scope:c.AdmissionScope = {organization_id:org,group_id:group,enrollment_id:enrollment,user_id:learner,course_id:course};

@@ -1,8 +1,8 @@
 // UC019 controlled issuance/lifecycle wire contract. Unknown keys are rejected.
 // All objects reject unknown keys. Exact imported UC014/UC010 shapes are reused.
 import { z } from 'zod';
-import { admissionProgramRefSchema, admissionScopeSchema, admissionLocalActRefSchema } from '@/lib/admissionCases/contract';
-import { outcomeScopeSchema, outcomeCriteriaRefSchema } from '@/lib/learningOutcomes/contract';
+import { admissionProgramRefSchema, admissionScopeSchema, admissionLocalActRefSchema } from '@/lib/admissionCases/contract.ts';
+import { outcomeScopeSchema, outcomeCriteriaRefSchema } from '@/lib/learningOutcomes/contract.ts';
 const uuid=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 const sha=z.string().regex(/^[a-f0-9]{64}$/);
 const count=z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);

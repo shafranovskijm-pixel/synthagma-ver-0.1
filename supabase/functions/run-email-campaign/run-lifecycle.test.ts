@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { dispatchOrdinaryBatch, requireQuotaDecision, reserveOrdinarySenderBatch } from "./run-lifecycle";
+import { dispatchOrdinaryBatch, requireQuotaDecision, reserveOrdinarySenderBatch } from './run-lifecycle.ts';
 
 const recipients = [{ id: "one" }, { id: "two" }];
 const wait = async () => {};

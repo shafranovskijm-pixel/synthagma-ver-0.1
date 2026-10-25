@@ -1,6 +1,6 @@
 import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
-import {downloadVerifiedJournalExport} from '../scopedExport';
-import {si} from './scopedFixtures';
+import {downloadVerifiedJournalExport} from '../scopedExport.ts';
+import {si} from './scopedFixtures.ts';
 let blobs:Blob[],links:HTMLAnchorElement[],connectedAtClick:boolean[],click:ReturnType<typeof vi.spyOn>,create:ReturnType<typeof vi.fn>,revoke:ReturnType<typeof vi.fn>;
 beforeEach(()=>{
  vi.useFakeTimers({toFake:['setTimeout','clearTimeout']});

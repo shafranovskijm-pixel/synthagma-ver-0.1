@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Blob as NodeBlob } from "node:buffer";
-import { loadOrgDocumentReviewContent } from "../orgDocumentReviewContent";
+import { loadOrgDocumentReviewContent } from '../orgDocumentReviewContent.ts';
 const mocks = vi.hoisted(() => ({ sign: vi.fn(), convert: vi.fn() }));
 vi.mock("@/utils/storageHelpers", () => ({ extractStoragePath: (s: string) => s, getSignedStorageUrl: mocks.sign }));
 vi.mock("mammoth/mammoth.browser", () => ({ convertToHtml: mocks.convert }));

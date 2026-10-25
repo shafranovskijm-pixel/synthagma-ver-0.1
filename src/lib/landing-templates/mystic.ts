@@ -1,4 +1,4 @@
-import type { LandingTemplate } from "./types";
+import type { LandingTemplate } from './types.ts';
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import mysticHero from "@/assets/landing-templates/mystic-hero.jpg";
 

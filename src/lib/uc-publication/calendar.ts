@@ -1,4 +1,4 @@
-import { calendarDate, publicationBasisSchema, publicationSha256, publicationUuid, type PublicationBasis } from "./model";
+import { calendarDate, publicationBasisSchema, publicationSha256, publicationUuid, type PublicationBasis } from './model.ts';
 
 export interface PublicationCalendarRule {
   id: string; revision: number; basis: PublicationBasis;

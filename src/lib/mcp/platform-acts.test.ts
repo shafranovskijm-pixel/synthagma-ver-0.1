@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createSintagmaInvoiceAct, previewSintagmaInvoiceAct, searchSintagmaBillingOrganizations, sha256 } from "./platform-acts";
-import type { InvoiceContext } from "./invoice-source";
+import { createSintagmaInvoiceAct, previewSintagmaInvoiceAct, searchSintagmaBillingOrganizations, sha256 } from './platform-acts.ts';
+import type { InvoiceContext } from './invoice-source.ts';
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn() }));
 const ORG = "10000000-0000-4000-8000-000000000001";

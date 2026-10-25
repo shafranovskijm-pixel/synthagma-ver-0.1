@@ -1,7 +1,7 @@
 import{ supabase }from'@/integrations/supabase/client';
 import{captureCustomJournalScope,customJournalScopeCurrent,type CustomJournalScope}from'@/lib/customJournals/client';
-import*as c from'./contract';
-import{canonicalArchiveJson}from'./package';
+import*as c from'./contract.ts';
+import{canonicalArchiveJson}from'./package.ts';
 export interface ArchiveClientScope extends CustomJournalScope{archiveScope:c.ArchiveScope}
 export function captureArchiveScope(organizationId:string,scope:c.ArchiveScope,current:()=>boolean):ArchiveClientScope{
  const parsed=c.archiveScope.safeParse(structuredClone(scope));if(!parsed.success)throw new c.ArchiveError('ACCESS_DENIED');

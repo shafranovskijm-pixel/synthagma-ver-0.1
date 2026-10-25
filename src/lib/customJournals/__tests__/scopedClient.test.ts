@@ -1,9 +1,9 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
-import {si,sid,sb,sj,ssummary,sr,sc,ss,storedExport} from './scopedFixtures';
+import {si,sid,sb,sj,ssummary,sr,sc,ss,storedExport} from './scopedFixtures.ts';
 const f=vi.hoisted(()=>({actor:'00000000-0000-4000-8000-000000000004',revision:1,sessionActor:'00000000-0000-4000-8000-000000000004',data:null as unknown,error:null as unknown,wait:null as Promise<any>|null,calls:[] as {name:string;args:any;header:any}[]}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>f.actor?{actorId:f.actor,revision:f.revision}:null,isOfflineActorCurrent:(id:string,revision:number)=>f.actor===id&&f.revision===revision}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:vi.fn(async()=>({data:{session:{user:{id:f.sessionActor},access_token:'SYN_TOKEN'}},error:null}))},rpc:vi.fn((name:string,args:any)=>({setHeader:vi.fn(async(header:string,value:string)=>{f.calls.push({name,args:structuredClone(args),header:{header,value}});return f.wait?await f.wait:{data:f.data,error:f.error,status:200};})}))}}));
-import {captureScopedJournalScope,prepareScopedCustomJournalMutation,readScopedCustomJournals,normalizeScopedJournalError} from '../scopedClient';
+import {captureScopedJournalScope,prepareScopedCustomJournalMutation,readScopedCustomJournals,normalizeScopedJournalError} from '../scopedClient.ts';
 const context={kind:'group' as const,group_id:si.group},query={kind:'list' as const,after_id:null,limit:50,include_archived:true};
 const reply=(action='save_record',record:any=sr)=>({...sb,receipt:{request_id:si.request,action,journal_id:si.journal,entity_id:record?.id??si.journal,revision_applied:1,outcome:'applied',replayed:false},journal:sj,record,export:null});
 const action=()=>({action:'save_record' as const,journal_id:si.journal,record_id:null,schema_version_id:si.schema,subject:sr.subject,source:sr.source,values:{doc_number:'0007'},reason:''});

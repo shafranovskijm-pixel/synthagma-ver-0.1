@@ -2,10 +2,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { captureCustomJournalScope, customJournalScopeCurrent, type CustomJournalScope } from '@/lib/customJournals/client';
 import { sameCopyValue } from '@/lib/copyRegistry/value';
 import { journalUuid } from '@/lib/customJournals/contract';
-import * as c from './contract';
-import type * as t from './types';
-import { issuanceMessages } from './presentation';
-export { issuanceMessages } from './presentation';
+import * as c from './contract.ts';
+import type * as t from './types.ts';
+import { issuanceMessages } from './presentation.ts';
+export { issuanceMessages } from './presentation.ts';
 
 export class EducationIssuanceError extends Error {
   constructor(readonly code: t.IssuanceErrorCode = 'DEPENDENCY_UNAVAILABLE', readonly retryable = false) {

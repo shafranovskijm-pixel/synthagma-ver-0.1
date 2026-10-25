@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendSmtpEmail, SmtpDeliveryError, type SmtpConfig } from "../_shared/smtp-sender";
+import { sendSmtpEmail, SmtpDeliveryError, type SmtpConfig } from '../_shared/smtp-sender.ts';
 
 vi.mock("../_shared/rate-limiter.ts", () => ({ checkRateLimit: vi.fn() }));
 

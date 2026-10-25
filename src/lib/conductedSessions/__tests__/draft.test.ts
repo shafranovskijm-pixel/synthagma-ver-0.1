@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import {renderSessionDraft} from '../draft';
-import {draft} from './fixtures';
+import {renderSessionDraft} from '../draft.ts';
+import {draft} from './fixtures.ts';
 describe('source-pinned draft artifact',()=>{
  it('renders explicit attendance and provenance with draft-only status',()=>{
   const d=draft(),html=renderSessionDraft(d);expect(html).toContain('Присутствовал');expect(html).toContain(d.draft.id);expect(html).toContain(d.draft.content_hash);expect(html).toContain('Документ не выдан, не подписан');expect(html).toContain(d.draft.source_proof!.session_version_id);

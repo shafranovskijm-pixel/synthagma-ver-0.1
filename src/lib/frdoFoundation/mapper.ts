@@ -1,8 +1,8 @@
-import * as c from './contract';
-import {OFFICIAL_TEMPLATES} from './officialMetadata';
-import {nativeMember,verifyNativeDictionaries} from './dictionaries';
-import {BOUNDS,canonicalJson,deepFreeze,ensureCurrent,refuse,sha256} from './hash';
-import type {CurrentGuard,FoundationContext,FoundationInput,Issue,MappingEntry,MappedBatch,OfficialCell,Row,Stream,Supplement,SupplementFields,FrozenFrdoFacts} from './types';
+import * as c from './contract.ts';
+import {OFFICIAL_TEMPLATES} from './officialMetadata.ts';
+import {nativeMember,verifyNativeDictionaries} from './dictionaries.ts';
+import {BOUNDS,canonicalJson,deepFreeze,ensureCurrent,refuse,sha256} from './hash.ts';
+import type {CurrentGuard,FoundationContext,FoundationInput,Issue,MappingEntry,MappedBatch,OfficialCell,Row,Stream,Supplement,SupplementFields,FrozenFrdoFacts} from './types.ts';
 const general=/^[A-Za-zА-Яа-яЁё0-9. /-]+$/;
 const namePattern=/^[А-Яа-яЁё.\u0027\u0060 ()-]+$/;
 const programme=/^[A-Za-zА-Яа-яЁё0-9()./\- ,:«»"?№&+#_;]+$/;

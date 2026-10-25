@@ -1,10 +1,10 @@
-import * as foundation from '../frdoFoundation/contract';
-import { mapFrozenProjections } from '../frdoFoundation/mapper';
-import { BOUNDS, canonicalJson, deepFreeze, ensureCurrent, sha256 } from '../frdoFoundation/hash';
-import type { CurrentGuard } from '../frdoFoundation/types';
-import * as c from './contract';
-import { PacketInvariantError, verifyFrozenCapture } from './invariants';
-import type { FrozenCapture } from './types';
+import * as foundation from '../frdoFoundation/contract.ts';
+import { mapFrozenProjections } from '../frdoFoundation/mapper.ts';
+import { BOUNDS, canonicalJson, deepFreeze, ensureCurrent, sha256 } from '../frdoFoundation/hash.ts';
+import type { CurrentGuard } from '../frdoFoundation/types.ts';
+import * as c from './contract.ts';
+import { PacketInvariantError, verifyFrozenCapture } from './invariants.ts';
+import type { FrozenCapture } from './types.ts';
 import type { z } from 'zod';
 
 /** Produce one minimal immutable generation capture from genuine current UC019 DTOs.

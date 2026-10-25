@@ -10,7 +10,7 @@ vi.mock('@/utils/courseCache', () => ({
   captureOfflineContext: () => ({ actorId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', revision: 1 }),
   isOfflineActorCurrent: (actor: string, revision: number) => mocks.live.current && actor === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' && revision === 1,
 }));
-import { prepareSignatureSourceVerification } from '../sourceVerification';
+import { prepareSignatureSourceVerification } from '../sourceVerification.ts';
 
 const actor = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 const org = '11111111-2222-3333-4444-555555555555';

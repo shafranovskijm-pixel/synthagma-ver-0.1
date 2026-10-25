@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { admissionIssuanceConditionSchema, admissionIssuanceEvidenceSchema, admissionIssuanceReviewSnapshotSchema } from './issuanceCondition';
+import { admissionIssuanceConditionSchema, admissionIssuanceEvidenceSchema, admissionIssuanceReviewSnapshotSchema } from './issuanceCondition.ts';
 
 export const admissionUuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 export const admissionRevision = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);

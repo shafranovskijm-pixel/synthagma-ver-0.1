@@ -1,4 +1,4 @@
-import{z}from'zod';import{supabase}from'@/integrations/supabase/client';import{FrdoPacketError,requireFrdoScope,requireFrdoSession,type FrdoScope}from'./client';
+import{z}from'zod';import{supabase}from'@/integrations/supabase/client';import{FrdoPacketError,requireFrdoScope,requireFrdoSession,type FrdoScope}from'./client.ts';
 const row=z.object({id:z.string().uuid(),user_id:z.string().uuid(),display_name:z.string().max(1000),expires_at:z.string().nullable()}).strict();export type FrdoStaffChoice=z.infer<typeof row>;
 /** Ordinary current staff RLS only. A choice is not an operator appointment or
  * external delegation; the backend checks the exact selected account again. */

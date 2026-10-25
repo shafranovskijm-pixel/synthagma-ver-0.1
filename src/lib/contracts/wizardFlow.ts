@@ -3,7 +3,7 @@
  * Вынесено из GenerateContractDialog для тестируемости:
  * quick-режим НЕ может пройти дальше шага 1 без явного выбора сценария.
  */
-import type { ContractScenario } from "./scenarios";
+import type { ContractScenario } from './scenarios.ts';
 
 export interface WizardState {
   step: number;

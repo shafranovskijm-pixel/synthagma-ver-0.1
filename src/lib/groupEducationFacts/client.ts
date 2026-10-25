@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { captureOfflineContext, isOfflineActorCurrent } from '@/utils/courseCache';
-import * as c from './contract';
+import * as c from './contract.ts';
 import type { GeneratedDocument } from '@/lib/group-docs/schema';
 
 export interface EducationActorScope {actorId:string;accessRevision:number;organizationId:string;groupId:string;courseId?:string;current?:()=>boolean}

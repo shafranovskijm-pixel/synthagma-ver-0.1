@@ -1,5 +1,5 @@
-import { buildPlatformContractDocumentHtml, buildPlatformContractPagesHtml, platformContractFileName, A4_W } from "./generateContractHtml";
-import type { PlatformContractDraft } from "./types";
+import { buildPlatformContractDocumentHtml, buildPlatformContractPagesHtml, platformContractFileName, A4_W } from './generateContractHtml.ts';
+import type { PlatformContractDraft } from './types.ts';
 
 /**
  * Скачивание PDF проекта договора через тот же надёжный механизм, что и КП:

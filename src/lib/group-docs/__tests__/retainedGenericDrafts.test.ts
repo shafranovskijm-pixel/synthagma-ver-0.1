@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { compatibleArtifactSnapshot, id } from "@/lib/groupEducationFacts/__tests__/fixtures";
-import { parseEducationArtifactSnapshot, withEducationArtifact, EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE } from "../../../../supabase/functions/_shared/group-education-artifact";
-import { generatePackage } from "../generate";
-import { SAMPLE_CONTEXT } from "../sampleContext";
-import { GENERIC_EDUCATION_DRAFT_TYPES, retainedCalendarJournal } from "../retainedGenericDrafts";
-import { missingDocRequirements } from "../packageTypes";
+import { parseEducationArtifactSnapshot, withEducationArtifact, EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE } from '../../../../supabase/functions/_shared/group-education-artifact.ts';
+import { generatePackage } from '../generate.ts';
+import { SAMPLE_CONTEXT } from '../sampleContext.ts';
+import { GENERIC_EDUCATION_DRAFT_TYPES, retainedCalendarJournal } from '../retainedGenericDrafts.ts';
+import { missingDocRequirements } from '../packageTypes.ts';
 function source(count:number) {
  const value=compatibleArtifactSnapshot(),base=structuredClone(value.projection.calendar.lessons[0]);
  value.projection.calendar.lessons=Array.from({length:count},(_,i)=>({...structuredClone(base),lesson_id:id(100+i),local_date:new Date(Date.UTC(2026,9,19+i)).toISOString().slice(0,10),topic:'Реальная тема '+(i+1),academic_hours:'1'}));

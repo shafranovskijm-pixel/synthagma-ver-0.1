@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildUniqueReplyCandidates, summarizeReplyContacts } from "../replyCandidates";
+import { buildUniqueReplyCandidates, summarizeReplyContacts } from '../replyCandidates.ts';
 
 const reply = (overrides: Partial<{
   id: string;

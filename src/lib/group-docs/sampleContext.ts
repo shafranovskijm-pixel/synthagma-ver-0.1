@@ -1,4 +1,4 @@
-import type { GenerationContext } from "./schema";
+import type { GenerationContext } from './schema.ts';
 
 export const SAMPLE_CONTEXT: GenerationContext = {
   organization: {

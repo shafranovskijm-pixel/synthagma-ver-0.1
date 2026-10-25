@@ -1,8 +1,8 @@
 // @vitest-environment node
 import {describe,it,expect,vi} from 'vitest';
 import {compatibleArtifactSnapshot,id} from '@/lib/groupEducationFacts/__tests__/fixtures';
-import {createRetainedDraftBatchGuard,retainedDraftAttemptKey,type RetainedDraftSelection,type RetainedDraftRow} from '../retainedDraftBatch';
-import {GENERIC_EDUCATION_DRAFT_TYPES} from '../retainedGenericDrafts';
+import {createRetainedDraftBatchGuard,retainedDraftAttemptKey,type RetainedDraftSelection,type RetainedDraftRow} from '../retainedDraftBatch.ts';
+import {GENERIC_EDUCATION_DRAFT_TYPES} from '../retainedGenericDrafts.ts';
 const selection=():RetainedDraftSelection=>({actorId:id(40),organizationId:id(1),groupId:id(2),source:compatibleArtifactSnapshot().source,dates:{enrollment_order:'2026-10-21',class_journal:'2026-10-22',attestation_sheet:'2026-10-23'}});
 const rows=(s=selection()):RetainedDraftRow[]=>GENERIC_EDUCATION_DRAFT_TYPES.map((type,index)=>({id:id(200+index),organization_id:s.organizationId,group_id:s.groupId,doc_type:type,document_date:s.dates[type],doc_status:'draft',document_number:null,layout_format:'legacy_html',package_batch_id:id(250),package_version:3,variables_snapshot:{education_source:s.source}}));
 const memory=()=>{const values=new Map<string,string>();return {getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>{values.set(key,value);}};};

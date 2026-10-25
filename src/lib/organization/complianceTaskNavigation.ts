@@ -1,4 +1,4 @@
-import { readConstructorView, type DocumentConstructorView } from "./documentWorkspaceNavigation";
+import { readConstructorView, type DocumentConstructorView } from './documentWorkspaceNavigation.ts';
 
 /** Only editors already present in ConstructorSection. These are preparation
  * tools and previews; they do not approve a policy, template version or issue. */

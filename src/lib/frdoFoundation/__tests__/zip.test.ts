@@ -1,10 +1,10 @@
 import {afterEach,describe,it,expect,vi} from 'vitest';
 import JSZip from 'jszip';
 import {readFile} from 'node:fs/promises';
-import {zipDirectory,readZipParts,boundedStream,newBudget} from '../zip';
-import {BOUNDS} from '../hash';
-import {parseXml} from '../ooxml';
-import {guard} from './fixtures';
+import {zipDirectory,readZipParts,boundedStream,newBudget} from '../zip.ts';
+import {BOUNDS} from '../hash.ts';
+import {parseXml} from '../ooxml.ts';
+import {guard} from './fixtures.ts';
 afterEach(()=>vi.useRealTimers());
 class ManualStream{
  callbacks=new Map<string,(value?:Uint8Array)=>void>();paused=0;

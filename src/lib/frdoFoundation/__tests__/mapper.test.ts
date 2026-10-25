@@ -1,10 +1,10 @@
 import {beforeAll,afterAll,describe,it,expect,vi} from 'vitest';
 import {webcrypto} from 'node:crypto';
-import {mapFrozenProjections,excel1900Date,validSnils} from '../mapper';
-import {canonicalJson,sha256,utf8} from '../hash';
-import {nativeValues} from '../dictionaries';
-import {input,duplicate,seal,guard,expectedDpo,expectedPo} from './fixtures';
-import {uid,actor,stamp,source} from '../../educationIssuance/__tests__/fixtures';
+import {mapFrozenProjections,excel1900Date,validSnils} from '../mapper.ts';
+import {canonicalJson,sha256,utf8} from '../hash.ts';
+import {nativeValues} from '../dictionaries.ts';
+import {input,duplicate,seal,guard,expectedDpo,expectedPo} from './fixtures.ts';
+import {uid,actor,stamp,source} from '../../educationIssuance/__tests__/fixtures.ts';
 beforeAll(()=>vi.stubGlobal('crypto',webcrypto));afterAll(()=>vi.unstubAllGlobals());
 const codes=(value:Awaited<ReturnType<typeof mapFrozenProjections>>)=>[...value.rows.flatMap(r=>r.issues),...value.blocked_records.flatMap(r=>r.issues)].map(i=>i.code);
 describe('UC020 all75 frozen fact mapping',()=>{

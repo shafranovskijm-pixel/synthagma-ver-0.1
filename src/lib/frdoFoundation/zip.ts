@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
-import {BOUNDS,decodeUtf8,ensureCurrent,refuse,FrdoFoundationError} from './hash';
-import type {CurrentGuard} from './types';
+import {BOUNDS,decodeUtf8,ensureCurrent,refuse,FrdoFoundationError} from './hash.ts';
+import type {CurrentGuard} from './types.ts';
 export interface ZipEntry{path:string;compressed:number;bytes:number;crc:number;offset:number;method:number;flags:number;}
 export interface Budget{guard:CurrentGuard;expires:number;}
 export const newBudget=(guard:CurrentGuard):Budget=>({guard,expires:performance.now()+45000});

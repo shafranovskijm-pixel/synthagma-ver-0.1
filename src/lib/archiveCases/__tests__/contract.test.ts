@@ -1,6 +1,6 @@
 import{describe,it,expect}from'vitest';
-import{archiveUuid,archiveSource,archiveApplyArgs}from'../contract';
-import{source,hash}from'./fixtures';
+import{archiveUuid,archiveSource,archiveApplyArgs}from'../contract.ts';
+import{source,hash}from'./fixtures.ts';
 const historicalRoot='aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 describe('archive PostgreSQL UUID identity boundary',()=>{
  it('accepts the actual historical administrative UUID in actor and source references',()=>{

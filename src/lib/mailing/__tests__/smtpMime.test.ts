@@ -4,7 +4,7 @@ import {
   ensureFullHtmlDocument,
   htmlToPlainText,
   isFullHtmlDocument,
-} from "../../../../supabase/functions/_shared/smtp-protocol";
+} from '../../../../supabase/functions/_shared/smtp-protocol.ts';
 
 const base = {
   from: "Тест <a@torgi.com.ru>",

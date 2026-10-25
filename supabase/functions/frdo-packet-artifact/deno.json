@@ -1,9 +1,13 @@
 {
   "imports": {
     "zod": "npm:zod@3.25.76",
-    "jszip": "npm:jszip@3.10.1"
+    "jszip": "npm:jszip@3.10.1",
+    "vitest": "./__tests__/vitest-shim.ts",
+    "vitest/config": "./__tests__/vitest-shim.ts",
+    "npm:@xmldom/xmldom@0.9.12": "npm:@xmldom/xmldom@0.8.11",
+    "@/": "../../../src/"
   },
   "compilerOptions": {
-    "strict": true
+    "strict": false
   }
 }

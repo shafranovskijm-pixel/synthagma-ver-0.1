@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyProgramFacts, parseProgramEnvelope, parseProgramList, parseCourseBinding, parseGroupProgramFacts, programFactsSchema, programFactsReady } from "../programFacts";
+import { emptyProgramFacts, parseProgramEnvelope, parseProgramList, parseCourseBinding, parseGroupProgramFacts, programFactsSchema, programFactsReady } from '../programFacts.ts';
 import { programFixture, courseBindingFixture, groupFactsFixture, pfId, pfOrg, pfProgram, pfCourse, pfGroup, pfEnrollment } from "./programFacts.fixture";
 
 describe("approved programme facts and exact learning association", () => {

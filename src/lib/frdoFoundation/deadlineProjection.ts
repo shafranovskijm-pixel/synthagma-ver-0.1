@@ -1,6 +1,6 @@
 import type { z } from 'zod';
-import type { deadlineSchema } from './contract';
-import type { Stream } from './types';
+import type { deadlineSchema } from './contract.ts';
+import type { Stream } from './types.ts';
 
 type Deadline = z.infer<typeof deadlineSchema>;
 type IssuerRegime = 'unconfirmed' | 'ordinary_rf' | 'joint_rf_foreign';

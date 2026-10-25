@@ -1,8 +1,8 @@
-import {OFFICIAL_TEMPLATES} from './officialMetadata';
-import {nativeDefinition} from './dictionaries';
-import {BOUNDS,decodeUtf8,FrdoFoundationError,refuse,utf8} from './hash';
-import type {OfficialCell,Stream} from './types';
-import {browserXmlRuntime,type XmlDocument,type XmlElement,type XmlRuntime} from './xmlRuntime';
+import {OFFICIAL_TEMPLATES} from './officialMetadata.ts';
+import {nativeDefinition} from './dictionaries.ts';
+import {BOUNDS,decodeUtf8,FrdoFoundationError,refuse,utf8} from './hash.ts';
+import type {OfficialCell,Stream} from './types.ts';
+import {browserXmlRuntime,type XmlDocument,type XmlElement,type XmlRuntime} from './xmlRuntime.ts';
 const main='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 export function parseXml(bytes:Uint8Array,runtime:XmlRuntime=browserXmlRuntime):XmlDocument&{readonly documentElement:XmlElement}{const text=decodeUtf8(bytes,BOUNDS.xmlBytes);if(/<!DOCTYPE|<!ENTITY/i.test(text))return refuse();let doc:XmlDocument;try{doc=runtime.parse(text);}catch(cause){return refuse(cause instanceof FrdoFoundationError&&cause.code==='DEPENDENCY_UNAVAILABLE'?'DEPENDENCY_UNAVAILABLE':'INVALID_WORKBOOK');}if(!doc?.documentElement||doc.getElementsByTagName('parsererror').length||doc.documentElement.localName==='parsererror')return refuse();return doc as XmlDocument&{readonly documentElement:XmlElement};}
 export const elements=(node:XmlDocument|XmlElement,name:string):XmlElement[]=>Array.from(node.getElementsByTagNameNS(main,name));

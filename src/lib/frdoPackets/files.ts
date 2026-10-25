@@ -2,8 +2,8 @@ import{z}from'zod';import{supabase}from'@/integrations/supabase/client';
 import{captureDocumentRegistryScope,readDocumentRegistry}from'@/lib/documentRegistry/client';
 import{downloadRegistryBlob}from'@/lib/documentRegistry/files';
 import{STORAGE_PROXY_BASE_URL,STORAGE_PROXY_PREFIX}from'@/utils/storageProxyUrl';
-import{sourceRefSchema,sealedEvidenceSchema}from'../frdoFoundation/contract';import{canonicalJson,sha256}from'../frdoFoundation/hash';
-import{FrdoPacketError,requireFrdoScope,requireFrdoSession,readFrdoPackets,type FrdoScope,type FrdoPacket}from'./client';
+import{sourceRefSchema,sealedEvidenceSchema}from'../frdoFoundation/contract.ts';import{canonicalJson,sha256}from'../frdoFoundation/hash.ts';
+import{FrdoPacketError,requireFrdoScope,requireFrdoSession,readFrdoPackets,type FrdoScope,type FrdoPacket}from'./client.ts';
 const MAX=20971520;const same=(a:unknown,b:unknown)=>canonicalJson(a)===canonicalJson(b);
 /** One bounded original-bearer read. A late actor/scope change discards bytes. */
 async function bytes(scope:FrdoScope,url:string,expected:number,headers?:Record<string,string>){requireFrdoScope(scope);if(!Number.isSafeInteger(expected)||expected<1||expected>MAX)throw new FrdoPacketError('SOURCE_UNAVAILABLE');const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),45000);let reader:ReadableStreamDefaultReader<Uint8Array>|undefined;

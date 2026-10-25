@@ -1,5 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { searchInvoiceShape, searchSintagmaInvoices } from "../invoice-source";
+import { searchInvoiceShape, searchSintagmaInvoices } from '../invoice-source.ts';
 
 export default defineTool({
   name: "search_sintagma_invoices",

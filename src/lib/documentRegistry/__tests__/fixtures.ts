@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { RegistryCapabilities, RegistryData, RegistryEvent, RegistryExport, RegistryFilters, RegistryIncoming, RegistryLegacy, RegistryRecord, RegistryScope } from '../contract';
+import type { RegistryCapabilities, RegistryData, RegistryEvent, RegistryExport, RegistryFilters, RegistryIncoming, RegistryLegacy, RegistryRecord, RegistryScope } from '../contract.ts';
 export const uid = (n: number) => '00000000-0000-4000-8000-' + n.toString(16).padStart(12, '0');
 export const org = uid(1), actor = uid(2), group = uid(3), pupil = uid(6), now = '2026-10-22T05:00:00.000Z';
 export const sha = (raw: string) => createHash('sha256').update(raw, 'utf8').digest('hex');

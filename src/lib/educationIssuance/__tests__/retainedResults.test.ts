@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { actor,org,course,enrollment,uid } from "./fixtures";
+import { actor,org,course,enrollment,uid } from './fixtures.ts';
 const mock=vi.hoisted(()=>({current:true,response:null as any,rpc:vi.fn(),session:vi.fn(),after:null as null|(()=>void)}));
 vi.mock("@/utils/courseCache",()=>({captureOfflineContext:()=>({actorId:"00000000-0000-4000-8000-000000000001",revision:1}),isOfflineActorCurrent:()=>mock.current}));
 vi.mock("@/integrations/supabase/client",()=>({supabase:{auth:{getSession:mock.session},rpc:mock.rpc}}));
-import { captureOwnRetainedScope, readOwnRetainedLearningSummary } from "../retainedResults";
+import { captureOwnRetainedScope, readOwnRetainedLearningSummary } from '../retainedResults.ts';
 const summary=()=>({schema_version:1,kind:"retained_summary",organization_id:org,user_id:actor,enrollment_id:enrollment,course_id:course,
   withdrawal:{effective_date:"2026-10-22",recorded_at:"2026-10-22T10:00:00Z"},technical:{status:"completed",progress:100,completed_at:"2026-10-21T10:00:00Z"},
   decisions:[{id:uid(11),outcome:"deferred",learner_summary:"Нужна дополнительная проверка ответственного.",recorded_at:"2026-10-21T10:00:00Z",supersedes_id:null}],next_after_decision_id:null});

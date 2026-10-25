@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import * as foundation from '../frdoFoundation/contract';
+import * as foundation from '../frdoFoundation/contract.ts';
 
 /** Runtime wire for UC020 persisted packets. Parsing grants no database/file rights.
  * Trusted service attestations are deliberately separate from user commands. */

@@ -1,4 +1,4 @@
-import {scopedExportDetailSchema,scopedExportManifestSchema,sameScopedJournalContext,type ScopedJournalContext,type ScopedJournalExport} from './scopedContract';
+import {scopedExportDetailSchema,scopedExportManifestSchema,sameScopedJournalContext,type ScopedJournalContext,type ScopedJournalExport} from './scopedContract.ts';
 export class JournalExportVerificationError extends Error {constructor(readonly code:'ACCESS_DENIED'|'SOURCE_UNAVAILABLE'|'DEPENDENCY_UNAVAILABLE'='DEPENDENCY_UNAVAILABLE'){super(code);this.name='JournalExportVerificationError';}}
 export interface JournalExportExpectation {organizationId:string;journalId:string;context:ScopedJournalContext;exportId:string}
 const encoder=new TextEncoder(),maximumBytes=8*1024*1024;

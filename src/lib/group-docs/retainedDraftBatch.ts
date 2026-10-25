@@ -1,5 +1,5 @@
-import { GENERIC_EDUCATION_DRAFT_TYPES, type GenericEducationDraftType } from "./retainedGenericDrafts";
-import type { EducationArtifactSnapshot } from "../../../supabase/functions/_shared/group-education-artifact";
+import { GENERIC_EDUCATION_DRAFT_TYPES, type GenericEducationDraftType } from './retainedGenericDrafts.ts';
+import type { EducationArtifactSnapshot } from '../../../supabase/functions/_shared/group-education-artifact.ts';
 export interface RetainedDraftRow { id:string; organization_id:string; group_id:string; doc_type:string; document_date:string|null; doc_status?:string|null; document_number:string|null; layout_format?:string|null; package_batch_id?:string|null; package_version?:number|null; variables_snapshot?:Record<string,any>|null }
 export interface RetainedDraftSelection { actorId:string;organizationId:string;groupId:string;source:EducationArtifactSnapshot["source"];dates:Record<GenericEducationDraftType,string> }
 export interface RetainedDraftReceipt { batchId:string;version:number;ids:string[];reconciled:boolean }

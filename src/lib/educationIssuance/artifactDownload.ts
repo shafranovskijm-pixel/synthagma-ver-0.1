@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { EducationIssuanceError, readEducationIssuance, requireIssuanceScope, type EducationIssuanceScope } from "./client";
-import { downloadIssuanceBlob } from "./export";
+import { EducationIssuanceError, readEducationIssuance, requireIssuanceScope, type EducationIssuanceScope } from './client.ts';
+import { downloadIssuanceBlob } from './export.ts';
 
 /** Reads the exact attested immutable version. It never regenerates a historical original. */
 export async function downloadIssuedPdf(scope:EducationIssuanceScope,recordId:string) {

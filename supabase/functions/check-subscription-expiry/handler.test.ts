@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe,it,expect,vi } from 'vitest';
-import { isPaidSubscriptionPlan,subscriptionMonthlyAmount } from '../_shared/subscription-pricing';
+import { isPaidSubscriptionPlan,subscriptionMonthlyAmount } from '../_shared/subscription-pricing.ts';
 const source=ts.transpile(readFileSync('supabase/functions/check-subscription-expiry/index.ts','utf8').replace(/^import .*;\r?\n/gm,''),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None});
 function fixture(options:{valid?:boolean;authError?:boolean;postpaid?:boolean;orgs?:boolean}={}){
   let handler:(req:Request)=>Promise<Response>;

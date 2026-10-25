@@ -5,7 +5,7 @@ import {
   GORELTECH_DOC_REQUIRED_KEYS,
   missingDocRequirements as missingDocRequirementsForProfile,
   missingPackageRequirements as missingPackageRequirementsForProfile,
-} from "../packageTypes";
+} from '../packageTypes.ts';
 
 const full = {
   org_name: "ООО «УЦ»",

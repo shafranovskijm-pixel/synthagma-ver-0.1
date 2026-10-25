@@ -3,7 +3,7 @@ import {
   DEFAULT_OPERATOR_REQUISITES,
   readStoredCompanyCardRequisites,
 } from "@/constants/operatorDetails";
-import { generatePdfHtml, prepareCompanyCardData } from "../../../supabase/functions/generate-company-card/company-card";
+import { generatePdfHtml, prepareCompanyCardData } from '../../../supabase/functions/generate-company-card/company-card.ts';
 
 const saved = { ...DEFAULT_OPERATOR_REQUISITES };
 const company = {

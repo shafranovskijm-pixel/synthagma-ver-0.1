@@ -3,7 +3,7 @@ import {canonicalSignatureStorageReader}from './controlled-source/worker.ts';
 export {canonicalSignatureStorageReader};
 export type ProtectedFileFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'REVISION_CONFLICT'|'REQUEST_CONFLICT'|'SOURCE_UNAVAILABLE'|'SOURCE_CHANGED'|'CLOSED'|'EXPIRED'|'LIMIT_EXCEEDED'|'DEPENDENCY_UNAVAILABLE';
 export class ProtectedFileError extends Error{constructor(readonly code:ProtectedFileFailure){super(code);this.name='ProtectedFileError';}}
-const fail=(code:ProtectedFileFailure):never=>{throw new ProtectedFileError(code);};
+function fail(code:ProtectedFileFailure):never{throw new ProtectedFileError(code);}
 const codes=new Set<ProtectedFileFailure>(['ACCESS_DENIED','INVALID_INPUT','NOT_FOUND','REVISION_CONFLICT','REQUEST_CONFLICT','SOURCE_UNAVAILABLE','SOURCE_CHANGED','CLOSED','EXPIRED','LIMIT_EXCEEDED','DEPENDENCY_UNAVAILABLE']);
 export interface ProtectedFileDependencies{
  observeOriginalActor(signal:AbortSignal):Promise<string|null>;
@@ -48,7 +48,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
 async function digest(bytes:Uint8Array):Promise<string>{
- const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
+ const hash=await crypto.subtle.digest('SHA-256',bytes as Uint8Array<ArrayBuffer>);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 
 /** Binary disclosure only. No write, signed URL, public Storage grant or caller-supplied path. */
@@ -57,10 +57,11 @@ export async function readProtectedSignatureFile(input:unknown,deps:ProtectedFil
  const ctl=new AbortController(),signal=ctl.signal,abort=()=>ctl.abort();outer?.addEventListener('abort',abort,{once:true});if(outer?.aborted)abort();const timer=setTimeout(abort,45000);let actor:string|null|undefined;
  const current=async()=>{if(signal.aborted)fail('ACCESS_DENIED');const fresh=await boundedAwait(deps.observeOriginalActor(signal),signal);if(signal.aborted||fresh!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(fresh)||actor!==undefined&&fresh!==actor||request.address.kind==='authenticated_signature'&&fresh===null)fail('ACCESS_DENIED');actor=fresh;};
  const invoke=async()=>{await current();const result=await boundedAwait(deps.service({p_action:request,p_observed_actor_user_id:actor??null},signal),signal);await current();if(typeof result==='object'&&result!==null&&(result as {ok?:unknown}).ok===false){const r=result as Record<string,unknown>;if(r.version===1&&Object.keys(r).length===3&&typeof r.code==='string'&&codes.has(r.code as ProtectedFileFailure))fail(r.code as ProtectedFileFailure);fail('DEPENDENCY_UNAVAILABLE');}return result;};
- const checkScope=(value:{organization_id:string;signature_id:string;chosen_party:string;document_revision_id:string|null;document_html_sha256:string},binding:string|null)=>{if(value.document_revision_id!==request.expected_document_revision_id||value.document_html_sha256!==request.document_html_sha256||binding!==request.binding_id||request.address.kind==='authenticated_signature'&&(value.organization_id!==request.address.organization_id||value.signature_id!==request.address.signature_id||value.chosen_party!==request.address.chosen_party)||request.address.kind==='invitation'&&value.chosen_party!=='recipient')fail('SOURCE_CHANGED');};
+type ScopeCheckValue={organization_id:string;signature_id:string;chosen_party:string;document_revision_id:string|null;document_html_sha256:string};
+ const checkScope=(value:ScopeCheckValue,binding:string|null)=>{if(value.document_revision_id!==request.expected_document_revision_id||value.document_html_sha256!==request.document_html_sha256||binding!==request.binding_id||request.address.kind==='authenticated_signature'&&(value.organization_id!==request.address.organization_id||value.signature_id!==request.address.signature_id||value.chosen_party!==request.address.chosen_party)||request.address.kind==='invitation'&&value.chosen_party!=='recipient')fail('SOURCE_CHANGED');};
  try{
-  const raw=await invoke(),absent=protectedFileAbsentSchema.safeParse(raw);if(absent.success){if(request.file_kind!=='source')fail('SOURCE_UNAVAILABLE');checkScope(absent.data,absent.data.binding_id);await current();return{kind:'file_absent',context:absent.data};}
-  const parse=(value:unknown)=>{const ctx=protectedFileContextSchema.safeParse(value);if(!ctx.success)fail('DEPENDENCY_UNAVAILABLE');checkScope(ctx.data.source,ctx.data.binding_id);if(ctx.data.source.purpose!==request.file_kind||request.event_revision!==null&&ctx.data.event_revision!==request.event_revision)fail('SOURCE_CHANGED');return ctx.data;};
+  const raw=await invoke(),absent=protectedFileAbsentSchema.safeParse(raw);if(absent.success){if(request.file_kind!=='source')fail('SOURCE_UNAVAILABLE');checkScope(absent.data as ScopeCheckValue,absent.data.binding_id);await current();return{kind:'file_absent',context:absent.data};}
+  const parse=(value:unknown)=>{const ctx=protectedFileContextSchema.safeParse(value);if(!ctx.success)fail('DEPENDENCY_UNAVAILABLE');checkScope(ctx.data.source as ScopeCheckValue,ctx.data.binding_id);if(ctx.data.source.purpose!==request.file_kind||request.event_revision!==null&&ctx.data.event_revision!==request.event_revision)fail('SOURCE_CHANGED');return ctx.data;};
   const before=parse(raw);await current();const response=await boundedAwait(deps.readCanonicalObject(before.source,signal),signal);await current();const actualMime=mime(response.headers.get('content-type'));
   if(!actualMime||before.object.reported_mime!==null&&before.object.reported_mime!==actualMime||before.expected_mime!==null&&before.expected_mime!==actualMime)fail('SOURCE_CHANGED');
   const bytes=await boundedBytes(response,signal);await current();const sha256=await boundedAwait(digest(bytes),signal);await current();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dsrIsOverdue, isFederalWorkingDay2026, previewDSRDeadline, dsrDeadlineLabel } from "../dataSubjectDeadlines";
+import { dsrIsOverdue, isFederalWorkingDay2026, previewDSRDeadline, dsrDeadlineLabel } from '../dataSubjectDeadlines.ts';
 
 describe("UC023 federal 2026 deadline boundaries", () => {
   it("skips the official January transfer, weekends and holiday rollover", () => {
