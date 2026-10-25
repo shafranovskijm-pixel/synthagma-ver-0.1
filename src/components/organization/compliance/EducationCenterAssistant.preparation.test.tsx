@@ -25,7 +25,7 @@ it('PA01 opens the selected real card structure without uploading, approving or 
  render(<EducationCenterAssistant {...props()} />); openCard('Правила приёма');
  const dialog = screen.getByRole('dialog');
  expect(within(dialog).getByRole('heading', { name: 'Правила приёма: образец и подготовка' })).toBeVisible();
- expect(within(dialog).getByLabelText('Текст примера для адаптации')).toHaveTextContent('ПРОЕКТ СТРУКТУРЫ');
+ expect(within(dialog).getByLabelText('Текст примера для адаптации')).toHaveTextContent('ПРОЕКТ ДЛЯ АДАПТАЦИИ');
  expect(state.decisions.save).not.toHaveBeenCalled(); expect(state.profile.save).not.toHaveBeenCalled();
  expect(upload).not.toHaveBeenCalled(); expect(history).not.toHaveBeenCalled(); expect(archive).not.toHaveBeenCalled();
 });

@@ -1,4 +1,5 @@
 /** Explicit preparation coverage. These examples never approve a centre document. */
+import { adaptationDraftText } from './adaptationDrafts';
 export const PREPARATION_EDITION = 'uc029-preparation-2026-10-26-v1';
 export type PreparationKind = 'adaptation_outline' | 'official_record' | 'existing_workflow';
 export interface PreparationLink { label: string; href: string; verification: string }
@@ -455,7 +456,8 @@ export function preparationPlan(requirementId: string): PreparationPlan | null {
 }
 export function preparationExample(requirementId: string): string | null {
  const plan = preparationPlan(requirementId); if (!plan) return null;
- const heading = plan.kind === 'official_record' ? 'ЧЕК-ЛИСТ ПРОВЕРКИ ПОДЛИННОГО ДОКУМЕНТА' : plan.kind === 'adaptation_outline' ? 'ПРОЕКТ СТРУКТУРЫ ДЛЯ АДАПТАЦИИ И ПРАВОВОЙ ПРОВЕРКИ' : 'ПАМЯТКА ПО ПОДГОТОВКЕ В РАБОЧЕМ РАЗДЕЛЕ';
+ if (plan.kind === 'adaptation_outline') return adaptationDraftText(requirementId, plan.steps);
+ const heading = plan.kind === 'official_record' ? 'ЧЕК-ЛИСТ ПРОВЕРКИ ПОДЛИННОГО ДОКУМЕНТА' : 'ПАМЯТКА ПО ПОДГОТОВКЕ В РАБОЧЕМ РАЗДЕЛЕ';
  return [heading, plan.title, 'Редакция примера: '+PREPARATION_EDITION, '', 'Центр: [заполнить]', 'Программа / вид деятельности: [уточнить]', 'Ответственный: [назначить уполномоченное лицо]', '', ...plan.steps.flatMap((step,index)=>[(index+1)+'. '+step, 'Сведения центра и источник: [не заполнено]', '']), ...(plan.limit ? [plan.limit, ''] : []), 'Следующий шаг: '+plan.nextStep, '', 'Это пример для подготовки. Он не является утверждённым актом, лицензией, подписью, решением комиссии или подтверждением соответствия. Применимость и текущие нормы проверяет центр.'].join('\n');
 }
 

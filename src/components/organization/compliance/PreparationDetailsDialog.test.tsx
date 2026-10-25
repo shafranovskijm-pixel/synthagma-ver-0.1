@@ -13,7 +13,7 @@ it('PD01 renders a literal adaptation structure and separate legal limits withou
  const dialog = screen.getByRole('dialog');
  expect(within(dialog).getByRole('heading', { name: '<img src=x onerror=alert(1)>: образец и подготовка' })).toBeVisible();
  expect(view.baseElement.querySelector('img')).toBeNull();
- expect(screen.getByLabelText('Текст примера для адаптации')).toHaveTextContent('ПРОЕКТ СТРУКТУРЫ ДЛЯ АДАПТАЦИИ И ПРАВОВОЙ ПРОВЕРКИ');
+ expect(screen.getByLabelText('Текст примера для адаптации')).toHaveTextContent('ПРОЕКТ ДЛЯ АДАПТАЦИИ — НЕ УТВЕРЖДЁН');
  expect(screen.getByText(/не утверждает документ/)).toBeVisible();
  expect(within(dialog).queryByRole('button', { name: /Утвердить|Сохранить|Подписать/ })).toBeNull();
  expect(within(dialog).queryByRole('link', { name: 'Открыть рабочий раздел' })).toBeNull();
@@ -39,7 +39,7 @@ it('PD02 downloads the exact selected checklist bytes as UTF-8 and releases its 
 it('PD03 keeps the readable example and a fixed error when browser download is unavailable', () => {
  Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => { throw new Error('SECRET_FILE_PATH'); }) });
  render(<PreparationDetailsDialog requirement={requirement('salary_rules')} workflow={null} onClose={close} />);
- fireEvent.click(screen.getByRole('button', { name: 'Скачать структуру проекта' }));
+ fireEvent.click(screen.getByRole('button', { name: 'Скачать проект для адаптации' }));
  expect(screen.getByRole('alert')).toHaveTextContent('Не удалось скачать пример');
  expect(screen.getByLabelText('Текст примера для адаптации')).toHaveTextContent('Сведения центра и источник: [не заполнено]');
  expect(document.body).not.toHaveTextContent('SECRET_FILE_PATH');
