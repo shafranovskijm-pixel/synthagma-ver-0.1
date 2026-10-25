@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 import { ContentBlock, BlockRenderer, parseLessonContent } from "@/components/course-builder/block-editor";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { cn } from "@/lib/utils";
@@ -63,24 +64,36 @@ const InlineSliderPreview = ({ slides, title }: { slides: SliderSlide[]; title: 
   );
 };
 
-const SliderPreview = ({ content, title }: { content: string | null; title: string }) => {
+const SliderPreview = ({ content, title, allowDownload = true }: { content: string | null; title: string; allowDownload?: boolean }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [viewerError, setViewerError] = useState(false);
   const { slides, pptxFileUrl } = parseSliderContent(content);
+  useEffect(() => { setIsLoading(true); setViewerError(false); }, [pptxFileUrl]);
+  const preview = courseDocumentPreview(typeof pptxFileUrl === "string" ? pptxFileUrl : "", "pptx", [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
+  if (pptxFileUrl && preview.mode !== "public_office") {
+    const hasInlineContent = slides.some((slide: SliderSlide) => Boolean(slide?.content || slide?.imageUrl));
+    return <div className="space-y-6">
+      {hasInlineContent ? <InlineSliderPreview slides={slides} title={title} /> : <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center"><Presentation className="w-6 h-6 text-amber-500" /></div><div className="flex-1"><h3 className="font-display font-bold text-lg">{title}</h3><p className="text-sm text-muted-foreground">Презентация</p></div></div>}
+      <div className="rounded-2xl border border-amber-500/30 bg-card p-6 space-y-4">
+        {!hasInlineContent && <p className="text-sm text-muted-foreground">{preview.sourceUrl ? "Предпросмотр этой презентации недоступен." : "Ссылка на презентацию недоступна"}</p>}
+        {allowDownload && preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors"><FileText className="w-3.5 h-3.5" />Скачать презентацию</a>}
+      </div>
+    </div>;
+  }
   if (pptxFileUrl) {
-    const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(pptxFileUrl)}`;
+    const viewerUrl = preview.previewUrl ?? undefined;
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center"><Presentation className="w-6 h-6 text-amber-500" /></div>
           <div className="flex-1"><h3 className="font-display font-bold text-lg">{title}</h3><p className="text-sm text-muted-foreground">{slides.length} слайдов</p></div>
-          <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors"><FileText className="w-3.5 h-3.5" />Скачать</a>
+          {allowDownload && preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors"><FileText className="w-3.5 h-3.5" />Скачать</a>}
         </div>
         <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
           <div className="relative w-full" style={{ minHeight: '600px' }}>
             {isLoading && <div className="absolute inset-0 flex items-center justify-center bg-secondary/50 z-10"><div className="flex flex-col items-center gap-3"><SigmaSpinner size="lg" className="text-amber-500" /><p className="text-sm text-muted-foreground">Загрузка презентации...</p></div></div>}
-            {viewerError ? <div className="absolute inset-0 flex items-center justify-center"><div className="text-center p-6"><Presentation className="w-16 h-16 mx-auto mb-4 text-amber-500/50" /><p className="text-muted-foreground mb-4">Не удалось загрузить просмотрщик</p><a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"><FileText className="w-4 h-4" />Скачать презентацию</a></div></div>
-            : <iframe src={viewerUrl} className="w-full h-full border-0" style={{ minHeight: '600px' }} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); setViewerError(true); }} title={title} allowFullScreen />}
+            {viewerError ? <div className="absolute inset-0 flex items-center justify-center"><div className="text-center p-6"><Presentation className="w-16 h-16 mx-auto mb-4 text-amber-500/50" /><p className="text-muted-foreground mb-4">Не удалось загрузить просмотрщик</p>{allowDownload && preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"><FileText className="w-4 h-4" />Скачать презентацию</a>}</div></div>
+            : <iframe src={viewerUrl} referrerPolicy="no-referrer" className="w-full h-full border-0" style={{ minHeight: '600px' }} onLoad={() => setIsLoading(false)} onErrorCapture={() => { setIsLoading(false); setViewerError(true); }} title={title} allowFullScreen />}
           </div>
         </div>
       </div>
@@ -309,7 +322,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
             )}
 
             {lessonContentReady && currentLesson?.type === 'image' && <div className="space-y-6"><div className="rounded-2xl border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[300px]"><div className="text-center text-muted-foreground"><Image className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Изображение не добавлено</p></div></div></div>}
-            {lessonContentReady && currentLesson?.type === 'slider' && <SliderPreview content={currentLesson.content} title={currentLesson.title} />}
+            {lessonContentReady && currentLesson?.type === 'slider' && <SliderPreview content={currentLesson.content} title={currentLesson.title} allowDownload={course?.allow_materials_download !== false} />}
 
             {lessonContentReady && currentLesson?.type === 'feedback' && (
               <div className="space-y-6">

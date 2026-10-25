@@ -4,6 +4,7 @@ import { Presentation, FileText, ChevronLeft, ChevronRight, RefreshCw } from "lu
 import { cn } from "@/lib/utils";
 import DOMPurify from "dompurify";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 
 interface SliderSlide {
   id: string;
@@ -48,15 +49,24 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
   const sliderContent = useMemo(() => parseSliderContent(content), [content]);
   const slides = sliderContent.slides;
   const pptxFileUrl = sliderContent.pptxFileUrl;
+  const pptxPreview = courseDocumentPreview(typeof pptxFileUrl === "string" ? pptxFileUrl : "", "pptx", [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
+  const canUseExternalViewer = pptxPreview.mode === "public_office";
+  const directDownload = pptxPreview.sourceUrl ? (
+    <a href={pptxPreview.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label="Скачать презентацию" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors">
+      <FileText className="w-3.5 h-3.5" />{!isMobile && "Скачать"}
+    </a>
+  ) : null;
 
-  const getViewerUrl = (fileUrl: string, kind: ViewerKind) => {
-    if (kind === 'google') return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`;
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  const getViewerUrl = (kind: ViewerKind) => {
+    if (!canUseExternalViewer || !pptxPreview.sourceUrl) return undefined;
+    return kind === "google"
+      ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pptxPreview.sourceUrl)}`
+      : pptxPreview.previewUrl ?? undefined;
   };
 
   // Auto-fallback to Google viewer if Office viewer doesn't load within 8s
   useEffect(() => {
-    if (!pptxFileUrl) return;
+    if (!canUseExternalViewer) return;
     setIsLoading(true);
     setViewerError(false);
     if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current);
@@ -67,9 +77,9 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
       }
     }, 8000);
     return () => { if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current); };
-  }, [pptxFileUrl, viewerKind, reloadKey]);
+  }, [pptxFileUrl, canUseExternalViewer, viewerKind, reloadKey]);
 
-  if (pptxFileUrl) {
+  if (pptxFileUrl && canUseExternalViewer) {
     const switchViewer = () => {
       setViewerKind(k => (k === 'office' ? 'google' : 'office'));
       setReloadKey(k => k + 1);
@@ -89,10 +99,7 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
           <button onClick={switchViewer} title="Переключить просмотрщик" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors">
             <RefreshCw className="w-3.5 h-3.5" />{!isMobile && (viewerKind === 'office' ? 'Office' : 'Google')}
           </button>
-          <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors">
-            <FileText className="w-3.5 h-3.5" />{!isMobile && "Скачать"}
-          </a>
-        </div>
+          {directDownload}        </div>
         <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
           <div className="relative w-full" style={{ minHeight: isMobile ? '400px' : '600px' }}>
             {isLoading && (
@@ -109,14 +116,14 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
                     <button onClick={switchViewer} className="inline-flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors">
                       <RefreshCw className="w-4 h-4" />Другой просмотрщик
                     </button>
-                    <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                    <a href={pptxPreview.sourceUrl ?? undefined} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
                       <FileText className="w-4 h-4" />Скачать
                     </a>
                   </div>
                 </div>
               </div>
             ) : (
-              <iframe key={`${viewerKind}-${reloadKey}`} src={getViewerUrl(pptxFileUrl, viewerKind)} className="w-full h-full border-0" style={{ minHeight: isMobile ? '400px' : '600px' }} onLoad={() => { setIsLoading(false); if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current); }} onError={() => { setIsLoading(false); setViewerError(true); }} title={title} allowFullScreen />
+              <iframe key={`${viewerKind}-${reloadKey}`} src={getViewerUrl(viewerKind)} referrerPolicy="no-referrer" className="w-full h-full border-0" style={{ minHeight: isMobile ? '400px' : '600px' }} onLoad={() => { setIsLoading(false); if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current); }} onErrorCapture={() => { setIsLoading(false); setViewerError(true); }} title={title} allowFullScreen />
             )}
           </div>
         </div>
@@ -135,15 +142,17 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
             <Presentation className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-amber-500")} />
           </div>
           <div className="min-w-0"><h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{title}</h1><p className="text-xs md:text-sm text-muted-foreground">Презентация {lessonIndex + 1}</p></div>
+          {directDownload}
         </div>
         <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <div className="text-center"><Presentation className="w-16 h-16 mx-auto mb-4 opacity-50" /><p>Презентация не загружена</p></div>
+          <div className="text-center"><Presentation className="w-16 h-16 mx-auto mb-4 opacity-50" /><p>{pptxFileUrl ? (pptxPreview.sourceUrl ? "Презентация доступна для скачивания" : "Ссылка на презентацию недоступна") : "Презентация не загружена"}</p></div>
         </div>
       </div>
     );
   }
 
-  const currentSlide = slides[currentIndex];
+  const activeIndex = Math.min(Math.max(currentIndex, 0), slides.length - 1);
+  const currentSlide = slides[activeIndex];
 
   return (
     <div className="space-y-4 md:space-y-6 animate-fade-in">
@@ -153,29 +162,30 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
         </div>
         <div className="min-w-0 flex-1">
           <h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{title}</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">Презентация • Слайд {currentIndex + 1} из {slides.length}</p>
+          <p className="text-xs md:text-sm text-muted-foreground">Презентация • Слайд {activeIndex + 1} из {slides.length}</p>
         </div>
+        {directDownload}
       </div>
       <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
         <div className={cn("p-8 min-h-[300px] md:min-h-[400px]", isMobile && "p-4")}>
           {currentSlide.title && <h2 className="font-display text-xl md:text-2xl font-bold mb-4 text-center">{currentSlide.title}</h2>}
           {currentSlide.imageUrl && (
             <div className="flex justify-center mb-4">
-              <img src={currentSlide.imageUrl} alt={currentSlide.title || `Слайд ${currentIndex + 1}`} className="max-h-64 md:max-h-80 rounded-xl object-contain border border-border" />
+              <img src={currentSlide.imageUrl} alt={currentSlide.title || `Слайд ${activeIndex + 1}`} className="max-h-64 md:max-h-80 rounded-xl object-contain border border-border" />
             </div>
           )}
           <div className="prose prose-lg max-w-none dark:prose-invert text-center" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentSlide.content || '') }} />
         </div>
         <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30">
-          <Button variant="outline" size="sm" onClick={() => currentIndex > 0 && setCurrentIndex(currentIndex - 1)} disabled={currentIndex === 0} className="rounded-xl">
+          <Button variant="outline" size="sm" onClick={() => activeIndex > 0 && setCurrentIndex(activeIndex - 1)} disabled={activeIndex === 0} className="rounded-xl">
             <ChevronLeft className="w-4 h-4 mr-1" />Назад
           </Button>
           <div className="flex gap-1">
             {slides.map((_, i) => (
-              <button key={i} onClick={() => setCurrentIndex(i)} className={cn("w-2 h-2 rounded-full transition-all", i === currentIndex ? "bg-amber-500 w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50")} />
+              <button key={i} onClick={() => setCurrentIndex(i)} className={cn("w-2 h-2 rounded-full transition-all", i === activeIndex ? "bg-amber-500 w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50")} />
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={() => currentIndex < slides.length - 1 && setCurrentIndex(currentIndex + 1)} disabled={currentIndex === slides.length - 1} className="rounded-xl">
+          <Button variant="outline" size="sm" onClick={() => activeIndex < slides.length - 1 && setCurrentIndex(activeIndex + 1)} disabled={activeIndex === slides.length - 1} className="rounded-xl">
             Далее<ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>

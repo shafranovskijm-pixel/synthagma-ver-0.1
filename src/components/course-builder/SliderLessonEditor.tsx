@@ -7,6 +7,7 @@ import { parseSliderContent, type SliderSlide, type SliderContent } from "@/util
 import type { Lesson } from "@/components/course-builder/LessonTypeConfig";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 import { PptxPickerDialog } from "./PptxPickerDialog";
 import {
   presentationObjectExists,
@@ -32,6 +33,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
   const sliderContent = parseSliderContent(lesson.content);
   const slides = sliderContent.slides;
   const pptxFileUrl = sliderContent.pptxFileUrl;
+  const pptxPreview = courseDocumentPreview(typeof pptxFileUrl === "string" ? pptxFileUrl : "", "pptx", [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
@@ -234,11 +236,6 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
 
   const currentSlide = slides[currentIndex];
 
-  const getViewerUrl = (fileUrl: string): string => {
-    const encodedUrl = encodeURIComponent(fileUrl);
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`;
-  };
-
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
@@ -248,8 +245,8 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
             <span className="font-medium text-sm">{slides.length} слайдов</span>
           </div>
           <div className="flex items-center gap-2">
-            {pptxFileUrl && (
-              <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:underline">
+            {pptxPreview.sourceUrl && (
+              <a href={pptxPreview.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:underline">
                 Скачать
               </a>
             )}
@@ -259,11 +256,17 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
           </div>
         </div>
         
-        {pptxFileUrl ? (
+        {pptxFileUrl && pptxPreview.mode !== "public_office" ? (
+          <div className="flex flex-col items-center justify-center gap-3 p-8 min-h-[200px]">
+            <Presentation className="w-10 h-10 text-amber-500/50" />
+            <p className="text-sm text-muted-foreground">{pptxPreview.sourceUrl ? "Откройте или скачайте презентацию по ссылке выше." : "Ссылка на презентацию недоступна"}</p>
+          </div>
+        ) : pptxFileUrl ? (
           <LazyMediaPreview type="slider" className="aspect-auto min-h-[200px]">
             <div className="relative bg-white">
               <iframe
-                src={getViewerUrl(pptxFileUrl)}
+                src={pptxPreview.previewUrl ?? undefined}
+                referrerPolicy="no-referrer"
                 className="w-full border-0"
                 style={{ height: '450px' }}
                 title="Предпросмотр презентации"
@@ -271,7 +274,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
               />
               <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
                 <p className="text-xs text-muted-foreground">Используйте стрелки ← → или прокрутку для навигации</p>
-                <a href={getViewerUrl(pptxFileUrl)} target="_blank" rel="noopener noreferrer"
+                <a href={pptxPreview.previewUrl ?? undefined} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors">
                   <Eye className="w-3.5 h-3.5" />
                   На весь экран

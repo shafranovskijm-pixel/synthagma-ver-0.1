@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,8 @@ import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 
 interface CourseDocument {
   id: string;
@@ -76,6 +78,9 @@ export function CourseDocumentsManager({
   // Preview state
   const [previewDoc, setPreviewDoc] = useState<CourseDocument | null>(null);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const fetchEpoch = useRef(0);
+  const activeContext = useRef({ courseId, isOpen });
+  activeContext.current = { courseId, isOpen };
 
   // Form state
   const [docName, setDocName] = useState("");
@@ -85,12 +90,19 @@ export function CourseDocumentsManager({
   const [linkUrl, setLinkUrl] = useState("");
 
   useEffect(() => {
+    setShowPreviewDialog(false);
+    setPreviewDoc(null);
     if (isOpen) {
       fetchDocuments();
     }
+    return () => { fetchEpoch.current += 1; };
   }, [isOpen, courseId]);
 
   const fetchDocuments = async () => {
+    const requestedCourseId = courseId;
+    if (!activeContext.current.isOpen || activeContext.current.courseId !== requestedCourseId) return;
+    const epoch = ++fetchEpoch.current;
+    const isCurrent = () => epoch === fetchEpoch.current && activeContext.current.isOpen && activeContext.current.courseId === requestedCourseId;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -99,13 +111,15 @@ export function CourseDocumentsManager({
         .eq("course_id", courseId)
         .order("created_at", { ascending: false });
 
+      if (!isCurrent()) return;
       if (error) throw error;
       setDocuments(data || []);
     } catch (error) {
+      if (!isCurrent()) return;
       console.error("Error fetching course documents:", error);
       toast.error("Ошибка загрузки документов");
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   };
 
@@ -202,37 +216,20 @@ export function CourseDocumentsManager({
     return DOCUMENT_TYPES.find((t) => t.value === type) || DOCUMENT_TYPES[5];
   };
 
-  const getPreviewUrl = (fileUrl: string) => {
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  const fileTypeFor = (url: string): string | null => {
+    try { return new URL(url, window.location.origin).pathname.split(".").pop()?.toLowerCase() ?? null; } catch { return null; }
   };
 
   const handlePreview = (doc: CourseDocument) => {
-    if (!doc.file_url) return;
-    
-    // Links open directly
-    if (doc.type === "link") {
-      window.open(doc.file_url, "_blank");
-      return;
-    }
-    
-    const ext = doc.file_url.split('.').pop()?.toLowerCase();
-    
-    // PDF opens in new tab natively
-    if (ext === 'pdf') {
-      window.open(doc.file_url, '_blank');
-      return;
-    }
-    
-    // Office documents open in preview dialog
-    if (['pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls'].includes(ext || '')) {
-      setPreviewDoc(doc);
-      setShowPreviewDialog(true);
-      return;
-    }
-    
-    // Others open in new tab
-    window.open(doc.file_url, '_blank');
+    if (!doc.file_url || doc.course_id !== courseId) return;
+    // Deliberate link navigation is separate from automatic document preview.
+    if (doc.type === "link") { window.open(doc.file_url, "_blank"); return; }
+    const preview = courseDocumentPreview(doc.file_url, fileTypeFor(doc.file_url), [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
+    if (!preview.sourceUrl) { toast.error("Ссылка на файл недоступна"); return; }
+    setPreviewDoc(doc);
+    setShowPreviewDialog(true);
   };
+  const currentPreview = showPreviewDialog && isOpen && previewDoc?.course_id === courseId ? previewDoc : null;
 
   const content = (
     <div className="space-y-4">
@@ -367,7 +364,7 @@ export function CourseDocumentsManager({
         />
       ) : (
         <div className="space-y-2">
-          {documents.map((doc) => {
+          {documents.filter(doc => doc.course_id === courseId).map((doc) => {
             const typeInfo = getDocTypeInfo(doc.type);
             const TypeIcon = typeInfo.icon;
             return (
@@ -409,8 +406,13 @@ export function CourseDocumentsManager({
                           variant="ghost"
                           size="icon"
                           onClick={() => {
+                            if (doc.course_id !== courseId || !doc.file_url) return;
+                            const preview = courseDocumentPreview(doc.file_url, fileTypeFor(doc.file_url), [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
+                            if (!preview.sourceUrl) { toast.error("Ссылка на файл недоступна"); return; }
                             const link = document.createElement("a");
-                            link.href = doc.file_url!;
+                            link.href = preview.sourceUrl;
+                            link.rel = "noopener noreferrer";
+                            link.referrerPolicy = "no-referrer";
                             link.download = doc.name;
                             link.click();
                           }}
@@ -438,26 +440,13 @@ export function CourseDocumentsManager({
       )}
 
       {/* Preview Dialog */}
-      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
-        <DialogContent className="max-w-5xl h-[85vh] rounded-2xl p-0 overflow-hidden">
-          <DialogHeader className="p-4 border-b border-border">
-            <DialogTitle className="font-display flex items-center gap-2">
-              <File className="w-5 h-5 text-primary" />
-              {previewDoc?.name}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 h-full min-h-0">
-            {previewDoc?.file_url && (
-              <iframe
-                src={getPreviewUrl(previewDoc.file_url)}
-                className="w-full h-[calc(85vh-80px)] border-0"
-                title={previewDoc.name}
-                allowFullScreen
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {currentPreview?.file_url && <FilePreviewDialog
+        open={true}
+        onOpenChange={setShowPreviewDialog}
+        fileUrl={currentPreview.file_url}
+        fileName={currentPreview.name}
+        fileType={fileTypeFor(currentPreview.file_url)}
+      />}
     </div>
   );
 
