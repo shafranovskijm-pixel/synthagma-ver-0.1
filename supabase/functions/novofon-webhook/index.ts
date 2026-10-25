@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,9 +64,8 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // Debug: логируем полный payload — Novofon шлёт разные форматы в разных событиях,
-    // без этого невозможно понять, какие поля реально приходят.
-    console.log("novofon-webhook payload:", JSON.stringify(params));
+    // Только закрытое техническое событие; payload, контакты и ссылки на записи в журнал не передаются.
+    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "telephony_webhook_received"))("novofon-webhook payload:", JSON.stringify(params));
 
     const event = String(params.event || params.notification_type || params.type || "").toUpperCase();
     const callId = params.pbx_call_id || params.call_id || params.call_id_with_rec || params.call_session_id;

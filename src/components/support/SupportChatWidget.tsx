@@ -31,6 +31,9 @@ function SupportChatWidgetInner() {
   const [status, setStatus] = useState<SupportStatus>("ai");
   const [unread, setUnread] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(true);
+  const historySequenceRef = useRef(0);
+  useEffect(() => { activeRef.current = true; return () => { activeRef.current = false; }; }, []);
 
   const { theme } = useChatTheme();
 
@@ -53,53 +56,61 @@ function SupportChatWidgetInner() {
     return () => window.removeEventListener("open-support-chat", handler);
   }, []);
 
-  const loadHistory = useCallback(async (convId: string) => {
-    const { data: msgs } = await supabase
-      .from("support_messages")
-      .select("id, role, content, sender_name, created_at")
-      .eq("conversation_id", convId)
-      .order("created_at");
-    if (msgs) setMessages(msgs as SupportMessage[]);
-
-    const { data: conv } = await supabase
-      .from("support_conversations")
-      .select("status, unread_for_user")
-      .eq("id", convId).maybeSingle();
-    if (conv) {
-      setStatus(conv.status as SupportStatus);
-      setUnread(conv.unread_for_user ?? 0);
+  const loadHistory = useCallback(async (convId: string): Promise<'loaded' | 'denied' | 'unavailable' | 'stale'> => {
+    const sequence = ++historySequenceRef.current;
+    const { data, error } = await supabase.functions.invoke('support-chat', {
+      body: { action: 'history', conversationId: convId, guestToken: user ? undefined : getGuestToken() },
+    });
+    if (!activeRef.current || sequence !== historySequenceRef.current) return 'stale';
+    if (error) {
+      const statusCode = (error as { context?: { status?: number } }).context?.status;
+      return statusCode && [401, 403, 404].includes(statusCode) ? 'denied' : 'unavailable';
     }
-  }, []);
+    if (data?.conversationId !== convId || !Array.isArray(data?.messages)) return 'unavailable';
+    setMessages(data.messages as SupportMessage[]);
+    setStatus(data.status as SupportStatus);
+    setUnread(data.unread_for_user ?? 0);
+    return 'loaded';
+  }, [user]);
 
-  // Initial load
+  // A changed Auth identity remounts this inner scope; no guest/other-user pointer or pending reply is inherited.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       if (user) {
-        const { data } = await supabase
-          .from("support_conversations")
-          .select("id, status")
-          .eq("user_id", user.id)
-          .neq("status", "closed")
-          .order("last_message_at", { ascending: false })
-          .limit(1).maybeSingle();
-        if (data) {
+        const { data } = await supabase.from('support_conversations').select('id, status').eq('user_id', user.id).neq('status', 'closed').order('last_message_at', { ascending: false }).limit(1).maybeSingle();
+        if (!cancelled && activeRef.current && data) {
           setConversationId(data.id);
           setStatus(data.status as SupportStatus);
-          loadHistory(data.id);
+          await loadHistory(data.id);
         }
       } else {
         const stored = localStorage.getItem(CONVERSATION_ID_KEY);
-        if (stored) {
+        if (stored && !cancelled && activeRef.current) {
           setConversationId(stored);
-          loadHistory(stored);
+          const outcome = await loadHistory(stored);
+          if (outcome === 'denied' && !cancelled && activeRef.current) {
+            setConversationId(null);
+            if (localStorage.getItem(CONVERSATION_ID_KEY) === stored) localStorage.removeItem(CONVERSATION_ID_KEY);
+          }
         }
       }
-    })();
+    })().catch(() => { /* Temporary transport failure keeps the stored capability for a later retry. */ });
+    return () => { cancelled = true; };
   }, [user, loadHistory]);
+
+  // Anonymous Postgres subscriptions have no guest-token authorization. Use the same protected history endpoint while visible.
+  useEffect(() => {
+    if (user || !open || view !== 'chat' || !conversationId) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden && activeRef.current) void loadHistory(conversationId).catch(() => {});
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [user, open, view, conversationId, loadHistory]);
 
   // Realtime subscriptions
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || !user) return;
     const channel = supabase
       .channel(`support-msg-${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
@@ -119,7 +130,7 @@ function SupportChatWidgetInner() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [conversationId, open]);
+  }, [conversationId, open, user]);
 
   // Auto-scroll on new message (только при изменении кол-ва сообщений)
   useEffect(() => {
@@ -173,13 +184,15 @@ function SupportChatWidgetInner() {
         },
       });
       if (error) throw error;
+      if (!activeRef.current) return;
       if (data?.conversationId && !conversationId) {
         setConversationId(data.conversationId);
         if (!user) localStorage.setItem(CONVERSATION_ID_KEY, data.conversationId);
-        loadHistory(data.conversationId);
+        void loadHistory(data.conversationId).catch(() => {});
       }
       if (data?.status) setStatus(data.status);
     } catch (e) {
+      if (!activeRef.current) return;
       console.error("support-chat error:", e);
       setMessages(prev => [...prev, {
         id: `err_${Date.now()}`, role: "system",
@@ -187,7 +200,7 @@ function SupportChatWidgetInner() {
         created_at: new Date().toISOString(),
       }]);
     } finally {
-      setIsLoading(false);
+      if (activeRef.current) setIsLoading(false);
     }
   }, [input, isLoading, conversationId, user, location.pathname, guestName, guestContact, loadHistory]);
 
@@ -285,4 +298,8 @@ function SupportChatWidgetInner() {
  * (Auth, BackgroundUploads) не пересоздавали DOM-узлы кнопки и не теряли
  * click-events на «Свернуть».
  */
-export const SupportChatWidget = memo(SupportChatWidgetInner);
+function SupportChatWidgetScope() {
+  const { user } = useAuth();
+  return <SupportChatWidgetInner key={user?.id ?? 'guest'} />;
+}
+export const SupportChatWidget = memo(SupportChatWidgetScope);

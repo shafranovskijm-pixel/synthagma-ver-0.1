@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 import { notifyStudent, isPrefEnabled, isRealEmail, getPreferredEmail, claimDedupKey } from "../_shared/notification-prefs.ts";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -316,7 +317,7 @@ serve(async (req: Request) => {
           rateLimitKey: `course-complete-student-${enrollment_id || user_id}-${course_id}`,
         });
         if (res.ok) studentEmailSent = true;
-        else console.error("student email send error:", studentEmail, res.error);
+        else ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "smtp_delivery_failed"))("student email send error:", studentEmail, res.error);
       } else {
         studentEmailSkipped = "student opted out (course_completed.email = false)";
       }
@@ -354,7 +355,7 @@ serve(async (req: Request) => {
         if (res.ok) orgSent++;
         else {
           orgErrors.push(`${recipient}: ${res.error}`);
-          console.error("notify-course-completion send error:", recipient, res.error);
+          ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "smtp_delivery_failed"))("notify-course-completion send error:", recipient, res.error);
         }
         // небольшая задержка между письмами — чтобы шли поочерёдно по пулу
         if (i < recipients.length - 1) await sleep(600);

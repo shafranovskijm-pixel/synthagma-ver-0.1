@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
       sellerOrganizationId,
     }: OrderNotificationRequest = await req.json();
 
-    console.log("Processing order notification:", { orderId, courseName, sellerOrganizationId });
+    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_notification_started"))("Processing order notification:", { orderId, courseName, sellerOrganizationId });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -86,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emails = profiles.filter(p => p.email).map(p => p.email as string);
-    console.log("Sending notification to:", emails);
+    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_recipients_ready"))("Sending notification to:", emails);
 
     const buyerTypeLabel = buyerType === "student" ? "Студент" : "Организация";
     const formattedPrice = new Intl.NumberFormat("ru-RU", {
@@ -178,8 +179,8 @@ const handler = async (req: Request): Promise<Response> => {
     let sent = 0;
     for (const email of emails) {
       const r = await sendPlatformEmail({ to: email, subject, html: htmlBody });
-      if (r.ok) { sent++; console.log("Email sent to:", email); }
-      else { console.error("Failed to send to:", email, r.error); }
+      if (r.ok) { sent++; ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_delivery_succeeded"))("Email sent to:", email); }
+      else { ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "smtp_delivery_failed"))("Failed to send to:", email, r.error); }
     }
 
     // Send Telegram notification
@@ -213,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
         const tgResult = await tgResponse.json();
         if (!tgResult.ok) {
-          console.error("Telegram notification failed:", tgResult.description);
+          ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "telegram_notification_failed"))("Telegram notification failed:", tgResult.description);
         } else {
           console.log("Telegram notification sent successfully");
         }

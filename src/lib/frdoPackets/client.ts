@@ -8,7 +8,8 @@ export type FrdoScope=EducationIssuanceScope;
 export type FrdoWire<T>=T extends null|undefined?T:T extends(infer Item)[]?FrdoWire<Item>[]:T extends object?{[Key in keyof T]-?:FrdoWire<T[Key]>}:T;
 export type FrdoAction=FrdoWire<z.infer<typeof r.actionSchema>>;export type FrdoQuery=FrdoWire<z.infer<typeof r.querySchema>>;
 export type FrdoPacket=FrdoWire<z.infer<typeof r.packetProjectionSchema>>;export type FrdoSummary=FrdoWire<z.infer<typeof r.packetSummarySchema>>;
-export type FrdoRead=FrdoWire<z.infer<typeof r.readResultSchema>>;export type FrdoMutation=FrdoWire<z.infer<typeof r.mutationResultSchema>>;
+export type FrdoRead=FrdoWire<z.infer<typeof r.readResultSchema>>;
+export type FrdoFileRequestedEvent=Extract<Extract<FrdoRead,{kind:'history'}>['events'][number],{kind:'file_requested'}>;export type FrdoMutation=FrdoWire<z.infer<typeof r.mutationResultSchema>>;
 export type FrdoCommand=FrdoWire<z.infer<typeof r.mutationRequestSchema>>;export type FrdoCode=FrdoWire<z.infer<typeof c.errorSchema>>['code'];
 export const frdoMessages:Record<FrdoCode,string>={INVALID_REQUEST:'Проверьте обязательные поля и выбранные документы.',AUTH_REQUIRED:'Войдите в аккаунт.',ACCESS_DENIED:'Нет действующего доступа ко всем данным пакета.',SOURCE_UNAVAILABLE:'Подтверждающая версия сейчас недоступна. Проверьте доступ и сохранность документа.',SOURCE_CHANGED:'Исходные данные изменились. Обновите сведения и предпросмотр.',READINESS_BLOCKED:'Пакет пока не готов: устраните указанные замечания.',TEMPLATE_CHANGED:'Официальный шаблон изменился. Подготовьте новый предпросмотр.',IDEMPOTENCY_CONFLICT:'Этот запрос уже связан с другими данными. Проверьте историю операции.',REVISION_CONFLICT:'Сведения изменил другой сотрудник. Обновите пакет.',ARTIFACT_UNAVAILABLE:'Проверенный файл сейчас недоступен. Обновите пакет и повторите загрузку.',FILE_GENERATION_FAILED:'Файл не сформирован. История попытки сохранена; можно повторить.',RECEIPT_MISMATCH:'Квитанция не соответствует точным строкам и отправке пакета.',ILLEGAL_TRANSITION:'Это действие недоступно на текущем этапе пакета.',DEPENDENCY_UNAVAILABLE:'Результат операции пока не подтверждён. Повторите тот же запрос.',FRDO_PACKET_RETENTION_REVIEW_REQUIRED:'Сохранены связанные доказательства. Требуется отдельное решение об их хранении.'};
 export class FrdoPacketError extends Error{constructor(readonly code:FrdoCode='DEPENDENCY_UNAVAILABLE',readonly retryable=false){super(frdoMessages[code]);this.name='FrdoPacketError';}}
@@ -54,6 +55,22 @@ export async function readOwnFrdoAuthorities(scope:FrdoScope,after:string|null=n
  const result=await readFrdoPackets(organizationScope,{kind:'authorities',operator_user_id:parent.actorId,after_id:after,limit:50});requireFrdoScope(parent);if(result.kind!=='authorities')throw new FrdoPacketError();return result;
 }
 export function prepareFrdoCommand(scope:FrdoScope,action:FrdoAction,requestId:string=crypto.randomUUID()):FrdoCommand{requireFrdoScope(scope);return r.mutationRequestSchema.parse({schema_version:1,abi_revision:r.RUNTIME_ABI_REVISION,organization_id:scope.organizationId,scope:scope.issuanceScope,request_id:requestId,action:structuredClone(action)}) as FrdoCommand;}
+/** Reconstruct ONLY the original command for the currently retained build. The
+ * server still verifies its stored request hash, original actor, current CAS and lease.
+ * A new local epoch needs no retained token, arbitrary worker endpoint or new UUID. */
+export async function prepareFrdoGenerateRecovery(scope:FrdoScope,packet:FrdoPacket,event:FrdoFileRequestedEvent):Promise<FrdoCommand>{
+ requireFrdoScope(scope);const build=packet.current_build,source=packet.capture.source_cas;
+ if(!packet.capabilities.can_preview||source.organization_id!==scope.organizationId||!same(source.scope,scope.issuanceScope))throw new FrdoPacketError('ACCESS_DENIED');
+ if(packet.source_currency!=='current')throw new FrdoPacketError('SOURCE_CHANGED');
+ if(packet.state!=='file_generating'||!build||!['queued','generating'].includes(build.state))throw new FrdoPacketError('ILLEGAL_TRANSITION');
+ if(build.packet_id!==packet.ref.id||build.snapshot_sha256!==packet.ref.snapshot_sha256||!Number.isSafeInteger(build.input_revision)||build.input_revision<1||build.input_revision+1!==packet.ref.revision)throw new FrdoPacketError('SOURCE_CHANGED');
+ if(!event||event.kind!=='file_requested'||event.build_id!==build.id||event.revision!==packet.ref.revision||event.state_hash!==packet.ref.state_hash||!event.previous_state_hash)throw new FrdoPacketError('SOURCE_CHANGED');
+ if(event.actor_id!==scope.actorId)throw new FrdoPacketError('ACCESS_DENIED');
+ const payload=await sha256(canonicalJson({build_id:build.id}));requireFrdoScope(scope);
+ const state=await sha256(canonicalJson({packet_id:packet.ref.id,revision:event.revision,previous_state_hash:event.previous_state_hash,kind:'file_requested',payload_sha256:payload,snapshot_sha256:packet.ref.snapshot_sha256}));requireFrdoScope(scope);
+ if(event.payload_sha256!==payload||state!==event.state_hash)throw new FrdoPacketError('SOURCE_CHANGED');
+ return prepareFrdoCommand(scope,{kind:'generate_file',packet:{...packet.ref,revision:build.input_revision,state_hash:event.previous_state_hash},expected_template:source.template},build.worker_request_id);
+}
 /** Keep this exact command/request after a lost or unconfirmed response. */
 export async function mutateFrdoPacket(scope:FrdoScope,input:FrdoCommand):Promise<FrdoMutation>{const command=r.mutationRequestSchema.parse(structuredClone(input));if(command.organization_id!==scope.organizationId||!same(command.scope,scope.issuanceScope))throw new FrdoPacketError('ACCESS_DENIED');const parsed=r.mutationResultSchema.safeParse(await call(scope,{operation:'mutate',command}));if(!parsed.success)throw new FrdoPacketError();const value=parsed.data as FrdoMutation;envelope(scope,value);const hash=await sha256(canonicalJson(command));requireFrdoScope(scope);
  if(value.receipt.request_id!==command.request_id||value.receipt.action_kind!==command.action.kind||value.receipt.payload_sha256!==hash||!unique(value.packets.map(p=>p.ref.id))||!same([...value.receipt.packet_ids].sort(),value.packets.map(p=>p.ref.id).sort())||!same(value.receipt.supplement_ids,value.supplement?[value.supplement.ref.id]:[])||!same(value.receipt.authority_ids,value.authority?[value.authority.ref.id]:[]))throw new FrdoPacketError('IDEMPOTENCY_CONFLICT');

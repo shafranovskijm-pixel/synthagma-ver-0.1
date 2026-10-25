@@ -2,6 +2,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { signLiveKitJwt, lkHttpUrl, getLiveKitEnv } from "../_shared/livekit-jwt.ts";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
     });
     const stopText = await stopResp.text();
     if (!stopResp.ok && stopResp.status !== 400) {
-      console.error("[stop-egress]", stopResp.status, stopText);
+      ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "video_recording_stop_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("[stop-egress]", stopResp.status, stopText);
     }
 
     // Получаем file_url через ListEgress с правильным фильтром egress_ids
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
           item?.fileResults?.[0]?.location ??
           null;
       } else {
-        console.warn("[stop-egress] ListEgress non-ok", listResp.status, await listResp.text());
+        ((..._uc027LogArgs: unknown[]) => logExternalOperation("warn", "video_recording_list_failed", typeof _uc027LogArgs[1] === "number" ? _uc027LogArgs[1] : undefined))("[stop-egress] ListEgress non-ok", listResp.status, await listResp.text());
       }
     } catch (e) {
       console.warn("[stop-egress] ListEgress failed", e);

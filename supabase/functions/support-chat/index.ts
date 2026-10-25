@@ -1,9 +1,12 @@
+import { AccessError, checked, readObject, accessErrorResponse } from '../_shared/privileged-access.ts';
+import { requireSupportPrincipal, requireSupportConversation } from './authorization.ts';
 import { DSR_SUPPORT_CONTEXT } from "../_shared/data-subject-deadline-rules.ts";
 import { STUDENT_QUOTA_SUPPORT_CONTEXT } from "../_shared/student-quota-rules.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callAI } from "../_shared/gigachat-client.ts";
 import { SUPPORT_CONTACT_CONTEXT, officialSupportContactReply, guardSupportContactAnswer, supportMessagesFromLatest } from "../_shared/platform-support-contacts.ts";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,9 +41,10 @@ ${DSR_SUPPORT_CONTEXT}
 Если пользователь просит «оператора», «человека», «жалобу», или вопрос требует ручного вмешательства (вернуть оплату, разблокировать аккаунт, исправить данные), ответь короткой подсказкой: «Передаю ваш вопрос оператору поддержки. Он ответит здесь же в чате».`;
 
 interface RequestBody {
+  action?: 'send' | 'history';
   conversationId?: string;
   guestToken?: string;
-  message: string;
+  message?: string;
   source?: 'landing' | 'student' | 'organization' | 'company' | 'partner' | 'admin';
   guestName?: string;
   guestEmail?: string;
@@ -109,7 +113,7 @@ async function sendToTelegramTopic(
     const createData = await createResp.json();
     if (createData.ok) {
       activeTopicId = createData.result.message_thread_id;
-      console.log(`[Telegram] created topic ${activeTopicId} "${topicName}"`);
+      ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "support_topic_created"))(`[Telegram] created topic ${activeTopicId} "${topicName}"`);
       // Стартовое системное сообщение со ссылкой на админку
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
@@ -121,7 +125,7 @@ async function sendToTelegramTopic(
         }),
       });
     } else {
-      console.error("[Telegram] createForumTopic failed:", createData.description, "— проверьте: 1) бот админ группы, 2) Topics включены, 3) TELEGRAM_SUPPORT_CHAT_ID правильный (-100…)");
+      ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "support_topic_failed"))("[Telegram] createForumTopic failed:", createData.description, "— проверьте: 1) бот админ группы, 2) Topics включены, 3) TELEGRAM_SUPPORT_CHAT_ID правильный (-100…)");
       // Fallback — шлём в общий чат с разделителем
     }
   }
@@ -140,7 +144,7 @@ async function sendToTelegramTopic(
   });
   const sendData = await sendResp.json();
   if (!sendData.ok) {
-    console.error("[Telegram] sendMessage error:", sendData);
+    ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "support_delivery_failed"))("[Telegram] sendMessage error:", sendData);
     return null;
   }
   return { topic_id: activeTopicId ?? undefined, message_id: sendData.result.message_id };
@@ -155,52 +159,40 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const body = (await req.json()) as RequestBody;
-    if (!body.message || body.message.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "Empty message" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Auth user (optional)
-    const authHeader = req.headers.get("Authorization");
-    let userId: string | null = null;
-    let userLabel = "Гость";
-    let userOrgId: string | null = null;
-
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        userId = user.id;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, email, organization_id")
-          .eq("user_id", user.id).maybeSingle();
-        userLabel = profile?.full_name || profile?.email || user.email || "Пользователь";
-        userOrgId = profile?.organization_id ?? null;
-      }
-    }
-
-    if (!userId) {
-      userLabel = body.guestName || body.guestEmail || `Гость ${body.guestToken?.slice(0, 6) ?? ''}`;
-    }
-
-    // Найти или создать диалог
+    const body = await readObject(req) as RequestBody;
+    const action = body.action ?? 'send';
+    if (action !== 'send' && action !== 'history') throw new AccessError(400, 'Некорректный запрос.');
+    const principal = await requireSupportPrincipal(req, supabase, Deno.env.get('SUPABASE_ANON_KEY') ?? '', body.guestToken);
     let conversationId = body.conversationId;
     let conv: { id: string; status: string; telegram_topic_id: number | null; ai_failures_count: number } | null = null;
+    if (conversationId != null || action === 'history') {
+      const owned = await requireSupportConversation(supabase, principal, conversationId);
+      conversationId = owned.id;
+      conv = owned;
+      if (action === 'history') {
+        const messages = checked(await supabase.from('support_messages').select('id, role, content, sender_name, created_at').eq('conversation_id', owned.id).order('created_at'));
+        return new Response(JSON.stringify({ conversationId: owned.id, status: owned.status, unread_for_user: owned.unread_for_user, messages: messages ?? [] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+        });
+      }
+    }
+    if (typeof body.message !== 'string' || body.message.trim().length === 0) throw new AccessError(400, 'Empty message');
 
-    if (conversationId) {
-      const { data } = await supabase.from("support_conversations")
-        .select("id, status, telegram_topic_id, ai_failures_count")
-        .eq("id", conversationId).maybeSingle();
-      conv = data;
+    const userId = principal.userId;
+    let userLabel = 'Гость';
+    let userOrgId: string | null = null;
+    if (userId) {
+      const profile = checked<any>(await supabase.from('profiles').select('full_name, email, organization_id').eq('user_id', userId).maybeSingle());
+      userLabel = profile?.full_name || profile?.email || 'Пользователь';
+      userOrgId = profile?.organization_id ?? null;
+    } else {
+      userLabel = body.guestName || body.guestEmail || 'Гость';
     }
 
     if (!conv) {
       const { data: newConv, error: convErr } = await supabase.from("support_conversations").insert({
         user_id: userId,
-        guest_token: userId ? null : body.guestToken,
+        guest_token: principal.guestToken,
         guest_name: body.guestName,
         guest_email: body.guestEmail,
         guest_phone: body.guestPhone,
@@ -336,6 +328,7 @@ serve(async (req) => {
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {
+    if (error instanceof AccessError) return accessErrorResponse(error, corsHeaders);
     const msg = error instanceof Error ? error.message : "Unknown";
     console.error("support-chat error:", msg);
     return new Response(JSON.stringify({ error: msg }), {

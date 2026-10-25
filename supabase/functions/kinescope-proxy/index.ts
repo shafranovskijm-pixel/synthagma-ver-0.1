@@ -1,4 +1,8 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { AccessError, readObject, accessErrorResponse } from '../_shared/privileged-access.ts';
+import { requireKinescopeAccess } from './authorization.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logExternalOperation } from "../_shared/external-operation-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,15 +19,17 @@ serve(async (req) => {
   }
 
   try {
-    const token = Deno.env.get("KINESCOPE_API_TOKEN");
-    if (!token) {
-      return new Response(JSON.stringify({ error: "KINESCOPE_API_TOKEN not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { action, ...params } = await req.json();
+    const body = await readObject(req);
+    const url = Deno.env.get('SUPABASE_URL') ?? '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    if (!url || !anonKey || !serviceKey) throw new AccessError(503, 'Не удалось проверить доступ. Повторите попытку.');
+    const admin = createClient(url, serviceKey);
+    const caller = createClient(url, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+    await requireKinescopeAccess(req, body, admin, caller);
+    const token = Deno.env.get('KINESCOPE_API_TOKEN');
+    if (!token) throw new AccessError(503, 'Видеосервис временно недоступен.');
+    const { action, ...params } = body;
 
     switch (action) {
       case "list_projects": {
@@ -75,7 +81,7 @@ serve(async (req) => {
 
         if (!initRes.ok) {
           const errBody = await initRes.text();
-          console.error("Kinescope Uploader /v2/init failed:", {
+          ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "video_upload_init_failed", (_uc027LogArgs[1] as { status: number }).status))("Kinescope Uploader /v2/init failed:", {
             status: initRes.status,
             body: errBody,
           });
@@ -180,6 +186,7 @@ serve(async (req) => {
         });
     }
   } catch (error: unknown) {
+    if (error instanceof AccessError) return accessErrorResponse(error, corsHeaders);
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("kinescope-proxy error:", message);
     return new Response(JSON.stringify({ error: message }), {
