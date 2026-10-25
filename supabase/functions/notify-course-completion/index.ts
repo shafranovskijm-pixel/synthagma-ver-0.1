@@ -367,14 +367,14 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         student: { emailSent: studentEmailSent, skipped: studentEmailSkipped },
-        organization: { sent: orgSent, total: orgTotal, errors: orgErrors.length ? orgErrors : undefined, gated: !course.notify_on_completion },
+        organization: { sent: orgSent, total: orgTotal, errors: orgErrors.length ? orgErrors.map(() => 'DELIVERY_FAILED') : undefined, gated: !course.notify_on_completion },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
     console.error("Error in notify-course-completion:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Не удалось обработать уведомление о завершении курса. Повторите попытку." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "kind": "one_exact_uc026_publication_diagnostic_bundle",
+  "esbuild": "0.25.12",
+  "source_hold_sha256": "4186e8827933da1d37bfd6eecebca7bf5a8cfa47031a6a90b88a138bd25733a3",
+  "functions": [
+    {
+      "name": "publication-accessibility",
+      "path": "runtime.bundle.js",
+      "bytes": 13447,
+      "sha256": "1bc46efa67c9a60cf176f37a6c4bfb6bdcf8928b0776f25d1237dcc0e415b7d7",
+      "external_imports": [
+        "npm:@supabase/supabase-js@2.90.1"
+      ]
+    }
+  ],
+  "all_sources": [
+    {
+      "id": "supabase/functions/_shared/uc-publication-http.ts",
+      "bytes": 15121,
+      "sha256": "abe1b5269292b417fcc6bb7ab603dd954c17cb7729c8cbc0d1f5bde86d2a08e4"
+    },
+    {
+      "id": "supabase/functions/_shared/uc-publication-url.ts",
+      "bytes": 1109,
+      "sha256": "126293f643aada5d2245c37dc3d3dc924c81a5a447fe4cb35be026c4b25301d0"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/http.ts",
+      "bytes": 3175,
+      "sha256": "f97cf4a9cd5b84383bf4eeb17a6d04da51058f4833b8f90d4570c00fada380a6"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/runtime-source.ts",
+      "bytes": 1891,
+      "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/worker.ts",
+      "bytes": 5272,
+      "sha256": "15e95181b06ae21c76a1670dc0a01b7eeedde0c58aee55d7d91beeb1107ebc18"
+    }
+  ],
+  "all_external_runtime_imports": [
+    "npm:@supabase/supabase-js@2.90.1"
+  ],
+  "jwt_deployment_matrix": [
+    {
+      "name": "publication-accessibility",
+      "sourceEntryPresent": false,
+      "sourceVerifyJWT": null,
+      "explicitNativeDeployVerifyJWT": true,
+      "decision": "Root explicitly selected 2026-10-25: keep new five default true, preserve existing self-examination false; no silent change if authenticated JWT fails gateway.",
+      "ownUnauthenticatedPOST": {
+        "status": 401,
+        "code": "ACCESS_DENIED or existing AccessError JSON"
+      },
+      "ownOptionsStatus": 204,
+      "actualGatewaySettingVerified": false,
+      "liveAuthenticatedQARequired": true,
+      "anonymousGateway401IsNotHandlerVersionProof": true
+    }
+  ],
+  "build_calls": 1,
+  "total_bundle_bytes": 13447,
+  "external_network_at_build": false,
+  "native_deno_dependencies_resolved": false,
+  "provider_deployed": false,
+  "working_site_accepted": false,
+  "legal_approval": false
+}

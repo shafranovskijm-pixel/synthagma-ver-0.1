@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { supportChatInvocationHeaders } from "./invokeSupportChat";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useChatTheme } from "@/hooks/useChatTheme";
@@ -59,6 +60,7 @@ function SupportChatWidgetInner() {
   const loadHistory = useCallback(async (convId: string): Promise<'loaded' | 'denied' | 'unavailable' | 'stale'> => {
     const sequence = ++historySequenceRef.current;
     const { data, error } = await supabase.functions.invoke('support-chat', {
+      headers: supportChatInvocationHeaders(Boolean(user)),
       body: { action: 'history', conversationId: convId, guestToken: user ? undefined : getGuestToken() },
     });
     if (!activeRef.current || sequence !== historySequenceRef.current) return 'stale';
@@ -173,6 +175,7 @@ function SupportChatWidgetInner() {
 
     try {
       const { data, error } = await supabase.functions.invoke("support-chat", {
+        headers: supportChatInvocationHeaders(Boolean(user)),
         body: {
           conversationId,
           guestToken: user ? undefined : getGuestToken(),

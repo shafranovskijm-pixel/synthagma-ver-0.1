@@ -101,9 +101,9 @@ async function sendToTelegramTopic(
       : source === 'company' ? 'Компания'
       : source === 'partner' ? 'Партнёр'
       : 'Гость с сайта';
-    const titleParts = [`💬 ${userLabel}`, sourceLabel];
-    if (contact) titleParts.push(contact);
-    const topicName = titleParts.join(' · ').slice(0, 128);
+    // Topic lists/previews need a routing label, not a person's name, phone or email.
+    // The existing operator-only system message below keeps the contact for handling the request.
+    const topicName = `💬 ${sourceLabel} · ${conversationId.slice(0, 8)}`;
 
     const createResp = await fetch(`https://api.telegram.org/bot${botToken}/createForumTopic`, {
       method: "POST",

@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "kind": "append_only_uc026_safe_static_guard_diagnostic_release",
+  "base": {
+    "commit": "093b644efe9f1ea920c37720d822f6e676e5648f",
+    "tree": "4365c1c79967bc60ee425df7da62c8f2fe29f0d1",
+    "requiresRootFreshCurrentBasePreimages": true
+  },
+  "function": "publication-accessibility",
+  "productChange": {
+    "path": "supabase/functions/_shared/uc-publication-http.ts",
+    "before": {
+      "bytes": 14085,
+      "sha256": "eb3654f4ba4cc42e71c40b8775e6a4ff4e90921edd13a0ece175ce17b5cec644",
+      "gitBlob": "1ca75c3cf097c2f26ab25321753628e9f872078a"
+    },
+    "after": {
+      "bytes": 15121,
+      "sha256": "abe1b5269292b417fcc6bb7ab603dd954c17cb7729c8cbc0d1f5bde86d2a08e4",
+      "gitBlob": "e97e4550e8f23ab89a63d26c449fe545be20de2b"
+    },
+    "closedMarker": "[PublicationCheckGuard]",
+    "closedReasons": [
+      "redirect_cycle",
+      "dns_answer_shape",
+      "dns_answer_empty",
+      "dns_answer_limit",
+      "dns_answer_nonpublic",
+      "tcp_transport",
+      "tcp_hostname",
+      "tcp_port",
+      "tls_transport",
+      "tls_hostname",
+      "tls_port",
+      "tls_handshake_missing",
+      "redirect_location_missing",
+      "redirect_limit",
+      "redirect_target"
+    ],
+    "rawDataLogsAdded": false,
+    "observationSchemaChanged": false,
+    "guardsOrLimitsWeakened": false
+  },
+  "bundle": {
+    "path": "supabase/functions/publication-accessibility/runtime.bundle.js",
+    "before": {
+      "bytes": 13025,
+      "sha256": "51fb44d4238e429fb2b7e820698bf366d0d2b60d782d3b8d6ae9852172a27498",
+      "gitBlob": "012d67dd050fca0a78fafc05633d6c9c5330e1c5"
+    },
+    "after": {
+      "path": "publication-accessibility/runtime.bundle.js",
+      "bytes": 13447,
+      "sha256": "1bc46efa67c9a60cf176f37a6c4bfb6bdcf8928b0776f25d1237dcc0e415b7d7",
+      "gitBlob": "67e25904a2de021dfe69adfc39125dcd9fed2b1c"
+    },
+    "generatedFrom": "supabase/functions/publication-accessibility/runtime-source.ts",
+    "sourceInputs": [
+      {
+        "path": "supabase/functions/_shared/uc-publication-http.ts",
+        "bytes": 15121,
+        "sha256": "abe1b5269292b417fcc6bb7ab603dd954c17cb7729c8cbc0d1f5bde86d2a08e4"
+      },
+      {
+        "path": "supabase/functions/_shared/uc-publication-url.ts",
+        "bytes": 1109,
+        "sha256": "126293f643aada5d2245c37dc3d3dc924c81a5a447fe4cb35be026c4b25301d0"
+      },
+      {
+        "path": "supabase/functions/publication-accessibility/http.ts",
+        "bytes": 3175,
+        "sha256": "f97cf4a9cd5b84383bf4eeb17a6d04da51058f4833b8f90d4570c00fada380a6"
+      },
+      {
+        "path": "supabase/functions/publication-accessibility/worker.ts",
+        "bytes": 5272,
+        "sha256": "15e95181b06ae21c76a1670dc0a01b7eeedde0c58aee55d7d91beeb1107ebc18"
+      },
+      {
+        "path": "supabase/functions/publication-accessibility/runtime-source.ts",
+        "bytes": 1891,
+        "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+      }
+    ],
+    "externalImports": [
+      "npm:@supabase/supabase-js@2.90.1"
+    ]
+  },
+  "unchangedNativeBoundary": {
+    "thinIndex": {
+      "path": "supabase/functions/publication-accessibility/index.ts",
+      "bytes": 129,
+      "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4"
+    },
+    "configuration": {
+      "path": "supabase/config.toml",
+      "bytes": 6546,
+      "sha256": "531dcd0618863e7e9c4bc6e5dfa2fb7ceb2c700b08cc0e631f77335fb52a06f6"
+    },
+    "runtimeSourceSHA256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c",
+    "nativeDeployVerifyJWT": true,
+    "SDKBundled": false,
+    "HTTP_JWT_OriginalActor_ServiceRole_LeaseCAS_DBUnchanged": true
+  },
+  "actualLocalAcceptance": {
+    "unit41": {
+      "receiptSHA256": "70b469721ac6679db36e032d0312960659ec942c6e1094c1e9f409edabbb852b",
+      "passed": 41,
+      "failed": 0,
+      "canonicalCompatibility": 22,
+      "newMeaningful": 19,
+      "pid": 32996,
+      "naturalExit0": true,
+      "freshOwned": "EMPTY",
+      "drift": []
+    },
+    "oneBuild": {
+      "receiptSHA256": "f14ee24cdc47022664b18655a8bacfbfb7825419ac5ca165a460034042d64453",
+      "buildCalls": 1,
+      "compiledSources": 5,
+      "externalImports": 1,
+      "outputFiles": 4,
+      "pid": 25880,
+      "naturalExit0": true,
+      "freshOwned": "EMPTY",
+      "drift": []
+    }
+  },
+  "historicalFailurePreserved": {
+    "distinctApp16DirectCLIReceiptSHA256": "dd30ed6db1cd79181688c5982a89e6bc7beeb96e2619724160edac6e2c403d01",
+    "sameBinarySHA256": "cae1bbc86f4df800b01d99e28aea0a154b02243de6797e98f48a9b88a64a7be0",
+    "noRootCauseInferred": true,
+    "noRetryOrFallbackUsed": true
+  },
+  "frozenOutputArchive": [
+    {
+      "path": "esbuild.metafile.json",
+      "bytes": 2875,
+      "sha256": "9b858969e86ced559136b08c9f9c6ea0b70dbebf74086b0b7604460ec11325ae",
+      "gitBlob": "ac8bbd1f9e8247e7d13cbe445695ab1a1412168f",
+      "archivePath": "docs/releases/uc026-closed-guard-diagnostic-20261026/esbuild.metafile.json"
+    },
+    {
+      "path": "publication-accessibility/bundle-source-manifest.json",
+      "bytes": 2429,
+      "sha256": "f0f0d73b127f8415291b2115480da98407a24eca55df3742293ff20145222a53",
+      "gitBlob": "3e1584fa9442ec0b8abf7faf55647efbc1c7db3e",
+      "archivePath": "docs/releases/uc026-closed-guard-diagnostic-20261026/bundle-source-manifest.json"
+    },
+    {
+      "path": "publication-function-bundle-manifest.json",
+      "bytes": 2443,
+      "sha256": "9f1d287ab1ebd8aa56eeee955e73773918d1e715167e2c3c6c82a17fe3a22883",
+      "gitBlob": "921d67a71a78f5ac6a573120a3baecccb5ae5568",
+      "archivePath": "docs/releases/uc026-closed-guard-diagnostic-20261026/publication-function-bundle-manifest.json"
+    }
+  ],
+  "deployScope": [
+    "publication-accessibility"
+  ],
+  "notAccepted": {
+    "providerDeployed": false,
+    "actualDeployedFingerprint": false,
+    "cloudDNS_TCP_TLSGuardCause": false,
+    "nativeSDKResolution": false,
+    "workingSite": false,
+    "legalApproval": false
+  },
+  "next": "Root freshcurrentbasegate, reviewpacket+actualoutputpeer, releasesinglefunction and performs one NEW ordinary UIcheck of existingedition. Replaying committed oldcheck intentionally makes no new networkprobe."
+}

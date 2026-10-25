@@ -27,7 +27,12 @@ class ObservationFailure extends Error {
   constructor(readonly code: FailureCode) { super(code); }
 }
 const unavailable = (): never => { throw new ObservationFailure("UNAVAILABLE"); };
-const unsafe = (): never => { throw new ObservationFailure("UNSAFE_TARGET"); };
+type UnsafeTargetReason = "redirect_cycle" | "dns_answer_shape" | "dns_answer_empty" | "dns_answer_limit" | "dns_answer_nonpublic" | "tcp_transport" | "tcp_hostname" | "tcp_port" | "tls_transport" | "tls_hostname" | "tls_port" | "tls_handshake_missing" | "redirect_location_missing" | "redirect_limit" | "redirect_target";
+const unsafe = (reason: UnsafeTargetReason): never => {
+  // Closed guard code only: never pass request, peer, response, credential or error values.
+  try { console.warn("[PublicationCheckGuard]", reason); } catch { /* Diagnostics cannot change a refusal. */ }
+  throw new ObservationFailure("UNSAFE_TARGET");
+};
 const MAX_BYTES = 20 * 1024 * 1024, MAX_HEADERS = 32 * 1024, MAX_WIRE = MAX_BYTES + 1024 * 1024;
 const encoder = new TextEncoder();
 
@@ -148,15 +153,23 @@ export async function observePublicPublication(input: { publicUrl: string; conte
     const visited = new Set<string>();
     while (true) {
       if (expired || Date.now() - started >= 15_000) return unavailable();
-      if (visited.has(finalUrl)) return unsafe();
+      if (visited.has(finalUrl)) return unsafe("redirect_cycle");
       visited.add(finalUrl);
       const url = new URL(finalUrl), addresses = await bounded(network.resolveDns(url.hostname, "A"));
-      if (!Array.isArray(addresses) || !addresses.length || addresses.length > 32 || addresses.some(address => !isPublicPublicationIpv4(address))) return unsafe();
+      if (!Array.isArray(addresses)) return unsafe("dns_answer_shape");
+      if (!addresses.length) return unsafe("dns_answer_empty");
+      if (addresses.length > 32) return unsafe("dns_answer_limit");
+      if (addresses.some(address => !isPublicPublicationIpv4(address))) return unsafe("dns_answer_nonpublic");
       const address = [...new Set(addresses)].sort()[0];
       const tcp = await hold(network.connect({ hostname: address, port: 443, transport: "tcp" }));
-      if (tcp.remoteAddr.transport !== "tcp" || tcp.remoteAddr.hostname !== address || tcp.remoteAddr.port !== 443) return unsafe();
+      if (tcp.remoteAddr.transport !== "tcp") return unsafe("tcp_transport");
+      if (tcp.remoteAddr.hostname !== address) return unsafe("tcp_hostname");
+      if (tcp.remoteAddr.port !== 443) return unsafe("tcp_port");
       const tls = await hold(network.startTls(tcp, { hostname: url.hostname, alpnProtocols: ["http/1.1"] }));
-      if (tls.remoteAddr.transport !== "tcp" || tls.remoteAddr.hostname !== address || tls.remoteAddr.port !== 443 || typeof tls.handshake !== "function") return unsafe();
+      if (tls.remoteAddr.transport !== "tcp") return unsafe("tls_transport");
+      if (tls.remoteAddr.hostname !== address) return unsafe("tls_hostname");
+      if (tls.remoteAddr.port !== 443) return unsafe("tls_port");
+      if (typeof tls.handshake !== "function") return unsafe("tls_handshake_missing");
       const handshake = await bounded(tls.handshake());
       if (handshake.alpnProtocol !== null && handshake.alpnProtocol !== "http/1.1") return unavailable();
       const request = encoder.encode(`GET ${url.pathname}${url.search} HTTP/1.1\r\nHost: ${url.hostname}\r\nAccept: application/pdf,text/html,text/plain,image/png,image/jpeg\r\nAccept-Encoding: identity\r\nConnection: close\r\nUser-Agent: Sintagma-Publication-Check/1\r\n\r\n`);
@@ -182,9 +195,10 @@ export async function observePublicPublication(input: { publicUrl: string; conte
       status = parsed.status;
       if ([301, 302, 303, 307, 308].includes(status)) {
         const location = parsed.headers.get("location");
-        if (!location || redirectCount >= 3) return unsafe();
+        if (!location) return unsafe("redirect_location_missing");
+        if (redirectCount >= 3) return unsafe("redirect_limit");
         let next: string;
-        try { next = parsePublicPublicationUrl(new URL(location, finalUrl).href); } catch { return unsafe(); }
+        try { next = parsePublicPublicationUrl(new URL(location, finalUrl).href); } catch { return unsafe("redirect_target"); }
         finalUrl = next; redirectCount++; status = null; continue;
       }
       if (status !== 200) return result("http_unavailable");

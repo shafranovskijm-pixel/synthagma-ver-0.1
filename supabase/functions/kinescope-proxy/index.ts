@@ -86,19 +86,8 @@ serve(async (req) => {
             body: errBody,
           });
           return new Response(JSON.stringify({
-            error: "Kinescope Uploader API error",
+            error: "Не удалось инициализировать загрузку видео. Повторите попытку.",
             status: initRes.status,
-            raw_response: errBody,
-            request_info: {
-              method: "POST",
-              url: `${KINESCOPE_UPLOADER}/init`,
-              body: {
-                type: "video",
-                parent_id: parent_id || undefined,
-                title: title || "Untitled",
-                filesize: file_size,
-              },
-            },
           }), {
             status: initRes.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,8 +100,7 @@ serve(async (req) => {
 
         if (!videoId || !uploadEndpoint) {
           return new Response(JSON.stringify({
-            error: "No video ID or upload endpoint returned from Kinescope",
-            raw_response: JSON.stringify(initData),
+            error: "Видеосервис не подтвердил загрузку. Повторите попытку.",
           }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -166,7 +154,7 @@ serve(async (req) => {
         });
         if (!res.ok) {
           const errBody = await res.text();
-          return new Response(JSON.stringify({ error: errBody }), {
+          return new Response(JSON.stringify({ error: "Не удалось удалить видео. Повторите попытку." }), {
             status: res.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -189,7 +177,7 @@ serve(async (req) => {
     if (error instanceof AccessError) return accessErrorResponse(error, corsHeaders);
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("kinescope-proxy error:", message);
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: "Не удалось выполнить запрос к видеосервису. Повторите попытку." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
