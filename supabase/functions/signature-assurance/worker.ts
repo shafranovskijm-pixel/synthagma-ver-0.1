@@ -4,7 +4,7 @@ import {canonicalSignatureStorageReader} from './controlled-source/worker.ts';
 import type {z} from 'npm:zod@3.25.76';
 export {canonicalSignatureStorageReader};
 export class AssuranceError extends Error {constructor(readonly code:z.infer<typeof errorCode>){super(code);this.name='AssuranceError';}}
-const fail=(code:z.infer<typeof errorCode>):never=>{throw new AssuranceError(code);};
+function fail(code:z.infer<typeof errorCode>):never{throw new AssuranceError(code);}
 export interface InvitationDependencies {
  observeOriginalActor(signal:AbortSignal):Promise<string|null>;
  service(input:{p_action:unknown;p_observed_actor_user_id:string|null;p_request_ip:null;p_request_user_agent:null;p_original_proof:unknown;p_scan_proof:unknown},signal:AbortSignal):Promise<unknown>;

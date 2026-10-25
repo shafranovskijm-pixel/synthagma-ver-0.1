@@ -3,7 +3,7 @@ import {canonicalSignatureStorageReader}from './controlled-source/worker.ts';
 export {canonicalSignatureStorageReader};
 export type ProtectedFileFailure='ACCESS_DENIED'|'INVALID_INPUT'|'NOT_FOUND'|'REVISION_CONFLICT'|'REQUEST_CONFLICT'|'SOURCE_UNAVAILABLE'|'SOURCE_CHANGED'|'CLOSED'|'EXPIRED'|'LIMIT_EXCEEDED'|'DEPENDENCY_UNAVAILABLE';
 export class ProtectedFileError extends Error{constructor(readonly code:ProtectedFileFailure){super(code);this.name='ProtectedFileError';}}
-const fail=(code:ProtectedFileFailure):never=>{throw new ProtectedFileError(code);};
+function fail(code:ProtectedFileFailure):never{throw new ProtectedFileError(code);}
 const codes=new Set<ProtectedFileFailure>(['ACCESS_DENIED','INVALID_INPUT','NOT_FOUND','REVISION_CONFLICT','REQUEST_CONFLICT','SOURCE_UNAVAILABLE','SOURCE_CHANGED','CLOSED','EXPIRED','LIMIT_EXCEEDED','DEPENDENCY_UNAVAILABLE']);
 export interface ProtectedFileDependencies{
  observeOriginalActor(signal:AbortSignal):Promise<string|null>;
@@ -48,7 +48,7 @@ async function boundedBytes(response:Response,signal:AbortSignal):Promise<Uint8A
  }finally{if(!complete)void reader.cancel().catch(()=>undefined);try{reader.releaseLock();}catch{/* an aborted pending read is being cancelled */}}
 }
 async function digest(bytes:Uint8Array):Promise<string>{
- const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
+ const hash=await crypto.subtle.digest('SHA-256',bytes as Uint8Array<ArrayBuffer>);return [...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 
 /** Binary disclosure only. No write, signed URL, public Storage grant or caller-supplied path. */
