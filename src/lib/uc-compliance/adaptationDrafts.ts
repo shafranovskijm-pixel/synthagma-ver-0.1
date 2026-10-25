@@ -1,6 +1,6 @@
 /** Adaptable working drafts. Never a legal approval or a claim of current consolidated law. */
 import { REQUIREMENTS } from './catalog';
-export const ADAPTATION_EDITION = 'uc029-substantive-drafts-2026-10-26-v1';
+export const ADAPTATION_EDITION = 'uc029-substantive-drafts-2026-10-26-v2';
 export interface AdaptationDraft { fields: readonly string[]; sections: readonly (readonly [string, readonly string[]])[] }
 export interface DraftSourceBasis { id: string; title: string; provision: string; href: string; readEdition: string; readScope: string; limitation: string }
 export const ADAPTATION_DRAFTS: Readonly<Record<string, AdaptationDraft>> = {
@@ -675,14 +675,14 @@ const READINGS: Readonly<Record<string, { readEdition: string; readScope: string
     "evidenceUrl": "https://mchs.gov.ru/uploads/document/2026-09-24/b5bb7424f411b38df7dfe047a2415cbb.docx"
   },
   "LEGAL-03": {
-    "readEdition": "Сохранённая копия приказа №266 от24.03.2025 с сайта надзорного органа; в каталоге проверены положения о ДПО.",
-    "readScope": "Полная цепочка изменений на дату применения и специальные отраслевые требования здесь не подтверждены; право конкретного центра реализовывать программу проверяется отдельно.",
-    "evidenceUrl": "https://obrnadzor.tatarstan.ru/file/pub/pub_4580649.pdf"
+    "readEdition": "Копия МЧС России приказа №266 от24.03.2025, получена25.10.2026 UTC; полностью прочитан текст копии, включая п.2–23.",
+    "readScope": "В копии прямо указаны п.17 о зачёте, п.22–23 об оценке качества и п.15 о календарном периоде ДПО. Текущая цепочка изменений на26.10.2026 и специальные отраслевые требования не подтверждены. Упоминание порядка №845/369 в сноске к п.17 не доказывает его действие после01.09.2026; срок, замену и применимость нужно проверить отдельно.",
+    "evidenceUrl": "https://mchs.gov.ru/uploads/document/2025-12-22/20f20f229c014d35cc094a9765e7f6e9.docx"
   },
   "LEGAL-08": {
-    "readEdition": "Каталог ссылается на приказ №438 от26.08.2020; текущая редакция цитируемых пунктов для этого проекта не установлена.",
-    "readScope": "Сохранённый исходный текст и ссылка на публикацию не подтверждают последующие изменения и отраслевые исключения. До использования сверить именно указанный пункт.",
-    "evidenceUrl": "https://publication.pravo.gov.ru/document/0001202009110057"
+    "readEdition": "Копия МЧС России приказа №438 от26.08.2020; в PDF указана дата сохранения05.06.2025. Полностью прочитан текст копии, включая п.4,9–22.",
+    "readScope": "Копия не подтверждает действие приказа на26.10.2026. Срок, возможная утрата силы или замена с01.09.2026 и полная цепочка изменений не установлены. До применения к выбранной профессии или должности сверить действующий порядок и отраслевые исключения.",
+    "evidenceUrl": "https://mchs.gov.ru/uploads/document/2025-06-09/8ebaed2c83d6d3b8c73236db65c739b6.pdf"
   },
   "LEGAL-10": {
     "readEdition": "Исходные Правила №1678 от11.10.2023; сведения об изменении №517 от06.05.2026 имеются, полный текущий текст не прочитан.",
