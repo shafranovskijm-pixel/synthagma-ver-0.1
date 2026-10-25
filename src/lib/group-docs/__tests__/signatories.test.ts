@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { SAMPLE_CONTEXT } from "../sampleContext";
+import { SAMPLE_CONTEXT } from '../sampleContext.ts';
 import {
   defaultGoreltechGroupDocumentSignatories,
   defaultGroupDocumentSignatories,
   hasBlankGroupDocumentSignatory,
   signatoriesToGenerationExtras,
-} from "../signatories";
-import { buildVariables } from "../variables";
+} from '../signatories.ts';
+import { buildVariables } from '../variables.ts';
 
 describe("group document signatories", () => {
   it("uses the organization manager as a visible default without hardcoding a title", () => {

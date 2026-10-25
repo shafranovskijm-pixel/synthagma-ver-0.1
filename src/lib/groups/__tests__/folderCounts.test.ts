@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fetchGroupFolderCounts, countUniqueContracts, countIdentityDocs } from "../folderCounts";
+import { fetchGroupFolderCounts, countUniqueContracts, countIdentityDocs } from '../folderCounts.ts';
 
 const ORG = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GROUP = "0cd9dd54-af40-4899-bd94-9d3c1a728d38";

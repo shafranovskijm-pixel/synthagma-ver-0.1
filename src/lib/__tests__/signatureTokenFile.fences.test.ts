@@ -4,7 +4,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSessio
 vi.mock('@/utils/proxyFetch', () => ({ proxiedAssetUrl: (value: string) => value }));
 vi.mock('@/utils/courseCache', () => ({ captureOfflineContext: () => state.actor ? { actorId: state.actor, revision: state.revision } : null,
   captureOfflineAuthRevision: () => state.revision, isOfflineActorCurrent: (id: string, revision: number) => id === state.actor && revision === state.revision }));
-import { getSignatureTokenFile, getAuthenticatedSignatureFile, downloadStoredSignatureArtifact } from '../signatureTokenFile';
+import { getSignatureTokenFile, getAuthenticatedSignatureFile, downloadStoredSignatureArtifact } from '../signatureTokenFile.ts';
 const deferred = <T>() => { let resolve!: (v: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; };
 const options = { token: 'synthetic-bearer', signatureId: 'signature-a', organizationId: 'tenant', locator: 'tenant/certificate.html' };
 beforeEach(() => {

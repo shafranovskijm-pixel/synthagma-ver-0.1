@@ -16,7 +16,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
       setHeader: (...args: unknown[]) => { m.headers(...args); return m.read(state); } }; return q;
   },
 } }));
-import { createScopedOrgDocumentTransport, listProgramFiles, prepareProgramFile, PROGRAM_FILE_MAX_BYTES, readProgramFile, validateProgramPdf } from '../programFiles';
+import { createScopedOrgDocumentTransport, listProgramFiles, prepareProgramFile, PROGRAM_FILE_MAX_BYTES, readProgramFile, validateProgramPdf } from '../programFiles.ts';
 import { downloadPrivateFile } from '@/utils/storageHelpers';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const actor = id(1), org = id(2), version = id(3);

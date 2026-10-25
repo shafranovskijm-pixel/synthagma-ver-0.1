@@ -1,11 +1,11 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
-import whoamiTool from "./tools/whoami";
-import getMyProfileTool from "./tools/get-my-profile";
-import searchSintagmaInvoicesTool from "./tools/search-sintagma-invoices";
-import getSintagmaInvoiceExportTool from "./tools/get-sintagma-invoice-export";
-import searchBillingOrganizationsTool from "./tools/search-sintagma-billing-organizations";
-import previewInvoiceActTool from "./tools/preview-sintagma-invoice-act";
-import createInvoiceActTool from "./tools/create-sintagma-invoice-act";
+import whoamiTool from './tools/whoami.ts';
+import getMyProfileTool from './tools/get-my-profile.ts';
+import searchSintagmaInvoicesTool from './tools/search-sintagma-invoices.ts';
+import getSintagmaInvoiceExportTool from './tools/get-sintagma-invoice-export.ts';
+import searchBillingOrganizationsTool from './tools/search-sintagma-billing-organizations.ts';
+import previewInvoiceActTool from './tools/preview-sintagma-invoice-act.ts';
+import createInvoiceActTool from './tools/create-sintagma-invoice-act.ts';
 
 // Direct Supabase host is required for OAuth issuer discovery (RFC 8414 §3.3).
 // Never use SUPABASE_URL — on Lovable Cloud it may be the .lovable.cloud proxy.

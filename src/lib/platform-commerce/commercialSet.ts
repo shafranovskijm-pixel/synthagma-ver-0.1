@@ -17,7 +17,7 @@ import {
   type PlatformCustomerRequisites,
   type PlatformInvoiceRow,
   type PlatformSetRequest,
-} from "./types";
+} from './types.ts';
 
 /* ─────────────── реквизиты заказчика ─────────────── */
 

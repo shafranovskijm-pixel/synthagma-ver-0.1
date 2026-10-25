@@ -6,7 +6,7 @@ import {
   readDocumentView,
   readEducationDocumentsJournalFocus,
   setDocumentViewParams,
-} from "./documentWorkspaceNavigation";
+} from './documentWorkspaceNavigation.ts';
 
 describe("document workspace URL state", () => {
   it("uses the documents URL without documentView as the hub", () => {

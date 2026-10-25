@@ -4,7 +4,7 @@
  * No token/password/JWT/OTP/signed URL is permitted in a persisted result/event/export.
  */
 // Type-only canonical dependency at the proposed src/lib/signatureAssurance/contract.ts location.
-import type {RegistrySource} from '../documentRegistry/contract';
+import type {RegistrySource} from '../documentRegistry/contract.ts';
 export type UUID = string;
 export type Hash = string;
 export type Utc = string;

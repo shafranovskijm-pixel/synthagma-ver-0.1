@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companyDocumentStorage } from "./companyDocumentStorage";
+import { companyDocumentStorage } from './companyDocumentStorage.ts';
 describe("company document private bucket routing", () => {
   it("routes an uploaded company file to its private bucket", () => {
     expect(companyDocumentStorage({ company_id: "company", file_path: "company/file.pdf" })).toEqual({ bucket: "company-documents", path: "company/file.pdf" });

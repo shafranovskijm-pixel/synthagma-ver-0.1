@@ -7,7 +7,7 @@
  * результат ученика = лучшая попытка ИМЕННО этого урока.
  */
 
-import type { AttestationFact, RegistrationFact } from "./factualData";
+import type { AttestationFact, RegistrationFact } from './factualData.ts';
 
 export interface LessonLike {
   id: string;

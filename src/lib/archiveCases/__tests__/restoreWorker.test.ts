@@ -1,8 +1,8 @@
 import{afterEach,beforeEach,describe,expect,it,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{restorePersistedArchive,type ArchiveRestoreWorkerPort}from'../restoreWorker';
+import{restorePersistedArchive,type ArchiveRestoreWorkerPort}from'../restoreWorker.ts';
 import{sealedFixture}from'./sealed.fixtures';
-import{id,actor,org}from'./fixtures';
+import{id,actor,org}from'./fixtures.ts';
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
 async function fixture(partial=false){const original=await sealedFixture(partial);const run={id:id(990),organization_id:org,package_id:original.manifest.package_id,actor_id:actor,request_id:id(991),manifest_sha256:original.input.manifest_sha256,state:'verifying',verified_file_ids:[]as string[],projection_sha256:null as string|null,created_at:'2026-10-23T01:02:03Z',completed_at:null as string|null,historical_only:true,live_business_actions:0,source_reissued:false};const context={version:1,organization_id:org,scope:{kind:'organization'}as const,actor_id:actor,restore:run,manifest_json:original.context.manifest_json,lease_id:id(992),lease_until:'2099-01-01T00:00:00Z'};const copies=new Map<string,Uint8Array>();
  const port:ArchiveRestoreWorkerPort={...original.port,restoreId:run.id,requestId:run.request_id,claimRestore:vi.fn(async()=>structuredClone(context)),currentRestoreContext:vi.fn(async()=>structuredClone(context)),putQuarantineFile:vi.fn(async file=>{copies.set(file.file_id,file.bytes.slice());return{object_id:id(980+copies.size),object_updated_at:'2026-10-23T01:02:03.654321Z'};}),readQuarantineFile:vi.fn(async fileId=>copies.get(fileId)!.slice()),commitRestore:vi.fn(async(payload:Parameters<ArchiveRestoreWorkerPort['commitRestore']>[0])=>({...run,state:'verified',verified_file_ids:payload.files.map(file=>file.file_id),projection_sha256:'c'.repeat(64),completed_at:'2026-10-23T01:03:00Z'}))};return{...original,context,run,copies,port};}

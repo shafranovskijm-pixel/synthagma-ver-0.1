@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { validateSelfExaminationDraft, type SelfExaminationDraftInput, type SelfExaminationSource } from '../../../supabase/functions/_shared/self-examination-workflow-contract';
-export type { SelfExaminationDraftInput, SelfExaminationSource, SelfExaminationNumber } from '../../../supabase/functions/_shared/self-examination-workflow-contract';
+import { validateSelfExaminationDraft, type SelfExaminationDraftInput, type SelfExaminationSource } from '../../../supabase/functions/_shared/self-examination-workflow-contract.ts';
+export type { SelfExaminationDraftInput, SelfExaminationSource, SelfExaminationNumber } from '../../../supabase/functions/_shared/self-examination-workflow-contract.ts';
 type Validated<T> = T extends (infer Item)[] ? Validated<Item>[] : T extends object ? { [Key in keyof T]-?: Validated<T[Key]> } : T;
 const uuid = z.string().regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);

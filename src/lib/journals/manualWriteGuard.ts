@@ -1,4 +1,4 @@
-import { resolveGroupGateState, type GroupJournalContext } from "./groupJournalContext";
+import { resolveGroupGateState, type GroupJournalContext } from './groupJournalContext.ts';
 
 /**
  * Write-safety в контексте группы.

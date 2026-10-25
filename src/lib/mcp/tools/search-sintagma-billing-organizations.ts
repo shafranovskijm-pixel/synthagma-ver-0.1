@@ -1,5 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { searchBillingOrganizationsShape, searchSintagmaBillingOrganizations } from "../platform-acts";
+import { searchBillingOrganizationsShape, searchSintagmaBillingOrganizations } from '../platform-acts.ts';
 export default defineTool({
   name: "search_sintagma_billing_organizations", title: "Найти клиента платформы СИНТАГМА",
   description: "Только администратор: найти организации по названию или ИНН для работы со счетами за платформу. Возвращает точные ID и реквизиты, без паролей и посторонних данных. При нескольких совпадениях уточните организацию.",

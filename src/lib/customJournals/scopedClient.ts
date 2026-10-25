@@ -1,7 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
-import {captureCustomJournalScope,customJournalScopeCurrent,normalizeCustomJournalError,customJournalMessages,type CustomJournalScope} from './client';
-import * as c from './scopedContract';
-import {journalUuid} from './contract';
+import {captureCustomJournalScope,customJournalScopeCurrent,normalizeCustomJournalError,customJournalMessages,type CustomJournalScope} from './client.ts';
+import * as c from './scopedContract.ts';
+import {journalUuid} from './contract.ts';
 export interface ScopedJournalScope extends CustomJournalScope {context:c.ScopedContextInput}
 export class ScopedJournalError extends Error {constructor(readonly code:c.ScopedJournalErrorCode='DEPENDENCY_UNAVAILABLE'){super(code);this.name='ScopedJournalError';}}
 export const scopedJournalMessages=customJournalMessages;

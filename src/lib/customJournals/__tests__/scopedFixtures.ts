@@ -1,4 +1,4 @@
-import type {ScopedJournalDetail,ScopedJournalSummary,ScopedJournalRecord,ScopedJournalHistory,ScopedJournalExport,ScopedExportManifest} from '../scopedContract';
+import type {ScopedJournalDetail,ScopedJournalSummary,ScopedJournalRecord,ScopedJournalHistory,ScopedJournalExport,ScopedExportManifest} from '../scopedContract.ts';
 export const sid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export const si={org:sid(1),group:sid(2),course:sid(3),actor:sid(4),person:sid(5),journal:sid(6),schema:sid(7),record:sid(8),request:sid(9),export:sid(10),history:sid(11),binding:sid(12),programme:sid(13),session:sid(14),sessionVersion:sid(15),state:sid(16),machine:sid(17),decision:sid(18),snapshot:sid(19)};
 export const st='2026-10-21T13:30:00.000000Z',sh='a'.repeat(64);

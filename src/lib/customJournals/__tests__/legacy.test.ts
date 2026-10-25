@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { parseLegacyDefinitions } from '../legacy';
+import { parseLegacyDefinitions } from '../legacy.ts';
 const definition={id:'custom_123',title:'Синтетический локальный журнал',description:'d',fields:['doc_number','signature'],createdAt:'2026-01-01'};
 describe('explicit legacy definition preview',()=>{
  it('preserves input bytes and accepts only the observed current definition, not historical schema claims',()=>{const raw=JSON.stringify([definition]);const before=raw;const parsed=parseLegacyDefinitions(raw);expect(parsed[0].definition).toEqual(definition);expect(raw).toBe(before);});

@@ -1,4 +1,4 @@
-import type { DocType } from "./schema";
+import type { DocType } from './schema.ts';
 
 export interface GroupDocumentSignatory {
   position: string;

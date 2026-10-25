@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProgramReplyTemplate } from "../programReplyTemplate";
+import { buildProgramReplyTemplate } from '../programReplyTemplate.ts';
 
 describe("program reply draft", () => {
   it("uses the approved August course facts and complete price ladder", () => {

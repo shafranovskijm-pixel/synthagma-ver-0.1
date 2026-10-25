@@ -1,6 +1,6 @@
 import { initialQuizData, type QuizData } from '@/hooks/useSelfExaminationQuiz';
-import { emptySelfExaminationDraft, validateSelfExaminationDraft, type SelfExaminationDraftInput } from '../../../supabase/functions/_shared/self-examination-workflow-contract';
-import { selfExaminationPeriod } from '../../../supabase/functions/_shared/self-examination-policy';
+import { emptySelfExaminationDraft, validateSelfExaminationDraft, type SelfExaminationDraftInput } from '../../../supabase/functions/_shared/self-examination-workflow-contract.ts';
+import { selfExaminationPeriod } from '../../../supabase/functions/_shared/self-examination-policy.ts';
 /** Dates are derived from an explicitly selected calendar year, never upload/current dates. */
 export function quizAnswers(data: QuizData): Record<string, unknown> {
  const { periodStart: _start, periodEnd: _end, ...answers } = data;

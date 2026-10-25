@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { org, source, uid } from './fixtures';
+import { org, source, uid } from './fixtures.ts';
 const mock = vi.hoisted(() => ({ current: true, download: vi.fn(), session: vi.fn(), bucket: vi.fn() }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { storage: { from: mock.bucket } } }));
-vi.mock('../client', async () => { const { DocumentRegistryError } = await import('../errors'); return { requireRegistryScope: () => { if (!mock.current) throw new DocumentRegistryError('ACCESS_DENIED'); }, requireRegistrySession: mock.session }; });
-import { loadRegistryFile, registryFilePreviewable } from '../files';
-import type { DocumentRegistryScope } from '../client';
-import type { RegistryFile } from '../contract';
+vi.mock('../client', async () => { const { DocumentRegistryError } = await import('../errors.ts'); return { requireRegistryScope: () => { if (!mock.current) throw new DocumentRegistryError('ACCESS_DENIED'); }, requireRegistrySession: mock.session }; });
+import { loadRegistryFile, registryFilePreviewable } from '../files.ts';
+import type { DocumentRegistryScope } from '../client.ts';
+import type { RegistryFile } from '../contract.ts';
 const scope = { organizationId: org } as DocumentRegistryScope;
 const file = (): RegistryFile => ({ kind: 'org_document_version', bucket: 'org-documents', path: org + '/versions/' + source.document_id + '/' + source.version_id + '.pdf', version_id: source.version_id, proof_hash: source.content_hash, file_name: 'qa.pdf', mime: 'application/pdf', size: 2 });
 beforeEach(() => { vi.clearAllMocks(); mock.current = true; mock.session.mockResolvedValue('fresh-token'); mock.bucket.mockReturnValue({ download: mock.download }); mock.download.mockResolvedValue({ data: new Blob(['qa']), error: null }); });

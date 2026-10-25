@@ -5,7 +5,7 @@ import {
   describePackagePlan,
   packageResultMessage,
   shouldGeneratePackageDocs,
-} from "../packageTypes";
+} from '../packageTypes.ts';
 
 describe("group docs package", () => {
   it("не содержит contract", () => {

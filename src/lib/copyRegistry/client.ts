@@ -1,13 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { captureCustomJournalScope, customJournalScopeCurrent, type CustomJournalScope } from '@/lib/customJournals/client';
 import { journalUuid } from '@/lib/customJournals/contract';
-import * as c from './contract';
+import * as c from './contract.ts';
 
 export interface CopyRegistryScope extends CustomJournalScope { registryScope: c.CopyScope }
-import { CopyRegistryError, normalizeCopyRegistryError } from './errors';
-import { sameCopyValue } from './value';
-export { CopyRegistryError, normalizeCopyRegistryError, copyRegistryMessages } from './errors';
-export { sameCopyValue } from './value';
+import { CopyRegistryError, normalizeCopyRegistryError } from './errors.ts';
+import { sameCopyValue } from './value.ts';
+export { CopyRegistryError, normalizeCopyRegistryError, copyRegistryMessages } from './errors.ts';
+export { sameCopyValue } from './value.ts';
 export function captureCopyRegistryScope(organizationId: string, registryScope: c.CopyScope, current?: () => boolean): CopyRegistryScope {
   const parsed = c.copyScopeSchema.safeParse(structuredClone(registryScope));
   if (!parsed.success) throw new CopyRegistryError('ACCESS_DENIED');

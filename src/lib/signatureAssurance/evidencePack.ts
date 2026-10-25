@@ -1,7 +1,7 @@
 import {z} from 'zod';
-import * as contract from './contract';
-import type {FrozenManifest, FrozenManifestBody} from './types';
-import {evidenceSha256, SignatureEvidenceError, verifyManifest} from './validation';
+import * as contract from './contract.ts';
+import type {FrozenManifest, FrozenManifestBody} from './types.ts';
+import {evidenceSha256, SignatureEvidenceError, verifyManifest} from './validation.ts';
 
 /** Server/client projection boundary only. A source commitment is not proof that the
  * undisclosed private manifest has been read or that any legal signature is valid. */

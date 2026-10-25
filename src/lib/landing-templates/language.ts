@@ -1,4 +1,4 @@
-import type { LandingTemplate } from "./types";
+import type { LandingTemplate } from './types.ts';
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import languageHero from "@/assets/landing-templates/language-hero.jpg";
 import languageSectionBg from "@/assets/landing-templates/decor/language-section.webp";

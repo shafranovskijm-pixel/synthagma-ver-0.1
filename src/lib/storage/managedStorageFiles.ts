@@ -1,4 +1,4 @@
-import { runBoundedStorageScans } from "./boundedStorageScans";
+import { runBoundedStorageScans } from './boundedStorageScans.ts';
 
 // Confirmed private buckets. Never turn a failed signing request into a public URL.
 export const MANAGED_PRIVATE_BUCKETS = new Set([

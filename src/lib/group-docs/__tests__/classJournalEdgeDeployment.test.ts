@@ -3,11 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { compileClassJournalXml } from "../../../../supabase/functions/_shared/docx-ooxml/classJournal";
+import { compileClassJournalXml } from '../../../../supabase/functions/_shared/docx-ooxml/classJournal.ts';
 import {
   CLASS_JOURNAL_MANIFEST_JSON,
   CLASS_JOURNAL_TEMPLATE_BASE64,
-} from "../../../../supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1/embedded";
+} from '../../../../supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts';
 
 const FUNCTION_SOURCE = path.resolve(
   __dirname,

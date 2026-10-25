@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { educationBearer,educationScopeCurrent,normalizeEducationError,type EducationActorScope } from '@/lib/groupEducationFacts/client';
-import * as c from './contract';
+import * as c from './contract.ts';
 import type { RequiredWire } from '@/lib/groupEducationFacts/contract';
 export class ConductedSessionError extends Error { constructor(readonly code='DEPENDENCY_UNAVAILABLE'){super(code);this.name='ConductedSessionError';} }
 export const sessionErrorMessage:Record<string,string>={

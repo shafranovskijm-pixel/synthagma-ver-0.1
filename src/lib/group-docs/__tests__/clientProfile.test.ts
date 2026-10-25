@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   GORELTECH_ORGANIZATION_ID,
   resolveGroupDocumentClientProfile,
-} from "../clientProfile";
-import { buildRegistrationRowsFromFacts } from "../factualData";
-import { GROUP_DOCUMENT_TYPE_MAP } from "../groupDocuments";
-import { GROUP_DOCUMENT_TYPE_MAP as WORKSPACE_DOCUMENT_TYPE_MAP } from "../../groupDocuments";
-import { buildVariables } from "../variables";
-import type { GenerationContext } from "../schema";
+} from '../clientProfile.ts';
+import { buildRegistrationRowsFromFacts } from '../factualData.ts';
+import { GROUP_DOCUMENT_TYPE_MAP } from '../groupDocuments.ts';
+import { GROUP_DOCUMENT_TYPE_MAP as WORKSPACE_DOCUMENT_TYPE_MAP } from '../../groupDocuments.ts';
+import { buildVariables } from '../variables.ts';
+import type { GenerationContext } from '../schema.ts';
 
 function context(organizationName: string): GenerationContext {
   return {

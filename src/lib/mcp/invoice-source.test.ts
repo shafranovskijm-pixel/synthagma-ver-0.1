@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { approvedStoragePath, getSintagmaInvoiceExport, INVOICE_COLUMNS, searchSintagmaInvoices, type InvoiceContext } from "./invoice-source";
-import searchTool from "./tools/search-sintagma-invoices";
-import exportTool from "./tools/get-sintagma-invoice-export";
+import { approvedStoragePath, getSintagmaInvoiceExport, INVOICE_COLUMNS, searchSintagmaInvoices, type InvoiceContext } from './invoice-source.ts';
+import searchTool from './tools/search-sintagma-invoices.ts';
+import exportTool from './tools/get-sintagma-invoice-export.ts';
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn() }));
 const ORG = "10000000-0000-4000-8000-000000000001";

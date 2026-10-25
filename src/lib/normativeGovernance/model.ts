@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { normativeDate, verifyNormativeManifest, type NormativeManifest } from "./manifest";
+import { normativeDate, verifyNormativeManifest, type NormativeManifest } from './manifest.ts';
 
 export const DESIGNATED_NORMATIVE_OWNER = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const uuid = z.string().uuid();

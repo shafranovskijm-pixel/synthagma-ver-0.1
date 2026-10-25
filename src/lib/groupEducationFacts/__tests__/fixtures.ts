@@ -1,4 +1,4 @@
-import type {EducationEnvelope,EducationCalendar,RosterRow,EducationHistory} from '../contract';
+import type {EducationEnvelope,EducationCalendar,RosterRow,EducationHistory} from '../contract.ts';
 export const id=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export const time='2026-10-19T04:00:00.123456+00:00',hash='a'.repeat(64);
 export const scope={organization_id:id(1),group_id:id(2),course_id:id(3)};

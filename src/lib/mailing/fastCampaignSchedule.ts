@@ -1,1 +1,1 @@
-export * from "../../../supabase/functions/_shared/fast-campaign-schedule";
+export * from '../../../supabase/functions/_shared/fast-campaign-schedule.ts';

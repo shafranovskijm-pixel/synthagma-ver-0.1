@@ -1,5 +1,5 @@
-import type {FrozenManifest} from './types';
-import {SignatureEvidenceError,verifyManifest} from './validation';
+import type {FrozenManifest} from './types.ts';
+import {SignatureEvidenceError,verifyManifest} from './validation.ts';
 
 export type EvidenceDownloadFormat='json'|'html';
 export interface PreparedEvidenceDownload {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { assertDraftScope, assertSessionScope } from '../contract';
-import { detail, draft, id, scope } from './fixtures';
+import { assertDraftScope, assertSessionScope } from '../contract.ts';
+import { detail, draft, id, scope } from './fixtures.ts';
 
 describe('exact programme version retained with the conducted session and document draft', () => {
   it('accepts the exact retained programme version for both the session result and saved draft', () => {

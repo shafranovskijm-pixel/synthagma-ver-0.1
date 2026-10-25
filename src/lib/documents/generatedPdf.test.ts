@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generatedPdfPath } from "./generatedPdf";
+import { generatedPdfPath } from './generatedPdf.ts';
 
 describe("generated document proof", () => {
   it.each([null, {}, { success: true, renderer: "fallback", path: "org/contract.pdf" },

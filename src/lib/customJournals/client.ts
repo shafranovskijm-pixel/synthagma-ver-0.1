@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { captureOfflineContext, isOfflineActorCurrent } from '@/utils/courseCache';
-import * as c from './contract';
+import * as c from './contract.ts';
 
 export interface CustomJournalScope { actorId:string; accessRevision:number; organizationId:string; current?:()=>boolean }
 export class CustomJournalError extends Error { constructor(readonly code:c.JournalErrorCode='DEPENDENCY_UNAVAILABLE'){super(code);this.name='CustomJournalError';} }

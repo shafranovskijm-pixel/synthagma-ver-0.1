@@ -7,9 +7,9 @@ import {
   applyWatermarkToAllPages,
   type PartyInfo,
   type AcceptedEditSummary,
-} from "./pdfStampDrawer";
-import { appendHtmlAsRenderedPages } from "./htmlToPdfPages";
-import { captureSignatureRead, type SignatureReadOptions } from './signatureClientScope';
+} from './pdfStampDrawer.ts';
+import { appendHtmlAsRenderedPages } from './htmlToPdfPages.ts';
+import { captureSignatureRead, type SignatureReadOptions } from './signatureClientScope.ts';
 
 
 interface BuildOptions extends SignatureReadOptions {

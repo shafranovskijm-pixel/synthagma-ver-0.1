@@ -1,7 +1,7 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {webcrypto} from 'node:crypto';
-import {prepareEvidenceDownload} from '../download';
-import {id,manifest,org,signature} from './fixtures';
+import {prepareEvidenceDownload} from '../download.ts';
+import {id,manifest,org,signature} from './fixtures.ts';
 
 const urls:Blob[]=[],revoked:string[]=[];
 beforeEach(()=>{vi.stubGlobal('crypto',webcrypto);urls.length=0;revoked.length=0;vi.stubGlobal('URL',class extends URL{static createObjectURL(blob:Blob){urls.push(blob);return'blob:synthetic-'+urls.length;}static revokeObjectURL(url:string){revoked.push(url);}});});

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { failure, hash, uuid } from './contract';
-import { SignatureEvidenceError, signatureAssuranceScopeCurrent, type SignatureAssuranceScope } from './client';
-import type { SigningParty } from './types';
+import { failure, hash, uuid } from './contract.ts';
+import { SignatureEvidenceError, signatureAssuranceScopeCurrent, type SignatureAssuranceScope } from './client.ts';
+import type { SigningParty } from './types.ts';
 
 const selectionSchema = z.object({
   signatureId: uuid,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crmActivityArguments, crmError, crmSaveArguments, parseCrmSaveReceipt, parseOrgCrmSnapshot } from "../orgCrm";
+import { crmActivityArguments, crmError, crmSaveArguments, parseCrmSaveReceipt, parseOrgCrmSnapshot } from '../orgCrm.ts';
 
 const org = "10000000-0000-4000-8000-000000000001";
 const otherOrg = "10000000-0000-4000-8000-000000000002";

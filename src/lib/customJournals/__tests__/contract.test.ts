@@ -1,8 +1,8 @@
 import { describe,it,expect } from 'vitest';
-import { journalFieldsSchema,journalRecordSchema,journalHistorySchema,validateJournalValues,journalActionSchema } from '../contract';
-import { fieldsFromLegacy } from '../legacy';
-import { legacyFieldIds } from '../contract';
-import { ids,schema,record,at } from './fixtures';
+import { journalFieldsSchema,journalRecordSchema,journalHistorySchema,validateJournalValues,journalActionSchema } from '../contract.ts';
+import { fieldsFromLegacy } from '../legacy.ts';
+import { legacyFieldIds } from '../contract.ts';
+import { ids,schema,record,at } from './fixtures.ts';
 
 describe('custom journal typed source contract',()=>{
  it('supports the 16 advertised fields without treating signature text as legal evidence',()=>{const fields=fieldsFromLegacy([...legacyFieldIds]);expect(fields).toHaveLength(16);expect(fields.find(f=>f.id==='signature')).toMatchObject({type:'text',semantic:'signature'});expect(fields.find(f=>f.id==='grade')?.type).toBe('decimal');});

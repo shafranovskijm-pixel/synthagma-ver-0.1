@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
-import profileTool from "./tools/get-my-profile";
+import profileTool from './tools/get-my-profile.ts';
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn() }));
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crmLinkArguments, parseOrgCrmContext } from "../orgCrmContext";
+import { crmLinkArguments, parseOrgCrmContext } from '../orgCrmContext.ts';
 
 const org = "10000000-0000-4000-8000-000000000001";
 const student = "20000000-0000-4000-8000-000000000001";

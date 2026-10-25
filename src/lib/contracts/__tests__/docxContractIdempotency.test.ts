@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalJson,
   sha256CanonicalJson,
-} from "../../../../supabase/functions/_shared/docx-ooxml/idempotency";
+} from '../../../../supabase/functions/_shared/docx-ooxml/idempotency.ts';
 
 const FUNCTION_SOURCE = path.resolve(
   __dirname,

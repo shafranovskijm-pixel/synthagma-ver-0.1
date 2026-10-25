@@ -1,4 +1,4 @@
-import { emptyProgramFacts, type ProgramEnvelope, type ProgramCandidates, type GroupProgramFacts } from "../programFacts";
+import { emptyProgramFacts, type ProgramEnvelope, type ProgramCandidates, type GroupProgramFacts } from '../programFacts.ts';
 export const pfId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const pfOrg = pfId(1), pfProgram = pfId(2), pfVersion = pfId(3), pfCourse = pfId(4), pfGroup = pfId(5), pfEnrollment = pfId(6), pfUser = pfId(7);
 export function programFixture(): ProgramEnvelope {

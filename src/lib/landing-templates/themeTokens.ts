@@ -1,4 +1,4 @@
-import type { LandingTheme } from "./types";
+import type { LandingTheme } from './types.ts';
 
 /**
  * Карты соответствия токенов темы → конкретные CSS-классы Tailwind / inline-стили.

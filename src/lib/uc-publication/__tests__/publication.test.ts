@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildPublicationCalendar, type PublicationCalendarRule, type PublicationNormChange } from "../calendar";
-import { parsePublicPublicationUrl, publicEditionSchema, type PublicEdition, type PublicationCheck, type PublicationCurrentScope, type PublicationEvent } from "../model";
-import { projectPublication } from "../projection";
+import { buildPublicationCalendar, type PublicationCalendarRule, type PublicationNormChange } from '../calendar.ts';
+import { parsePublicPublicationUrl, publicEditionSchema, type PublicEdition, type PublicationCheck, type PublicationCurrentScope, type PublicationEvent } from '../model.ts';
+import { projectPublication } from '../projection.ts';
 
 const org = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const otherOrg = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";

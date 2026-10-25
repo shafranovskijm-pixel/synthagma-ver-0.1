@@ -8,8 +8,8 @@ import {
   parseEmailPayload,
   SEND_EMAIL_LIMITS,
   type SendEmailAuthResult,
-} from "../../../../supabase/functions/send-email/policy";
-import { createSendEmailHandler } from "../../../../supabase/functions/send-email/handler";
+} from '../../../../supabase/functions/send-email/policy.ts';
+import { createSendEmailHandler } from '../../../../supabase/functions/send-email/handler.ts';
 
 const ROOT = resolve(__dirname, "../../../..");
 const SEND_EMAIL_INDEX = readFileSync(

@@ -1,5 +1,5 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
-import * as api from '../client';import {envelope,roster,history,id,program,compatibleArtifactSnapshot,time} from './fixtures';
+import * as api from '../client.ts';import {envelope,roster,history,id,program,compatibleArtifactSnapshot,time} from './fixtures.ts';
 const m=vi.hoisted(()=>({actor:'',epoch:1,token:'one',queue:[] as any[],calls:[] as any[],session:vi.fn()}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:m.actor,revision:m.epoch}),isOfflineActorCurrent:(a:string,r:number)=>a===m.actor&&r===m.epoch}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:()=>m.session()},rpc:(name:string,args:any)=>({setHeader:(header:string,bearer:string)=>{m.calls.push({name,args:structuredClone(args),header,bearer});const next=m.queue.shift();return typeof next==='function'?next():Promise.resolve(next);}})}}));

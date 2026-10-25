@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFastCampaignSchedule, summarizeFastCampaignSchedule } from "../fastCampaignSchedule";
+import { buildFastCampaignSchedule, summarizeFastCampaignSchedule } from '../fastCampaignSchedule.ts';
 
 describe("fast two-day campaign schedule", () => {
   const emails = Array.from({ length: 812 }, (_, index) => `recipient-${index}@example.test`);

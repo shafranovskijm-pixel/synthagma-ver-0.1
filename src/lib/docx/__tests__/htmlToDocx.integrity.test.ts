@@ -3,7 +3,7 @@ import { setOfflineAuthActor } from '@/utils/courseCache';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import JSZip from 'jszip';
 import invoiceTemplateSource from '@/constants/invoiceTemplate.ts?raw';
-import { htmlToDocxBlob, htmlToWordXml, htmlDocsToZipBlob, downloadBlob } from '../htmlToDocx';
+import { htmlToDocxBlob, htmlToWordXml, htmlDocsToZipBlob, downloadBlob } from '../htmlToDocx.ts';
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
 const bytes = (blob: Blob) => new Promise<ArrayBuffer>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result as ArrayBuffer); reader.onerror = () => reject(reader.error); reader.readAsArrayBuffer(blob); });
 const zip = async (blob: Blob) => JSZip.loadAsync(await bytes(blob));

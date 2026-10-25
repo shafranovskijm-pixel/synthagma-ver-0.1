@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveFastCampaignError } from "../fastCampaignError";
+import { resolveFastCampaignError } from '../fastCampaignError.ts';
 
 describe("resolveFastCampaignError", () => {
   it("prefers the returned function payload", async () => {

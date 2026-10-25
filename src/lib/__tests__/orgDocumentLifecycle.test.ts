@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-import { createDocumentUploadOperation, saveDocumentUpload, restoreDocumentFile, getOrgDocumentState, isOrgDocumentReady, type OrgDocumentClient } from "../orgDocumentLifecycle";
+import { createDocumentUploadOperation, saveDocumentUpload, restoreDocumentFile, getOrgDocumentState, isOrgDocumentReady, type OrgDocumentClient } from '../orgDocumentLifecycle.ts';
 
 const make = () => {
   const upload=vi.fn().mockResolvedValue({error:null});

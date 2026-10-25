@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { exported, filters, org, record, sha, uid } from './fixtures';
+import { exported, filters, org, record, sha, uid } from './fixtures.ts';
 import { observeOfflineAccess, setOfflineAuthActor } from '@/utils/courseCache';
 const mock = vi.hoisted(() => ({ getXLSX: vi.fn(), write: vi.fn(), sheets: [] as any[] }));
 vi.mock('@/utils/xlsxHelper', () => ({ getXLSX: mock.getXLSX }));
 vi.mock('../files', () => ({ downloadRegistryBlob: vi.fn() }));
-import { downloadRegistryExport, prepareRegistryExport, REGISTRY_PREPARED_EXPORT_TTL_MS, verifyRegistryExport } from '../export';
-import { downloadRegistryBlob } from '../files';
+import { downloadRegistryExport, prepareRegistryExport, REGISTRY_PREPARED_EXPORT_TTL_MS, verifyRegistryExport } from '../export.ts';
+import { downloadRegistryBlob } from '../files.ts';
 beforeEach(() => { vi.clearAllMocks(); vi.stubGlobal('crypto', webcrypto); mock.sheets = []; mock.write.mockReturnValue(new Uint8Array([80, 75, 3, 4, 0]).buffer); mock.getXLSX.mockResolvedValue({ utils: { book_new: () => ({}), json_to_sheet: (rows: any[]) => rows, book_append_sheet: (_book: any, rows: any[], name: string) => mock.sheets.push({ rows, name }) }, write: mock.write }); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); setOfflineAuthActor(null); });
 const expected = { organizationId: org, scope: { kind: 'organization' as const }, filters };

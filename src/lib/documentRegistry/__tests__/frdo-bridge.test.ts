@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { record, base, actor, org, uid, exported, filters } from './fixtures';
+import { record, base, actor, org, uid, exported, filters } from './fixtures.ts';
 const mock = vi.hoisted(() => ({ rpc: vi.fn(), session: vi.fn(), current: true }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mock.session }, rpc: mock.rpc } }));
 vi.mock('@/lib/customJournals/client', () => ({ customJournalScopeCurrent: (s: any) => mock.current && s.current(), captureCustomJournalScope: (organizationId: string, current: () => boolean) => ({ organizationId, actorId: '00000000-0000-4000-8000-000000000002', current }) }));
-import { readDocumentRegistry, prepareDocumentRegistryMutation, type DocumentRegistryScope } from '../client';
-import { registryFrdoDataSchema, registryFileSchema, type RegistryRecord } from '../contract';
-import { verifyRegistryExport } from '../export';
+import { readDocumentRegistry, prepareDocumentRegistryMutation, type DocumentRegistryScope } from '../client.ts';
+import { registryFrdoDataSchema, registryFileSchema, type RegistryRecord } from '../contract.ts';
+import { verifyRegistryExport } from '../export.ts';
 const scope = () => ({ organizationId: org, actorId: actor, registryScope: { kind: 'organization' }, current: () => true } as DocumentRegistryScope);
 function frdo(): RegistryRecord { const row = record(); const source = { kind: 'frdo_packet_artifact' as const, packet_id: uid(700), artifact_id: uid(701), snapshot_sha256: 'a'.repeat(64), binding_sha256: 'b'.repeat(64) }; row.data = { ...row.data, direction: 'outgoing', document_type: 'other', source, subject: { kind: 'none' }, recipient: { kind: 'external', entity_type: 'organization', name: 'ФИС ФРДО: подготовлено', inn: null }, context: { kind: 'frdo_packet', packet_id: source.packet_id, artifact_id: source.artifact_id, snapshot_sha256: source.snapshot_sha256 }, origin: { kind: 'org_document' } }; row.context_binding = { kind: 'frdo_packet', organization_id: org, packet_id: source.packet_id, artifact_id: source.artifact_id, snapshot_sha256: source.snapshot_sha256, binding_hash: source.binding_sha256, scope_group_id: null }; row.can_correct = false; return row; }
 beforeEach(() => { vi.clearAllMocks(); mock.current = true; mock.session.mockResolvedValue({ data: { session: { user: { id: actor }, access_token: 'ORIGINAL' } }, error: null }); mock.rpc.mockImplementation(() => ({ setHeader: async () => ({ data: { ...base(), kind: 'list', records: [frdo()], next_cursor: null, counts: { total: 1, outgoing: 1, incoming: 0, contracts: 0, orders: 0 } }, error: null, status: 200 }) })); });

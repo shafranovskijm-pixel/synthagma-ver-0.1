@@ -1,4 +1,4 @@
-import type { LandingTemplate } from "./types";
+import type { LandingTemplate } from './types.ts';
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import auroraHero from "@/assets/landing-templates/aurora-hero.jpg";
 import auroraSectionBg from "@/assets/landing-templates/decor/aurora-section.webp";

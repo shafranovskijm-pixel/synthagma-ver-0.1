@@ -1,7 +1,7 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { setOfflineAuthActor } from '@/utils/courseCache';
-import * as api from '../client';
-import * as f from './fixtures';
+import * as api from '../client.ts';
+import * as f from './fixtures.ts';
 
 const mock=vi.hoisted(()=>({rpc:vi.fn(),session:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mock.session},rpc:mock.rpc}}));

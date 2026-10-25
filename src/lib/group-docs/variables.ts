@@ -1,8 +1,8 @@
-import type { DocType, GenerationContext } from "./schema";
-import type { EducationArtifactCalendar } from "../../../supabase/functions/_shared/group-education-artifact";
-import { retainedCalendarJournal } from "./retainedGenericDrafts";
-import { VARIABLE_CATALOG } from "./variableCatalog";
-import { resolveGroupDocumentClientProfile } from "./clientProfile";
+import type { DocType, GenerationContext } from './schema.ts';
+import type { EducationArtifactCalendar } from '../../../supabase/functions/_shared/group-education-artifact.ts';
+import { retainedCalendarJournal } from './retainedGenericDrafts.ts';
+import { VARIABLE_CATALOG } from './variableCatalog.ts';
+import { resolveGroupDocumentClientProfile } from './clientProfile.ts';
 import {
   ATTESTATION_SOURCE_LABEL,
   JOURNAL_SOURCE_LABEL,
@@ -23,8 +23,8 @@ import {
   journalDateColumns,
   type DocumentFillMode,
   type GroupFactualData,
-} from "./factualData";
-export { VARIABLE_CATALOG } from "./variableCatalog";
+} from './factualData.ts';
+export { VARIABLE_CATALOG } from './variableCatalog.ts';
 
 const MONTHS_RU = [
   "января", "февраля", "марта", "апреля", "мая", "июня",

@@ -4,7 +4,7 @@ vi.mock('@/utils/courseCache', () => ({ captureOfflineContext: () => ({ actorId:
 vi.mock('@/utils/proxyFetch', () => ({ proxiedAssetUrl: (url: string) => url }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mock.session, getUser: mock.identity } } }));
 vi.mock('@/lib/orgDocumentLifecycle', () => ({ createDocumentUploadOperation: () => { throw new Error('No upload in a signing read'); }, saveDocumentUpload: () => { throw new Error('No commit in a signing read'); }, restoreDocumentFile: () => { throw new Error('No restore in a signing read'); } }));
-import { createScopedOrgDocumentTransport } from '../programFiles';
+import { createScopedOrgDocumentTransport } from '../programFiles.ts';
 const actor = '00000000-0000-4000-8000-000000000001', org = '00000000-0000-4000-8000-000000000002';
 const path = org + '/versions/00000000-0000-4000-8000-000000000003/00000000-0000-4000-8000-000000000004.html';
 const signedURL = '/object/sign/org-documents/' + path + '?token=SYNTHETIC';

@@ -2,9 +2,9 @@ import {beforeEach,describe,it,expect,vi} from 'vitest';
 const m=vi.hoisted(()=>({actor:'',epoch:1,queue:[] as any[],calls:[] as any[],session:vi.fn()}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineContext:()=>({actorId:m.actor,revision:m.epoch}),isOfflineActorCurrent:(a:string,r:number)=>a===m.actor&&r===m.epoch}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:()=>m.session()},rpc:(name:string,args:any)=>({setHeader:(header:string,bearer:string)=>{m.calls.push({name,args:structuredClone(args),header,bearer});const next=m.queue.shift();return typeof next==='function'?next():Promise.resolve(next);}})}}));
-import * as api from '../client';
+import * as api from '../client.ts';
 import {captureEducationScope} from '@/lib/groupEducationFacts/client';
-import {confirm,detail,draft,id,receipt,scope} from './fixtures';
+import {confirm,detail,draft,id,receipt,scope} from './fixtures.ts';
 const actor=()=>captureEducationScope(scope.organization_id,scope.group_id,undefined,scope.course_id),ok=(data:unknown)=>({data,error:null});
 beforeEach(()=>{m.actor=id(40);m.epoch=1;m.queue=[];m.calls=[];m.session.mockReset().mockResolvedValue({data:{session:{user:{id:m.actor},access_token:'original'}},error:null});});
 describe('conducted sessions authorized transport',()=>{

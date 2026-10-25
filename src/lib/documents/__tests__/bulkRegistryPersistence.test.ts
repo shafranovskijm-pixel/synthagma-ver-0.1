@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { bulkRegistryRequest, confirmBulkRegistryRequest, persistBulkRegistryRequest } from '../bulkRegistryPersistence';
+import { bulkRegistryRequest, confirmBulkRegistryRequest, persistBulkRegistryRequest } from '../bulkRegistryPersistence.ts';
 const id='70000000-0000-4000-8000-000000000001';
 const company=()=>bulkRegistryRequest('company_documents',{id,company_id:'70000000-0000-4000-8000-000000000002',name:'Договор №1',type:'contract',contract_number:'1',contract_date:'2026-10-24',amount:3500,students_count:1,file_path:'org/bulk/exact.pdf'});
 function db(){const rows=new Map<string,any>();let readsFail=false,hidden=false;const insert=vi.fn(async(row:any):Promise<{error:unknown}>=>{if(rows.has(row.id))return{error:{code:'23505'}};rows.set(row.id,{...row,deleted_at:null});return{error:null};});return{rows,insert,setReadsFail:(v:boolean)=>readsFail=v,setHidden:(v:boolean)=>hidden=v,from:()=>{let selectedId='';return{select:()=>({eq:(_key:string,value:string)=>{selectedId=value;return{maybeSingle:async()=>readsFail?{data:null,error:{code:'NETWORK'}}:{data:hidden?null:rows.get(selectedId)||null,error:null}};}}),insert};}};}

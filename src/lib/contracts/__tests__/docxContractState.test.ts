@@ -14,7 +14,7 @@ import {
   evaluateDocxReadiness,
   studentRowFromSources,
   GORELTECH_CURRICULA,
-} from "../docxContract";
+} from '../docxContract.ts';
 
 const A = {
   id: "a", name: "ООО А", inn: "111", kpp: "222", ogrn: "333",

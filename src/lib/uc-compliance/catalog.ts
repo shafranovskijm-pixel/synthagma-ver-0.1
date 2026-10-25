@@ -1,4 +1,4 @@
-import type { LegalSource, RequirementDefinition, RuleCondition, ComplianceStage } from "./model";
+import type { LegalSource, RequirementDefinition, RuleCondition, ComplianceStage } from './model.ts';
 
 /** Product rule release, not an assertion that every legal source is current. */
 export const CATALOG_VERSION = "uc-requirements-2026-10-18-v1";

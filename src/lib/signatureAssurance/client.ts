@@ -1,9 +1,9 @@
 import {supabase} from '@/integrations/supabase/client';
 import {captureOfflineContext,isOfflineActorCurrent} from '@/utils/courseCache';
-import * as c from './contract';
-import type * as t from './types';
-import {AUTHENTICATED_RPC_ABI} from './types';
-import {assertEventPage,assertPage,SignatureEvidenceError,sameEvidenceValue,verifyAgreement,verifyConsent,verifyEvent,verifyLiteral,verifyManifest,verifyPolicy,verifySignatureContext} from './validation';
+import * as c from './contract.ts';
+import type * as t from './types.ts';
+import {AUTHENTICATED_RPC_ABI} from './types.ts';
+import {assertEventPage,assertPage,SignatureEvidenceError,sameEvidenceValue,verifyAgreement,verifyConsent,verifyEvent,verifyLiteral,verifyManifest,verifyPolicy,verifySignatureContext} from './validation.ts';
 
 export {SignatureEvidenceError};
 export interface SignatureAssuranceScope{actorId:string;accessRevision:number;organizationId:string;current?:()=>boolean}

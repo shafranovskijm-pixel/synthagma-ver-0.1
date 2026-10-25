@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROTOCOL_TEMPLATE, PROTOCOL_KNOWN_KEYS, renderProtocolTemplate } from "./protocolTemplate";
-import { validateTemplateVariables } from "../components/organization/contract-template/templateValidationRules";
+import { DEFAULT_PROTOCOL_TEMPLATE, PROTOCOL_KNOWN_KEYS, renderProtocolTemplate } from './protocolTemplate.ts';
+import { validateTemplateVariables } from '../components/organization/contract-template/templateValidationRules.ts';
 
 describe("protocol template substitution and scoped technical validation", () => {
   it("accepts the existing default without contract number, counterparty or price errors", () => {

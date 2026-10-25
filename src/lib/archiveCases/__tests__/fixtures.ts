@@ -1,5 +1,5 @@
-import{archiveSha256,archiveUtf8,type ArchivePackageBytes}from'../package';
-import type{ArchiveCase,ArchiveRule,ArchiveManifest,ArchiveCurrentGuard,ArchiveSource,ArchiveHoldEvent}from'../contract';
+import{archiveSha256,archiveUtf8,type ArchivePackageBytes}from'../package.ts';
+import type{ArchiveCase,ArchiveRule,ArchiveManifest,ArchiveCurrentGuard,ArchiveSource,ArchiveHoldEvent}from'../contract.ts';
 export const id=(n:number)=>'24000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export const org=id(1),actor=id(2),person=id(3),caseId=id(4),at='2026-01-01T00:00:00Z',hash='a'.repeat(64);
 export const source=(n=10):ArchiveSource=>({kind:'organization_document_version',document_id:id(n),version_id:id(n+1),content_hash:hash});

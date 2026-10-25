@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { captureOfflineContext, isOfflineActorCurrent } from '@/utils/courseCache';
 import { identificationUuid, identificationStateResult, identificationMutationResult, identificationPreparation,
-  type IdentificationRecord, type IdentificationAction, type IdentificationPreparation, type IdentificationSubject } from './contract';
+  type IdentificationRecord, type IdentificationAction, type IdentificationPreparation, type IdentificationSubject } from './contract.ts';
 
 export interface IdentificationScope { actorId: string; accessRevision: number; organizationId: string; studentUserId: string; enrollmentId: string | null; current?: () => boolean }
 export class IdentificationError extends Error {

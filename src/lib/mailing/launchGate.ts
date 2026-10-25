@@ -2,7 +2,7 @@
  * Единая точка правды «можно ли запускать рассылку сейчас».
  * Fail-closed: любая неизвестность блокирует запуск.
  */
-import { isValidEmail } from "./contactsImport";
+import { isValidEmail } from './contactsImport.ts';
 
 /**
  * В этой поставке реальная отправка выключена на уровне кода.

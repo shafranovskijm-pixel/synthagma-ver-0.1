@@ -3,8 +3,8 @@
  * Договор — дословно из шаблона ООО «ИЦ «ГОРЭЛТЕХ».
  * Остальные — по структуре документов архива группы 1-ПК-26.
  */
-import type { DocType } from "./schema";
-import { CONTRACT_BODY_HTML } from "./contractBody";
+import type { DocType } from './schema.ts';
+import { CONTRACT_BODY_HTML } from './contractBody.ts';
 
 export interface DocTemplate {
   doc_type: DocType;

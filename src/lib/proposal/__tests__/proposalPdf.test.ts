@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildProposalPagesHtml } from "../generateProposalPdf";
+import { buildProposalPagesHtml } from '../generateProposalPdf.ts';
 import {
   PROPOSAL_PDF_FILE_NAME,
   getPublicPlanSummaries,
   getEntryPaidPlan,
-} from "../proposalContent";
+} from '../proposalContent.ts';
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER } from "@/lib/pricingFeatureRows";
 

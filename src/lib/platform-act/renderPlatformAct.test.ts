@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { renderPlatformAct } from "./renderPlatformAct";
-import { stampBase64, signatureBase64 } from "./facsimileAssets";
+import { renderPlatformAct } from './renderPlatformAct.ts';
+import { stampBase64, signatureBase64 } from './facsimileAssets.ts';
 const input = { actNumber: "А-СЧ-2026/1", actDate: "2026-09-29", basis: "Счёт № СЧ-2026/1",
   amountKopecks: 100001, customerName: "Заказчик", customerInn: null, customerDirector: null,
   customerPosition: null, stampBase64, signatureBase64 };

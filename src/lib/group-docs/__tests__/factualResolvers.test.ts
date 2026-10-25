@@ -5,8 +5,8 @@ import {
   groupDocumentBatches,
   batchStatusLabel,
   normalizeRegistrationFact,
-} from "../factualResolvers";
-import { documentDataReadiness, emptyFactualData } from "../factualData";
+} from '../factualResolvers.ts';
+import { documentDataReadiness, emptyFactualData } from '../factualData.ts';
 
 describe("final test resolver", () => {
   const lessons = [

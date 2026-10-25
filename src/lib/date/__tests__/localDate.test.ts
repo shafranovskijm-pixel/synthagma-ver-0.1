@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { localDateIso, localDateIsoPlusMonths } from "../localDate";
+import { localDateIso, localDateIsoPlusMonths } from '../localDate.ts';
 
 describe("localDateIso", () => {
   afterEach(() => vi.useRealTimers());

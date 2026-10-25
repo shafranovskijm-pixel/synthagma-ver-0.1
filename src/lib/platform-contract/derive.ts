@@ -9,7 +9,7 @@ import type {
   PlatformContractCustomer,
   PlatformContractDraft,
   PlatformContractPeriodMonths,
-} from "./types";
+} from './types.ts';
 
 /** Тарифы, доступные для проекта договора. Ключи строго из SUBSCRIPTION_PLANS. */
 export const PLATFORM_CONTRACT_PLANS: SubscriptionPlan[] = [

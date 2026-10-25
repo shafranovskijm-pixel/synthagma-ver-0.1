@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SELF_EXAMINATION_SERVICE_PRICE } from '@/lib/selfExaminationPrice';
-import { SELF_EXAMINATION_SERVICE } from './policy';
-import type { SelfExaminationOrderReference } from './form';
+import { SELF_EXAMINATION_SERVICE } from './policy.ts';
+import type { SelfExaminationOrderReference } from './form.ts';
 export function prepareSelfExaminationOrder(reference:SelfExaminationOrderReference){return Object.freeze({id:crypto.randomUUID(),organization_id:reference.organization_id,service_id:SELF_EXAMINATION_SERVICE.id,service_title:SELF_EXAMINATION_SERVICE.title,service_price:SELF_EXAMINATION_SERVICE_PRICE.label,notes:JSON.stringify(reference),status:'pending'});}
 /** Same explicit order ID recovers an uncertain insert. No payment or historical order update. */
 export async function saveSelfExaminationOrder(order:ReturnType<typeof prepareSelfExaminationOrder>){

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BUILT_IN_TEMPLATES } from "@/components/organization/contract-template/builtInTemplates";
 import { validateTemplateVariables } from "@/components/organization/contract-template/templateValidationRules";
 import { getPreviewWithRealRequisites } from "@/components/organization/contract-template/realRequisitesPreview";
-import { assertContractOutput, ContractFactsError, emptyContractFacts, resolveContractFacts, substituteContractTemplate, type ContractFactKey } from "../contractFacts";
+import { assertContractOutput, ContractFactsError, emptyContractFacts, resolveContractFacts, substituteContractTemplate, type ContractFactKey } from '../contractFacts.ts';
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 import { org, course, second, approvedBinding } from "./contractFacts.fixture";

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { generateClassJournalDocx } from "../docxJournal";
-import { generatePackage } from "../generate";
-import { SAMPLE_CONTEXT } from "../sampleContext";
+import { generateClassJournalDocx } from '../docxJournal.ts';
+import { generatePackage } from '../generate.ts';
+import { SAMPLE_CONTEXT } from '../sampleContext.ts';
 import { compatibleArtifactSnapshot,id } from '@/lib/groupEducationFacts/__tests__/fixtures';
-import { GROUP_EDUCATION_COMPILER_REVISION } from '../docxJournal';
+import { GROUP_EDUCATION_COMPILER_REVISION } from '../docxJournal.ts';
 
 const supabaseInvokeMock = vi.hoisted(() => vi.fn());
 

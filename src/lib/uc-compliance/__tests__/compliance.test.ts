@@ -1,9 +1,9 @@
 // @vitest-environment node
 import {readFileSync} from "node:fs";
 import {describe,expect,it} from "vitest";
-import {createEmptyEducationProfile,parseEducationProfile,isEducationProfile,COMPLIANCE_STAGES,type EducationProfileV1,type ApplicabilityDecision} from "../model";
-import {REQUIREMENTS,REQUIREMENT_IDS,RELATED_REGISTRIES,CATALOG_VERSION,LEGAL_SOURCES} from "../catalog";
-import {evaluateRequirements,evaluateCondition} from "../evaluate";
+import {createEmptyEducationProfile,parseEducationProfile,isEducationProfile,COMPLIANCE_STAGES,type EducationProfileV1,type ApplicabilityDecision} from '../model.ts';
+import {REQUIREMENTS,REQUIREMENT_IDS,RELATED_REGISTRIES,CATALOG_VERSION,LEGAL_SOURCES} from '../catalog.ts';
+import {evaluateRequirements,evaluateCondition} from '../evaluate.ts';
 const asOf="2026-10-18";
 function profile(patch:Partial<EducationProfileV1>={}):EducationProfileV1{return {...createEmptyEducationProfile(),legalForm:"legal_entity",providerKind:"educational_organization",educationalActivity:true,programTypes:["dpo_upskilling"],usesElearning:false,usesDistanceLearning:false,paidEducation:false,hasEmployees:false,hiresTeachers:false,hasPracticalTraining:false,usesNetworkForm:false,servesMinors:false,servesDisabilities:false,specialAreas:[],...patch};}
 const evaluate=(p=profile(),options:Parameters<typeof evaluateRequirements>[1]={})=>evaluateRequirements(p,{asOf,profileRevision:1,...options});

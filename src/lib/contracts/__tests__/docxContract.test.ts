@@ -6,8 +6,8 @@ import {
   evaluateDocxReadiness,
   isDocxDraftReady,
   type DocxContractDraft,
-} from "../docxContract";
-import { canProceedStep } from "../wizardFlow";
+} from '../docxContract.ts';
+import { canProceedStep } from '../wizardFlow.ts';
 
 const CURRICULUM = GORELTECH_CURRICULA[0];
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campaignRunFeedback, campaignPauseFeedback, readCampaignRunFeedback } from "../campaignRunFeedback";
+import { campaignRunFeedback, campaignPauseFeedback, readCampaignRunFeedback } from '../campaignRunFeedback.ts';
 
 describe("truthful campaign run responses", () => {
   it("recognizes an explicit started batch without promising final delivery", () => {

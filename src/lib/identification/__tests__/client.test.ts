@@ -2,7 +2,7 @@ import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest';
 import {createClient} from '@supabase/supabase-js';
 import {Capacitor} from '@capacitor/core';
 import {setOfflineAuthActor,captureOfflineContext} from '@/utils/courseCache';
-import {captureIdentificationScope,readIdentificationStates,prepareIdentification,decideIdentification,readIdentificationMedia,submitIdentification} from '../client';
+import {captureIdentificationScope,readIdentificationStates,prepareIdentification,decideIdentification,readIdentificationMedia,submitIdentification} from '../client.ts';
 const mocks=vi.hoisted(()=>({session:vi.fn(),rpc:vi.fn(),invoke:vi.fn(),headers:[] as string[],response:null as any}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mocks.session},rpc:mocks.rpc,functions:{invoke:mocks.invoke}}}));
 const id=(suffix:string)=>`11111111-1111-4111-8111-${suffix.padStart(12,'0')}`;

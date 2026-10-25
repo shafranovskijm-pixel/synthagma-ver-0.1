@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { compliancePreparation, groupDocumentSelectionPath, isGroupDocumentTask, readCompliancePreparation } from "./complianceTaskNavigation";
-import { readConstructorView, setConstructorViewParams, setDocumentViewParams } from "./documentWorkspaceNavigation";
+import { compliancePreparation, groupDocumentSelectionPath, isGroupDocumentTask, readCompliancePreparation } from './complianceTaskNavigation.ts';
+import { readConstructorView, setConstructorViewParams, setDocumentViewParams } from './documentWorkspaceNavigation.ts';
 
 const paramsOf = (href: string) => new URLSearchParams(href.split("?")[1]);
 

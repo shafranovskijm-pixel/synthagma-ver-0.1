@@ -11,12 +11,12 @@ import {
   emptyFactualData,
   journalDateColumns,
   NO_RESULT_TEXT,
-} from "../factualData";
-import { generateDocument } from "../generate";
-import { GROUP_DOCUMENT_TYPES } from "../groupDocuments";
-import { PACKAGE_DOC_TYPES } from "../packageTypes";
-import { getTemplate } from "../templates";
-import type { DocType, GenerationContext } from "../schema";
+} from '../factualData.ts';
+import { generateDocument } from '../generate.ts';
+import { GROUP_DOCUMENT_TYPES } from '../groupDocuments.ts';
+import { PACKAGE_DOC_TYPES } from '../packageTypes.ts';
+import { getTemplate } from '../templates.ts';
+import type { DocType, GenerationContext } from '../schema.ts';
 
 const students = [
   { user_id: "u1", full_name: "Иванов Иван Иванович" },

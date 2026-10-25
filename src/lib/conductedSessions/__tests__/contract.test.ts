@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import * as c from '../contract';
-import {confirm,detail,draft,id,scope} from './fixtures';
+import * as c from '../contract.ts';
+import {confirm,detail,draft,id,scope} from './fixtures.ts';
 describe('conducted session provenance contract',()=>{
  it('requires explicit attendance and human attestation, never accepts technical progress as attendance',()=>{
   expect(c.sessionAction.safeParse(confirm()).success).toBe(true);

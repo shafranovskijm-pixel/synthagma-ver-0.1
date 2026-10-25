@@ -1,5 +1,5 @@
-import type { DrivingAdapter, State, Row, Entry } from './types';
-import { schoolDateTime, schoolTimeToUtc } from './time';
+import type { DrivingAdapter, State, Row, Entry } from './types.ts';
+import { schoolDateTime, schoolTimeToUtc } from './time.ts';
 // This module has no network, Auth, storage or database imports. It is loaded only by the DEV route.
 export function createPreviewAdapter(role:State['user']['role']='owner'):DrivingAdapter&{failNext:()=>void} {
  if(!import.meta.env.DEV) throw new Error('Синтетический стенд недоступен в production');

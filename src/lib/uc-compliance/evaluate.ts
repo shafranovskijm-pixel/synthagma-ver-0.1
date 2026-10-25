@@ -1,6 +1,6 @@
-import { REQUIREMENTS, CATALOG_VERSION } from "./catalog";
+import { REQUIREMENTS, CATALOG_VERSION } from './catalog.ts';
 import { parseEducationProfile, type EducationProfileV1, type Applicability, type RuleCondition,
-  type ApplicabilityDecision, type ComplianceDocumentEvidence, type ComplianceEvaluation, type EvaluatedRequirement } from "./model";
+  type ApplicabilityDecision, type ComplianceDocumentEvidence, type ComplianceEvaluation, type EvaluatedRequirement } from './model.ts';
 
 export interface EvaluationOptions {
   profileRevision?: number | null; asOf?: string; documents?: readonly ComplianceDocumentEvidence[];

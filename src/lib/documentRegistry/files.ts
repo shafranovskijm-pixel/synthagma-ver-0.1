@@ -1,8 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { createDocumentUploadOperation, saveDocumentUpload, type DocumentUploadOperation, type OrgDocumentClient } from '@/lib/orgDocumentLifecycle';
-import { requireRegistryScope, requireRegistrySession, type DocumentRegistryScope } from './client';
-import { DocumentRegistryError } from './errors';
-import type { RegistryFile, RegistryReadSource } from './contract';
+import { requireRegistryScope, requireRegistrySession, type DocumentRegistryScope } from './client.ts';
+import { DocumentRegistryError } from './errors.ts';
+import type { RegistryFile, RegistryReadSource } from './contract.ts';
 
 /** Keep the same operation after transport uncertainty; committed/staged bytes are never cleaned up here. */
 export function prepareRegistrySourceUpload(organizationId: string, file: File, title: string) {

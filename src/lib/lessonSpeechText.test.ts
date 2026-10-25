@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { htmlToBlocks, parseLessonContent } from '@/components/course-builder/block-editor/parsers';
 import type { ContentBlock } from '@/components/course-builder/block-editor/types';
-import { lessonBlocksToSpeechText, speechTextFromHtml } from './lessonSpeechText';
-import { splitSpeechText } from './browserSpeech';
+import { lessonBlocksToSpeechText, speechTextFromHtml } from './lessonSpeechText.ts';
+import { splitSpeechText } from './browserSpeech.ts';
 
 describe('readable lesson text', () => {
   it('keeps h3/h4 and actual imported tableRows in their lesson order', () => {

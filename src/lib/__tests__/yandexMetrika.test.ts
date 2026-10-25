@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   reachYandexGoal,
   YANDEX_METRIKA_COUNTER_ID,
-} from "../yandexMetrika";
+} from '../yandexMetrika.ts';
 
 type WindowWithMetrika = Window & {
   ym?: ReturnType<typeof vi.fn>;

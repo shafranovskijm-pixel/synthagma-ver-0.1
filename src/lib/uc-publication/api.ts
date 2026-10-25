@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { calendarDate, publicEditionSchema, publicationBasisSchema, publicationEventSchema, publicationUuid, publicationInstant, publicationSha256 } from "./model";
-import { projectPublication } from "./projection";
+import { calendarDate, publicEditionSchema, publicationBasisSchema, publicationEventSchema, publicationUuid, publicationInstant, publicationSha256 } from './model.ts';
+import { projectPublication } from './projection.ts';
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const identifier = z.string().regex(/^[A-Za-z0-9_.:-]{1,200}$/);
 const text = z.string().min(1).max(4000).refine(v => !!v.trim());

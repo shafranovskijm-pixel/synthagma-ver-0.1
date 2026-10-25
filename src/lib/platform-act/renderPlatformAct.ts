@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
-import { clampRequisite, escapeHtml } from "../html/escapeHtml";
+import { clampRequisite, escapeHtml } from '../html/escapeHtml.ts';
 
 export interface PlatformActRenderInput {
   actNumber: string;

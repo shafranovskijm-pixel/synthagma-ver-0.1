@@ -1,4 +1,4 @@
-import{archiveCase,archiveDate,ArchiveError,type ArchiveCase,type ArchiveHoldEvent}from'./contract';
+import{archiveCase,archiveDate,ArchiveError,type ArchiveCase,type ArchiveHoldEvent}from'./contract.ts';
 export interface ArchiveRetentionResult{status:'review_required'|'held'|'retaining'|'candidate_for_review';rule_id:string|null;rule_revision:number|null;start_on:string|null;minimum_keep_through:string|null;first_candidate_review_on:string|null;active_hold_ids:string[];blockers:ArchiveError['code'][];destruction_authorized:false}
 /** Never releases a hold merely because a review date has passed. */
 export function currentArchiveHolds(events:ArchiveHoldEvent[]):string[]{

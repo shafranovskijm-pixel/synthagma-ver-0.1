@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { crmClientSchema, OrgCrmError, parseOrgCrmSnapshot, type OrgCrmClient, type OrgCrmSnapshot } from "./orgCrm";
+import { crmClientSchema, OrgCrmError, parseOrgCrmSnapshot, type OrgCrmClient, type OrgCrmSnapshot } from './orgCrm.ts';
 
 const id = z.string().uuid();
 const entityType = z.enum(["company", "student"]);

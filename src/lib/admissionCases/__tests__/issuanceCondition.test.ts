@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { admissionStaffCaseSchema, admissionLocalRequirementInputSchema, admissionCaseActionSchema } from "../contract";
-import { admissionIssuanceConditionSchema, admissionIssuanceEvidenceSchema } from "../issuanceCondition";
-import { staffCase, id, program, caseId, localSource } from "./fixtures";
+import { admissionStaffCaseSchema, admissionLocalRequirementInputSchema, admissionCaseActionSchema } from '../contract.ts';
+import { admissionIssuanceConditionSchema, admissionIssuanceEvidenceSchema } from '../issuanceCondition.ts';
+import { staffCase, id, program, caseId, localSource } from './fixtures.ts';
 describe("optional issuance phase preserves historical admission decisions",()=>{
   it("parses an old untyped case without adding a condition, evidence or a new decision",()=>{
     const original=staffCase(),parsed=admissionStaffCaseSchema.parse(original);

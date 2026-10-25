@@ -1,6 +1,6 @@
 import { compatibleArtifactSnapshot,id,time,scope,hash } from '@/lib/groupEducationFacts/__tests__/fixtures';
 import { outcome } from '@/lib/learningOutcomes/__tests__/fixtures';
-import { sessionDetail,type DraftResponse,type SessionAction,type SessionDetail } from '../contract';
+import { sessionDetail,type DraftResponse,type SessionAction,type SessionDetail } from '../contract.ts';
 export {id,time,scope,hash};
 export function detail():SessionDetail {
  const snap=compatibleArtifactSnapshot(),lesson=snap.projection.calendar.lessons[0];

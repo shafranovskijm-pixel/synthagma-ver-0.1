@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { captureOfflineContext, isOfflineActorCurrent } from '@/utils/courseCache';
-import * as c from './contract';
+import * as c from './contract.ts';
 
 export interface AdmissionActorScope {
   actorId: string; accessRevision: number; organizationId: string; studentUserId: string;

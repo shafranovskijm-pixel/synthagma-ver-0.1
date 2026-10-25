@@ -1,5 +1,5 @@
 // @vitest-environment node
-import {describe,it,expect} from 'vitest';import {verifyScopedJournalExport} from '../scopedExport';import {si,sc,manifest,storedExport,sid} from './scopedFixtures';
+import {describe,it,expect} from 'vitest';import {verifyScopedJournalExport} from '../scopedExport.ts';import {si,sc,manifest,storedExport,sid} from './scopedFixtures.ts';
 const expected={organizationId:si.org,journalId:si.journal,context:sc,exportId:si.export};
 describe('actual saved UTF8 export verification, never a visible-page renderer',()=>{
  it.each([0,1,26,51])('accepts all %i saved records and keeps exact stored text bytes',async count=>{const saved=await storedExport(manifest(count)),result=await verifyScopedJournalExport(saved,expected,()=>true);expect(result.manifest.records).toHaveLength(count);expect(result.manifestText).toBe(saved.manifest_text);expect(result.htmlText).toBe(saved.html_text);expect(new TextDecoder().decode(result.manifestBytes)).toBe(saved.manifest_text);});

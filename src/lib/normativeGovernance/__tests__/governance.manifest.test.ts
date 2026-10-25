@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { CATALOG_VERSION, CATALOG_AS_OF, LEGAL_SOURCES, REQUIREMENTS } from "@/lib/uc-compliance/catalog";
-import { canonicalNormativeJson, createNormativeManifest, normativeDate, normativeSha256, verifyNormativeManifest } from "../manifest";
-import { manifestImpact, parseGovernanceSnapshot } from "../model";
+import { canonicalNormativeJson, createNormativeManifest, normativeDate, normativeSha256, verifyNormativeManifest } from '../manifest.ts';
+import { manifestImpact, parseGovernanceSnapshot } from '../model.ts';
 import { ORG_A, ORG_B, sampleManifest, sampleRequirement, sampleSource, snapshot } from "./normative.fixture";
 describe("UC030 immutable metadata and independent governance states", () => {
  it("captures all real current32 IDs and legacy source facts without upgrading their legal status", async () => {

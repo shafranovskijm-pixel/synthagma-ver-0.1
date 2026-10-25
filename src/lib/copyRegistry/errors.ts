@@ -1,4 +1,4 @@
-import { copyErrorCodeSchema, type CopyErrorCode } from './contract';
+import { copyErrorCodeSchema, type CopyErrorCode } from './contract.ts';
 
 export class CopyRegistryError extends Error {
   constructor(readonly code: CopyErrorCode = 'DEPENDENCY_UNAVAILABLE') { super(code); this.name = 'CopyRegistryError'; }

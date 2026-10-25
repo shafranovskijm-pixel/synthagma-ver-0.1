@@ -1,4 +1,4 @@
-import type { LandingTemplate } from "./types";
+import type { LandingTemplate } from './types.ts';
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import labHero from "@/assets/landing-templates/lab-hero.jpg";
 import labSectionBg from "@/assets/landing-templates/decor/lab-section.webp";

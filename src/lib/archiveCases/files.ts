@@ -1,7 +1,7 @@
 import{z}from'zod';
-import{ArchiveError,archiveErrorCode,archiveHash,archiveManifest,archivePackageSummary,archiveRestore,archiveScope,archiveSource,archiveUuid,type ArchiveManifest,type ArchiveSource}from'./contract';
-import{assertArchiveScope,requireArchiveJwt,type ArchiveClientScope}from'./client';
-import{archiveSha256,archiveUtf8,canonicalArchiveJson,verifyArchivePackage}from'./package';
+import{ArchiveError,archiveErrorCode,archiveHash,archiveManifest,archivePackageSummary,archiveRestore,archiveScope,archiveSource,archiveUuid,type ArchiveManifest,type ArchiveSource}from'./contract.ts';
+import{assertArchiveScope,requireArchiveJwt,type ArchiveClientScope}from'./client.ts';
+import{archiveSha256,archiveUtf8,canonicalArchiveJson,verifyArchivePackage}from'./package.ts';
 const MAX_BROWSER_PACKAGE_BYTES=256*1024*1024;
 type EdgeName='archive-case-read'|'archive-case-package'|'archive-case-restore'|'archive-rule-source-check';
 async function invoke(scope:ArchiveClientScope,name:EdgeName,body:object,maxBytes:number):Promise<{bytes:Uint8Array;headers:Headers}>{

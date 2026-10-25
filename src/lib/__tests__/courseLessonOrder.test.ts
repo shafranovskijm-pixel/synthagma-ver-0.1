@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { orderCourseLessons } from '../courseLessonOrder';
+import { orderCourseLessons } from '../courseLessonOrder.ts';
 
 const modules = [{ id: 'm2', order_index: 1 }, { id: 'm1', order_index: 0 }];
 const lesson = (id: string, order_index: number, module_id: string | null = null) => ({ id, order_index, module_id });

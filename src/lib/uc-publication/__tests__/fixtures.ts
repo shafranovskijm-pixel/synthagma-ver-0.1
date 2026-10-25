@@ -1,4 +1,4 @@
-import type { PublicationRecord, PublicationRule } from "../api";
+import type { PublicationRecord, PublicationRule } from '../api.ts';
 export const id = (n: number) => "00000000-0000-0000-0000-" + String(n).padStart(12, "0");
 export const org = id(1), actor = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", sha = "a".repeat(64), now = "2026-10-24T10:00:00.123456Z";
 export const basis = () => ({ catalogVersion: "2026-10-18", requirementId: "self_examination_report", requirementVersion: "1", profileRevision: 2, applicabilityDecisionRevision: 3, legalReview: "needs_legal_review" as const, sourceRevisionSha256: sha });

@@ -1,5 +1,5 @@
-import type * as t from '../types';
-import {evidenceSha256} from '../validation';
+import type * as t from '../types.ts';
+import {evidenceSha256} from '../validation.ts';
 export const id=(value:number)=>'00000000-0000-4000-8000-'+String(value).padStart(12,'0');
 export const org=id(1),actor=id(2),subject=id(3),signature=id(4),stamp='2026-10-23T00:00:00.000Z',zero='0'.repeat(64);
 export const authority:t.AuthorityFact={kind:'self',declaration:null,document_reference:null,verification:'not_verified'};

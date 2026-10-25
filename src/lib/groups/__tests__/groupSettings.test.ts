@@ -8,7 +8,7 @@ import {
   resolveUniqueCommonCourseId,
   suggestTrainingDates,
   verifySavedSettings,
-} from "../groupSettings";
+} from '../groupSettings.ts';
 
 describe("group course defaults", () => {
   it("предзаполняет группу данными выбранного курса", () => {

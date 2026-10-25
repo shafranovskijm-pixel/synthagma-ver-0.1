@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { downloadHtmlWord } from '../downloadHtmlWord';
+import { downloadHtmlWord } from '../downloadHtmlWord.ts';
 const m = vi.hoisted(() => ({ convert: vi.fn(), download: vi.fn(), error: vi.fn() }));
 vi.mock('@/lib/docx/htmlToDocx', async (original) => ({ ...await original<typeof import('@/lib/docx/htmlToDocx')>(), htmlToDocxBlob: m.convert, downloadBlob: m.download }));
 vi.mock('sonner', () => ({ toast: { error: m.error } }));

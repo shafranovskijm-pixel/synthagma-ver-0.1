@@ -1,8 +1,8 @@
 import { STUDENT_MONTHLY_QUOTA_LABEL, STUDENT_MONTHLY_QUOTA_DESCRIPTION, STUDENT_RECORDS_STORAGE_LABEL, STUDENT_RECORDS_STORAGE_DESCRIPTION } from "@/lib/studentQuotaRules";
 import { OPERATOR } from "@/constants/operatorDetails";
 import { clampRequisite, escapeHtml as escapeHtmlValue, HTML_WRAP_STYLE } from "@/lib/html/escapeHtml";
-import { formatRub } from "./derive";
-import type { PlatformContractDraft } from "./types";
+import { formatRub } from './derive.ts';
+import type { PlatformContractDraft } from './types.ts';
 
 /**
  * Единый генератор HTML проекта договора СИНТАГМЫ.

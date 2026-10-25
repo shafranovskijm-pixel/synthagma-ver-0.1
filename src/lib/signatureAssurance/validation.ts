@@ -1,5 +1,5 @@
-import * as c from './contract';
-import type * as t from './types';
+import * as c from './contract.ts';
+import type * as t from './types.ts';
 
 export class SignatureEvidenceError extends Error {
   constructor(readonly code:t.ErrorCode='DEPENDENCY_UNAVAILABLE'){super(code);this.name='SignatureEvidenceError';}

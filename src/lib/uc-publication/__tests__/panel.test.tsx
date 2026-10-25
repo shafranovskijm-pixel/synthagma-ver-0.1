@@ -5,7 +5,7 @@ vi.mock("@/hooks/useAuth", () => ({ useAuth: () => mock.auth }));
 vi.mock("@/hooks/usePublicationCalendar", () => ({ usePublicationCalendar: () => mock.data }));
 import { PublicationCalendarPanel } from "@/components/organization/compliance/PublicationCalendarPanel";
 import { COMPLIANCE_CATALOG_VERSION } from "@/lib/uc-compliance/catalog";
-import { actor, org, record, rule } from "./fixtures";
+import { actor, org, record, rule } from './fixtures.ts';
 const props = () => ({ organizationId: org, profileRevision: 2, decisions: [{ requirement_id: "self_examination_report", revision: 3, decision: "applicable", profile_revision: 2, catalog_version: COMPLIANCE_CATALOG_VERSION }] as any, documents: [], canRead: true, canWrite: true, canSign: true });
 beforeEach(() => { mock.auth = { user: { id: actor }, userRole: "admin" }; mock.data = { key: "first", data: { rules: [rule()], records: [{ streamId: "stream", record: record() }], tasks: [], hasMoreRecords: false, hasMoreTasks: false }, loading: false, saving: false, denied: false, error: null, uncertain: false, mutate: vi.fn(async () => true), reload: vi.fn(), retry: vi.fn(), check: vi.fn(), readEditions: vi.fn(), readHistory: vi.fn(), loadMore: vi.fn() }; });
 afterEach(cleanup);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { classifyRuntimeRequest, runtimeRequestMatcher, cleanPrivateRuntimeCaches, privateCleanupWorkerSource } from './privateCachePolicy';
+import { classifyRuntimeRequest, runtimeRequestMatcher, cleanPrivateRuntimeCaches, privateCleanupWorkerSource } from './privateCachePolicy.ts';
 import { memoryCacheStorage } from '@/test/offlineMemoryStorage';
 
 const origin = 'https://xn--80aaiswd0ak.xn--p1ai';

@@ -1,6 +1,6 @@
 import{describe,expect,it,vi}from'vitest';
-import{archivePackageRequest,type ArchivePackageRuntime,type ArchiveRuntimeClient}from'../../../../supabase/functions/archive-case-package/http';
-import{actor,id,org}from'./fixtures';
+import{archivePackageRequest,type ArchivePackageRuntime,type ArchiveRuntimeClient}from'../../../../supabase/functions/archive-case-package/http.ts';
+import{actor,id,org}from'./fixtures.ts';
 const input={version:1,action:'build_package',organization_id:org,scope:{kind:'organization'},package_id:id(700),request_id:id(900)};
 function runtime(){const getUser=vi.fn(async()=>({data:{user:{id:actor}},error:null as unknown}));const rpc=vi.fn(async()=>({data:null,error:{message:'ACCESS_DENIED'}}));const client={auth:{getUser},rpc,storage:{from:()=>({download:vi.fn(),upload:vi.fn()})}}as unknown as ArchiveRuntimeClient;const createCaller=vi.fn(()=>client),createService=vi.fn(()=>client),readProtected=vi.fn();return{getUser,rpc,createCaller,createService,readProtected,configured:true} satisfies ArchivePackageRuntime&{getUser:typeof getUser;rpc:typeof rpc};}
 function request(body:unknown=input,headers:Record<string,string>={authorization:'Bearer synthetic-original-jwt','content-type':'application/json'}){return new Request('https://fixture.invalid/archive-case-package',{method:'POST',headers,body:JSON.stringify(body)});}

@@ -1,9 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { ToolHandlerResult } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { renderPlatformAct } from "../platform-act/renderPlatformAct";
-import { signatureBase64, stampBase64 } from "../platform-act/facsimileAssets";
-import { approvedStoragePath, type InvoiceContext } from "./invoice-source";
+import { renderPlatformAct } from '../platform-act/renderPlatformAct.ts';
+import { signatureBase64, stampBase64 } from '../platform-act/facsimileAssets.ts';
+import { approvedStoragePath, type InvoiceContext } from './invoice-source.ts';
 
 const uuid = z.string().uuid();
 const hash = z.string().regex(/^[0-9a-f]{64}$/);

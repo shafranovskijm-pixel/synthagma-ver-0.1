@@ -1,6 +1,6 @@
 import{describe,it,expect}from'vitest';
-import{verifyIssuedSignatureSource,type IssuedSignatureSource,type IssuedSignatureSourceScope}from'../issuedArtifactEvidence';
-import{id,org,actor,signature,stamp}from'./fixtures';
+import{verifyIssuedSignatureSource,type IssuedSignatureSource,type IssuedSignatureSourceScope}from'../issuedArtifactEvidence.ts';
+import{id,org,actor,signature,stamp}from'./fixtures.ts';
 function sample():IssuedSignatureSource{return{version:1,kind:'controlled_education_artifact',organization_id:org,signature_id:signature,record_id:id(200),record_revision:3,record_state_sha256:'1'.repeat(64),subject_user_id:actor,enrollment_id:id(201),group_id:id(202),
  artifact:{preparation_id:id(203),item_id:id(204),input_revision:1,source:{kind:'org_document_version',document_id:id(205),version_id:id(206),content_hash:'2'.repeat(64)},byte_sha256:'3'.repeat(64),byte_size:1000,render_input_hash:'4'.repeat(64),template_byte_sha256:'5'.repeat(64),html_sha256:'6'.repeat(64),renderer:'browserless',renderer_revision:'uc019-v1',output_review_id:id(207),output_review_revision:1},
  object:{id:id(208),updated_at:stamp},file:{bucket:'org-documents',path:org+'/versions/'+id(205)+'/'+id(209)+'.pdf',sha256:'3'.repeat(64),bytes:1000,mime:'application/pdf'},byte_assurance:'trusted_issuance_attestation',current_byte_reread:false,cryptographic_signature_verification:'not_performed'};}

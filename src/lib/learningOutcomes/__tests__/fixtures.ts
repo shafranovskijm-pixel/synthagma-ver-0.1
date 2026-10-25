@@ -1,4 +1,4 @@
-import type { LearningCriteriaDefinition, LearningCriteriaEnvelope, LearningCriteriaOptions, LearningCriteriaVersion, OutcomeEnvelope, OutcomeScope } from '../contract';
+import type { LearningCriteriaDefinition, LearningCriteriaEnvelope, LearningCriteriaOptions, LearningCriteriaVersion, OutcomeEnvelope, OutcomeScope } from '../contract.ts';
 
 export const id = (number: number) => `11111111-1111-4111-8111-${String(number).padStart(12, '0')}`;
 export const actor = id(1), organization = id(2), learner = id(3), course = id(4), enrollment = id(5);

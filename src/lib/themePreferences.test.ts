@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ADMIN_THEMES } from "@/constants/admin-themes";
-import { applySharedTheme, applyThemePreferences, readDeviceThemePreferences, restorePersonalTheme, DEFAULT_THEME_PREFERENCES } from "./themePreferences";
+import { applySharedTheme, applyThemePreferences, readDeviceThemePreferences, restorePersonalTheme, DEFAULT_THEME_PREFERENCES } from './themePreferences.ts';
 
 beforeEach(() => { localStorage.clear(); document.documentElement.removeAttribute("style"); document.documentElement.className = ""; });
 describe("personal and shared theme persistence", () => {

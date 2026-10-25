@@ -6,7 +6,7 @@ import {
   isCompleteSmtpResponse,
   parseSmtpResponse,
   SMTP_EXPECTED,
-} from "../../../../supabase/functions/_shared/smtp-protocol";
+} from '../../../../supabase/functions/_shared/smtp-protocol.ts';
 
 describe("SMTP response parser", () => {
   it("rejects empty/EOF response", () => {

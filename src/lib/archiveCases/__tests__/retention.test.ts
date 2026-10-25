@@ -1,7 +1,7 @@
 import{describe,it,expect}from'vitest';
-import{archiveCase as parseCase,archiveDate,ArchiveError}from'../contract';
-import{currentArchiveHolds,evaluateArchiveRetention}from'../retention';
-import{archiveCase,hold,id,source,actor}from'./fixtures';
+import{archiveCase as parseCase,archiveDate,ArchiveError}from'../contract.ts';
+import{currentArchiveHolds,evaluateArchiveRetention}from'../retention.ts';
+import{archiveCase,hold,id,source,actor}from'./fixtures.ts';
 describe('reviewed archive retention and append-only hold facts',()=>{
  it('calculates supplied3-year rule only from actual closure and never authorizes destruction',()=>{const result=evaluateArchiveRetention(archiveCase(),'2029-12-31');expect(result).toMatchObject({status:'retaining',start_on:'2027-01-01',minimum_keep_through:'2029-12-31',first_candidate_review_on:'2030-01-01',destruction_authorized:false,blockers:['RETENTION_NOT_EXPIRED']});expect(evaluateArchiveRetention(archiveCase(),'2030-01-01')).toMatchObject({status:'candidate_for_review',destruction_authorized:false});});
  it('does not infer closure or duration from document validity, archive status or age',()=>{const value=archiveCase();value.rule=null;value.closure=null;expect(evaluateArchiveRetention(value,'2040-01-01')).toMatchObject({status:'review_required',start_on:null,blockers:['RETENTION_UNCLASSIFIED']});expect(parseCase.safeParse({...value,expires_at:'2027-01-01'}).success).toBe(false);});

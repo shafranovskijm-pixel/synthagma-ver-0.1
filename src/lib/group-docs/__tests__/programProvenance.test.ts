@@ -1,10 +1,10 @@
 import {describe,expect,it} from "vitest";
-import {generateDocument} from "../generate";
-import {SAMPLE_CONTEXT} from "../sampleContext";
-import {withProgramGeneration,type ProgramGeneration} from "../../../../supabase/functions/_shared/program-facts";
+import {generateDocument} from '../generate.ts';
+import {SAMPLE_CONTEXT} from '../sampleContext.ts';
+import {withProgramGeneration,type ProgramGeneration} from '../../../../supabase/functions/_shared/program-facts.ts';
 import {compatibleArtifactSnapshot,id} from '@/lib/groupEducationFacts/__tests__/fixtures';
-import {generatePackage} from '../generate';
-import {PACKAGE_DOC_TYPES} from '../packageTypes';
+import {generatePackage} from '../generate.ts';
+import {PACKAGE_DOC_TYPES} from '../packageTypes.ts';
 describe("generic group document programme source",()=>{
  it("keeps unbound programme output draft without an official number or approval claim",()=>{
   const provenance={schema_version:1 as const,state:"unconfirmed" as const,organization_id:"qa-org",group_id:"qa-group",course_id:null,reason:"no_confirmed_group_binding"};

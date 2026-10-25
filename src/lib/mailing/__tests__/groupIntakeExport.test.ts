@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildGroupIntakeCsv } from "../groupIntakeExport";
-import { parseRows } from "../../../utils/studentsExcelImport";
+import { buildGroupIntakeCsv } from '../groupIntakeExport.ts';
+import { parseRows } from '../../../utils/studentsExcelImport.ts';
 
 describe("group intake export", () => {
   it("keeps the outreach contact separate from import-ready participant fields", () => {

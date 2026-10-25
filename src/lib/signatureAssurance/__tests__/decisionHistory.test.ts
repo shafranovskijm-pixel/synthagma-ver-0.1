@@ -1,9 +1,9 @@
 import{beforeEach,describe,it,expect,vi}from'vitest';
 import{webcrypto}from'node:crypto';
-import{verifyPolicy,evidenceSha256}from'../validation';
-import{buildSignatureEvidencePack,type EvidencePackScope}from'../evidencePack';
-import{policy,twoPartyManifest,org,signature,actor,id}from'./fixtures';
-import type{PolicyVersion}from'../types';
+import{verifyPolicy,evidenceSha256}from'../validation.ts';
+import{buildSignatureEvidencePack,type EvidencePackScope}from'../evidencePack.ts';
+import{policy,twoPartyManifest,org,signature,actor,id}from'./fixtures.ts';
+import type{PolicyVersion}from'../types.ts';
 beforeEach(()=>{vi.stubGlobal('crypto',webcrypto);});
 const addRetirement=async(value:PolicyVersion)=>{const accepted=structuredClone(value.decision);const retired={...structuredClone(accepted),id:id(Number(accepted.revision)+700),revision:accepted.revision+1,state:'retired'as const,reason:'Synthetic retirement after the original acceptance'};value.decision_history=[accepted,retired];value.decision=structuredClone(retired);value.projection_json=JSON.stringify({body:value.body,body_sha256:value.body_sha256,disclosure:value.disclosure,decision_history:value.decision_history});value.projection_sha256=await evidenceSha256(value.projection_json);return value;};
 const scopeOf=(body:Awaited<ReturnType<typeof twoPartyManifest>>['body']):EvidencePackScope=>({organization_id:org,signature_id:signature,actor_user_id:actor,party_role:body.context.chosen_party,source_manifest_id:body.source_manifest_id,source_manifest_sha256:body.source_manifest_sha256,through_revision:body.through_revision});

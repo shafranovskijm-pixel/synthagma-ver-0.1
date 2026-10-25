@@ -12,8 +12,8 @@ export const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value
   return !value.startsWith("0000-") && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }, "Укажите существующую календарную дату");
 
-export { parsePublicPublicationUrl } from "../../../supabase/functions/_shared/uc-publication-url";
-import { parsePublicPublicationUrl } from "../../../supabase/functions/_shared/uc-publication-url";
+export { parsePublicPublicationUrl } from '../../../supabase/functions/_shared/uc-publication-url.ts';
+import { parsePublicPublicationUrl } from '../../../supabase/functions/_shared/uc-publication-url.ts';
 const publicUrl = z.string().refine(value => { try { return parsePublicPublicationUrl(value) === value; } catch { return false; } }, "Нужен канонический открытый HTTPS-адрес без реквизитов доступа");
 
 export const publicationBasisSchema = z.object({

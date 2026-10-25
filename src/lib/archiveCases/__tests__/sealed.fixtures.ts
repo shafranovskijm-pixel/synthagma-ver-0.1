@@ -1,8 +1,8 @@
 import{vi}from'vitest';
-import{ArchiveError,type ArchiveManifest}from'../contract';
-import{archiveSha256,archiveUtf8}from'../package';
-import type{ArchiveSealedReadPort}from'../sealedRead';
-import{actor,id,org,packageInput}from'./fixtures';
+import{ArchiveError,type ArchiveManifest}from'../contract.ts';
+import{archiveSha256,archiveUtf8}from'../package.ts';
+import type{ArchiveSealedReadPort}from'../sealedRead.ts';
+import{actor,id,org,packageInput}from'./fixtures.ts';
 export async function sealedFixture(partial=false){
  const original=await packageInput();const manifest:ArchiveManifest=JSON.parse(new TextDecoder().decode(original.manifest_bytes));if(partial){manifest.completeness='partial';manifest.blockers=['PACKAGE_INCOMPLETE'];}
  const bytes=archiveUtf8(manifest),hash=await archiveSha256(bytes);const input={...original,manifest_bytes:bytes,manifest_sha256:hash};
