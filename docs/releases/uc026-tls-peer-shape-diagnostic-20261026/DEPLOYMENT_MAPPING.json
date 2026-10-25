@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "kind": "uc026_tls_refusal_closed_shape_diagnostic_release",
+  "atUtc": "2026-10-25T18:24:37.901Z",
+  "base": {
+    "PR": 136,
+    "tree": "11feb8916aaaf2fbcce59f52db2e9be5073f3738",
+    "rootTree": {
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/resume-20261025/ACTUAL_PR136_RECURSIVE_TREE_11feb8_BY_ROOT.json",
+      "bytes": 1392781,
+      "sha256": "802910d73a2299c31225a21a4804d230200815a888b49843a8a1666c62f77517"
+    },
+    "rootFreshMainLeaseStillRequired": true
+  },
+  "function": "publication-accessibility",
+  "buildMarker": "uc026-tls-peer-shape-20261026-v1",
+  "code": [
+    {
+      "path": "supabase/functions/_shared/uc-publication-http.ts",
+      "bytes": 19071,
+      "sha256": "e91a6c1c10b710389a74fbb10a9931463f2c3aa9cfca5e0091403acd0fbd1b8d",
+      "gitBlob": "e732cb2ab89d40600b8821891d5ffc0f0469fcb1",
+      "expectedBefore": {
+        "mode": "100644",
+        "gitBlob": "7ccd2848a56c211f36ac93cc7b13158c0eab537f",
+        "bytes": 16192,
+        "sha256": "b0f4ac985c70459a2dca2053a37c4c2f0117af049f48214bd775d3a09cb4e3c9"
+      }
+    },
+    {
+      "path": "supabase/functions/publication-accessibility/runtime.bundle.js",
+      "bytes": 15186,
+      "sha256": "725799160d38edab098539891895fc160d78aa504551292f7200ce49088cec52",
+      "gitBlob": "08917cc08eead91dae25038e5399bd45a7c455a8",
+      "expectedBefore": {
+        "mode": "100644",
+        "gitBlob": "b449d5dd112f3b9a83fe227e75e06cd13d1f502c",
+        "bytes": 13892,
+        "sha256": "a01ba6c8234a2f6a03ac4a9e4ace82e4e1945fa98d2315ea91e78e4b498448c4"
+      }
+    },
+    {
+      "path": "supabase/functions/publication-accessibility/index.ts",
+      "bytes": 252,
+      "sha256": "e9a7f0a126bdb331f60571d961c11bcb88013abb31eb2e7ffaeff563babebada",
+      "gitBlob": "47244df3546483705707e550ff51715947ea9713",
+      "expectedBefore": {
+        "mode": "100644",
+        "gitBlob": "cde19e510e93276dd0168eb89216c6055c52e2e4",
+        "bytes": 129,
+        "sha256": "ac4be4407e225d7791585fce04bac526a868b3ed7340af030eb731808e8581e4"
+      }
+    }
+  ],
+  "deploymentEntryManifest": "docs/releases/uc026-tls-peer-shape-diagnostic-20261026/deployment-entry-manifest.json",
+  "compiledRuntimeManifest": "docs/releases/uc026-tls-peer-shape-diagnostic-20261026/bundle-source-manifest.json",
+  "exactFiveInputs": [
+    {
+      "id": "supabase/functions/_shared/uc-publication-http.ts",
+      "bytes": 19071,
+      "sha256": "e91a6c1c10b710389a74fbb10a9931463f2c3aa9cfca5e0091403acd0fbd1b8d"
+    },
+    {
+      "id": "supabase/functions/_shared/uc-publication-url.ts",
+      "bytes": 1109,
+      "sha256": "126293f643aada5d2245c37dc3d3dc924c81a5a447fe4cb35be026c4b25301d0"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/http.ts",
+      "bytes": 3175,
+      "sha256": "f97cf4a9cd5b84383bf4eeb17a6d04da51058f4833b8f90d4570c00fada380a6"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/runtime-source.ts",
+      "bytes": 1891,
+      "sha256": "a0690e8551b95563fb42b369d16b676ade96979ededcec7b3b75a6988494502c"
+    },
+    {
+      "id": "supabase/functions/publication-accessibility/worker.ts",
+      "bytes": 5272,
+      "sha256": "15e95181b06ae21c76a1670dc0a01b7eeedde0c58aee55d7d91beeb1107ebc18"
+    }
+  ],
+  "diagnostic": {
+    "onlyOn": "Original existing tls_transport guard refusal; unchanged boolean predicate.",
+    "logTag": "[PublicationCheckPeerShape]",
+    "marker": "uc026-tls-peer-shape-20261026-v1",
+    "fields": {
+      "inspection": [
+        "complete",
+        "unavailable"
+      ],
+      "transport": [
+        "absent",
+        "tcp",
+        "other"
+      ],
+      "prototype": [
+        "ordinary",
+        "null",
+        "other"
+      ],
+      "ownKeyCount": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4_plus",
+        "unavailable"
+      ],
+      "hostnameDescriptor": [
+        "absent",
+        "data",
+        "accessor"
+      ],
+      "portDescriptor": [
+        "absent",
+        "data",
+        "accessor"
+      ],
+      "hostnameMatchesPinned": "boolean",
+      "portMatches443": "boolean",
+      "tcpHostnameMatchesPinned": "boolean",
+      "tcpPortMatches443": "boolean"
+    },
+    "transportMeaning": "Own transport descriptor only: absent own property / own data value tcp / all other shapes; no property values are emitted.",
+    "failureFallback": "Fixed unavailable object; connection getters and descriptor/proxy exceptions are caught within diagnostic.",
+    "forbidden": [
+      "Actual IP or hostname",
+      "property names or symbols",
+      "remote property values",
+      "request/response/body/credentials",
+      "exception message or stack"
+    ],
+    "successLogs": 0,
+    "oldClosedGuardLogRetained": true
+  },
+  "preservation": {
+    "wholeOriginalSourceRecoveredByRemovingAddedHelperAndRestoringOneCallBranch": true,
+    "sourceInverse": {
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc026-tls-peer-shape-diagnostic-20261026/TWO_BLOCK_DIAGNOSTIC_B_ONLY_WHOLE_INVERSE.json",
+      "bytes": 3847,
+      "sha256": "5faac9f48b69efcacad9b4c085e57b92b1f3706005c1ccd16e366d496edd146d"
+    },
+    "sameTcpDnsIpTlsHostnamePortHandshakeAlpnFramingContentHashRules": true,
+    "unknownShapesStillDenied": true,
+    "originalReturnedResultAndIOTRaceSameInPairedTests": true,
+    "newNetworkRequests": 0,
+    "entryOriginalImportAndRemainderByteExact": true,
+    "entryCommentIncludesActualRuntimeSHA": true,
+    "configurationJWTAuthSQLWorkerHTTPUnchanged": true,
+    "oldReleaseEvidenceUntouched": true
+  },
+  "actual": {
+    "affected7": {
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc026-tls-peer-shape-diagnostic-20261026/getter-boundary-b/unit7/runtime-peer7/peer7.json",
+      "bytes": 7206,
+      "sha256": "266c169d1f713be062a127468bf3b9d428b54f28f70bf515b4e00b632ab67665"
+    },
+    "affected7Counts": {
+      "success": true,
+      "numTotalTests": 7,
+      "numPassedTests": 7,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0
+    },
+    "affected7PID": 14260,
+    "affected7Natural0": true,
+    "affected7FreshOwned": "EMPTY",
+    "sourceRuntimeDrift": [],
+    "API": {
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc026-tls-peer-shape-diagnostic-20261026/packaging/actual-build-one-tls-shape/result.json",
+      "bytes": 4389,
+      "sha256": "fa9b4b415bc12cd361cc2b7e41005feeb09a2085f59f32be2ace0d36b75d8c8d"
+    },
+    "APIPID": 18048,
+    "APINatural0": true,
+    "APIFreshOwned": "EMPTY",
+    "oneBuildCall": true,
+    "fiveTSInputs": true,
+    "fourActualOutputs": true,
+    "externalImports": [
+      "npm:@supabase/supabase-js@2.90.1"
+    ],
+    "APIAtBuildNetwork": false,
+    "old12Reruns": 0,
+    "earlierA7PASS": {
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc026-tls-peer-shape-diagnostic-20261026/unit7/runtime-peer7/peer7.json",
+      "bytes": 6945,
+      "sha256": "b409974289212950a7aa6be46f2ac3e1ae65ba3a55d70f216f36450e24c5a3f5"
+    },
+    "zeroTargetJunctionStop": {
+      "path": "C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/uc026-tls-peer-shape-diagnostic-20261026/unit7/ACTUAL_ZERO_TARGET_PREFLIGHT_WRONG_JUNCTION_STOP.json",
+      "bytes": 839,
+      "sha256": "47e1bfb00caba1dd3fada8b7d406eeaf3654c28a1858bbc43e6d5904b77d9b58"
+    }
+  },
+  "limits": {
+    "DenoDependencyResolutionVerified": false,
+    "hostedDenoVersionKnown": false,
+    "actualHostedPeerShapeKnown": false,
+    "providerDeployment": false,
+    "workingSiteAccepted": false,
+    "legalApproval": false
+  },
+  "next": "Root deploys exact entry/runtime preserving JWT and settings; one normal new UI check observes static marker and finite shape only. This diagnostic does not relax any refusal or establish hosted runtime version/cause."
+}
