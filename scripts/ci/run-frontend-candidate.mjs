@@ -125,8 +125,13 @@ try {
     const reportFile = path.join(reportDir, suite.id + '.json');
     const execution = await runEngine(suite.id, [path.join(sourceRoot, 'node_modules/vitest/vitest.mjs'), 'run', '--config', suite.config, '--pool=forks', '--reporter=json', '--outputFile=' + reportFile], 300000);
     try {
-      if (!execution.passed) throw Error('Vitest process failed or timed out');
-      const checked = checkVitestReport(JSON.parse(await fs.readFile(reportFile, 'utf8')), suite, sourceRoot);
+      const actualReport = JSON.parse(await fs.readFile(reportFile, 'utf8'));
+      if (!execution.passed) {
+        const diagnostics = { success: actualReport.success, total: actualReport.numTotalTests, passed: actualReport.numPassedTests, failed: actualReport.numFailedTests, pending: actualReport.numPendingTests, files: actualReport.testResults?.filter(file => file.status !== 'passed').map(file => ({ name: file.name, status: file.status, message: file.message, failedAssertions: file.assertionResults?.filter(assertion => assertion.status !== 'passed').map(assertion => ({ name: assertion.fullName, status: assertion.status, failures: assertion.failureMessages })) })), unhandledErrors: actualReport.unhandledErrors };
+        console.error(suite.id + ' actual JSON failure diagnostics: ' + JSON.stringify(diagnostics).slice(0, 20000));
+        throw Error('Vitest process failed or timed out');
+      }
+      const checked = checkVitestReport(actualReport, suite, sourceRoot);
       summary.stages.push({ ...checked, passed: true });
       console.log(suite.id + ': confirmed ' + checked.executed + '/' + suite.cases + ' assertions passed');
     } catch (error) {

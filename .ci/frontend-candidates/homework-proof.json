@@ -57,9 +57,9 @@
     {
       "path": "tests/homework-proof/setup.ts",
       "beforeSha256": null,
-      "afterSha256": "acbff5ca03f84d0d45bf7bfae8a5a42ba0a1750650f2ba94d1d3502ab03382fd",
-      "afterBytes": 969,
-      "content": "import { afterEach, beforeEach, vi } from 'vitest';\nimport { cleanup } from '@testing-library/react';\nimport { webcrypto } from 'node:crypto';\nimport { TextEncoder } from 'node:util';\n\nexport const ports = vi.hoisted(() => ({ auth: {} as any, rpc: vi.fn(), completed: 0 }));\nvi.mock('@/hooks/useAuth', () => ({ useAuth: () => ports.auth }));\nvi.mock('@/integrations/supabase/client', () => ({\n  supabase: {\n    rpc(name: string, args: unknown) {\n      return { abortSignal: async (signal: AbortSignal) => {\n        try { return await ports.rpc(name, args, signal); }\n        finally { ports.completed += 1; }\n      } };\n    },\n  },\n}));\nbeforeEach(() => {\n  ports.auth = {}; ports.rpc.mockReset(); ports.completed = 0;\n  vi.stubGlobal('crypto', webcrypto);\n  vi.stubGlobal('TextEncoder', TextEncoder);\n  vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Live network forbidden'); }));\n});\nafterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });\n"
+      "afterSha256": "2ca1c5fcff0b2a29ddfe3c95c6c45f7262e20b477a4eab107174c11b3b897c4a",
+      "afterBytes": 980,
+      "content": "import { afterEach, beforeEach, vi } from 'vitest';\nimport { cleanup } from '@testing-library/react';\nimport { webcrypto } from 'node:crypto';\nimport { TextEncoder } from 'node:util';\n\nconst ports = vi.hoisted(() => ({ auth: {} as any, rpc: vi.fn(), completed: 0 }));\nexport { ports };\nvi.mock('@/hooks/useAuth', () => ({ useAuth: () => ports.auth }));\nvi.mock('@/integrations/supabase/client', () => ({\n  supabase: {\n    rpc(name: string, args: unknown) {\n      return { abortSignal: async (signal: AbortSignal) => {\n        try { return await ports.rpc(name, args, signal); }\n        finally { ports.completed += 1; }\n      } };\n    },\n  },\n}));\nbeforeEach(() => {\n  ports.auth = {}; ports.rpc.mockReset(); ports.completed = 0;\n  vi.stubGlobal('crypto', webcrypto);\n  vi.stubGlobal('TextEncoder', TextEncoder);\n  vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Live network forbidden'); }));\n});\nafterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });\n"
     },
     {
       "path": "tests/homework-proof/vitest.config.mjs",
@@ -68,5 +68,14 @@
       "afterBytes": 499,
       "content": "import { defineConfig } from 'vitest/config';\nimport { fileURLToPath } from 'node:url';\nexport default defineConfig({\n  root: fileURLToPath(new URL('../../', import.meta.url)),\n  resolve: { alias: { '@': fileURLToPath(new URL('../../src', import.meta.url)) } },\n  esbuild: { jsx: 'automatic' },\n  test: { environment: 'jsdom', setupFiles: ['tests/homework-proof/setup.ts'], include: ['tests/homework-proof/homework-proof.test.tsx'], maxWorkers: 1, minWorkers: 1, retry: 0, testTimeout: 15000 },\n});\n"
     }
-  ]
+  ],
+  "testHarnessErrata": {
+    "sourceManifestSHA256": "1fb11aa66e614da0bc5c25afa6380852397565cd4d045e0d03b096741d6795e0",
+    "changes": [
+      "tests/homework-proof/setup.ts"
+    ],
+    "assertionsRemoved": 0,
+    "productFilesChanged": 0,
+    "status": "NOT_EXECUTED_NEW_FIX"
+  }
 }

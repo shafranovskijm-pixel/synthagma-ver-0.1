@@ -338,7 +338,7 @@
       ],
       "packet": {
         "path": ".ci/frontend-candidates/homework-proof.json",
-        "sha256": "cc1a5b263cfdb1bf97181ea311a2f0ca4080f5f0f35df99f72c97ed5e9ccf63d"
+        "sha256": "b4a8705ec85b0e30ea9c243650eb2438860535e9313120030f0f83165b4f4bd3"
       },
       "suites": [
         {
@@ -388,7 +388,7 @@
       ],
       "packet": {
         "path": ".ci/frontend-candidates/autoschool-entry.json",
-        "sha256": "6e1423664b0a4a1145d3d0760d762b76d9494c283fcc193885da4328eeb9e678"
+        "sha256": "233b2dc396b6779aa1e0aff35ac8c7df582c0f6ed0265e5e8b10a2d05ae836fe"
       },
       "suites": [
         {
