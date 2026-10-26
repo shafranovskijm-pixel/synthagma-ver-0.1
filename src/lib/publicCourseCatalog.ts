@@ -15,7 +15,7 @@ const rowSchema = z.object({
   course_id: z.string().uuid(),
   description_short: z.string().nullable(),
   course: z.object({
-    id: z.string().uuid(), title: z.string().trim().min(1),
+    id: z.string().uuid(), organization_id: z.literal(MARKETPLACE_ORG_ID), title: z.string().trim().min(1),
     description: z.string().nullable(), is_published: z.literal(true),
     hidden_from_catalog: z.boolean().nullable().optional(),
     category: z.object({
@@ -48,8 +48,9 @@ export type PublicCatalogPageFetcher = (
 
 export const fetchPublicCatalogPage: PublicCatalogPageFetcher = async (from, to, signal) => {
   const query = publicCatalogClient.from('marketplace_courses')
-    .select('id, course_id, description_short, course:courses!inner(id, title, description, is_published, hidden_from_catalog, category:course_categories(name, hidden_from_catalog))')
+    .select('id, course_id, description_short, course:courses!inner(id, organization_id, title, description, is_published, hidden_from_catalog, category:course_categories(name, hidden_from_catalog))')
     .eq('organization_id', MARKETPLACE_ORG_ID)
+    .eq('course.organization_id', MARKETPLACE_ORG_ID)
     .eq('is_active', true)
     .eq('is_validated', true)
     .eq('course.is_published', true)
