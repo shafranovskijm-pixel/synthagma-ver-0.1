@@ -27,7 +27,7 @@ export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrde
   ] : [
     { icon: Zap, text: "Доступ сразу после получения" },
     { icon: BookOpen, text: "Все материалы и тесты включены" },
-    { icon: Award, text: "Удостоверение по завершении" },
+    { icon: Award, text: "Документ и условия выдачи уточняются у учебного центра" },
   ];
 
   return (
