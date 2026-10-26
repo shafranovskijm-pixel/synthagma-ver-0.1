@@ -1,0 +1,450 @@
+{
+  "schemaVersion": 1,
+  "status": "ROOT_REVIEWABLE_CI_ONLY_SOURCE_CANDIDATE_NO_ENGINES_RUN_BY_AUTHOR",
+  "asOfDate": "2026-10-27",
+  "repository": "shafranovskijm-pixel/synthagma-ver-0.1",
+  "baseCommit": "05b306275484761c5dfd0e1bd17768bade1edbda",
+  "freshlyReadGitHubMain": "05b306275484761c5dfd0e1bd17768bade1edbda",
+  "sourcePR": 160,
+  "runtime": {
+    "node": "24.22.1",
+    "npm": "10.9.2",
+    "platform": "linux",
+    "productionNodeEnginesUnchanged": "20.x",
+    "nodeVersionPurpose": "CI only; exact official Node24 distribution available 2026-10-21; not a production runtime upgrade"
+  },
+  "packageBlob": "38098878514254b0d741e61e4c2265c26d3598a6",
+  "lockBlob": "414c0ac5bbaa094d800a2cdbd6c5efd81de38a0a",
+  "dependencyInstall": "npm ci --ignore-scripts --include=optional --no-audit --no-fund; existing legacy-peer-deps .npmrc preserved",
+  "installedDependencyPins": [
+    {
+      "path": "node_modules/typescript",
+      "version": "5.8.3"
+    },
+    {
+      "path": "node_modules/vitest",
+      "version": "4.0.18"
+    },
+    {
+      "path": "node_modules/vitest/node_modules/vite",
+      "version": "7.3.1"
+    },
+    {
+      "path": "node_modules/vite",
+      "version": "5.4.19"
+    },
+    {
+      "path": "node_modules/esbuild",
+      "version": "0.25.12"
+    },
+    {
+      "path": "node_modules/jsdom",
+      "version": "25.0.1"
+    },
+    {
+      "path": "node_modules/@testing-library/react",
+      "version": "16.3.2"
+    }
+  ],
+  "ciCheckoutFiles": [
+    ".github/workflows/pinned-frontend-candidates.yml",
+    "scripts/ci/deny-backend-network.mjs",
+    "scripts/ci/check-vitest-report.mjs",
+    "scripts/ci/run-frontend-candidate.mjs",
+    ".ci/frontend-candidates/homework-proof.json",
+    ".ci/frontend-candidates/autoschool-entry.json",
+    ".ci/frontend-candidates/manifest.json"
+  ],
+  "baselinePins": [
+    {
+      "path": "src/components/course-learning/HomeworkSubmission.tsx",
+      "blob": "b0fe10965a309f344e794af42fcd6db834ba6eea",
+      "sha256": "9d953f917c221bb8c4bdc397758f3f6560cdb3f6df160caebd5f7c643fca25c0",
+      "bytes": 16139
+    },
+    {
+      "path": "src/components/course-learning/HomeworkTaskDescription.tsx",
+      "blob": "e5bbf35c367ebe59ca7ef5cfd17250b31f545368",
+      "sha256": "562c53a90e640443c8bb4eef040746bc7de0c4d4a05d412166bc81339d666fc4",
+      "bytes": 1829
+    },
+    {
+      "path": "src/components/course-preview/CoursePreviewView.tsx",
+      "blob": "3d4a1f677358207ad9f6a12eabd18ff18a0fb046",
+      "sha256": "afce3dea920cf407592d37e7f11d48032e472b87e9c234c71cb24817241e5613",
+      "bytes": 36245
+    },
+    {
+      "path": "src/hooks/useCoursePreview.ts",
+      "blob": "3ef3cfe6b36d961be93113eeeee95857e9f146a4",
+      "sha256": "78eda626c3293e0a4d25ccda3520aadbe62181b95f62ed1e449cf6dae8724e03",
+      "bytes": 8496
+    },
+    {
+      "path": "src/pages/CourseLearning.tsx",
+      "blob": "9fc9ce33856d9e5155f605ed523f8bca7359b10d",
+      "sha256": "7967a8c68d97c530c5a0cf45c6f8053101c0b03888125c0161296fa21ecc92d4",
+      "bytes": 42625
+    },
+    {
+      "path": "src/hooks/useDrivingSchoolEntry.ts",
+      "blob": "3d5ec75a1058c85938d22ba8ff313204dd4b173e",
+      "sha256": "05f3c1811c100c3a4cfb711b31ef28f2ec5759e2af5252f536ab5a83ae8ef80e",
+      "bytes": 931
+    },
+    {
+      "path": "src/pages/DrivingSchoolPage.tsx",
+      "blob": "2ca9ce58e2affb643dcc1a719de2df6daa808d16",
+      "sha256": "26cae669f1e3092e8df315ab3e314778b9e45add8457fb890a0a2c28a67d4d94",
+      "bytes": 7192
+    },
+    {
+      "path": "src/pages/AutoSchools.tsx",
+      "blob": "433ae8c23a6369953a36b487447b5f5ce5bd46aa",
+      "sha256": "32ab60a229b48aa7fa68a3bdc5771dc29309ab64c8169a8e49d30f63428ca268",
+      "bytes": 4098
+    },
+    {
+      "path": "src/components/driving-school/DrivingApp.tsx",
+      "blob": "bfbe39f6fbc749f47a5082f80aa9916412f194fd",
+      "sha256": "131763d7853fbd96c264422cdf32991eb7933be313a9fa3666b5673501677e94",
+      "bytes": 75694
+    },
+    {
+      "path": "src/lib/driving-school/cloud-adapter.ts",
+      "blob": "333eebb6893d2503d351fd2a00878b5d6a35b392",
+      "sha256": "b8798ea155b799622bb6644d7939113532b7b7d8daf4d292dfc8f37f6f235665",
+      "bytes": 14889
+    },
+    {
+      "path": "src/components/driving-school/sidebar.tsx",
+      "blob": "c6ba871281a5d55ce873bbc7a95a7039c327fc46",
+      "sha256": "7dbcb572935c86e0ade6769ebbcb9294cfc37f7a087425169636189ebadf2e5a",
+      "bytes": 2079
+    },
+    {
+      "path": "src/components/driving-school/driving-school.css",
+      "blob": "a8cda0c4b95edec0a66251cdb22e7eaae6647354",
+      "sha256": "f8ac97c9ee2c74a234f6179303e6a2a212c142dbb07df5f9d408e9b6441d65f9",
+      "bytes": 20288
+    },
+    {
+      "path": "src/utils/authReturn.ts",
+      "blob": "b635776d54b39d01c230f89469740109071b09b0",
+      "sha256": "866e416711e3613096e2696df05997f94074662275558369ac5a574a9313ad60",
+      "bytes": 2879
+    },
+    {
+      "path": "src/utils/loginDestination.ts",
+      "blob": "d02a90769f291e226394855e47d6396701d04c50",
+      "sha256": "93f1126c68b4a86eb99ac58d29e4843a166d16c4292443670880e07ba5b6fc51",
+      "bytes": 1325
+    },
+    {
+      "path": "src/hooks/useAuth.tsx",
+      "blob": "2dc046efe9b39b1dbe30853ae2784b09174c2f99",
+      "sha256": "d19e1a7ec27a857a4a41402103d67e9aec079eb0078384c2a6f23639dd675359",
+      "bytes": 14002
+    },
+    {
+      "path": "src/components/ProtectedRoute.tsx",
+      "blob": "c0a2ee5b8e8b3835ffb9cbd9536674f526d40695",
+      "sha256": "df82d947c1946ca661274b989d9df9a64a39a1fa79d2808b3bd13ff992e47458",
+      "bytes": 4614
+    },
+    {
+      "path": "src/routes/organizationRoutes.tsx",
+      "blob": "202db3fa4fdb4141b7e49cd29a03992b3d55186d",
+      "sha256": "2c200de9b5ffc43f91d350f4e2d09dedaf9d4d79c81dc6fd633b15d980468db2",
+      "bytes": 4411
+    },
+    {
+      "path": "src/components/organization/OrgSidebar.tsx",
+      "blob": "517803263f50fb5c9ae862c4bd3457d19922fef7",
+      "sha256": "f3b5625636487db1ebfcdce3d0fecb8d451288534b470b338c6d6ad6334ffd63",
+      "bytes": 48873
+    },
+    {
+      "path": "src/components/student/StudentSidebar.tsx",
+      "blob": "22defcb0af3ed256e2549e7d4eb38150fe235b39",
+      "sha256": "ccfc27071c8f0ca45e64240062d40bd3c6ad8b7f282ffc37063760917a6cb416",
+      "bytes": 6357
+    },
+    {
+      "path": "src/components/student/StudentProfileSidebar.tsx",
+      "blob": "cff751aa2734bbfec52edef71fce2dc982e31122",
+      "sha256": "b45c53929c1b6e65f4be183cd302c8267a8f4e8c0688ce866a95798391e74a3c",
+      "bytes": 6502
+    },
+    {
+      "path": "src/components/student/StudentFooter.tsx",
+      "blob": "dcecc33838cd222b90d05ba377b3743cc3433afa",
+      "sha256": "e1341a9c293fee80730889464381cceca6c64c85426d9e181ade4059ffade721",
+      "bytes": 2737
+    },
+    {
+      "path": "src/pages/StudentDashboard.tsx",
+      "blob": "c48eb6db07effd06897f377e7e6398079282e589",
+      "sha256": "ffb90c3cc6563358af3e0a44ba592550702a69ba70a3f95928d49560bcf4c7d9",
+      "bytes": 27938
+    },
+    {
+      "path": "src/contexts/OrgDashboardContext.tsx",
+      "blob": "9281cea0c60a23d89ed85e21294cfb5424f085cd",
+      "sha256": "25f15af72fc5c861cd7458324027e0772758b2ffc5b772447e22c840e85031dd",
+      "bytes": 765
+    },
+    {
+      "path": "src/hooks/useOrganizationDataLoader.ts",
+      "blob": "3783aaa98ba8768c185b804bdb29c4f1bfa0dec8",
+      "sha256": "bdb609aa696eefa8e1a09cdbdedc559ee83a76606fb9180c72eaca2a83ec2958",
+      "bytes": 13295
+    },
+    {
+      "path": ".npmrc",
+      "blob": "6c2c96a2128d8627d9076487cd6f0206ba015365",
+      "sha256": "f48f7bf8de51e25495c49f6074a9444b5e372c24afbb1f358b252876f8af5414",
+      "bytes": 38
+    },
+    {
+      "path": ".node-version",
+      "blob": "2edeafb09db0093bae6ff060e2dcd2166f5c9387",
+      "sha256": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+      "bytes": 2
+    },
+    {
+      "path": ".nvmrc",
+      "blob": "2edeafb09db0093bae6ff060e2dcd2166f5c9387",
+      "sha256": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+      "bytes": 2
+    },
+    {
+      "path": "package.json",
+      "blob": "38098878514254b0d741e61e4c2265c26d3598a6",
+      "sha256": "afa85db7b143615bb994936c2d4c502048a22b2f630e187dee35d15dad7a59bd",
+      "bytes": 4343
+    },
+    {
+      "path": "package-lock.json",
+      "blob": "414c0ac5bbaa094d800a2cdbd6c5efd81de38a0a",
+      "sha256": "6dd560210f8787d053eed40f2d24e83d0c823567471d7c7fb459a59cbb94dace",
+      "bytes": 493695
+    },
+    {
+      "path": "tsconfig.app.json",
+      "blob": "dbf29bcd37532cc07aac60f7789b8c367957b2eb",
+      "sha256": "0ad23538e82c760b67276f05d9bb302a59d6d3512725e473c0907cc94980a196",
+      "bytes": 709
+    },
+    {
+      "path": "tsconfig.json",
+      "blob": "6b68d80b7d92d0c4a5d774897f2bedfa95b42669",
+      "sha256": "406e63e666958bb699aae6562e561a0cec963ee3dfe771c644ace7d97304974f",
+      "bytes": 396
+    },
+    {
+      "path": "vitest.config.ts",
+      "blob": "3b437d29026892339996a22ac061ca694752c498",
+      "sha256": "82f31c27d7c0f39a5ad8ce98a7cb58b0d8b6d9aab00f3a7980dbbb0d7cfe615b",
+      "bytes": 601
+    },
+    {
+      "path": "tests/homework-html/vitest.config.mjs",
+      "blob": "c115a1f1a4cd202df9423343f811759ab8ba0a9d",
+      "sha256": "6dae87578e317a328383aa0446ecd6c957807bdd746ca06cae291603a7e41142",
+      "bytes": 496
+    },
+    {
+      "path": "tests/homework-html/setup.ts",
+      "blob": "201adcaae0c2df0a8de3c9e904aa07c90e033729",
+      "sha256": "3ac813e1cd20f1d6ed147f2a94409d6e455091c095017b2a0870a7975fb71573",
+      "bytes": 1327
+    },
+    {
+      "path": "tests/homework-html/homework-html.test.tsx",
+      "blob": "7ac76f3ee26a8f2f60baf863c314139df9ab1352",
+      "sha256": "6fed823aac215ef56e3bbdd03a2174a1087fda5d6bfcd358e7492078b283e89a",
+      "bytes": 8415
+    },
+    {
+      "path": "tests/public-course-explorer/vitest.config.mjs",
+      "blob": "94bb0194b5f6fd86da5efba6a772ca28ad4b15c4",
+      "sha256": "f66414325116490fdbcfc391406c9428ca3440c7f7faf9a9130cf79ede65af7f",
+      "bytes": 517
+    },
+    {
+      "path": "tests/public-course-explorer/setup.ts",
+      "blob": "02023144d93edf571c7454ac1c9950c91646fd15",
+      "sha256": "ae34ddbc9d8a6ce6cbc9c9fab9d395ca41033dca089824b48b4e8090a5fa9196",
+      "bytes": 3498
+    },
+    {
+      "path": "tests/public-course-explorer/deep-link.test.tsx",
+      "blob": "bac19c212bf8bf48a4ffd16ba99568f99c70d43b",
+      "sha256": "1d1d729cd17b647e303e313eabb9835e5a404089a2b1830b86d98004cc55a855",
+      "bytes": 11001
+    },
+    {
+      "path": "tests/public-course-explorer/explorer.test.tsx",
+      "blob": "eca9f091433f8e11dc3635eb0d45bff3c093e747",
+      "sha256": "10e34d2b95e3cbf78c2d7549e13c75ee8f1b0cc2735394273579acabc9140f76",
+      "bytes": 5717
+    },
+    {
+      "path": "tests/public-course-explorer/registration-return.test.tsx",
+      "blob": "70c583e7bfb21fa6d64e0409a90dc80fe6f6dc50",
+      "sha256": "e011beb044c5354c1b0c5284491ae80d1184858666213e7f0381f9cd0f877b2b",
+      "bytes": 6454
+    }
+  ],
+  "variants": {
+    "base": {
+      "sourceFiles": 0,
+      "allowedPaths": [],
+      "packet": null,
+      "suites": [
+        {
+          "id": "homework-html-9",
+          "config": "tests/homework-html/vitest.config.mjs",
+          "cases": 9,
+          "files": {
+            "tests/homework-html/homework-html.test.tsx": 9
+          }
+        },
+        {
+          "id": "public-catalog-20",
+          "config": "tests/public-course-explorer/vitest.config.mjs",
+          "cases": 20,
+          "files": {
+            "tests/public-course-explorer/deep-link.test.tsx": 10,
+            "tests/public-course-explorer/explorer.test.tsx": 5,
+            "tests/public-course-explorer/registration-return.test.tsx": 5
+          }
+        }
+      ]
+    },
+    "homework-proof": {
+      "sourceFiles": 9,
+      "allowedPaths": [
+        "src/components/course-learning/HomeworkSubmission.tsx",
+        "src/components/course-learning/HomeworkTaskDescription.tsx",
+        "src/components/course-preview/CoursePreviewView.tsx",
+        "src/hooks/useCoursePreview.ts",
+        "src/hooks/usePlatformHomeworkTaskProof.ts",
+        "src/pages/CourseLearning.tsx",
+        "tests/homework-proof/homework-proof.test.tsx",
+        "tests/homework-proof/setup.ts",
+        "tests/homework-proof/vitest.config.mjs"
+      ],
+      "packet": {
+        "path": ".ci/frontend-candidates/homework-proof.json",
+        "sha256": "cc1a5b263cfdb1bf97181ea311a2f0ca4080f5f0f35df99f72c97ed5e9ccf63d"
+      },
+      "suites": [
+        {
+          "id": "homework-proof-19",
+          "config": "tests/homework-proof/vitest.config.mjs",
+          "cases": 19,
+          "files": {
+            "tests/homework-proof/homework-proof.test.tsx": 19
+          }
+        },
+        {
+          "id": "homework-html-9",
+          "config": "tests/homework-html/vitest.config.mjs",
+          "cases": 9,
+          "files": {
+            "tests/homework-html/homework-html.test.tsx": 9
+          }
+        },
+        {
+          "id": "public-catalog-20",
+          "config": "tests/public-course-explorer/vitest.config.mjs",
+          "cases": 20,
+          "files": {
+            "tests/public-course-explorer/deep-link.test.tsx": 10,
+            "tests/public-course-explorer/explorer.test.tsx": 5,
+            "tests/public-course-explorer/registration-return.test.tsx": 5
+          }
+        }
+      ]
+    },
+    "autoschool-entry": {
+      "sourceFiles": 13,
+      "allowedPaths": [
+        "src/hooks/useDrivingSchoolEntry.ts",
+        "src/pages/DrivingSchoolPage.tsx",
+        "src/pages/AutoSchools.tsx",
+        "src/components/driving-school/DrivingApp.tsx",
+        "src/lib/driving-school/cloud-adapter.ts",
+        "tests/autoschool-entry/setup.ts",
+        "tests/autoschool-entry/fixtures.ts",
+        "tests/autoschool-entry/entry.test.tsx",
+        "tests/autoschool-entry/access-closure.test.tsx",
+        "tests/autoschool-entry/participant-entry.test.tsx",
+        "tests/autoschool-entry/auth-default-and-landing.test.tsx",
+        "tests/autoschool-entry/adapter-boundaries.test.ts",
+        "vitest.autoschool-entry.config.mjs"
+      ],
+      "packet": {
+        "path": ".ci/frontend-candidates/autoschool-entry.json",
+        "sha256": "6e1423664b0a4a1145d3d0760d762b76d9494c283fcc193885da4328eeb9e678"
+      },
+      "suites": [
+        {
+          "id": "autoschool-entry-21",
+          "config": "vitest.autoschool-entry.config.mjs",
+          "cases": 21,
+          "files": {
+            "tests/autoschool-entry/entry.test.tsx": 6,
+            "tests/autoschool-entry/access-closure.test.tsx": 4,
+            "tests/autoschool-entry/participant-entry.test.tsx": 5,
+            "tests/autoschool-entry/auth-default-and-landing.test.tsx": 3,
+            "tests/autoschool-entry/adapter-boundaries.test.ts": 3
+          }
+        },
+        {
+          "id": "homework-html-9",
+          "config": "tests/homework-html/vitest.config.mjs",
+          "cases": 9,
+          "files": {
+            "tests/homework-html/homework-html.test.tsx": 9
+          }
+        },
+        {
+          "id": "public-catalog-20",
+          "config": "tests/public-course-explorer/vitest.config.mjs",
+          "cases": 20,
+          "files": {
+            "tests/public-course-explorer/deep-link.test.tsx": 10,
+            "tests/public-course-explorer/explorer.test.tsx": 5,
+            "tests/public-course-explorer/registration-return.test.tsx": 5
+          }
+        }
+      ],
+      "productionReleaseAllowed": false,
+      "releaseGate": "Complete the current course pilot first; these files are applied only to a disposable CI worktree."
+    }
+  },
+  "acceptance": {
+    "eachVariantRequiresStockTsconfigApp": true,
+    "requiredSpecificAssertions": {
+      "homeworkProof": 19,
+      "autoschoolEntry": 21
+    },
+    "unchangedRegressionAssertionsEachVariant": 29,
+    "skipsTodosMissingReportsOrWrongCountsFail": true,
+    "continueOnError": false,
+    "independentVariantsNeverCombined": true,
+    "noBuildOnlyGreen": true,
+    "applicationRelease": false,
+    "dbOrBackendWrites": false,
+    "secretsRequired": false,
+    "contentsPermission": "read"
+  },
+  "actions": {
+    "checkout": "d23441a48e516b6c34aea4fa41551a30e30af803",
+    "setupNode": "249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "uploadArtifact": "b7c566a772e6b6bfb58ed0dc250532a479d7789f"
+  }
+}
