@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CourseComments } from "./CourseComments";
+import { CourseMaterialPassportCard } from "./CourseMaterialPassportCard";
 import { getPaidProgram } from "@/constants/paidPrograms20260922";
 
 interface CourseStoreDetailViewProps {
@@ -59,6 +60,8 @@ export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrde
           </CardContent>
         </Card>
       )}
+
+      <CourseMaterialPassportCard courseId={course.course_id} context={course} actorId={userId} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {benefits.map((b, i) => (
