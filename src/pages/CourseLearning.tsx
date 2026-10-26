@@ -43,6 +43,7 @@ import { CourseLibraryReader } from "@/components/course-library/CourseLibraryRe
 import { resolveCourseElectronicLibraryView } from "@/lib/courseLibrary";
 import { getTestAnswerKeyNotice, getTestAnswerKeyState } from "@/utils/testAnswerKey";
 import { usePostpaidLessonActivity } from "@/hooks/usePostpaidLessonActivity";
+import { usePlatformHomeworkTaskProof } from "@/hooks/usePlatformHomeworkTaskProof";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -69,7 +70,6 @@ const CourseLearning = () => {
     isOfflineMode, offlineCachedAt, isAdminView } = useCourseLearning();
 
   const homeworkContext = resolveHomeworkContext(courseId, course, currentLesson, user?.id, isAdminView);
-  const homeworkTaskScope = { routeCourseId: courseId, course, lesson: currentLesson };
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
   const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
@@ -83,6 +83,12 @@ const CourseLearning = () => {
     searchParams.get("view"),
   );
   const libraryOpen = libraryView.open;
+  const { scope: homeworkTaskScope, proof: homeworkTaskProof } = usePlatformHomeworkTaskProof({
+    scope: { routeCourseId: courseId, course, lesson: currentLesson, actorId: user?.id },
+    content: currentLesson?.content, lessonType: currentLesson?.type,
+    enabled: !loading && !isOfflineMode && !libraryOpen && isLessonAccessible(currentLessonIndex),
+    contextKey: JSON.stringify(['learn', isAdminView, isOfflineMode, libraryOpen]),
+  });
   usePostpaidLessonActivity(currentLesson?.id, user?.id,
     !loading && !!course && !!currentLesson && !isAdminView && !isOfflineMode && !libraryOpen
     && isLessonAccessible(currentLessonIndex));
@@ -343,10 +349,10 @@ const CourseLearning = () => {
                 {isAdminView ? (
                   <>
                     <p role="status">Режим просмотра: сдача задания и завершение урока недоступны.</p>
-                    {canRenderPlatformHomeworkHtml(homeworkTaskScope) && <HomeworkTaskDescription content={currentLesson.content ?? null} scope={homeworkTaskScope} role="document" aria-label="Условия задания" className="text-sm whitespace-pre-wrap" />}
+                    {canRenderPlatformHomeworkHtml(homeworkTaskScope, homeworkTaskProof, currentLesson.content ?? null) && <HomeworkTaskDescription content={currentLesson.content ?? null} scope={homeworkTaskScope} proof={homeworkTaskProof} role="document" aria-label="Условия задания" className="text-sm whitespace-pre-wrap" />}
                   </>
                 ) : homeworkContext ? (
-                  <HomeworkSubmission {...homeworkContext} taskScope={homeworkTaskScope} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => markLessonComplete(false)} />
+                  <HomeworkSubmission {...homeworkContext} taskScope={homeworkTaskScope} taskProof={homeworkTaskProof} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => markLessonComplete(false)} />
                 ) : (
                   <p role="alert">Контекст курса и урока ещё не подтверждён. Отправка задания недоступна.</p>
                 )}
