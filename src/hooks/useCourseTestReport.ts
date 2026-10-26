@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { buildHistoryExport, resolveAttemptHistory, storedAttemptOutcome, type QuestionDetail, type ResolvedAttemptHistory } from "@/lib/courseTestHistory";
+export type { QuestionDetail } from "@/lib/courseTestHistory";
 
 function normalizeOption(opt: unknown): string {
   if (typeof opt === 'string') return opt;
@@ -29,19 +31,16 @@ export interface TestAttemptData {
   lesson_title: string;
   answers: Record<string, number>;
   shown_question_ids: string[];
+  passed: boolean | null;
+  passing_score: number | null;
+  history: ResolvedAttemptHistory;
 }
 
-export interface QuestionDetail {
-  questionText: string;
-  options: string[];
-  selectedAnswer: number;
-  correctAnswer: number;
-  isCorrect: boolean;
-}
 
 export function useCourseTestReport(courseId: string, courseName: string, organizationId: string) {
   const [testData, setTestData] = useState<TestAttemptData[]>([]);
-  const [questionsMap, setQuestionsMap] = useState<Map<string, TestQuestion>>(new Map());
+  const requestEpoch = useRef(0);
+  const [loadError, setLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
 
@@ -51,85 +50,97 @@ export function useCourseTestReport(courseId: string, courseName: string, organi
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
-    fetchTestData();
-  }, [courseId]);
+    setSelectedStudent("all");
+    setSelectedTest("all");
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    void fetchTestData();
+    return () => { requestEpoch.current += 1; };
+  }, [courseId, organizationId]);
 
   const fetchTestData = async () => {
+    const epoch = ++requestEpoch.current;
+    const current = () => requestEpoch.current === epoch;
     setIsLoading(true);
+    setLoadError(false);
+    setTestData([]);
+    setExpandedAttempts(new Set());
     try {
-      const { data: lessons } = await supabase
+      const { data: lessons, error: lessonsError } = await supabase
         .from("lessons")
         .select("id, title")
         .eq("course_id", courseId)
         .eq("type", "test");
-
-      if (!lessons || lessons.length === 0) {
-        setTestData([]);
-        setIsLoading(false);
-        return;
-      }
-
+      if (lessonsError) throw new Error("report unavailable");
+      if (!current()) return;
+      if (!lessons || lessons.length === 0) return;
       const lessonIds = lessons.map(l => l.id);
       const lessonsMap = new Map(lessons.map(l => [l.id, l.title]));
-
-      const { data: attempts } = await supabase
+      const { data: attempts, error: attemptsError } = await supabase
         .from("test_attempts")
-        .select("id, user_id, lesson_id, score, max_score, completed_at, answers, shown_question_ids")
+        .select("id, user_id, lesson_id, score, max_score, completed_at, answers, shown_question_ids, passed, passing_score")
         .in("lesson_id", lessonIds)
         .order("completed_at", { ascending: false });
+      if (attemptsError) throw new Error("report unavailable");
+      if (!current()) return;
+      if (!attempts || attempts.length === 0) return;
 
-      if (!attempts || attempts.length === 0) {
-        setTestData([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: questions } = await supabase
-        .from("test_questions")
-        .select("id, question, options, correct_answer")
-        .in("lesson_id", lessonIds);
-
-      if (questions) {
-        const qMap = new Map<string, TestQuestion>();
-        questions.forEach(q => {
-          qMap.set(q.id, {
-            id: q.id,
-            question: q.question,
-            options: Array.isArray(q.options) ? (q.options as unknown[]).map(normalizeOption) : [],
-            correct_answer: q.correct_answer
-          });
+      // The RPC authorizes the original caller and returns only the exact
+      // completed session snapshot. It never reads the current question bank.
+      const historyClient = supabase as unknown as {
+        rpc(name: "get_teacher_test_attempt_history", args: {
+          p_course_id: string; p_attempt_ids: string[];
+        }): PromiseLike<{ data: unknown; error: unknown }>;
+      };
+      const historyRows = new Map<string, unknown>();
+      for (let offset = 0; offset < attempts.length; offset += 200) {
+        const ids = attempts.slice(offset, offset + 200).map(a => a.id);
+        const { data, error } = await historyClient.rpc("get_teacher_test_attempt_history", {
+          p_course_id: courseId, p_attempt_ids: ids,
         });
-        setQuestionsMap(qMap);
+        if (error || !Array.isArray(data) || data.length !== ids.length) throw new Error("history unavailable");
+        const expected = new Set(ids);
+        for (const row of data) {
+          if (!row || typeof row !== "object" || !expected.delete(row.attempt_id)) {
+            throw new Error("history unavailable");
+          }
+          historyRows.set(row.attempt_id, row);
+        }
+        if (expected.size !== 0) throw new Error("history unavailable");
+        if (!current()) return;
       }
-
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
         .eq("organization_id", organizationId);
-
+      if (profilesError) throw new Error("report unavailable");
+      if (!current()) return;
       const profilesMap = new Map(
         (profiles || []).map(p => [p.user_id, { name: p.full_name || "Неизвестный", email: p.email || "" }])
       );
-
-      const enrichedData: TestAttemptData[] = attempts.map(a => ({
-        id: a.id,
-        user_id: a.user_id,
-        lesson_id: a.lesson_id,
-        score: a.score,
-        max_score: a.max_score,
-        completed_at: a.completed_at,
-        user_name: profilesMap.get(a.user_id)?.name || "Неизвестный",
-        user_email: profilesMap.get(a.user_id)?.email || "",
-        lesson_title: lessonsMap.get(a.lesson_id) || "Тест",
-        answers: (a.answers as Record<string, number>) || {},
-        shown_question_ids: (a.shown_question_ids as string[]) || []
-      }));
-
-      setTestData(enrichedData);
-    } catch (error) {
-      console.error("Error fetching test data:", error);
+      const enrichedData: TestAttemptData[] = attempts.map(a => {
+        const attempt = {
+          ...a,
+          answers: a.answers as Record<string, number>,
+          shown_question_ids: (a.shown_question_ids ?? []) as string[],
+        };
+        return {
+          ...attempt,
+          user_name: profilesMap.get(a.user_id)?.name || "Неизвестный",
+          user_email: profilesMap.get(a.user_id)?.email || "",
+          lesson_title: lessonsMap.get(a.lesson_id) || "Тест",
+          history: resolveAttemptHistory(attempt, historyRows.get(a.id)),
+        };
+      });
+      if (current()) setTestData(enrichedData);
+    } catch {
+      if (current()) {
+        setTestData([]);
+        setLoadError(true);
+        console.error("course_test_report_unavailable");
+      }
     } finally {
-      setIsLoading(false);
+      if (current()) setIsLoading(false);
     }
   };
 
@@ -157,7 +168,7 @@ export function useCourseTestReport(courseId: string, courseName: string, organi
   }, [testData, selectedStudent, selectedTest, dateFrom, dateTo]);
 
   const stats = useMemo(() => {
-    const passedCount = filteredData.filter(a => a.score >= a.max_score * 0.7).length;
+    const passedCount = filteredData.filter(a => storedAttemptOutcome(a) === true).length;
     const averageScore = filteredData.length > 0
       ? Math.round(filteredData.reduce((sum, a) => sum + (a.max_score > 0 ? (a.score / a.max_score) * 100 : 0), 0) / filteredData.length)
       : 0;
@@ -181,63 +192,11 @@ export function useCourseTestReport(courseId: string, courseName: string, organi
     });
   };
 
-  const getAttemptQuestionDetails = (attempt: TestAttemptData): QuestionDetail[] => {
-    const questionIds = attempt.shown_question_ids.length > 0 ? attempt.shown_question_ids : Object.keys(attempt.answers);
-    return questionIds.reduce<QuestionDetail[]>((acc, qId) => {
-      const question = questionsMap.get(qId);
-      if (question) {
-        const selectedAnswer = attempt.answers[qId];
-        acc.push({
-          questionText: question.question,
-          options: question.options,
-          selectedAnswer: selectedAnswer ?? -1,
-          correctAnswer: question.correct_answer,
-          isCorrect: selectedAnswer === question.correct_answer
-        });
-      }
-      return acc;
-    }, []);
-  };
+  const getAttemptQuestionDetails = (attempt: TestAttemptData): QuestionDetail[] => attempt.history.details;
 
   const handleExport = async () => {
     const XLSX = await import('xlsx');
-    const summaryData = filteredData.map(a => {
-      const details = getAttemptQuestionDetails(a);
-      return {
-        'ФИО': a.user_name, 'Email': a.user_email, 'Тест': a.lesson_title,
-        'Баллы': a.score, 'Макс. баллы': a.max_score,
-        'Процент': a.max_score > 0 ? Math.round((a.score / a.max_score) * 100) + '%' : '0%',
-        'Результат': a.score >= a.max_score * 0.7 ? 'Пройден' : 'Не пройден',
-        'Правильных': details.filter(d => d.isCorrect).length,
-        'Неправильных': details.filter(d => !d.isCorrect).length,
-        'Дата': new Date(a.completed_at).toLocaleString('ru-RU')
-      };
-    });
-
-    const detailedData: Array<Record<string, string | number>> = [];
-    const wrongAnswersData: Array<Record<string, string | number>> = [];
-
-    filteredData.forEach(a => {
-      const details = getAttemptQuestionDetails(a);
-      details.forEach((d, idx) => {
-        const row = {
-          'ФИО': a.user_name, 'Тест': a.lesson_title,
-          'Дата': new Date(a.completed_at).toLocaleString('ru-RU'),
-          '№ вопроса': idx + 1,
-          'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500),
-          'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer]
-            ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) : 'Нет ответа',
-          'Правильный ответ': d.options[d.correctAnswer]
-            ? normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) : '',
-          'Результат': d.isCorrect ? '✓ Верно' : '✗ Неверно'
-        };
-        detailedData.push(row);
-        if (!d.isCorrect) {
-          const { 'Результат': _, ...wrongRow } = row;
-          wrongAnswersData.push(wrongRow);
-        }
-      });
-    });
+    const { summaryData, detailedData, wrongAnswersData } = buildHistoryExport(filteredData);
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), 'Сводка');
@@ -248,7 +207,7 @@ export function useCourseTestReport(courseId: string, courseName: string, organi
   };
 
   return {
-    testData, isLoading, expandedAttempts,
+    testData, isLoading, loadError, retry: fetchTestData, expandedAttempts,
     selectedStudent, setSelectedStudent,
     selectedTest, setSelectedTest,
     dateFrom, setDateFrom,
