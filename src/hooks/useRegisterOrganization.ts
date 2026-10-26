@@ -18,7 +18,7 @@ const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional
 export function useRegisterOrganization() {
   const [searchParams] = useSearchParams();
   const registrationTarget = organizationRegistrationTarget(searchParams);
-  const loginTarget = registrationTarget === DRIVING_ORGANIZATION_PATH ? loginWithNext(registrationTarget) : "/login";
+  const loginTarget = registrationTarget === "/organization" ? "/login" : loginWithNext(registrationTarget);
   const planParam = searchParams.get('plan') as SubscriptionPlan | null;
   const selectedPlan = planParam && planKeys.includes(planParam) ? planParam : 'free';
   const planInfo = SUBSCRIPTION_PLANS[selectedPlan];

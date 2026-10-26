@@ -31,6 +31,7 @@ import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
+import { canRenderPlatformHomeworkHtml, HomeworkTaskDescription } from "@/components/course-learning/HomeworkTaskDescription";
 import { resolveHomeworkContext } from "@/lib/homeworkReport";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar";
@@ -68,6 +69,7 @@ const CourseLearning = () => {
     isOfflineMode, offlineCachedAt, isAdminView } = useCourseLearning();
 
   const homeworkContext = resolveHomeworkContext(courseId, course, currentLesson, user?.id, isAdminView);
+  const homeworkTaskScope = { routeCourseId: courseId, course, lesson: currentLesson };
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
   const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
@@ -339,9 +341,12 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Задание • Урок {currentLessonIndex + 1}</p></div>
                 </div>
                 {isAdminView ? (
-                  <p role="status">Режим просмотра: сдача задания и завершение урока недоступны.</p>
+                  <>
+                    <p role="status">Режим просмотра: сдача задания и завершение урока недоступны.</p>
+                    {canRenderPlatformHomeworkHtml(homeworkTaskScope) && <HomeworkTaskDescription content={currentLesson.content ?? null} scope={homeworkTaskScope} role="document" aria-label="Условия задания" className="text-sm whitespace-pre-wrap" />}
+                  </>
                 ) : homeworkContext ? (
-                  <HomeworkSubmission {...homeworkContext} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => markLessonComplete(false)} />
+                  <HomeworkSubmission {...homeworkContext} taskScope={homeworkTaskScope} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => markLessonComplete(false)} />
                 ) : (
                   <p role="alert">Контекст курса и урока ещё не подтверждён. Отправка задания недоступна.</p>
                 )}

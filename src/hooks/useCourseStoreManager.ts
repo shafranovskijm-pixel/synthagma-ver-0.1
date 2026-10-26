@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { showLimitToast } from "@/utils/limitToast";
 import { isPlatformCourseListing } from "@/lib/platformCourseCatalog";
+import type { CourseCatalogReadScope } from "@/lib/publicCourseExplorer";
 import { acquireAndRefreshOwnFreeCourse, type ConfirmedFreeCourseReceipt } from "@/lib/freeCourseReceipt";
 import {
   MarketplacePurchaseError,
@@ -37,6 +38,7 @@ interface MarketplaceCourse {
   price_student: number;
   price_organization: number;
   is_active: boolean;
+  is_validated?: boolean;
   description_short: string | null;
   preview_image_url: string | null;
   created_at: string;
@@ -47,6 +49,9 @@ interface MarketplaceCourse {
     description?: string | null;
     duration?: string | null;
     cover_image_url?: string | null;
+    is_published?: boolean;
+    hidden_from_catalog?: boolean;
+    category?: { hidden_from_catalog: boolean } | null;
   };
   organization?: { name: string };
 }
@@ -113,8 +118,14 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     return () => { liveReceiptContext.current.active = false; };
   }, []);
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-courses' | 'orders' | 'my-orders' | 'requests'>('catalog');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCurrent, setIsLoading] = useState(true);
   const [catalogCourses, setCatalogCourses] = useState<MarketplaceCourse[]>([]);
+  const [catalogReadScope, setCatalogReadScope] = useState<CourseCatalogReadScope | null>(null);
+  const catalogLoadVersion = useRef(0);
+  const [catalogLoadFailed, setCatalogLoadFailed] = useState(false);
+  const [loadContext, setLoadContext] = useState<{ organizationId: string; userId?: string } | null>(null);
+  const isLoading = isLoadingCurrent || !loadContext
+    || loadContext.organizationId !== organizationId || loadContext.userId !== userId;
   const [myCourses, setMyCourses] = useState<MarketplaceCourse[]>([]);
   const [myOrders, setMyOrders] = useState<MarketplaceOrder[]>([]);
   const [receivedOrders, setReceivedOrders] = useState<MarketplaceOrder[]>([]);
@@ -164,24 +175,43 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const [isProposing, setIsProposing] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, [organizationId]);
+    void fetchData();
+    return () => { catalogLoadVersion.current += 1; };
+  }, [organizationId, userId]);
 
   const fetchData = async () => {
+    const version = ++catalogLoadVersion.current;
+    let receivedCatalog = false;
+    const scope = { organizationId, userId, requestVersion: version };
+    const isCurrent = () => version === catalogLoadVersion.current && liveReceiptContext.current.active
+      && organizationId === liveReceiptContext.current.organizationId && userId === liveReceiptContext.current.userId;
+    function currentReceiver<T>(receive: (value: T) => void) {
+      return (value: T) => { if (isCurrent()) receive(value); };
+    }
+    setLoadContext({ organizationId, userId });
     setIsLoading(true);
+    setCatalogReadScope(null);
+    setCatalogLoadFailed(false);
+    setCatalogCourses([]);
     try {
       await Promise.all([
-        _fetchCatalog(organizationId, setCatalogCourses),
-        _fetchMyCourses(organizationId, setMyCourses),
-        _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders),
-        _fetchAvailableCourses(organizationId, setAvailableCourses),
-        _fetchCourseRequests(setCourseRequests),
-        _fetchDbCategories(setDbCategories),
+        _fetchCatalog(organizationId, rows => {
+          if (!isCurrent()) return;
+          receivedCatalog = true;
+          setCatalogCourses(rows);
+          setCatalogReadScope(scope);
+          setCatalogLoadFailed(false);
+        }),
+        _fetchMyCourses(organizationId, currentReceiver(setMyCourses)),
+        _fetchOrders(organizationId, userId, currentReceiver(setReceivedOrders), currentReceiver(setMyOrders)),
+        _fetchAvailableCourses(organizationId, currentReceiver(setAvailableCourses)),
+        _fetchCourseRequests(currentReceiver(setCourseRequests)),
+        _fetchDbCategories(currentReceiver(setDbCategories)),
       ]);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      if (isCurrent()) console.error('Error fetching data:', error);
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) { setCatalogLoadFailed(!receivedCatalog); setIsLoading(false); }
     }
   };
 
@@ -427,7 +457,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   return {
     activeTab, setActiveTab,
     isLoading, searchQuery, setSearchQuery,
-    catalogCourses, filteredCatalog, groupedCatalog, extractShortTitle, myCourses, myOrders, receivedOrders, availableCourses, courseRequests,
+    catalogCourses, catalogReadScope, catalogLoadFailed, refreshCatalog: fetchData, filteredCatalog, groupedCatalog, extractShortTitle, myCourses, myOrders, receivedOrders, availableCourses, courseRequests,
     // Add dialog
     showAddDialog, setShowAddDialog, selectedCourseToAdd, setSelectedCourseToAdd,
     shortDescription, setShortDescription,

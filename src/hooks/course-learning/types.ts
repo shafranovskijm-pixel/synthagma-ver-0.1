@@ -1,5 +1,6 @@
 export interface Lesson {
   id: string;
+  course_id?: string | null;
   title: string;
   type: string;
   content?: string | null;
