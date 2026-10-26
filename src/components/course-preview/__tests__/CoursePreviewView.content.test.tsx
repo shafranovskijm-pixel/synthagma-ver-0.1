@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe('lazy lesson content in preview', () => {
-  it.each(['text', 'homework'])('shows loading until the actual %s content arrives', async type => {
+  it.each(['text', 'lesson', 'homework'])('shows loading until the actual %s content arrives', async type => {
     mocks.lessons[0].type = type;
     const content = deferred();
     mocks.contents.set('lecture-a', () => content.promise);

@@ -284,7 +284,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               </div>
             )}
 
-            {lessonContentReady && currentLesson?.type === 'text' && (
+            {lessonContentReady && (currentLesson?.type === 'text' || currentLesson?.type === 'lesson') && (
               <div className="prose prose-lg dark:prose-invert max-w-none">
                 {contentBlocks.length > 0 ? <BlockRenderer blocks={contentBlocks} /> : <div className="text-center py-12 text-muted-foreground"><FileText className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Контент урока пуст</p><p className="text-sm">Добавьте содержимое в редакторе</p></div>}
               </div>
