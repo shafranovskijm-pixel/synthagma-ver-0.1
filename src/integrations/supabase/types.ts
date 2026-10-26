@@ -11897,6 +11897,45 @@ export type Database = {
           },
         ]
       }
+      prog_content_repair_journal: {
+        Row: {
+          after_row: Json
+          after_sha256: string
+          batch_id: string
+          before_row: Json
+          before_sha256: string
+          id: string
+          recorded_at: string
+          source_id: string
+          source_proof: Json
+          source_table: string
+        }
+        Insert: {
+          after_row: Json
+          after_sha256: string
+          batch_id: string
+          before_row: Json
+          before_sha256: string
+          id?: string
+          recorded_at?: string
+          source_id: string
+          source_proof: Json
+          source_table: string
+        }
+        Update: {
+          after_row?: Json
+          after_sha256?: string
+          batch_id?: string
+          before_row?: Json
+          before_sha256?: string
+          id?: string
+          recorded_at?: string
+          source_id?: string
+          source_proof?: Json
+          source_table?: string
+        }
+        Relationships: []
+      }
       program_categories: {
         Row: {
           color: string | null
@@ -16355,6 +16394,73 @@ export type Database = {
             foreignKeyName: "uc_archive_package_files_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
+            referencedRelation: "uc_archive_package_builds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_archive_package_supplements: {
+        Row: {
+          actor_id: string
+          captures: Json
+          case_id: string
+          created_at: string
+          disposal_journal: Json
+          input_revision: number
+          input_state_hash: string
+          organization_id: string
+          package_id: string
+          retained_people: string[]
+          snapshot_sha256: string
+          supplementary_members: Json
+        }
+        Insert: {
+          actor_id: string
+          captures: Json
+          case_id: string
+          created_at?: string
+          disposal_journal: Json
+          input_revision: number
+          input_state_hash: string
+          organization_id: string
+          package_id: string
+          retained_people: string[]
+          snapshot_sha256: string
+          supplementary_members: Json
+        }
+        Update: {
+          actor_id?: string
+          captures?: Json
+          case_id?: string
+          created_at?: string
+          disposal_journal?: Json
+          input_revision?: number
+          input_state_hash?: string
+          organization_id?: string
+          package_id?: string
+          retained_people?: string[]
+          snapshot_sha256?: string
+          supplementary_members?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_archive_package_supplements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_archive_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_archive_package_supplements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uc_archive_package_supplements_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: true
             referencedRelation: "uc_archive_package_builds"
             referencedColumns: ["id"]
           },
@@ -24294,6 +24400,14 @@ export type Database = {
         }[]
       }
       get_student_test_state: { Args: { p_lesson_id: string }; Returns: Json }
+      get_teacher_test_attempt_history: {
+        Args: { p_attempt_ids: string[]; p_course_id: string }
+        Returns: {
+          attempt_id: string
+          history_status: string
+          questions: Json
+        }[]
+      }
       get_test_attempt_history: {
         Args: {
           p_lesson_id?: string
@@ -24889,6 +25003,10 @@ export type Database = {
           p_organization_id: string
         }
         Returns: Json
+      }
+      prog_test_question_key_valid: {
+        Args: { p_correct_answer: number; p_options: Json }
+        Returns: boolean
       }
       public_get_organization_by_slug: {
         Args: { p_slug: string }
@@ -25896,6 +26014,43 @@ export type Database = {
       uc_admission_validate_action: {
         Args: { p_command: Json }
         Returns: undefined
+      }
+      uc_ap_access: {
+        Args: {
+          p_build: Database["public"]["Tables"]["uc_archive_package_builds"]["Row"]
+          p_lock?: boolean
+          p_scope: Json
+        }
+        Returns: {
+          actor_id: string
+          captures: Json
+          case_id: string
+          created_at: string
+          disposal_journal: Json
+          input_revision: number
+          input_state_hash: string
+          organization_id: string
+          package_id: string
+          retained_people: string[]
+          snapshot_sha256: string
+          supplementary_members: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uc_archive_package_supplements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_ap_freeze: {
+        Args: {
+          p_head: Database["public"]["Tables"]["uc_archive_cases"]["Row"]
+        }
+        Returns: Json
+      }
+      uc_ap_journal: {
+        Args: { p_case: string; p_ceiling?: number; p_org: string }
+        Returns: Json
       }
       uc_apply_identification_decision: {
         Args: {
