@@ -64,7 +64,9 @@ export type MarkLessonOutcome =
 
 function percentOf(count: number, total: number): number {
   if (total <= 0) return 0;
-  return Math.min(Math.round((count / total) * 100), 100);
+  // Persist no more than the server's integer completed-lessons ceiling.
+  // Multiply first so fractional division cannot undercount an exact percent.
+  return Math.min(Math.floor((count * 100) / total), 100);
 }
 
 export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLessonOutcome> {
