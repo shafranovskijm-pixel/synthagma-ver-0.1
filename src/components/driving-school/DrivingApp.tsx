@@ -1,10 +1,12 @@
 import { useSearchParams } from 'react-router-dom';
 import type { State, Lesson, DrivingAdapter } from '@/lib/driving-school/types';
+import type { DrivingFailureKind } from '@/lib/driving-school/cloud-adapter';
 import { schoolDateTime, schoolTimeToUtc, rublesToKopecks, safeCsvCell } from '@/lib/driving-school/time';
 import './driving-school.css';
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type SyntheticEvent,
   type ReactNode,
@@ -65,6 +67,16 @@ import type {
   Question,
   WindowSlot,
 } from '@/lib/driving-school/types';
+// Keep the shared preview UI independent from the Cloud/Auth client at runtime.
+// This discriminator only closes a loaded view; it never grants capability.
+function failureKind(error: unknown): DrivingFailureKind | null {
+  if(!(error instanceof Error)||!('kind' in error))return null;
+  const kind=String(error.kind);
+  return ['auth','permission','missing','context','network','unknown'].includes(kind)?kind as DrivingFailureKind:null;
+}
+function isDrivingAccessClosed(error: unknown): boolean {
+  return ['auth','permission','missing','context'].includes(failureKind(error)||'');
+}
 type Field = {
   key: string;
   label: string;
@@ -247,7 +259,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
-    [busy, setBusy] = useState(false),
+    [saving, setBusy] = useState(false),
     [view, setView] = useState('today'),
     [studentId, setStudentId] = useState(''),
     [modal, setModal] = useState<Modal | null>(null),
@@ -257,13 +269,57 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
     [answers, setAnswers] = useState<Record<string, number[]>>({}),
     [inviteLink, setInviteLink] = useState('');
   const [accountReceipt,setAccountReceipt]=useState<{login:string|null;isExisting:boolean}|null>(null);
+  const [readConfirmed,setReadConfirmed]=useState(false);
+  const [loadContext,setLoadContext]=useState<DrivingAdapter|null>(null);
+  const [dataAdapter,setDataAdapter]=useState<DrivingAdapter|null>(null);
+  const busy=saving||!readConfirmed;
+  const mounted=useRef(true);
+  const requestVersion=useRef(0);
+  const context=useRef({adapter,epoch:0,closed:false});
+  // Adapter context changes must hide the preceding view before passive effects run.
+  if(context.current.adapter!==adapter)context.current={adapter,epoch:context.current.epoch+1,closed:false};
+  const isCurrent=(token:{adapter:DrivingAdapter;epoch:number})=>mounted.current
+    &&context.current.adapter===token.adapter&&context.current.epoch===token.epoch&&!context.current.closed;
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;requestVersion.current++;context.current.epoch++;};},[]);
+  const purgeClosedContext=useCallback((failure:unknown)=>{
+    context.current.closed=true;context.current.epoch++;requestVersion.current++;
+    setData(null);setDataAdapter(null);setReadConfirmed(false);setLoading(false);setBusy(false);
+    setModal(null);setForm({});setAnswers({});setStudentId('');setSearch('');setView('today');
+    setInviteLink('');setAccountReceipt(null);setNotice('');
+    setError(failure instanceof Error?failure.message:'Доступ к автошколе не подтверждён');
+  },[]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
-  const reload = useCallback(async () => { const s=await adapter.load();setData(s);return s; }, [adapter]);
-  useEffect(()=>{let active=true;setLoading(true);setData(null);setError('');adapter.load().then(s=>{if(active)setData(s);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[adapter]);
+  const reload = useCallback(async () => {
+    if(context.current.adapter!==adapter||!mounted.current)return null;
+    if(context.current.closed){context.current.closed=false;context.current.epoch++;}
+    const token={adapter,epoch:context.current.epoch};const request=++requestVersion.current;
+    setLoadContext(adapter);setLoading(true);setReadConfirmed(false);setError('');
+    try {
+      const next=await adapter.load();
+      if(!isCurrent(token)||request!==requestVersion.current)return null;
+      setData(next);setDataAdapter(adapter);setReadConfirmed(true);return next;
+    } catch(failure) {
+      if(!isCurrent(token)||request!==requestVersion.current)return null;
+      if(isDrivingAccessClosed(failure))purgeClosedContext(failure);
+      else {setReadConfirmed(false);setError(failure instanceof Error?failure.message:'Не удалось обновить автошколу');}
+      throw failure;
+    } finally {if(isCurrent(token)&&request===requestVersion.current)setLoading(false);}
+  }, [adapter,purgeClosedContext]);
+  useEffect(()=>{
+    setData(null);setDataAdapter(null);setReadConfirmed(false);setModal(null);setForm({});
+    setInviteLink('');setAccountReceipt(null);setNotice('');setAnswers({});setStudentId('');
+    void reload().catch(()=>{});
+    return()=>{if(context.current.adapter===adapter)requestVersion.current++;};
+  },[adapter,reload]);
+  useEffect(()=>{
+    const recheck=()=>{if(document.visibilityState==='visible')void reload().catch(()=>{});};
+    window.addEventListener('focus',recheck);document.addEventListener('visibilitychange',recheck);
+    return()=>{window.removeEventListener('focus',recheck);document.removeEventListener('visibilitychange',recheck);};
+  },[reload]);
   useEffect(()=>{setView(params.get('view')||'today');setStudentId(params.get('student')||'');},[params]);
   function go(v:string,s=''){setView(v);setStudentId(s);setSearch('');const next=new URLSearchParams();next.set('view',v);if(s)next.set('student',s);setParams(next);}
   function open(m: Modal) {
@@ -276,26 +332,37 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
     payload: Record<string, unknown>,
     message = 'Сохранено',
   ) {
-    if(busy)throw new Error('Предыдущее сохранение ещё выполняется');
+    if(!readConfirmed||dataAdapter!==adapter)throw new Error('Сначала подтвердите доступ кнопкой «Обновить данные». До обновления запись недоступна.');
+    if(saving)throw new Error('Предыдущее сохранение ещё выполняется');
+    const token={adapter,epoch:context.current.epoch};
     setBusy(true);
     setError('');
     setNotice('');
     try {
       if(!data)throw new Error('Данные школы не загружены');
       const out = await adapter.mutate(path,payload,data);
-      try {await reload();} catch {setError('Операция подтверждена сервером, но список не обновлён. Нажмите «Обновить данные» перед следующей записью.');}
+      if(!isCurrent(token))throw new Error('Контекст автошколы изменился. Повторите проверку доступа.');
+      try {await reload();} catch(failure) {
+        if(!isCurrent(token)||isDrivingAccessClosed(failure))throw failure;
+        setError('Операция подтверждена сервером, но список не обновлён. Нажмите «Обновить данные» перед следующей записью.');
+      }
+      if(!isCurrent(token))throw new Error('Контекст автошколы изменился. Повторите проверку доступа.');
       setNotice(preview?message+' · только в памяти стенда':message);
       return out;
     } catch (e) {
-      setError((e as Error).message);
+      if(isCurrent(token)) {
+        if(isDrivingAccessClosed(e))purgeClosedContext(e);
+        else {if(failureKind(e)==='network')setReadConfirmed(false);setError((e as Error).message);}
+      }
       throw e;
     } finally {
-      setBusy(false);
+      if(isCurrent(token))setBusy(false);
     }
   }
   async function submit(e: SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!modal) return;
+    const token={adapter,epoch:context.current.epoch};
     try {
       const values = {
         ...modal.payload,
@@ -303,15 +370,16 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
         ...Object.fromEntries(new FormData(e.currentTarget)),
       };
       const result=await act(modal.path, modal.transform ? modal.transform(values) : values);
+      if(!isCurrent(token))return;
       if(result.account&&typeof result.account==='object'){const a=result.account as {login?:unknown;isExisting?:unknown};setAccountReceipt({login:typeof a.login==='string'?a.login:null,isExisting:a.isExisting===true});}
       setModal(null);
       setForm({});
     } catch (e) {
-      setError((e as Error).message || 'Проверьте заполнение формы');
+      if(isCurrent(token))setError((e as Error).message || 'Проверьте заполнение формы');
     }
   }
-  if (loading) return <main className="driving-school-root loading"><Brand/><p>{preview?'Загружаем синтетический стенд…':'Загружаем автошколу…'}</p></main>;
-  if (!data) return <main className="driving-school-root loading"><Brand/><div role="alert" className="error">{error||'Данные автошколы не загружены'}</div><Button onClick={()=>{setLoading(true);reload().catch(e=>setError(e.message)).finally(()=>setLoading(false));}}>Повторить загрузку</Button><Button variant="outline" onClick={onExit}>Вернуться в СИНТАГМУ</Button></main>;
+  if (loading||loadContext!==adapter) return <main className="driving-school-root loading"><Brand/><p>{preview?'Загружаем синтетический стенд…':'Загружаем автошколу…'}</p></main>;
+  if (!data||dataAdapter!==adapter) return <main className="driving-school-root loading"><Brand/><div role="alert" className="error">{error||'Данные автошколы не загружены'}</div><Button onClick={()=>void reload().catch(()=>{})}>Повторить загрузку</Button><Button variant="outline" onClick={onExit}>Вернуться в СИНТАГМУ</Button></main>;
   const state = data;
   const owner = state.user.role === 'owner',
     canCreateStudents = owner && adapter.canCreateStudents===true,
@@ -1760,7 +1828,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
               variant="ghost"
               aria-label="Обновить данные"
               onClick={() => {
-                void reload().catch((e) => setError(e.message));
+                void reload().catch(() => {});
               }}
             >
               <RefreshCw />
@@ -1799,7 +1867,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
                   <Plus />
                   Добавить ученика
                 </Button>
-                <Button onClick={() => book()}>
+                <Button disabled={busy} onClick={() => book()}>
                   <CalendarDays />
                   Записать на вождение
                 </Button>
@@ -1823,7 +1891,8 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
               </Button>
             </output>
           )}
-          {content}
+          {!readConfirmed&&<div role="status" className="callout no-print">Показаны последние загруженные данные. До подтверждённого обновления запись недоступна.</div>}
+          {readConfirmed?content:<fieldset disabled style={{display:'contents'}}>{content}</fieldset>}
           <footer className="page-footer no-print">
             СИНТАГМА Автошколы · Beta · Часовой пояс: {zone}
           </footer>
