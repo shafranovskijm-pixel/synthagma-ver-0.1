@@ -524,7 +524,7 @@ const CourseLearning = () => {
                 <Trophy className="w-4 h-4 mr-1" />{isMobile ? "Завершить" : "Завершить курс"}
               </Button>
             )}
-            {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "Готово!" : "Курс завершён!"}</Button>}
+            {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "К курсам" : "К списку курсов"}</Button>}
           </div>
         </footer>}
       </main>
