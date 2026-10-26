@@ -312,6 +312,7 @@ export function TabContentRenderer() {
         <CourseStoreManager
           organizationId={organizationId}
           userId={d.user?.id}
+          onOwnFreeCourseReceived={d.refreshBaseData}
         />
       )}
 

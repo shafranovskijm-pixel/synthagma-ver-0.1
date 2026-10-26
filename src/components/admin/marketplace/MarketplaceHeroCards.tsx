@@ -1,10 +1,10 @@
 import { Sparkles, BookOpen, UserCog, Scale, Flame, GraduationCap } from "lucide-react";
-import heroFire from "@/assets/marketplace/hero-fire-safety.jpg";
-import newJurist from "@/assets/marketplace/new-jurist.jpg";
-import newMarketing from "@/assets/marketplace/new-marketing.jpg";
-import newAccountant from "@/assets/marketplace/new-accountant.jpg";
+import heroFire from "@/assets/demo/course-fire.jpg";
+import newJurist from "@/assets/demo/demo-feature-constructor.jpg";
+import newMarketing from "@/assets/presentation/ai-assistant-bg.jpg";
+import newAccountant from "@/assets/cover_44fz.jpg";
 import newHr from "@/assets/marketplace/new-hr.jpg";
-import newLaborSafety from "@/assets/marketplace/new-labor-safety-spec.jpg";
+import newLaborSafety from "@/assets/features/courses-bg.jpg";
 import { RECOMMENDED_PLATFORM_COURSES } from "@/lib/platformCourseCatalog";
 
 const CARD_STYLES = [

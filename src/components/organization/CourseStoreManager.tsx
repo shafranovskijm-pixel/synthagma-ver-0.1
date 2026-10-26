@@ -24,6 +24,7 @@ import { CourseComments } from "./CourseComments";
 import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
 import { isPlatformCourseListing } from "@/lib/platformCourseCatalog";
+import type { ConfirmedFreeCourseReceipt } from "@/lib/freeCourseReceipt";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { statusLabels, getProgramTypeMeta, getSubCategoryMeta } from "@/components/admin/marketplace/marketplaceConstants";
 import {
@@ -35,11 +36,12 @@ interface CourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
   userId?: string;
+  onOwnFreeCourseReceived?: (receipt: ConfirmedFreeCourseReceipt) => void;
 }
 
-export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
+export function CourseStoreManager({ organizationId, userRole = 'organization', userId, onOwnFreeCourseReceived }: CourseStoreManagerProps) {
   const navigate = useNavigate();
-  const h = useCourseStoreManager({ organizationId, userRole, userId });
+  const h = useCourseStoreManager({ organizationId, userRole, userId, onOwnFreeCourseReceived });
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any>(null);
