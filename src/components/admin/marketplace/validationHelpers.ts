@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { getTestAnswerKeyState } from "@/utils/testAnswerKey";
 import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 
 export interface ValidationRulesConfig {
@@ -23,8 +24,9 @@ export function checkCriticalError(error: any): boolean {
 }
 
 export async function validateCourseIssues(courseId: string, valRules: ValidationRulesConfig): Promise<string[]> {
-  const { data: lessons } = await supabase
+  const { data: lessons, error: lessonsError } = await supabase
     .from("lessons").select("id, title, type, content").eq("course_id", courseId);
+  if (lessonsError) throw lessonsError;
   const issues: string[] = [];
 
   if (!lessons?.length) {
@@ -32,7 +34,7 @@ export async function validateCourseIssues(courseId: string, valRules: Validatio
     return issues;
   }
 
-  const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
+  const textLessons = lessons.filter(l => l.type === "text" || l.type === "lesson" || l.type === "practice");
   const testLessons = lessons.filter(l => l.type === "test");
   if (valRules.requireText && textLessons.length === 0) issues.push("Нет учебных уроков (текст/практика)");
   if (valRules.requireTest && testLessons.length === 0) issues.push("Нет тестов");
@@ -63,20 +65,22 @@ export async function validateCourseIssues(courseId: string, valRules: Validatio
   
   const testIds = testLessons.map(l => l.id);
   if (testIds.length) {
-    const { data: questions } = await supabase
-      .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
+    const { data: questions, error: questionsError } = await supabase
+      .from("test_questions").select("id, lesson_id, correct_answer, options").in("lesson_id", testIds);
+    if (questionsError) throw questionsError;
     const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-    const unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
+    const unansweredQuestions = questions?.filter(q => getTestAnswerKeyState(q.correct_answer, q.options) !== "valid") || [];
     if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
-    if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без ответа`);
+    if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без корректного ключа ответа`);
   }
 
   return issues;
 }
 
 export async function validateCourseIssuesSimple(courseId: string, valRules: ValidationRulesConfig): Promise<string[]> {
-  const { data: lessons } = await supabase
+  const { data: lessons, error: lessonsError } = await supabase
     .from("lessons").select("id, title, type, content").eq("course_id", courseId);
+  if (lessonsError) throw lessonsError;
   const issues: string[] = [];
 
   if (!lessons?.length) {
@@ -84,7 +88,7 @@ export async function validateCourseIssuesSimple(courseId: string, valRules: Val
     return issues;
   }
 
-  const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
+  const textLessons = lessons.filter(l => l.type === "text" || l.type === "lesson" || l.type === "practice");
   const testLessons = lessons.filter(l => l.type === "test");
   if (valRules.requireText && textLessons.length === 0) issues.push("Нет учебных уроков");
   if (valRules.requireTest && testLessons.length === 0) issues.push("Нет тестов");
@@ -101,12 +105,13 @@ export async function validateCourseIssuesSimple(courseId: string, valRules: Val
   
   const testIds = testLessons.map(l => l.id);
   if (testIds.length) {
-    const { data: questions } = await supabase
-      .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
+    const { data: questions, error: questionsError } = await supabase
+      .from("test_questions").select("id, lesson_id, correct_answer, options").in("lesson_id", testIds);
+    if (questionsError) throw questionsError;
     const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-    const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
+    const unanswered = questions?.filter(q => getTestAnswerKeyState(q.correct_answer, q.options) !== "valid") || [];
     if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
-    if (unanswered.length) issues.push(`${unanswered.length} без ответа`);
+    if (unanswered.length) issues.push(`${unanswered.length} без корректного ключа ответа`);
   }
 
   return issues;

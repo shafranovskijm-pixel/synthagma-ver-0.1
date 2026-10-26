@@ -232,18 +232,10 @@ export function useMarketplaceValidation({
         }
       }
 
-      // Remove duplicates
+      // Identical titles may be different editions with retained learner history.
       if (duplicateGroups.length > 0) {
         completed++;
-        toast.loading(`Удаляю дубликаты (${completed}/${totalTasks})`, { id: toastId });
-        const idsToDelete: string[] = [];
-        for (const group of duplicateGroups) for (let i = 1; i < group.length; i++) idsToDelete.push(group[i].id);
-        if (idsToDelete.length > 0) {
-          await supabase.from("test_questions").delete().in("lesson_id", idsToDelete);
-          await supabase.from("lesson_progress").delete().in("lesson_id", idsToDelete);
-          await supabase.from("lesson_attachments").delete().in("lesson_id", idsToDelete);
-          await supabase.from("lessons").delete().in("id", idsToDelete);
-        }
+        toast.info("Одноимённые уроки сохранены: требуется проверка редакций.", { duration: 6000 });
       }
 
       if (hadCriticalError) { toast.warning("Автоисправление прервано: ошибка API (402/429).", { id: toastId, duration: 8000 }); return; }
