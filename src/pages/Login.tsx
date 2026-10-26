@@ -22,7 +22,7 @@ import {
   DialogTitle } from "@/components/ui/dialog";
 
 
-import { organizationRegistrationTarget, isDrivingInvitationTarget } from "@/utils/authReturn";
+import { organizationRegistrationTarget, organizationRegistrationHref, isDrivingInvitationTarget } from "@/utils/authReturn";
 import { resolveLoginDestination } from "@/utils/loginDestination";
 import { consumeLegacyLoginPrefill } from "@/utils/credentialPrivacy";
 
@@ -425,7 +425,7 @@ const Login = () => {
           {isDrivingInvitation ? <p className="text-center text-muted-foreground mt-8">Для приглашения нужен действующий общий аккаунт этой автошколы. Если аккаунта нет, обратитесь к владельцу школы. Регистрация новой организации для этого приглашения не подходит.</p> : (
           <p className="text-center text-muted-foreground mt-8">
             Нет аккаунта?{" "}
-            <a href={organizationRegistrationTarget(searchParams) === "/organization/driving-school" ? "/register-organization?module=driving-school" : "/register-organization"} className="text-primary hover:underline font-medium">
+            <a href={organizationRegistrationTarget(searchParams) === "/organization/driving-school" ? "/register-organization?module=driving-school" : organizationRegistrationHref(searchParams)} className="text-primary hover:underline font-medium">
               Зарегистрировать организацию
             </a>
           </p>

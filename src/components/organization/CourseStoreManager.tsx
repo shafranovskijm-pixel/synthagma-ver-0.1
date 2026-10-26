@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, ShoppingCart, GraduationCap, CheckCircle,
@@ -20,6 +20,8 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
 import { usePaidProgramDeepLink } from "@/hooks/usePaidProgramDeepLink";
+import { usePublicCourseDeepLink } from "@/hooks/usePublicCourseDeepLink";
+import { resolvePublicCourseDeepLink } from "@/lib/publicCourseExplorer";
 import { CourseComments } from "./CourseComments";
 import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
@@ -44,18 +46,38 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   const h = useCourseStoreManager({ organizationId, userRole, userId, onOwnFreeCourseReceived });
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
-  const [selectedCourseDetail, setSelectedCourseDetail] = useState<any>(null);
+  const [detailSelection, setDetailSelection] = useState<{ course: any; organizationId: string; userId?: string; origin: 'manual' | 'public' } | null>(null);
+  const setSelectedCourseDetail = useCallback((course: any) => {
+    setDetailSelection(course ? { course, organizationId, userId, origin: 'manual' } : null);
+  }, [organizationId, userId]);
+  const selectPublicCourse = useCallback((course: any) => {
+    setDetailSelection({ course, organizationId, userId, origin: 'public' });
+  }, [organizationId, userId]);
+  const publicDeepLink = usePublicCourseDeepLink({
+    catalog: h.catalogCourses, isLoading: h.isLoading, loadedScope: h.catalogReadScope,
+    organizationId, userId, onSelect: selectPublicCourse, onOpenCatalog: h.setActiveTab,
+  });
   const paidDeepLink = usePaidProgramDeepLink({
     catalog: h.catalogCourses,
-    isLoading: h.isLoading,
+    isLoading: h.isLoading || publicDeepLink.requested || !h.catalogReadScope
+      || h.catalogReadScope.organizationId !== organizationId || h.catalogReadScope.userId !== userId,
     organizationId,
     onSelect: setSelectedCourseDetail,
     onOpenCatalog: h.setActiveTab,
   });
+  // Never render a previously selected organization's detail during a context switch.
+  const selectionInScope = detailSelection?.organizationId === organizationId && detailSelection.userId === userId;
+  const selectedCourseDetail = !detailSelection || !selectionInScope ? null : detailSelection.origin === 'public'
+    ? publicDeepLink.requested && publicDeepLink.requestedId === detailSelection.course.course_id
+      ? resolvePublicCourseDeepLink(h.catalogCourses, publicDeepLink.requestedId, { organizationId, userId }, h.catalogReadScope, h.isLoading)
+      : null
+    : detailSelection.course;
   const closeCourseDetail = () => {
-    setSelectedCourseDetail(null);
-    paidDeepLink.clearRequestedCourse();
+    setDetailSelection(null);
+    if (publicDeepLink.requested) publicDeepLink.clearRequestedCourse();
+    else paidDeepLink.clearRequestedCourse();
   };
+
 
   if (h.isLoading) {
     return (
@@ -105,10 +127,11 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
         {/* Catalog Tab */}
         <TabsContent value="catalog" className="space-y-6">
-          {paidDeepLink.unavailable && (
+          {publicDeepLink.requested && h.catalogLoadFailed && <div role="alert" className="rounded-xl border p-4 text-sm"><p>Не удалось загрузить каталог для выбранного курса.</p><Button variant="link" onClick={() => void h.refreshCatalog()}>Повторить загрузку каталога</Button></div>}
+          {(publicDeepLink.unavailable || (!publicDeepLink.requested && paidDeepLink.unavailable)) && (
             <div role="status" className="rounded-xl border p-4 text-sm">
               Эта программа пока недоступна в каталоге вашей организации.
-              <Button variant="link" onClick={paidDeepLink.clearRequestedCourse}>Перейти к каталогу</Button>
+              <Button variant="link" onClick={publicDeepLink.requested ? publicDeepLink.clearRequestedCourse : paidDeepLink.clearRequestedCourse}>Перейти к каталогу</Button>
             </div>
           )}
           {selectedCourseDetail ? (

@@ -12,9 +12,26 @@ export function safeInternalNext(raw: string | null | undefined): string | null 
 }
 
 export const DRIVING_ORGANIZATION_PATH = '/organization/driving-school';
+/** Only this fixed catalogue presentation route may survive organization registration. */
+export function courseCatalogRegistrationTarget(raw: string | null | undefined): string | null {
+  const next = safeInternalNext(raw);
+  if (!next) return null;
+  const url = new URL(next, 'https://internal.invalid');
+  const courseId = url.searchParams.get('catalogCourseId');
+  if (url.pathname !== '/organization' || url.hash || [...url.searchParams.keys()].length !== 2
+    || url.searchParams.getAll('tab').length !== 1 || url.searchParams.get('tab') !== 'services'
+    || url.searchParams.getAll('catalogCourseId').length !== 1 || !courseId
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) return null;
+  return '/organization?' + new URLSearchParams({ tab: 'services', catalogCourseId: courseId.toLowerCase() });
+}
 export function organizationRegistrationTarget(params: URLSearchParams): string {
-  return params.get('module') === 'driving-school' || params.get('next') === DRIVING_ORGANIZATION_PATH
-    ? DRIVING_ORGANIZATION_PATH : '/organization';
+  if (params.get('module') === 'driving-school' || params.get('next') === DRIVING_ORGANIZATION_PATH) return DRIVING_ORGANIZATION_PATH;
+  return params.getAll('next').length === 1 ? courseCatalogRegistrationTarget(params.get('next')) ?? '/organization' : '/organization';
+}
+export function organizationRegistrationHref(params: URLSearchParams): string {
+  const target = organizationRegistrationTarget(params);
+  if (target === DRIVING_ORGANIZATION_PATH) return '/register-organization?module=driving-school';
+  return target === '/organization' ? '/register-organization' : '/register-organization?' + new URLSearchParams({ next: target });
 }
 export function loginWithNext(path: string | null | undefined): string {
   const next = safeInternalNext(path);

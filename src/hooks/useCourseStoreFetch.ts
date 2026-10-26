@@ -19,7 +19,7 @@ interface FetchCallbacks {
 export async function fetchCatalog(organizationId: string, setCatalogCourses: (v: MarketplaceCourse[]) => void) {
   const { data, error } = await supabase
     .from('marketplace_courses')
-    .select(`*, course:courses(id, organization_id, title, description, duration, category_id, cover_image_url), organization:organizations(name)`)
+    .select(`*, course:courses(id, organization_id, title, description, duration, category_id, cover_image_url, is_published, hidden_from_catalog, category:course_categories(hidden_from_catalog)), organization:organizations(name)`)
     .eq('is_active', true)
     .eq('is_validated', true)
     .neq('organization_id', organizationId);

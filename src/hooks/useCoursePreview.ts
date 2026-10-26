@@ -9,6 +9,7 @@ import { orderCourseLessons } from "@/lib/courseLessonOrder";
 
 export interface Lesson {
   id: string;
+  course_id?: string | null;
   title: string;
   type: string;
   content?: string | null;
@@ -20,6 +21,7 @@ export interface Lesson {
 
 export interface Course {
   id: string;
+  organization_id?: string | null;
   title: string;
   description: string | null;
   is_published: boolean;

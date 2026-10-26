@@ -9,6 +9,7 @@ import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { HOMEWORK_TEXT_LIMIT, homeworkContextKey, isReportForContext, type PreparedHomeworkReport } from "@/lib/homeworkReport";
+import { HomeworkTaskDescription, type HomeworkTaskScope } from "./HomeworkTaskDescription";
 
 interface HomeworkSubmissionProps {
   organizationId: string;
@@ -16,6 +17,7 @@ interface HomeworkSubmissionProps {
   courseId: string;
   userId: string;
   taskDescription: string | null;
+  taskScope?: HomeworkTaskScope;
   isMobile: boolean;
   onComplete: () => void;
   readOnly?: boolean;
@@ -49,7 +51,7 @@ export function HomeworkSubmission(props: HomeworkSubmissionProps) {
   return <ScopedHomeworkSubmission key={`${homeworkContextKey(props)}:${!!props.readOnly}`} {...props} />;
 }
 
-function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, taskDescription, onComplete, readOnly = false, allowAttachments = true, preparedReport }: HomeworkSubmissionProps) {
+function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, taskDescription, taskScope, onComplete, readOnly = false, allowAttachments = true, preparedReport }: HomeworkSubmissionProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<{ url: string; name: string; type: string }[]>([]);
@@ -184,7 +186,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
             <BookCheck className="w-4 h-4 text-indigo-500" />
             Задание
           </h3>
-          <div className="text-sm whitespace-pre-wrap">{taskDescription}</div>
+          <HomeworkTaskDescription content={taskDescription} scope={taskScope} className="text-sm whitespace-pre-wrap" />
         </div>
       )}
 

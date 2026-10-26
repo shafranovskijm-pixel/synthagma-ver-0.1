@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { HomeworkTaskDescription } from "@/components/course-learning/HomeworkTaskDescription";
 import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 import { ContentBlock, BlockRenderer, parseLessonContent } from "@/components/course-builder/block-editor";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
@@ -299,7 +300,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
                   </p>
                 </div>
                 {currentLesson.content?.trim()
-                  ? <div role="document" aria-label="Условия задания" className="whitespace-pre-wrap break-words">{currentLesson.content}</div>
+                  ? <HomeworkTaskDescription content={currentLesson.content} scope={{ routeCourseId: h.courseId, course, lesson: currentLesson }} role="document" aria-label="Условия задания" className="whitespace-pre-wrap break-words" />
                   : <p className="text-muted-foreground">Содержимое задания недоступно. Проверьте его в редакторе.</p>}
               </section>
             )}

@@ -6,15 +6,13 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { Footer } from "@/components/landing/Footer";
 import {
-  Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
-  HardHat, Leaf, ArrowRight, Clock, FileCheck, RefreshCw,
-  Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2,
-  FileText, FileDown
+  Shield, BookOpen, ArrowRight, Clock, FileCheck, RefreshCw, FileText, FileDown
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { exportCatalogToDocx, exportCatalogToPdf } from "@/utils/exportRostechnadzorCatalog";
 import { usePublicCourseCatalog } from "@/hooks/usePublicCourseCatalog";
+import { PublicCourseExplorer } from "@/components/landing/PublicCourseExplorer";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -24,28 +22,6 @@ const fadeUp = {
 const stagger = {
   visible: { transition: { staggerChildren: 0.06 } },
 };
-
-// Иконка и цвет по названию категории; публичные данные общие с главным лендингом.
-const CATEGORY_STYLE: Record<string, { icon: typeof Shield; color: string; bgColor: string }> = {
-  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
-  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
-  "Пожарная безопасность": { icon: Flame, color: "text-orange-500", bgColor: "bg-orange-500/10" },
-  "Медицина": { icon: Heart, color: "text-pink-500", bgColor: "bg-pink-500/10" },
-  "Охрана труда": { icon: Shield, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
-  "Промышленная безопасность": { icon: Factory, color: "text-violet-500", bgColor: "bg-violet-500/10" },
-  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
-  "Строительный контроль": { icon: Settings, color: "text-accent", bgColor: "bg-accent/10" },
-  "Строительные специальности": { icon: Building2, color: "text-sky-500", bgColor: "bg-sky-500/10" },
-  "Рабочие профессии": { icon: HardHat, color: "text-amber-600", bgColor: "bg-amber-600/10" },
-  "Слесари": { icon: Wrench, color: "text-zinc-500", bgColor: "bg-zinc-500/10" },
-  "Машинист": { icon: Car, color: "text-indigo-500", bgColor: "bg-indigo-500/10" },
-  "Профессиональная переподготовка": { icon: GraduationCap, color: "text-cyan-500", bgColor: "bg-cyan-500/10" },
-  "Психология": { icon: Heart, color: "text-rose-500", bgColor: "bg-rose-500/10" },
-  "Менеджмент": { icon: Briefcase, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "Государственное и муниципальное управление": { icon: Briefcase, color: "text-slate-500", bgColor: "bg-slate-500/10" },
-};
-
-const DEFAULT_STYLE = { icon: Layers, color: "text-slate-500", bgColor: "bg-slate-500/10" };
 
 const advantages = [
   {
@@ -160,13 +136,13 @@ const RostechnadzorCoursesPage = () => {
       <section id="catalog" className="py-16 md:py-20 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-secondary/20 via-background to-background" />
         <div className="container mx-auto px-6 relative z-10">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-5xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-6xl mx-auto">
             <motion.div variants={fadeUp} className="text-center mb-8">
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-                {directionsCount ? `${directionsCount} направлений обучения` : "Направления обучения"}
+                Найдите курс под вашу задачу
               </h2>
               <p className="text-muted-foreground max-w-xl mx-auto mb-6">
-                Электробезопасность, энергетика, охрана труда, медицина, пожарная безопасность и многое другое
+                Выберите направление или найдите нужную тему. Карточка откроется в каталоге организации после входа.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button
@@ -214,62 +190,11 @@ const RostechnadzorCoursesPage = () => {
             </motion.div>
 
 
-            <div className="grid gap-5">
-              {catalogLoading && (
-                <div className="text-center text-muted-foreground py-8">Загружаем актуальный каталог…</div>
-              )}
-              {catalogError && <div className="text-center text-muted-foreground py-8" role="alert"><p>Не удалось загрузить каталог. Повторите загрузку.</p><Button variant="link" onClick={() => void refetch()}>Повторить загрузку</Button></div>}
-              {!catalogLoading && !catalogError && fullCatalog?.length === 0 && <div className="text-center text-muted-foreground py-8">В публичном каталоге пока нет доступных курсов.</div>}
-              {!catalogLoading && !catalogError && (fullCatalog ?? []).map((cat, i) => {
-                const style = CATEGORY_STYLE[cat.title] ?? DEFAULT_STYLE;
-                const Icon = style.icon;
-                const preview = cat.courses.slice(0, 6);
-                return (
-                  <motion.div
-                    key={cat.title}
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.04 }}
-                  >
-                    <Card className="relative border-border/60 bg-card/80 backdrop-blur-sm hover:border-accent/30 transition-all duration-300 overflow-hidden group">
-                      <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                        <div className="absolute top-0 left-1/4 w-1/2 h-20 bg-accent/5 blur-2xl" />
-                      </div>
-                      <CardContent className="p-6 md:p-8 relative z-10">
-                        <div className="flex items-start gap-4 mb-4">
-                          <div className={`w-12 h-12 rounded-xl ${style.bgColor} flex items-center justify-center shrink-0`}>
-                            <Icon className={`w-6 h-6 ${style.color}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <h3 className="font-display text-xl font-medium">{cat.title}</h3>
-                              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
-                                {cat.count} {cat.count >= 5 ? "курсов" : cat.count >= 2 ? "курса" : "курс"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 pl-0 md:pl-16">
-                          {preview.map((course) => (
-                            <div key={course.id} className="flex items-start gap-2 py-1">
-                              <CheckCircle2 className="w-4 h-4 text-accent/60 shrink-0 mt-0.5" />
-                              <span className="text-sm text-foreground/70">{course.title}</span>
-                            </div>
-                          ))}
-                        </div>
-                        {cat.count > preview.length && (
-                          <div className="pl-0 md:pl-16 mt-2 text-xs text-muted-foreground">
-                            и ещё {cat.count - preview.length} курс{(cat.count - preview.length) >= 5 ? "ов" : (cat.count - preview.length) >= 2 ? "а" : ""} в этом направлении
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
+            {catalogLoading && <div role="status" className="rounded-2xl border border-border/70 bg-card/70 py-16 text-center text-muted-foreground">Загружаем актуальный каталог…</div>}
+            {catalogError && <div className="rounded-2xl border border-border/70 bg-card/70 py-12 text-center text-muted-foreground" role="alert"><p>Не удалось загрузить каталог. Повторите загрузку.</p><Button variant="link" onClick={() => void refetch()}>Повторить загрузку</Button></div>}
+            {!catalogLoading && !catalogError && catalog?.totalCount === 0 && <div className="py-12 text-center text-muted-foreground">В публичном каталоге пока нет доступных курсов.</div>}
+            {!catalogLoading && !catalogError && catalog && catalog.totalCount > 0 && <PublicCourseExplorer catalog={catalog} />}
+
           </motion.div>
         </div>
       </section>
@@ -316,11 +241,11 @@ const RostechnadzorCoursesPage = () => {
         <div className="container mx-auto px-6 text-center relative z-10">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
             <motion.h2 variants={fadeUp} className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-              Посмотрите каталог курсов <span className="text-accent">после регистрации</span>
+              От выбранного курса — <span className="text-accent">к обучению команды</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Зарегистрируйте организацию, откройте каталог и проверьте доступные условия
-              перед подключением выбранной программы.
+              Создайте кабинет организации, бесплатно добавьте подходящие материалы
+              и подготовьте программу к назначению ученикам.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
               <Link to="/register-organization">

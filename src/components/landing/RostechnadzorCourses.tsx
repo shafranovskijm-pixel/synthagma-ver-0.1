@@ -127,9 +127,9 @@ export function RostechnadzorCourses() {
               ))}
             </div>
 
-            <Link to="/rostechnadzor-courses">
+            <Link to="/rostechnadzor-courses#catalog">
               <Button className="btn-gradient rounded-xl px-8 h-12 text-sm gap-2 group">
-                Подробнее о курсах
+                Найти бесплатный курс
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
