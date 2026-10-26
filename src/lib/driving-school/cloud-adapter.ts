@@ -22,15 +22,23 @@ const stateSchema = z.object({
  busy:z.array(z.object({starts_at:date,ends_at:date})),
  audit:z.array(z.object({action:z.string(),target:z.string(),created_at:date,detail:z.unknown()})),
 });
-export class DrivingUnavailable extends Error {
- constructor(message = 'Модуль автошкол пока закрыт для пилота. Рабочий доступ появится после отдельной проверки и выпуска.') { super(message); this.name='DrivingUnavailable'; }
+export type DrivingFailureKind = 'auth' | 'permission' | 'missing' | 'context' | 'network' | 'unknown';
+export class DrivingFailure extends Error {
+  constructor(message: string, public readonly kind: DrivingFailureKind) { super(message); this.name = 'DrivingFailure'; }
+}
+export class DrivingUnavailable extends DrivingFailure {
+  constructor(message = 'Модуль автошкол пока закрыт для пилота. Рабочий доступ появится после отдельной проверки и выпуска.', kind: 'permission' | 'missing' = 'permission') { super(message, kind); this.name='DrivingUnavailable'; }
+}
+export function isDrivingAccessClosed(error: unknown): boolean {
+  return error instanceof DrivingFailure && ['auth', 'permission', 'missing', 'context'].includes(error.kind);
 }
 export function drivingError(error: { code?: string; message?: string } | null): Error {
- if (['PGRST301','PGRST302','401'].includes(error?.code || '')) return new Error('Сессия истекла. Войдите заново через общий вход СИНТАГМЫ.');
+  if (['PGRST301','PGRST302','401','28000'].includes(error?.code || '')) return new DrivingFailure('Сессия истекла. Войдите заново через общий вход СИНТАГМЫ.', 'auth');
+  if (error?.code === '25000') return new DrivingFailure('Не удалось подтвердить доступ к автошколе. Повторите загрузку.', 'context');
  if (['42501','403'].includes(error?.code || '')) return new DrivingUnavailable('Доступ не разрешён: модуль закрыт для пилота или прав текущего аккаунта недостаточно.');
- if (['PGRST202','42883','42P01'].includes(error?.code || '')) return new DrivingUnavailable('Модуль ещё не подключён на сервере: необходимые объекты или RPC недоступны.');
- if (/fetch|network|connection/i.test(error?.message || '')) return new Error('Нет связи с сервером. Проверьте соединение и повторите запрос.');
- return new Error(error?.message || 'Не удалось выполнить запрос. Проверьте соединение и повторите.');
+  if (['PGRST202','42883','42P01'].includes(error?.code || '')) return new DrivingUnavailable('Модуль ещё не подключён на сервере: необходимые объекты или RPC недоступны.', 'missing');
+  if (/fetch|network|connection/i.test(error?.message || '')) return new DrivingFailure('Нет связи с сервером. Проверьте соединение и повторите запрос.', 'network');
+  return new DrivingFailure(error?.message || 'Не удалось выполнить запрос. Проверьте соединение и повторите.', 'unknown');
 }
 // Only this exact RPC set is called here. The shared proxy/Auth client remains the transport.
 const rpc = supabase.rpc.bind(supabase) as unknown as (name:string,args?:Record<string,unknown>) => Promise<{data:unknown;error:{code?:string;message?:string}|null}>;
@@ -39,10 +47,11 @@ export async function drivingRpc<T>(name:string,args?:Record<string,unknown>):Pr
 }
 export function adaptCloudState(raw:unknown, organizationId:string):State {
  const parsed=stateSchema.safeParse(raw);
- if(!parsed.success) throw new Error('Backend вернул неполные данные автошколы. Обновите страницу; при повторении передайте ошибку администратору.');
+  if(!parsed.success) throw new DrivingFailure('Backend вернул неполные данные автошколы. Обновите страницу; при повторении передайте ошибку администратору.', 'context');
  const s=parsed.data;
- if(s.school.organization_id !== organizationId) throw new Error('Ответ относится к другой организации. Данные не открыты.');
- new Intl.DateTimeFormat('ru-RU',{timeZone:s.school.timezone}).format();
+  if(s.school.organization_id !== organizationId) throw new DrivingFailure('Ответ относится к другой организации. Данные не открыты.', 'context');
+  try { new Intl.DateTimeFormat('ru-RU',{timeZone:s.school.timezone}).format(); }
+  catch { throw new DrivingFailure('Не подтверждён часовой пояс автошколы. Повторите загрузку.', 'context'); }
  const resources:Row[] = [
   ...s.programs.map(r => ({id:r.id,kind:'program' as const,name:r.name,active:Number(r.active!==false),data:{version:r.version,transmission:r.transmission,practiceMinutes:r.practice_minutes,category:r.category}})),
   ...s.cars.map(r => ({id:r.id,kind:'car' as const,name:r.name,active:Number(r.active!==false),data:{number:r.number,transmission:r.transmission,category:r.category}})),
@@ -58,10 +67,16 @@ export function adaptCloudState(raw:unknown, organizationId:string):State {
   const d=z.object({course_id:id,course_name:z.string(),score:z.number(),passed:z.boolean()}).parse(e.data);
   return {...common,kind:'attempt',data:{courseId:d.course_id,courseName:d.course_name,score:d.score,passed:d.passed,answers:[]}};
  });
- if(s.can_manage !== (s.viewer.role==='owner')) throw new Error('Несогласованные права доступа в ответе backend');
+  if(s.can_manage !== (s.viewer.role==='owner')) throw new DrivingFailure('Несогласованные права доступа в ответе backend', 'context');
  const resourceId=s.viewer.role==='student'?s.viewer.student_id:s.viewer.instructor_id;
- if(s.viewer.role!=='owner'&&!resourceId) throw new Error('Не подтверждена привязка аккаунта автошколы');
- if(s.students.some(student=>!s.balances.some(b=>b.id===student.id))) throw new Error('В ответе нет остатка практики ученика');
+  if(s.viewer.role!=='owner'&&!resourceId) throw new DrivingFailure('Не подтверждена привязка аккаунта автошколы', 'context');
+  if(s.viewer.role!=='owner'&&!resources.some(r=>r.kind===s.viewer.role&&r.id===resourceId))
+   throw new DrivingFailure('В ответе нет действующего профиля участника автошколы', 'context');
+  if((s.viewer.role==='student'&&(s.students.some(r=>r.id!==resourceId)||s.lessons.some(r=>r.student_id!==resourceId)||s.entries.some(r=>r.student_id!==resourceId)))
+   ||(s.viewer.role==='instructor'&&(s.students.some(r=>r.instructor_id!==resourceId)||s.lessons.some(r=>r.instructor_id!==resourceId)||s.entries.some(r=>!['exam','attempt'].includes(r.kind)||!s.students.some(student=>student.id===r.student_id))))
+   ||(s.viewer.role!=='owner'&&s.courses.some(course=>course.questions.some(q=>q.correct!==undefined))))
+   throw new DrivingFailure('Ответ не соответствует привязке и правам участника автошколы', 'context');
+  if(s.students.some(student=>!s.balances.some(b=>b.id===student.id))) throw new DrivingFailure('В ответе нет остатка практики ученика', 'context');
  return {user:{id:'',name:resources.find(r=>r.id===resourceId)?.name||'Администратор',email:'',role:s.viewer.role,resource_id:resourceId||''},school:{id:organizationId,name:s.school.name,settings:JSON.stringify({timezone:s.school.timezone,horizonDays:s.school.horizon_days,cancelHours:s.school.cancel_hours})},resources,entries,lessons:s.lessons.map(l=>({id:l.id,student_id:l.student_id,instructor_id:l.instructor_id,car_id:l.car_id,start:Date.parse(l.starts_at),end:Date.parse(l.ends_at),status:l.status,actual_minutes:l.actual_minutes,topic:l.topic,note:l.note})),balances:s.balances.map(b=>({id:b.id,completed:b.completed,reserved:b.reserved,planned:b.planned})),busy:s.busy.map(b=>({start:Date.parse(b.starts_at),end:Date.parse(b.ends_at)})),audit:s.audit.map(a=>({action:a.action,target:a.target,created:Date.parse(a.created_at),detail:JSON.stringify(a.detail)}))};
 }
 export function createCloudAdapter(organizationId:string, canCreateStudents=false):DrivingAdapter {
