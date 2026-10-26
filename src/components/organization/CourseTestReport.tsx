@@ -1,4 +1,4 @@
-import { FileSpreadsheet, CheckCircle2, XCircle, BarChart3, Filter, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { FileSpreadsheet, CheckCircle2, XCircle, BarChart3, Filter, X, Calendar, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -8,6 +8,8 @@ import { ru } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useCourseTestReport, normalizeOption } from "@/hooks/useCourseTestReport";
+
+import { UNKNOWN_HISTORY, outcomeLabel, questionCounts, storedAttemptOutcome } from "@/lib/courseTestHistory";
 
 interface CourseTestReportProps {
   courseId: string;
@@ -20,6 +22,13 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
 
   if (r.isLoading) {
     return <div className="flex items-center justify-center py-8"><SigmaSpinner /></div>;
+  }
+
+  if (r.loadError) {
+    return <div className="flex flex-col items-center justify-center py-8 gap-3">
+      <p className="text-sm text-muted-foreground">Не удалось загрузить историю тестирования.</p>
+      <Button variant="outline" onClick={() => void r.retry()}>Повторить</Button>
+    </div>;
   }
 
   if (r.testData.length === 0) {
@@ -106,15 +115,16 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           {r.filteredData.map(attempt => {
             const isExpanded = r.expandedAttempts.has(attempt.id);
             const details = r.getAttemptQuestionDetails(attempt);
-            const incorrectCount = details.filter(d => !d.isCorrect).length;
+            const incorrectCount = questionCounts(attempt.history).incorrect;
+            const outcome = storedAttemptOutcome(attempt);
             return (
               <Collapsible key={attempt.id} open={isExpanded}>
-                <div className={`rounded-xl ${attempt.score >= attempt.max_score * 0.7 ? "bg-sigma-green/10" : "bg-destructive/10"}`}>
+                <div className={`rounded-xl ${outcome === true ? "bg-sigma-green/10" : outcome === false ? "bg-destructive/10" : "bg-secondary/30"}`}>
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-black/5 transition-colors rounded-xl" onClick={() => r.toggleExpanded(attempt.id)}>
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className={`p-2 rounded-lg ${attempt.score >= attempt.max_score * 0.7 ? "bg-sigma-green/20 text-sigma-green" : "bg-destructive/20 text-destructive"}`}>
-                          {attempt.score >= attempt.max_score * 0.7 ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                        <div className={`p-2 rounded-lg ${outcome === true ? "bg-sigma-green/20 text-sigma-green" : outcome === false ? "bg-destructive/20 text-destructive" : "bg-secondary/30 text-muted-foreground"}`}>
+                          {outcome === true ? <CheckCircle2 className="w-4 h-4" /> : outcome === false ? <XCircle className="w-4 h-4" /> : <HelpCircle className="w-4 h-4" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate">{attempt.user_name}</div>
@@ -123,10 +133,11 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
                       </div>
                       <div className="flex items-center gap-4 ml-3">
                         <div className="text-right">
-                          <div className={`font-bold ${attempt.score >= attempt.max_score * 0.7 ? 'text-sigma-green' : 'text-destructive'}`}>{attempt.score}/{attempt.max_score}</div>
+                          <div className={`font-bold ${outcome === true ? 'text-sigma-green' : outcome === false ? 'text-destructive' : 'text-muted-foreground'}`}>{attempt.score}/{attempt.max_score}</div>
                           <div className="text-xs text-muted-foreground">
-                            {incorrectCount > 0 && <span className="text-destructive">{incorrectCount} ошиб. </span>}
+                            {incorrectCount !== null && incorrectCount > 0 && <span className="text-destructive">{incorrectCount} ошиб. </span>}
                             {new Date(attempt.completed_at).toLocaleDateString('ru-RU')}
+                            <span className="sr-only">{outcomeLabel(outcome)}</span>
                           </div>
                         </div>
                         {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -135,16 +146,19 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="px-3 pb-3 space-y-2">
-                      <div className="text-xs font-medium text-muted-foreground mb-2">Ответы на вопросы:</div>
+                      {attempt.history.status === "snapshot"
+                        ? <div className="text-xs font-medium text-muted-foreground mb-2">Ответы на вопросы из снимка попытки:</div>
+                        : <p className="text-sm text-muted-foreground">{UNKNOWN_HISTORY}. Сохранённые баллы показаны без пересчёта.</p>}
                       {details.map((d, idx) => (
-                        <div key={idx} className={`p-2 rounded-lg text-sm ${d.isCorrect ? 'bg-sigma-green/10' : 'bg-destructive/10'}`}>
+                        <div key={idx} className={`p-2 rounded-lg text-sm ${d.isCorrect === true ? 'bg-sigma-green/10' : d.isCorrect === false ? 'bg-destructive/10' : 'bg-secondary/30'}`}>
                           <div className="flex items-start gap-2">
-                            <span className={`font-medium ${d.isCorrect ? 'text-sigma-green' : 'text-destructive'}`}>{d.isCorrect ? '✓' : '✗'}</span>
+                            <span className={`font-medium ${d.isCorrect === true ? 'text-sigma-green' : d.isCorrect === false ? 'text-destructive' : 'text-muted-foreground'}`}>{d.isCorrect === true ? '✓' : d.isCorrect === false ? '✗' : '?'}</span>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium mb-1 line-clamp-2" dangerouslySetInnerHTML={{ __html: d.questionText.length > 150 ? d.questionText.substring(0, 150) + '...' : d.questionText }} />
                               <div className="text-xs space-y-0.5">
-                                <div><span className="text-muted-foreground">Ответ: </span><span className={d.isCorrect ? 'text-sigma-green' : 'text-destructive'}>{d.selectedAnswer >= 0 && d.options[d.selectedAnswer] ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 100) : 'Нет ответа'}</span></div>
-                                {!d.isCorrect && <div><span className="text-muted-foreground">Правильно: </span><span className="text-sigma-green">{normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 100)}</span></div>}
+                                <div><span className="text-muted-foreground">Ответ: </span><span className={d.isCorrect === true ? 'text-sigma-green' : d.isCorrect === false ? 'text-destructive' : 'text-muted-foreground'}>{d.selectedAnswerStatus === 'unknown' ? 'Не подтверждён' : d.selectedAnswer >= 0 && d.options[d.selectedAnswer] ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 100) : 'Нет ответа'}</span></div>
+                                {d.isCorrect === false && d.correctAnswer !== null && <div><span className="text-muted-foreground">Правильно: </span><span className="text-sigma-green">{normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 100)}</span></div>}
+                                {d.isCorrect === null && <div className="text-muted-foreground">Оценка ответа по сохранённому снимку не подтверждена.</div>}
                               </div>
                             </div>
                           </div>

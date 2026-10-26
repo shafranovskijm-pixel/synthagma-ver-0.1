@@ -103,7 +103,7 @@ export function CourseSettingsTab(props: CourseSettingsTabProps) {
               <div className="space-y-2">
                 <Label>Вид документа</Label>
                 <Input value={props.frdoSettings.frdo_document_type || ""} className="rounded-xl bg-muted" disabled />
-                <p className="text-xs text-muted-foreground">Определяется автоматически на основе типа программы</p>
+                <p className="text-xs text-muted-foreground">{props.frdoSettings.frdo_document_type ? 'Указано в настройках курса. Условия выдачи подтверждает учебный центр.' : 'Вид документа пока не указан. Его подтверждает учебный центр вместе с программой и условиями выдачи.'}</p>
               </div>
             )}
             {(props.frdoSettings.frdo_program_type === "qualification_upgrade" || props.frdoSettings.frdo_program_type === "professional_retraining") && (
