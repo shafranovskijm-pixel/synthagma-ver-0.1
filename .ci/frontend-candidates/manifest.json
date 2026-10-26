@@ -53,7 +53,9 @@
     "scripts/ci/run-frontend-candidate.mjs",
     ".ci/frontend-candidates/homework-proof.json",
     ".ci/frontend-candidates/autoschool-entry.json",
-    ".ci/frontend-candidates/manifest.json"
+    ".ci/frontend-candidates/manifest.json",
+    ".github/workflows/public-course-release-smoke.yml",
+    "scripts/qa/public-course-release-smoke.mjs"
   ],
   "baselinePins": [
     {
