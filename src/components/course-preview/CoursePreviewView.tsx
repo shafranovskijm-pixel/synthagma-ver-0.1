@@ -147,7 +147,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
   const h = useCoursePreview({ courseIdOverride: courseId, embedded, onNavigateBack, onNavigateToEditor });
   const {
     course, lessons, currentLesson, currentLessonIndex, loading, isTransitioning,
-    lessonContentLoading, lessonContentError, reloadLessonContent,
+    lessonContentLoading, lessonContentError, reloadLessonContent, homeworkTaskScope, homeworkTaskProof,
     testQuestions, selectedAnswers, setSelectedAnswers, lessonAttachments, courseDocuments,
     showDocumentsView, previewFile, setPreviewFile, contentRef, fromStore,
     goToNextLesson, goToPrevLesson, goToLesson, goToDocumentsView,
@@ -300,7 +300,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
                   </p>
                 </div>
                 {currentLesson.content?.trim()
-                  ? <HomeworkTaskDescription content={currentLesson.content} scope={{ routeCourseId: h.courseId, course, lesson: currentLesson }} role="document" aria-label="Условия задания" className="whitespace-pre-wrap break-words" />
+                  ? <HomeworkTaskDescription content={currentLesson.content} scope={homeworkTaskScope} proof={homeworkTaskProof} role="document" aria-label="Условия задания" className="whitespace-pre-wrap break-words" />
                   : <p className="text-muted-foreground">Содержимое задания недоступно. Проверьте его в редакторе.</p>}
               </section>
             )}

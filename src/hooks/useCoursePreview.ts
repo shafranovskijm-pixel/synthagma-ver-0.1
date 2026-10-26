@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAdminAwareBackPath, getCourseDetailsPath } from "@/lib/utils";
 import { orderCourseLessons } from "@/lib/courseLessonOrder";
+import { usePlatformHomeworkTaskProof } from "@/hooks/usePlatformHomeworkTaskProof";
 
 export interface Lesson {
   id: string;
@@ -155,6 +156,12 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   });
 
   const currentLesson = baseLesson ? { ...baseLesson, content: baseLesson.content ?? currentContentQuery.data ?? null } as Lesson : null;
+  const { scope: homeworkTaskScope, proof: homeworkTaskProof } = usePlatformHomeworkTaskProof({
+    scope: { routeCourseId: courseId, course, lesson: currentLesson, actorId: user?.id },
+    content: currentLesson?.content, lessonType: currentLesson?.type,
+    enabled: !isLoading && !showDocumentsView && !currentContentQuery.isPending && !currentContentQuery.isError,
+    contextKey: JSON.stringify(['preview', !!options.embedded]),
+  });
 
   const { data: testQuestionsData } = useQuery({
     queryKey: testQuestionsKey(currentLesson?.id, user?.id),
@@ -217,7 +224,7 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   };
 
   return {
-    courseId, course, lessons, currentLesson, currentLessonIndex,
+    courseId, course, lessons, currentLesson, currentLessonIndex, homeworkTaskScope, homeworkTaskProof,
     loading: isLoading, isTransitioning,
     lessonContentLoading: !!baseLesson && currentContentQuery.isPending,
     lessonContentError: currentContentQuery.isError,
