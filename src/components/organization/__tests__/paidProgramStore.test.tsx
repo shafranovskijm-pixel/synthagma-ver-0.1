@@ -53,9 +53,10 @@ describe("paid UMK marketplace presentation", () => {
     expect(screen.getByRole("button", { name: "Приобрести комплект" })).toBeDisabled();
   });
 
-  it("preserves the legacy preview and wording", () => {
+  it("preserves the legacy preview without an automatic certificate promise", () => {
     render(<Detail course={{ ...listing, course_id: "legacy-course" }} />);
-    expect(screen.getByText("Удостоверение по завершении")).toBeInTheDocument();
+    expect(screen.queryByText("Удостоверение по завершении")).not.toBeInTheDocument();
+    expect(screen.getByText("Документ и условия выдачи уточняются у учебного центра")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Просмотр" }));
     expect(screen.getByTestId("location")).toHaveTextContent("/course-preview/legacy-course?from=store");
   });
