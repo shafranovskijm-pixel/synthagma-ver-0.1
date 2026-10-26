@@ -86,10 +86,10 @@ const RostechnadzorCoursesPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Каталог готовых курсов для обучения сотрудников | СИНТАГМА</title>
-        <meta name="description" content="Готовые курсы по электробезопасности, энергетике, охране труда, пожарной безопасности, медицине и промбезопасности для подключения к организации." />
-        <meta property="og:title" content="Каталог готовых курсов для обучения — СИНТАГМА" />
-        <meta property="og:description" content="Библиотека готовых курсов по ключевым направлениям обучения. Подключите к организации — не нужно разрабатывать контент с нуля." />
+        <title>Бесплатные готовые курсы для организаций | СИНТАГМА</title>
+        <meta name="description" content="Собственные готовые курсы СИНТАГМЫ можно бесплатно добавить в кабинет организации. Использование СДО — по выбранному тарифу." />
+        <meta property="og:title" content="Бесплатные готовые курсы — СИНТАГМА" />
+        <meta property="og:description" content="Библиотека собственных бесплатных курсов СИНТАГМЫ. Добавьте материалы в кабинет организации и проверьте перед запуском обучения." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/rostechnadzor-courses" />
         <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/rostechnadzor-courses" />
@@ -116,13 +116,13 @@ const RostechnadzorCoursesPage = () => {
               <span className="text-sm font-medium text-white/80">Библиотека{totalCount ? ` · ${totalCount} курсов` : ""}{directionsCount ? ` · ${directionsCount} направлений` : ""}</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
-              {totalCount ? `${totalCount} курсов в каталоге` : "Готовые курсы"}{" "}
+              {totalCount ? `${totalCount} курсов — бесплатно` : "Бесплатные готовые курсы"}{" "}
               <br className="hidden sm:block" />
               <span className="text-white/50">для вашей организации</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
               Выберите программу в каталоге{directionsCount ? ` по ${directionsCount} направлениям` : ""},
-              проверьте её материалы и подключите подходящий курс к кабинету организации.
+              проверьте её материалы и бесплатно добавьте подходящий курс в кабинет организации. Использование СДО — по выбранному тарифу.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
               <Link to="/register-organization">

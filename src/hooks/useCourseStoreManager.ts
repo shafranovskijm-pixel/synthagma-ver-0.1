@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { showLimitToast } from "@/utils/limitToast";
+import { isPlatformCourseListing } from "@/lib/platformCourseCatalog";
+import { acquireAndRefreshOwnFreeCourse, type ConfirmedFreeCourseReceipt } from "@/lib/freeCourseReceipt";
 import {
   MarketplacePurchaseError,
   purchaseMarketplaceCourse,
@@ -97,10 +99,19 @@ interface UseCourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
   userId?: string;
+  onOwnFreeCourseReceived?: (receipt: ConfirmedFreeCourseReceipt) => void;
 }
 
-export function useCourseStoreManager({ organizationId, userRole = 'organization', userId }: UseCourseStoreManagerProps) {
+export function useCourseStoreManager({ organizationId, userRole = 'organization', userId, onOwnFreeCourseReceived }: UseCourseStoreManagerProps) {
   const { checkLimit, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
+  const liveReceiptContext = useRef({ active: false, organizationId, userId, onOwnFreeCourseReceived });
+  liveReceiptContext.current.organizationId = organizationId;
+  liveReceiptContext.current.userId = userId;
+  liveReceiptContext.current.onOwnFreeCourseReceived = onOwnFreeCourseReceived;
+  useEffect(() => {
+    liveReceiptContext.current.active = true;
+    return () => { liveReceiptContext.current.active = false; };
+  }, []);
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-courses' | 'orders' | 'my-orders' | 'requests'>('catalog');
   const [isLoading, setIsLoading] = useState(true);
   const [catalogCourses, setCatalogCourses] = useState<MarketplaceCourse[]>([]);
@@ -251,21 +262,33 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsOrdering(true);
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const purchaseResult = await purchaseMarketplaceCourse({
+      const ownFree = isPlatformCourseListing(selectedCourseForOrder);
+      const receiptActorId = userId;
+      const isCurrentReceipt = () => !!receiptActorId && liveReceiptContext.current.active
+        && liveReceiptContext.current.organizationId === organizationId
+        && liveReceiptContext.current.userId === receiptActorId && currentUser?.id === receiptActorId;
+      if (ownFree && !isCurrentReceipt()) return;
+      const acquire = () => purchaseMarketplaceCourse({
         marketplaceCourseId: selectedCourseForOrder.id,
         organizationId,
         studentsCount,
         notes: orderNotes,
       });
+      const result = ownFree ? await acquireAndRefreshOwnFreeCourse({
+        listing: selectedCourseForOrder, actorId: receiptActorId!, organizationId, isCurrent: isCurrentReceipt, acquire,
+        onConfirmed: receipt => liveReceiptContext.current.onOwnFreeCourseReceived?.(receipt),
+      }) : { receipt: await acquire(), current: true };
+      const purchaseResult = result.receipt;
 
-      refetchLimits();
-
-      // Уведомить список курсов организации, чтобы он подтянул новый курс без перезагрузки
-      try {
-        if (typeof window !== 'undefined' && organizationId) {
-          window.dispatchEvent(new CustomEvent('org-courses-refresh', { detail: { organizationId } }));
-        }
-      } catch { /* ignore */ }
+      // Only mounted presentation is refreshed. Delivery notification below keeps its existing server-authorized path.
+      if (!ownFree || isCurrentReceipt()) {
+        refetchLimits();
+        try {
+          if (typeof window !== 'undefined' && organizationId) {
+            window.dispatchEvent(new CustomEvent('org-courses-refresh', { detail: { organizationId } }));
+          }
+        } catch { /* ignore */ }
+      }
 
       try {
         let buyerName = 'Неизвестный';
@@ -301,6 +324,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         });
       } catch (notifyError) { console.error('Failed to send notification:', notifyError); }
 
+      if (ownFree && !isCurrentReceipt()) return;
       setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders);
     } catch (error: any) {
       console.error('Error creating order:', error);
