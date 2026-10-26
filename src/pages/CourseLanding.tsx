@@ -24,6 +24,7 @@ import { LandingThemeProvider } from "@/components/course-landing/LandingThemePr
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getEnrollmentConfig } from "@/lib/landing-enrollment";
 import { captureLeadSource, getLeadTracking } from "@/lib/leadTracking";
+import { getCourseLandingPresentation } from "@/lib/platformCourseCatalog";
 
 interface CourseData {
   id: string;
@@ -91,7 +92,8 @@ export default function CourseLanding() {
   const [instantRecoveryRoute, setInstantRecoveryRoute] = useState<string | null>(null);
   const instantRecovery = instantRecoveryRoute === instantRouteKey;
 
-  const landingContent = course?.landing_content as Record<string, any> | null;
+  const coursePresentation = course ? getCourseLandingPresentation(course) : null;
+  const landingContent = coursePresentation?.landingContent as Record<string, any> | null;
   const analytics = landingContent?.analytics;
   const enrollmentConfig = getEnrollmentConfig(landingContent);
   useAnalytics(analytics);
@@ -167,9 +169,10 @@ export default function CourseLanding() {
   };
 
   const getDiscountedPrice = () => {
-    if (!course || !promoDiscount) return course?.price || 0;
-    if (promoDiscount.type === "percent") return Math.max(0, Math.round(course.price * (1 - promoDiscount.value / 100)));
-    return Math.max(0, course.price - promoDiscount.value);
+    const sourcePrice = coursePresentation?.price ?? 0;
+    if (!course || !promoDiscount) return sourcePrice;
+    if (promoDiscount.type === "percent") return Math.max(0, Math.round(sourcePrice * (1 - promoDiscount.value / 100)));
+    return Math.max(0, sourcePrice - promoDiscount.value);
   };
 
   const handleEnroll = async (formData?: { name: string; email: string; phone: string; extra?: Record<string, string> }) => {
@@ -239,7 +242,7 @@ export default function CourseLanding() {
       return;
     }
 
-    const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
+    const finalPrice = promoDiscount ? getDiscountedPrice() : coursePresentation!.price;
 
     if (finalPrice > 0) {
       try {
@@ -343,7 +346,7 @@ export default function CourseLanding() {
     return null;
   }
 
-  const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
+  const finalPrice = promoDiscount ? getDiscountedPrice() : coursePresentation!.price;
 
   // Landing content with defaults
   const hero = landingContent?.hero || {};
@@ -376,7 +379,7 @@ export default function CourseLanding() {
     </Button>
   ) : (
     <div className="flex items-center gap-2">
-      {course.price > 0 && (
+      {coursePresentation!.price > 0 && (
         <>
           <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
           <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
@@ -478,7 +481,7 @@ export default function CourseLanding() {
     description: course.description || "",
     provider: { "@type": "Organization", name: orgName },
     ...(ogImage ? { image: ogImage } : {}),
-    ...(course.price > 0
+    ...(coursePresentation!.price > 0
       ? { offers: { "@type": "Offer", price: finalPrice, priceCurrency: "RUB", availability: "https://schema.org/InStock" } }
       : { isAccessibleForFree: true }),
     ...(lessons.length > 0 ? { hasCourseInstance: { "@type": "CourseInstance", courseMode: "online" } } : {}) };

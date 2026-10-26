@@ -31,7 +31,7 @@ interface Course {
 interface MarketplaceCourse {
   id: string;
   course_id: string;
-  organization_id: string;
+  organization_id: string | null;
   price_student: number;
   price_organization: number;
   is_active: boolean;
@@ -40,6 +40,7 @@ interface MarketplaceCourse {
   created_at: string;
   course?: {
     id: string;
+    organization_id?: string | null;
     title: string;
     description?: string | null;
     duration?: string | null;

@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { CourseComments } from "./CourseComments";
 import { CourseMaterialPassportCard } from "./CourseMaterialPassportCard";
 import { getPaidProgram } from "@/constants/paidPrograms20260922";
+import { isPlatformCourseListing } from "@/lib/platformCourseCatalog";
 
 interface CourseStoreDetailViewProps {
   course: any;
@@ -19,9 +20,14 @@ interface CourseStoreDetailViewProps {
 
 export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrder }: CourseStoreDetailViewProps) {
   const navigate = useNavigate();
-  const paidProgram = getPaidProgram(course.course_id);
-  const price = paidProgram || userRole === 'organization' ? course.price_organization : course.price_student;
-  const benefits = paidProgram ? [
+  const platformFree = isPlatformCourseListing(course);
+  const paidProgram = platformFree ? undefined : getPaidProgram(course.course_id);
+  const price = platformFree ? 0 : paidProgram || userRole === 'organization' ? course.price_organization : course.price_student;
+  const benefits = platformFree ? [
+    { icon: Zap, text: "Бесплатное получение курса платформы" },
+    { icon: BookOpen, text: "Проверьте материалы и тесты перед запуском" },
+    { icon: Award, text: "Обучение и аттестацию организует УЦ" },
+  ] : paidProgram ? [
     { icon: Building2, text: "Комплект для учебного центра" },
     { icon: BookOpen, text: "Уроки, тесты и файлы программы" },
     { icon: Award, text: "Обучение и аттестацию организует УЦ" },
@@ -77,7 +83,7 @@ export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrde
           <div className={`text-2xl font-bold ${price > 0 ? 'text-primary' : 'text-green-600'}`}>
             {price > 0 ? `${price.toLocaleString()} ₽` : 'БЕСПЛАТНО'}
           </div>
-          <p className="text-xs text-muted-foreground">{paidProgram ? 'Разовая цена комплекта для одного учебного центра' : price > 0 ? 'Ограниченное предложение' : 'Доступно всем организациям'}</p>
+          <p className="text-xs text-muted-foreground">{platformFree ? 'Курс платформы — без оплаты за получение' : paidProgram ? 'Разовая цена комплекта для одного учебного центра' : price > 0 ? 'Ограниченное предложение' : 'Доступно всем организациям'}</p>
         </CardContent>
       </Card>
 
@@ -92,7 +98,7 @@ export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrde
           </Button>
         )}
         <Button className="flex-1 rounded-xl gap-2 text-base py-5 bg-green-600 hover:bg-green-700 text-white" onClick={() => onOrder(course)} disabled={!!paidProgram && userRole !== 'organization'}>
-          <Plus className="w-4 h-4" />{paidProgram ? 'Приобрести комплект' : 'Получить курс'}
+          <Plus className="w-4 h-4" />{platformFree ? 'Получить бесплатно' : paidProgram ? 'Приобрести комплект' : 'Получить курс'}
         </Button>
       </div>
 

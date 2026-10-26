@@ -23,6 +23,7 @@ import { usePaidProgramDeepLink } from "@/hooks/usePaidProgramDeepLink";
 import { CourseComments } from "./CourseComments";
 import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
+import { isPlatformCourseListing } from "@/lib/platformCourseCatalog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { statusLabels, getProgramTypeMeta, getSubCategoryMeta } from "@/components/admin/marketplace/marketplaceConstants";
 import {
@@ -128,26 +129,24 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                        <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Beta</Badge>
                      </div>
                      <p className="text-xs text-muted-foreground leading-relaxed">
-                       Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
+                       Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Перед запуском обучения проверьте материалы и тесты выбранного курса.
                      </p>
                      <div className="flex gap-2 mt-2">
                        <Badge variant="secondary" className="text-xs">ДПО</Badge>
                        <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
-                       <Badge variant="secondary" className="text-xs">Бесплатные и платные программы</Badge>
+                       <Badge variant="secondary" className="text-xs">Собственные курсы платформы — бесплатно</Badge>
                      </div>
                    </div>
                  </div>
                </div>
                {/* Hero Cards */}
-               <MarketplaceHeroCards onCardClick={(courseTitle) => {
-                 const found = h.catalogCourses.find(c => c.course?.title?.includes(courseTitle.split('—')[0].trim()) || courseTitle.includes(c.course?.title || '___'));
-                 if (found) {
-                   setSelectedCourseDetail(found);
-                 } else {
-                   h.setSearchQuery(courseTitle);
-                 }
-               }} />
-
+               <MarketplaceHeroCards
+                 availableCourseIds={h.catalogCourses.filter(isPlatformCourseListing).map(course => course.course_id)}
+                 onCourseClick={(courseId) => {
+                   const matches = h.catalogCourses.filter(course => course.course_id === courseId && isPlatformCourseListing(course));
+                   if (matches.length === 1) setSelectedCourseDetail(matches[0]);
+                 }}
+               />
                <div className="flex items-center gap-4">
                  <div className="relative flex-1 max-w-md">
                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -270,7 +269,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 /* Grid view - CourseCardNew style */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                   {h.filteredCatalog.map((item) => {
-                    const price = h.userRole === 'organization' ? item.price_organization : item.price_student;
+                    const platformFree = isPlatformCourseListing(item);
+                    const price = platformFree ? 0 : h.userRole === 'organization' ? item.price_organization : item.price_student;
                     return (
                       <div
                         key={item.id}
@@ -300,7 +300,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                               </span>
                             </div>
                             <Button size="sm" className="w-full gap-1.5" variant="outline">
-                              <Gift className="w-3.5 h-3.5" />Получить курс
+                              <Gift className="w-3.5 h-3.5" />{platformFree ? 'Получить бесплатно' : 'Получить курс'}
                             </Button>
                           </div>
                         </div>
