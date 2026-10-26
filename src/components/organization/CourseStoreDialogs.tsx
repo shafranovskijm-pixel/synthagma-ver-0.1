@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, CheckCircle, Info } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getPaidProgram } from "@/constants/paidPrograms20260922";
+import { isPlatformCourseListing } from "@/lib/platformCourseCatalog";
 
 interface AddCourseDialogProps {
   open: boolean;
@@ -58,22 +59,24 @@ interface OrderDialogProps {
 }
 
 export function OrderDialog({ open, onOpenChange, course, userRole, studentsCount, setStudentsCount, orderNotes, setOrderNotes, isOrdering, onOrder }: OrderDialogProps) {
-  const paidProgram = getPaidProgram(course?.course_id);
-  const orderPrice = course ? (paidProgram || userRole === 'organization' ? course.price_organization : course.price_student) : 0;
+  const platformFree = isPlatformCourseListing(course);
+  const paidProgram = platformFree ? undefined : getPaidProgram(course?.course_id);
+  const orderPrice = platformFree ? 0 : course ? (paidProgram || userRole === 'organization' ? course.price_organization : course.price_student) : 0;
   const totalPrice = !paidProgram && userRole === 'organization' ? orderPrice * studentsCount : orderPrice;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-md">
-        <DialogHeader><DialogTitle>{paidProgram ? 'Приобрести комплект для учебного центра' : 'Получить курс'}</DialogTitle><DialogDescription>{course?.course?.title}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{platformFree ? 'Получить курс бесплатно' : paidProgram ? 'Приобрести комплект для учебного центра' : 'Получить курс'}</DialogTitle><DialogDescription>{course?.course?.title}</DialogDescription></DialogHeader>
         <div className="space-y-4 py-4">
           {userRole === 'organization' && (
             <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
               <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-muted-foreground">{paidProgram ? 'Комплект приобретается для одного учебного центра. Курс будет скопирован в вашу организацию; цена не зависит от планируемого числа слушателей.' : 'Курс будет скопирован в вашу организацию.'}</p>
+              <p className="text-sm text-muted-foreground">{platformFree ? 'Курс платформы будет бесплатно скопирован в вашу организацию. Перед назначением слушателям проверьте его материалы и условия реализации. Лимиты тарифа платформы сохраняются.' : paidProgram ? 'Комплект приобретается для одного учебного центра. Курс будет скопирован в вашу организацию; цена не зависит от планируемого числа слушателей.' : 'Курс будет скопирован в вашу организацию.'}</p>
             </div>
           )}
           <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center"><span className="text-muted-foreground">Источник:</span><span className="font-medium">{course?.organization?.name || "Платформа Синтагма"}</span></div>
+            {platformFree && <div className="flex justify-between items-center"><span className="text-muted-foreground">Стоимость получения:</span><span className="font-medium">Бесплатно</span></div>}
             {orderPrice > 0 && (
               <>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Цена:</span><span className="font-medium">{orderPrice.toLocaleString()} ₽</span></div>
@@ -84,11 +87,11 @@ export function OrderDialog({ open, onOpenChange, course, userRole, studentsCoun
             )}
           </div>
           {userRole === 'organization' && (
-            <div className="space-y-2"><Label htmlFor="store-students-count">{paidProgram ? 'Планируемое количество слушателей' : 'Количество студентов'}</Label><Input id="store-students-count" type="number" min={1} value={studentsCount} onChange={(e) => setStudentsCount(Number(e.target.value) || 1)} className="rounded-xl" />{paidProgram && <p className="text-xs text-muted-foreground">Для планирования обучения. Стоимость комплекта не умножается на это число.</p>}</div>
+            <div className="space-y-2"><Label htmlFor="store-students-count">{platformFree || paidProgram ? 'Планируемое количество слушателей' : 'Количество студентов'}</Label><Input id="store-students-count" type="number" min={1} value={studentsCount} onChange={(e) => setStudentsCount(Number(e.target.value) || 1)} className="rounded-xl" />{platformFree ? <p className="text-xs text-muted-foreground">Для планирования обучения. Получение курса бесплатно.</p> : paidProgram && <p className="text-xs text-muted-foreground">Для планирования обучения. Стоимость комплекта не умножается на это число.</p>}</div>
           )}
           <div className="space-y-2"><Label>Комментарий</Label><Textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
         </div>
-        <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={onOrder} disabled={isOrdering || (!!paidProgram && userRole !== 'organization')}>{isOrdering ? <><SigmaSpinner size="sm" className="mr-2" />Оформление...</> : <><Plus className="w-4 h-4" />{paidProgram ? 'Приобрести комплект' : 'Получить курс'}</>}</Button></DialogFooter>
+        <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={onOrder} disabled={isOrdering || (!!paidProgram && userRole !== 'organization')}>{isOrdering ? <><SigmaSpinner size="sm" className="mr-2" />Оформление...</> : <><Plus className="w-4 h-4" />{platformFree ? 'Получить бесплатно' : paidProgram ? 'Приобрести комплект' : 'Получить курс'}</>}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

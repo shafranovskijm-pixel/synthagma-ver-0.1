@@ -38,42 +38,34 @@ const handler = async (req: Request): Promise<Response> => {
     const courseName = escapeOrderNotificationText(trusted.courseName);
     const buyerName = escapeOrderNotificationText(trusted.buyerName);
     const notes = trusted.notes === null ? null : escapeOrderNotificationText(trusted.notes);
-    if (sellerOrganizationId === null) return new Response(JSON.stringify({ success: true, message: "No recipients found" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_notification_started"))("Processing order notification:", { orderId, courseName, sellerOrganizationId });
-
-    const { data: orgData, error: orgError } = await supabase
-      .from("organizations")
-      .select("name")
-      .eq("id", sellerOrganizationId)
-      .single();
-
-    if (orgError || !orgData || typeof orgData.name !== "string") {
-      throw new AccessError(503, "Не удалось подтвердить получателей уведомления. Повторите попытку.");
+    // Recipient discovery affects seller email only. Platform-owned listings can have a NULL seller.
+    let organizationName = "СИНТАГМА";
+    let emails: string[] = [];
+    if (sellerOrganizationId !== null) {
+      const { data: orgData, error: orgError } = await supabase
+        .from("organizations").select("name").eq("id", sellerOrganizationId).single();
+      if (orgError || !orgData || typeof orgData.name !== "string") {
+        // Do not guess seller recipients when their lookup fails. The support destination is already fixed.
+        organizationName = "Организация продавца";
+        logExternalOperation("error", "smtp_delivery_failed");
+      } else {
+        organizationName = escapeOrderNotificationText(orgData.name || "Ваша организация");
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles").select("email, full_name")
+          .eq("organization_id", sellerOrganizationId).not("email", "is", null);
+        if (profilesError) {
+          logExternalOperation("error", "smtp_delivery_failed");
+        } else {
+          emails = (profiles ?? []).filter(p => p.email).map(p => p.email as string);
+        }
+      }
     }
+    logExternalOperation("log", "smtp_notification_started");
+    if (emails.length > 0) logExternalOperation("log", "smtp_recipients_ready");
 
-    const organizationName = escapeOrderNotificationText(orgData?.name || "Ваша организация");
-
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("email, full_name")
-      .eq("organization_id", sellerOrganizationId)
-      .not("email", "is", null);
-
-    if (profilesError) {
-      throw new AccessError(503, "Не удалось подтвердить получателей уведомления. Повторите попытку.");
-    }
-
-    if (!profiles || profiles.length === 0) {
-      console.log("No emails found for organization:", sellerOrganizationId);
-      return new Response(
-        JSON.stringify({ success: true, message: "No recipients found" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const emails = profiles.filter(p => p.email).map(p => p.email as string);
-    ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_recipients_ready"))("Sending notification to:", emails);
-
+    // A zero-price fulfilled order is a delivery receipt, not evidence of a bank payment.
+    const freeReceipt = price === 0;
+    const notificationHeading = freeReceipt ? "Курс получен бесплатно" : "Новая заявка на курс!";
     const buyerTypeLabel = "Организация";
     const formattedPrice = new Intl.NumberFormat("ru-RU", {
       style: "currency",
@@ -109,11 +101,11 @@ const handler = async (req: Request): Promise<Response> => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Новая заявка на курс!</h1>
+            <h1>🎉 ${notificationHeading}</h1>
             <p>${organizationName}</p>
           </div>
           <div class="content">
-            <p>Поступила новая заявка на покупку курса из магазина курсов:</p>
+            <p>${freeReceipt ? "Курс получен бесплатно." : "Поступила новая заявка на покупку курса из магазина курсов:"}</p>
 
             <div class="order-details">
               <div class="detail-row">
@@ -160,15 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send to all organization members
-    const subject = `Новая заявка на курс "${trusted.courseName.replace(/[\r\n]+/g, " ")}"`;
-    let sent = 0;
-    for (const email of emails) {
-      if (!await claimOrderNotificationDelivery(supabase, orderId, "smtp", email)) continue;
-      const r = await sendPlatformEmail({ to: email, subject, html: htmlBody });
-      if (r.ok) { sent++; ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_delivery_succeeded"))("Email sent to:", email); }
-      else { ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "smtp_delivery_failed"))("Failed to send to:", email, r.error); }
-    }
-
+    const subject = `${freeReceipt ? "Курс получен бесплатно" : "Новая заявка на курс"} "${trusted.courseName.replace(/[\r\n]+/g, " ")}"`;
     // Send Telegram notification
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const TELEGRAM_SUPPORT_CHAT_ID = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID");
@@ -176,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (TELEGRAM_BOT_TOKEN && TELEGRAM_SUPPORT_CHAT_ID && await claimOrderNotificationDelivery(supabase, orderId, "telegram", TELEGRAM_SUPPORT_CHAT_ID)) {
       try {
         const tgMessage = [
-          "🛒 <b>Новая заявка на курс!</b>",
+          `🛒 <b>${notificationHeading}</b>`,
           "",
           `📚 Курс: ${courseName}`,
           `👤 Покупатель: ${buyerName}`,
@@ -204,10 +188,21 @@ const handler = async (req: Request): Promise<Response> => {
         } else {
           console.log("Telegram notification sent successfully");
         }
-      } catch (tgError) {
-        console.error("Telegram notification error:", tgError);
+      } catch {
+        // Fetch errors can contain a bot URL. Never log raw transport errors.
+        logExternalOperation("error", "telegram_notification_failed");
       }
     }
+
+    // A seller email transport failure must not prevent the support Telegram attempt.
+    let sent = 0;
+    for (const email of emails) {
+      if (!await claimOrderNotificationDelivery(supabase, orderId, "smtp", email)) continue;
+      const r = await sendPlatformEmail({ to: email, subject, html: htmlBody });
+      if (r.ok) { sent++; ((..._uc027LogArgs: unknown[]) => logExternalOperation("log", "smtp_delivery_succeeded"))("Email sent to:", email); }
+      else { ((..._uc027LogArgs: unknown[]) => logExternalOperation("error", "smtp_delivery_failed"))("Failed to send to:", email, r.error); }
+    }
+
 
     console.log("Notifications sent successfully:", sent, "of", emails.length);
 
@@ -216,7 +211,7 @@ const handler = async (req: Request): Promise<Response> => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error in notify-course-order function:", error);
+    logExternalOperation("error", "operation_failed");
     const errorMessage = error instanceof AccessError ? error.message : "Не удалось отправить уведомление по заказу. Повторите попытку.";
     return new Response(
       JSON.stringify({ error: errorMessage, success: false }),

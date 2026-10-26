@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { publicCatalogClient } from '@/integrations/supabase/publicCatalogClient';
 import { MARKETPLACE_ORG_ID } from '@/constants/marketplace';
+import { selectRecommendedPlatformCourses } from '@/lib/platformCourseCatalog';
 
 export const PUBLIC_CATALOG_PAGE_SIZE = 200;
 const CATEGORY_ORDER = [
@@ -97,8 +98,6 @@ export async function loadPublicCourseCatalog({
     title, count: items.length,
     courses: items.sort((a, b) => a.title.localeCompare(b.title, 'ru') || a.id.localeCompare(b.id)),
   })).sort((a, b) => rank(a.title) - rank(b.title) || a.title.localeCompare(b.title, 'ru'));
-  const examplesFrom = groups.filter(group => group.title.startsWith('Новые')).flatMap(group => group.courses);
-  const exampleCandidates = examplesFrom.length ? examplesFrom : groups.flatMap(group => group.courses);
-  const examples = exampleCandidates.filter((course, index, list) => list.findIndex(item => item.title === course.title) === index).slice(0, 6);
+  const examples = selectRecommendedPlatformCourses(courses, course => course.courseId);
   return { groups, totalCount: courses.length, directionsCount: groups.length, examples };
 }
