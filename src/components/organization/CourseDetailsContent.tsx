@@ -413,6 +413,7 @@ export function CourseDetailsContent({
                   <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
                 </Suspense>
               )}
+              {activeTab === "tests" && <CourseTestReport courseId={course.id} courseName={course.title} organizationId={organizationId || ""} />}
               {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} refreshCallbacks={groupsCallbacks} />}
               {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
               {activeTab === "reminders" && (
