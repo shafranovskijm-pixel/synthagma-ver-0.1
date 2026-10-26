@@ -60,7 +60,12 @@ async function runEngine(id, args, timeout) {
   const entry = { id, executable: 'pinned node under GNU process-group timeout', args: args.map(arg => arg.startsWith(sourceRoot) ? '<source>' + arg.slice(sourceRoot.length) : arg.startsWith(checkout) ? '<ci-checkout>' + arg.slice(checkout.length) : arg), exitCode: result.status, signal: result.signal, timedOut: result.error?.code === 'ETIMEDOUT' || result.status === 124 || result.status === 137, passed: !result.error && result.status === 0 };
   summary.enginesExecuted.push(entry);
   if (!entry.passed) failed = true;
-  console.log(id + ': ' + (entry.passed ? 'process passed' : 'FAILED; see artifact logs'));
+  console.log(id + ': ' + (entry.passed ? 'process passed' : 'FAILED; retained logs follow'));
+  if (!entry.passed) {
+    // Only public, offline synthetic tests run here; preserve bounded diagnostics in the API-readable job log too.
+    console.error(id + ' stdout tail:\n' + String(result.stdout || '').slice(-12000));
+    console.error(id + ' stderr tail:\n' + String(result.stderr || result.error || '').slice(-12000));
+  }
   return entry;
 }
 
