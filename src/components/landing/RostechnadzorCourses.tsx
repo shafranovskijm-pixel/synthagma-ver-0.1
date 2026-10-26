@@ -3,21 +3,19 @@ import { Shield, BookOpen, CheckCircle2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FloatingParticles } from "./FloatingParticles";
-
-const stats = [
-  { value: "Каталог", label: "готовых программ" },
-  { value: "Выбор", label: "по направлениям обучения" },
-  { value: "Онлайн", label: "подключение к организации" },
-];
-
-const highlights = [
-  "Электробезопасность, энергетика, промышленная безопасность",
-  "Охрана труда, пожарная безопасность, медицина",
-  "Рабочие профессии, строительные специальности, экология",
-  "Подключение курса к организации из каталога",
-];
+import { usePublicCourseCatalog } from "@/hooks/usePublicCourseCatalog";
 
 export function RostechnadzorCourses() {
+  const { data, isLoading, isError, refetch } = usePublicCourseCatalog();
+  const catalog = isError ? undefined : data;
+  const stats = [
+    { value: catalog ? String(catalog.totalCount) : '—', label: 'курсов в публичном каталоге' },
+    { value: catalog ? String(catalog.directionsCount) : '—', label: 'направлений обучения' },
+    { value: 'Онлайн', label: 'подключение к организации' },
+  ];
+  const examples = catalog?.examples ?? [];
+  const directions = catalog?.groups.slice(0, 6).map(group => group.title).join(', ');
+
   return (
     <section className="py-16 md:py-20 relative overflow-hidden">
       {/* Floating particles */}
@@ -113,16 +111,18 @@ export function RostechnadzorCourses() {
             <div className="w-12 h-px bg-accent/60 mb-6" />
 
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Подключите готовые программы к своей организации и запускайте обучение без разработки
-              контента с нуля. В каталоге представлены электробезопасность, охрана труда, пожарная и
-              промышленная безопасность, медицина, рабочие профессии и другие направления.
+              Выберите курс в публичном каталоге и проверьте его материалы и условия подключения.
+              {directions ? <> Доступные направления: {directions}.</> : isLoading ? ' Загружаем актуальный состав каталога.' : ''}
             </p>
 
             <div className="space-y-3 mb-8">
-              {highlights.map((text) => (
-                <div key={text} className="flex items-start gap-3">
+              {isLoading && <p className="text-sm text-muted-foreground" role="status">Загружаем актуальный каталог…</p>}
+              {isError && <div role="alert"><p className="text-sm text-muted-foreground">Каталог временно недоступен.</p><Button variant="link" className="h-auto p-0" onClick={() => void refetch()}>Повторить загрузку</Button></div>}
+              {!isLoading && !isError && catalog?.totalCount === 0 && <p className="text-sm text-muted-foreground">В публичном каталоге пока нет доступных курсов.</p>}
+              {!isLoading && !isError && examples.map((course) => (
+                <div key={course.id} className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-                  <span className="text-sm text-foreground/80">{text}</span>
+                  <span className="text-sm text-foreground/80">{course.title}</span>
                 </div>
               ))}
             </div>

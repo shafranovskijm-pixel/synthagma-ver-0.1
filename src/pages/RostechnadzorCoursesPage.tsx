@@ -13,53 +13,8 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { exportCatalogToDocx, exportCatalogToPdf, type CatalogGroup } from "@/utils/exportRostechnadzorCatalog";
-
-const PLATFORM_ORG_ID = "4ac2c05a-d8b5-4e72-ba31-f2c743091d95";
-
-const CATEGORY_ORDER = [
-  "Электробезопасность", "Энергетика", "Рабочие профессии", "Медицина",
-  "Охрана труда", "Пожарная безопасность", "Строительные специальности",
-  "Слесари", "Промышленная безопасность", "Разное", "Машинист",
-  "Экологическая безопасность", "Строительный контроль", "Профессиональная переподготовка",
-];
-
-async function fetchFullCatalog(): Promise<CatalogGroup[]> {
-  const { data, error } = await supabase
-    .from("marketplace_courses")
-    .select("description_short, course:courses(title, description, category:course_categories(name))")
-    .eq("organization_id", PLATFORM_ORG_ID)
-    .eq("is_active", true);
-  if (error) throw error;
-
-  const byCat = new Map<string, { title: string; description?: string | null }[]>();
-  for (const row of (data || []) as any[]) {
-    const catName: string = row.course?.category?.name || "Прочее";
-    const title: string = row.course?.title || "";
-    if (!title) continue;
-    const description = row.description_short || row.course?.description || null;
-    if (!byCat.has(catName)) byCat.set(catName, []);
-    byCat.get(catName)!.push({ title, description });
-  }
-
-  const groups: CatalogGroup[] = [];
-  const seen = new Set<string>();
-  for (const name of CATEGORY_ORDER) {
-    if (byCat.has(name)) {
-      const items = byCat.get(name)!.sort((a, b) => a.title.localeCompare(b.title, "ru"));
-      groups.push({ title: name, count: items.length, courses: items });
-      seen.add(name);
-    }
-  }
-  for (const [name, items] of [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0], "ru"))) {
-    if (seen.has(name)) continue;
-    items.sort((a, b) => a.title.localeCompare(b.title, "ru"));
-    groups.push({ title: name, count: items.length, courses: items });
-  }
-  return groups;
-}
+import { exportCatalogToDocx, exportCatalogToPdf } from "@/utils/exportRostechnadzorCatalog";
+import { usePublicCourseCatalog } from "@/hooks/usePublicCourseCatalog";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -70,7 +25,7 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.06 } },
 };
 
-// Иконка и цвет по названию категории (данные о курсах берутся из БД в fetchFullCatalog)
+// Иконка и цвет по названию категории; публичные данные общие с главным лендингом.
 const CATEGORY_STYLE: Record<string, { icon: typeof Shield; color: string; bgColor: string }> = {
   "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
   "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
@@ -117,13 +72,10 @@ const advantages = [
 
 
 const RostechnadzorCoursesPage = () => {
-  const { data: fullCatalog, isLoading: catalogLoading } = useQuery({
-    queryKey: ["rostechnadzor-full-catalog"],
-    queryFn: fetchFullCatalog,
-    staleTime: 5 * 60 * 1000,
-  });
-  const totalCount = fullCatalog?.reduce((s, g) => s + g.count, 0) ?? 0;
-  const directionsCount = fullCatalog?.length ?? 0;
+  const { data: catalog, isLoading: catalogLoading, isError: catalogError, refetch } = usePublicCourseCatalog();
+  const fullCatalog = catalogError ? undefined : catalog?.groups;
+  const totalCount = catalogError ? 0 : catalog?.totalCount ?? 0;
+  const directionsCount = catalogError ? 0 : catalog?.directionsCount ?? 0;
   const jsonLdItems = (fullCatalog ?? []).map((cat, i) => ({
     "@type": "ListItem",
     position: i + 1,
@@ -146,7 +98,7 @@ const RostechnadzorCoursesPage = () => {
           "@type": "ItemList",
           "name": "Каталог готовых курсов СИНТАГМА",
           "description": "Готовые курсы по ключевым направлениям обучения",
-          "numberOfItems": totalCount || undefined,
+          "numberOfItems": directionsCount || undefined,
           "itemListElement": jsonLdItems
         })}</script>
       </Helmet>
@@ -219,7 +171,7 @@ const RostechnadzorCoursesPage = () => {
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button
                   variant="outline"
-                  disabled={catalogLoading || !fullCatalog?.length}
+                  disabled={catalogLoading || catalogError || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
                   onClick={async () => {
                     if (!fullCatalog?.length) return;
@@ -239,7 +191,7 @@ const RostechnadzorCoursesPage = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={catalogLoading || !fullCatalog?.length}
+                  disabled={catalogLoading || catalogError || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
                   onClick={async () => {
                     if (!fullCatalog?.length) return;
@@ -266,7 +218,9 @@ const RostechnadzorCoursesPage = () => {
               {catalogLoading && (
                 <div className="text-center text-muted-foreground py-8">Загружаем актуальный каталог…</div>
               )}
-              {!catalogLoading && (fullCatalog ?? []).map((cat, i) => {
+              {catalogError && <div className="text-center text-muted-foreground py-8" role="alert"><p>Не удалось загрузить каталог. Повторите загрузку.</p><Button variant="link" onClick={() => void refetch()}>Повторить загрузку</Button></div>}
+              {!catalogLoading && !catalogError && fullCatalog?.length === 0 && <div className="text-center text-muted-foreground py-8">В публичном каталоге пока нет доступных курсов.</div>}
+              {!catalogLoading && !catalogError && (fullCatalog ?? []).map((cat, i) => {
                 const style = CATEGORY_STYLE[cat.title] ?? DEFAULT_STYLE;
                 const Icon = style.icon;
                 const preview = cat.courses.slice(0, 6);
@@ -299,7 +253,7 @@ const RostechnadzorCoursesPage = () => {
                         </div>
                         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 pl-0 md:pl-16">
                           {preview.map((course) => (
-                            <div key={course.title} className="flex items-start gap-2 py-1">
+                            <div key={course.id} className="flex items-start gap-2 py-1">
                               <CheckCircle2 className="w-4 h-4 text-accent/60 shrink-0 mt-0.5" />
                               <span className="text-sm text-foreground/70">{course.title}</span>
                             </div>
