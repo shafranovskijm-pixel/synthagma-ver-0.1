@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import type { State, Lesson, DrivingAdapter } from '@/lib/driving-school/types';
 import type { DrivingFailureKind } from '@/lib/driving-school/cloud-adapter';
 import { schoolDateTime, schoolTimeToUtc, rublesToKopecks, safeCsvCell } from '@/lib/driving-school/time';
+import { linkedProgramVersion } from '@/lib/driving-school/program-version';
 import './driving-school.css';
 import {
   useCallback,
@@ -832,7 +833,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
   function exportCsv(sid?: string) {
     const records = state.lessons.filter((l) => !sid || l.student_id === sid);
     const cells = [
-      ['ФИО', 'Email', 'Программа', 'Начало', 'Статус', 'Факт минут', 'Тема'],
+      ['ФИО', 'Email', 'Программа', 'Начало', 'Статус', 'Факт минут', 'Тема', 'Версия программы'],
       ...records.map((l) => {
         const s = rows('student').find((r) => r.id === l.student_id);
         return [
@@ -843,6 +844,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
           statusLabel[l.status],
           l.actual_minutes,
           l.topic,
+          linkedProgramVersion(state.resources, s?.data.programId),
         ];
       }),
     ];
@@ -894,6 +896,8 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
             Ученик: {s.name}
             <br />
             Программа: {name(s.data.programId)}
+            <br />
+            Версия программы: {linkedProgramVersion(state.resources, s.data.programId)}
           </p>
           <DataTable
             columns={['Дата', 'Инструктор', 'Тема', 'Статус', 'Факт, мин']}
@@ -1145,6 +1149,8 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
                 Группа: {name(s.data.groupId)}
                 <br />
                 Программа: {name(s.data.programId)}
+                <br />
+                Версия программы: {linkedProgramVersion(state.resources, s.data.programId)}
                 <br />
                 Инструктор: {name(s.data.instructorId)}
               </p>
