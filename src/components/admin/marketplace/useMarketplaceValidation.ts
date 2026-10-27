@@ -256,9 +256,12 @@ export function useMarketplaceValidation({
     try {
       const issues = await validateCourseIssues(courseId, valRules as ValidationRulesConfig);
       const isOk = issues.length === 0;
-      setValidatedCourses(prev => ({ ...prev, [courseId]: isOk ? 'ok' : 'error' }));
       const mpCourse = courses.find((c: any) => c.course_id === courseId);
-      if (mpCourse) await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", mpCourse.id);
+      if (!mpCourse) throw new Error("Marketplace course not found");
+      const { data: saved, error } = await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", mpCourse.id).select("id,is_validated").maybeSingle();
+      if (error) throw error;
+      if (!saved || saved.id !== mpCourse.id || saved.is_validated !== isOk) throw new Error("Marketplace validation was not confirmed");
+      setValidatedCourses(prev => ({ ...prev, [courseId]: isOk ? 'ok' : 'error' }));
 
       if (issues.length > 0) {
         const title = mpCourse?.course?.title || "";
@@ -267,9 +270,13 @@ export function useMarketplaceValidation({
         if (hadCritical) toast.warning(`Проблемы: ${issues.join(" • ")}. Автоисправление остановлено.`, { duration: 8000 });
         else if (cycles >= 2) toast.warning(`Проблемы: ${issues.join(" • ")}. Лимит автоисправлений достигнут.`, { duration: 8000 });
         else { toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление (${cycles + 1}/2)...`, { duration: 6000 }); autoFixCourse(courseId, title); }
-      } else toast.success("Курс готов ✅");
+      } else toast.success("Структурная проверка пройдена");
       fetchData();
-    } catch (e) { console.error(e); toast.error("Ошибка проверки"); }
+    } catch (e) {
+      console.error(e);
+      setValidatedCourses(prev => ({ ...prev, [courseId]: 'error' }));
+      toast.error("Не удалось завершить структурную проверку");
+    }
     finally { setValidatingId(null); }
   };
 
@@ -279,6 +286,7 @@ export function useMarketplaceValidation({
     let okCount = 0; let errCount = 0;
     const total = group.courses.length;
     const failedCourses: { courseId: string; title: string; issues: string[] }[] = [];
+    const coursesToAutoFix: { courseId: string; title: string }[] = [];
     const CHUNK_SIZE = 5;
 
     for (let i = 0; i < total; i += CHUNK_SIZE) {
@@ -288,23 +296,34 @@ export function useMarketplaceValidation({
         try {
           const issues = await validateCourseIssuesSimple(item.course_id, valRules as ValidationRulesConfig);
           const isOk = issues.length === 0;
+          const { data: saved, error } = await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", item.id).select("id,is_validated").maybeSingle();
+          if (error) throw error;
+          if (!saved || saved.id !== item.id || saved.is_validated !== isOk) throw new Error("Marketplace validation was not confirmed");
           setValidatedCourses(prev => ({ ...prev, [item.course_id]: isOk ? 'ok' : 'error' }));
-          await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", item.id);
-          return { ok: isOk, courseId: item.course_id, title: item.course?.title || "", issues };
+          return { ok: isOk, courseId: item.course_id, title: item.course?.title || "", issues, canAutoFix: !isOk };
         } catch (e) {
           console.error("Bulk validate error for", item.course_id, e);
           setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
-          return { ok: false, courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"] };
+          return { ok: false, courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"], canAutoFix: false };
         }
       }));
-      for (const r of results) { if (r.ok) okCount++; else { errCount++; failedCourses.push({ courseId: r.courseId, title: r.title, issues: r.issues }); } }
+      for (const r of results) {
+        if (r.ok) okCount++;
+        else {
+          errCount++;
+          failedCourses.push({ courseId: r.courseId, title: r.title, issues: r.issues });
+          if (r.canAutoFix) coursesToAutoFix.push({ courseId: r.courseId, title: r.title });
+        }
+      }
     }
 
     setBulkValidatingGroup(null); setBulkValidateProgress("");
     setValidationReportOk(okCount);
     setValidationReport(errCount > 0 ? failedCourses : null);
-    if (errCount > 0) { toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Запускаю авто-исправление...`); handleBulkAutoFix(failedCourses.map(r => ({ courseId: r.courseId, title: r.title }))); }
-    else toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
+    if (errCount > 0) {
+      toast.info(`Структурная проверка: пройдено ${okCount} из ${total}, не пройдено ${errCount}.${coursesToAutoFix.length > 0 ? " Запускаю исправление замечаний..." : ""}`);
+      if (coursesToAutoFix.length > 0) handleBulkAutoFix(coursesToAutoFix);
+    } else toast.success(`Структурная проверка пройдена для ${okCount} из ${total} курсов`);
   };
 
   const handleBulkAutoFix = async (coursesToFix: { courseId: string; title: string }[]) => {
