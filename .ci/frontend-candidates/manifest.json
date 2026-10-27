@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "FROZEN_R3_TARGETED_RECORDED_PROGRAMME_FILE_CI_71_AFTER_OBSERVED_R2_FAILURE_NOT_EXECUTED",
+  "status": "FROZEN_R4_TARGETED71_METHOD_AWARE_TEST_TRANSPORT_AFTER_TWO_OBSERVED_FAILURES_NOT_EXECUTED",
   "asOfDate": "2026-10-27",
   "repository": "shafranovskijm-pixel/synthagma-ver-0.1",
   "baseCommit": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
@@ -534,7 +534,7 @@
       ],
       "packet": {
         "path": ".ci/frontend-candidates/autoschool-entry.json",
-        "sha256": "714d172e396b05c83830c5f484ec3bd328b5145fc5cc7ab036ca217f88655003"
+        "sha256": "2fa834e7c0f5ba1ad0dd99cb3313080972bcf8d059e9111c7784e04c1a1345b9"
       },
       "suites": [
         {
@@ -575,7 +575,7 @@
     "source": "current GitHub main and recursive tree read",
     "baseCommit": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
     "tree": "64e1bc8026df31bdb5a80a62b7835d499d8075d4",
-    "candidateManifestSHA256": "35a8308feeb3983e855389f14d2d8fbde540e88600b70824b6faeb406c35aed7"
+    "candidateManifestSHA256": "9d0aed58391e1280450ac2acd14fd859472898f513174375989f1851c57451b9"
   },
   "rootProvidedCurrentGitHubMain": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
   "exactProg005ExpectedCaseIdentitiesForRootArtifactComparison": [
@@ -760,6 +760,19 @@
       "failed": 11,
       "pending": 0
     },
+    "failurePreserved": true
+  },
+  "priorActualFailedR3Run": {
+    "run": 40454649741,
+    "head": "f81975c542de83af3b7ba8f37c170b23f901209a",
+    "stockTSC": "PASS",
+    "tests": {
+      "total": 71,
+      "passed": 65,
+      "failed": 6,
+      "pending": 0
+    },
+    "rootCause": "Test mock confused POST sign JSON with GET signed-file bytes",
     "failurePreserved": true
   }
 }
