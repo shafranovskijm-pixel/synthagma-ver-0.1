@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "FROZEN_R4_TARGETED71_METHOD_AWARE_TEST_TRANSPORT_AFTER_TWO_OBSERVED_FAILURES_NOT_EXECUTED",
+  "status": "FROZEN_R5_TARGETED71_FIVE_OVERLAYS_UNIQUE_EXISTING_TEST_TITLE_AFTER_R4_IDENTITY_FAILURE_NOT_EXECUTED",
   "asOfDate": "2026-10-27",
   "repository": "shafranovskijm-pixel/synthagma-ver-0.1",
   "baseCommit": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
@@ -525,16 +525,17 @@
   ],
   "variants": {
     "autoschool-entry": {
-      "sourceFiles": 4,
+      "sourceFiles": 5,
       "allowedPaths": [
         "src/lib/programFiles.ts",
         "src/components/organization/education-issuance/RecordedProgramFileDownload.tsx",
         "src/components/organization/education-issuance/RecordDialog.tsx",
-        "src/components/organization/education-issuance/__tests__/RecordedProgramFileDownload.test.tsx"
+        "src/components/organization/education-issuance/__tests__/RecordedProgramFileDownload.test.tsx",
+        "src/lib/__tests__/programFiles.test.ts"
       ],
       "packet": {
         "path": ".ci/frontend-candidates/autoschool-entry.json",
-        "sha256": "2fa834e7c0f5ba1ad0dd99cb3313080972bcf8d059e9111c7784e04c1a1345b9"
+        "sha256": "ee1c4827df3c1ecaffb961ba8620c12d057d1b6d85dbcedd39b1a4a723754425"
       },
       "suites": [
         {
@@ -575,7 +576,7 @@
     "source": "current GitHub main and recursive tree read",
     "baseCommit": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
     "tree": "64e1bc8026df31bdb5a80a62b7835d499d8075d4",
-    "candidateManifestSHA256": "9d0aed58391e1280450ac2acd14fd859472898f513174375989f1851c57451b9"
+    "candidateManifestSHA256": "4b3f16e2b96c8e67bafb2364e17ab4733c0beba9f192cf6d5425aeb70f3c529d"
   },
   "rootProvidedCurrentGitHubMain": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
   "exactProg005ExpectedCaseIdentitiesForRootArtifactComparison": [
@@ -774,5 +775,19 @@
     },
     "rootCause": "Test mock confused POST sign JSON with GET signed-file bytes",
     "failurePreserved": true
+  },
+  "priorActualR4RawEnginePassButIdentityGateFail": {
+    "run": 40455447119,
+    "head": "cbeadd19e8c7be315483e4d3ddf2ce2840093e62",
+    "stockTSC": "PASS",
+    "rawTests": {
+      "total": 71,
+      "passed": 71,
+      "failed": 0,
+      "pending": 0
+    },
+    "overall": "FAIL_duplicate_legacy_test_title",
+    "checkerUnchanged": true,
+    "failureProofSHA256": "ac6a5a17c112ef8d213c319e82abd5313df578444e78699e3fc3eb97b66a2e43"
   }
 }
