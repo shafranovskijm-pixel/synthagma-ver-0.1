@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "FROZEN_TARGETED_RECORDED_PROGRAMME_FILE_CI_71_CANDIDATE_NOT_EXECUTED",
+  "status": "FROZEN_R3_TARGETED_RECORDED_PROGRAMME_FILE_CI_71_AFTER_OBSERVED_R2_FAILURE_NOT_EXECUTED",
   "asOfDate": "2026-10-27",
   "repository": "shafranovskijm-pixel/synthagma-ver-0.1",
   "baseCommit": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
@@ -534,7 +534,7 @@
       ],
       "packet": {
         "path": ".ci/frontend-candidates/autoschool-entry.json",
-        "sha256": "ff2c982c60b72589ba5c38b50565bcc07902a059e0c29e11d7d1a19e288f9fc4"
+        "sha256": "714d172e396b05c83830c5f484ec3bd328b5145fc5cc7ab036ca217f88655003"
       },
       "suites": [
         {
@@ -575,7 +575,7 @@
     "source": "current GitHub main and recursive tree read",
     "baseCommit": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
     "tree": "64e1bc8026df31bdb5a80a62b7835d499d8075d4",
-    "candidateManifestSHA256": "04659c06dbacdfac312a5913573c628349ecbfde49a9f12f7886ca1f44464cb7"
+    "candidateManifestSHA256": "35a8308feeb3983e855389f14d2d8fbde540e88600b70824b6faeb406c35aed7"
   },
   "rootProvidedCurrentGitHubMain": "ff1b1efcb15a7de8198fe9560fc7fb0b7b79bea2",
   "exactProg005ExpectedCaseIdentitiesForRootArtifactComparison": [
@@ -749,5 +749,17 @@
       "file": "src/components/organization/education-issuance/__tests__/RecordedProgramFileDownload.test.tsx",
       "fullName": "Recorded programme file download allows a clean retry after an unavailable exact version without choosing a replacement"
     }
-  ]
+  ],
+  "priorActualFailedRun": {
+    "run": 40453453634,
+    "head": "0d26e167604a2d70e448c38e7ea9ade1af56b727",
+    "stockTSC": "TS2322",
+    "tests": {
+      "total": 71,
+      "passed": 60,
+      "failed": 11,
+      "pending": 0
+    },
+    "failurePreserved": true
+  }
 }
