@@ -370,7 +370,8 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
         ...form,
         ...Object.fromEntries(new FormData(e.currentTarget)),
       };
-      const result=await act(modal.path, modal.transform ? modal.transform(values) : values);
+      const result=await act(modal.path, modal.transform ? modal.transform(values) : values,
+        modal.payload?.accountMode==='existing'?'Запись ученика создана. В списке учеников нажмите «Создать приглашение» и передайте ссылку владельцу существующего аккаунта вашей организации.':'Сохранено');
       if(!isCurrent(token))return;
       if(result.account&&typeof result.account==='object'){const a=result.account as {login?:unknown;isExisting?:unknown};setAccountReceipt({login:typeof a.login==='string'?a.login:null,isExisting:a.isExisting===true});}
       setModal(null);
@@ -420,8 +421,17 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
   const todays = state.lessons.filter(
     (l) => dateKey(l.start) === dateKey(now) && l.status !== 'cancelled',
   );
-  function resourceForm(kind: Kind) {
-    if(kind==='student'&&!canCreateStudents){setError('В первом пилоте новых учеников добавляет владелец организации');return;}
+  async function inviteResource(resource: Row<'student' | 'instructor'>) {
+    const token={adapter,epoch:context.current.epoch};
+    try {
+      const result=await act('invites',{resourceId:resource.id,resourceKind:resource.kind},'Приглашение создано');
+      if(isCurrent(token))setInviteLink(typeof result.url==='string'?result.url:'');
+    } catch { /* act keeps access errors and stale context private. */ }
+  }
+  function resourceForm(kind: Kind, studentAccountMode: 'new' | 'existing' = 'new') {
+    const existingStudent=kind==='student'&&studentAccountMode==='existing';
+    if(existingStudent&&!owner){setError('Приглашать учеников может только владелец автошколы');return;}
+    if(kind==='student'&&!existingStudent&&!canCreateStudents){setError('В первом пилоте новых учеников добавляет владелец организации');return;}
     const fields: Field[] = [
       {
         key: 'name',
@@ -471,10 +481,12 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
         { key: 'email', label: 'Email для входа существующего аккаунта', type: 'email', hint:'Должен совпасть с подтверждённым email учётной записи. Контактная почта может отличаться от него.' },
         { key: 'carId', label: 'Автомобиль', options: pick('car') },
       );
-    if (kind === 'student')
-      fields.push(
+    if (kind === 'student') {
+      if(!existingStudent)fields.push(
         {key:'password',label:'Начальный пароль для нового аккаунта СИНТАГМЫ',type:'password',hint:'Не менее 10 символов. У существующего ученика пароль не меняется. Письмо автоматически не отправляется.'},
-        { key: 'email', label: 'Контактная почта (не логин)', type: 'email' },
+      );
+      fields.push(
+        { key: 'email', label: existingStudent?'Email для входа существующего аккаунта':'Контактная почта (не логин)', type: 'email', hint:existingStudent?'Укажите email для входа в общий аккаунт вашей организации. Его принадлежность и подтверждение проверит сервер при принятии приглашения.':undefined },
         { key: 'phone', label: 'Телефон', required: false },
         {
           key: 'groupId',
@@ -489,8 +501,9 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
           options: [{ id: '', name: 'Назначить позже' }, ...pick('instructor')],
         },
       );
+    }
     open({
-      title: (
+      title: existingStudent?'Пригласить существующий аккаунт':(
         {
           student: 'Добавить ученика',
           group: 'Создать группу',
@@ -499,10 +512,11 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
           instructor: 'Добавить инструктора',
         } as Record<string, string>
       )[kind],
-      description:kind==='student'?'Ученик создаётся штатной регистрацией СИНТАГМЫ с проверкой лимита и сразу получает привязку к автошколе. После сохранения будет показан логин для общего входа «По логину». Контактная почта не является логином.':kind==='program'||kind==='car'?'Первый пилот поддерживает категорию B. Для другой категории подключение ещё не подготовлено.':kind==='instructor'?'Создаётся запись инструктора, без новой учётной записи и без глобальной роли организации. Приглашение доступно для действующего общего аккаунта этой организации; новая организация при регистрации не подходит.':undefined,
+      description:existingStudent?'Для существующего аккаунта вашей организации. Создаётся только запись ученика автошколы: общий аккаунт и его личные данные не меняются. Затем в списке учеников создайте одноразовую ссылку. Привязка появится только после принятия приглашения этим аккаунтом; письмо не отправляется.':kind==='student'?'Ученик создаётся штатной регистрацией СИНТАГМЫ с проверкой лимита и сразу получает привязку к автошколе. После сохранения будет показан логин для общего входа «По логину». Контактная почта не является логином.':kind==='program'||kind==='car'?'Первый пилот поддерживает категорию B. Для другой категории подключение ещё не подготовлено.':kind==='instructor'?'Создаётся запись инструктора, без новой учётной записи и без глобальной роли организации. Приглашение доступно для действующего общего аккаунта этой организации; новая организация при регистрации не подходит.':undefined,
       fields,
       path: 'resources',
-      payload: { kind },
+      payload: existingStudent?{kind,accountMode:'existing'}:{kind},
+      submit: existingStudent?'Создать запись для приглашения':undefined,
     });
   }
   function book(sid = '', start = '', end = '') {
@@ -1445,6 +1459,9 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
                 <Plus />
                 Добавить ученика
               </Button>
+              <Button variant="outline" disabled={busy} onClick={() => resourceForm('student','existing')}>
+                Пригласить существующий аккаунт
+              </Button>
               <Button variant="outline" onClick={() => resourceForm('group')}>
                 Создать группу
               </Button>
@@ -1471,13 +1488,13 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
                   name(s.data.groupId),
                   `${hours(b.completed)} / ${hours(b.planned)}`,
                   name(s.data.instructorId),
-                  <Button
-                    key={s.id}
-                    variant="outline"
-                    onClick={() => go('students', s.id)}
-                  >
-                    Открыть <ArrowUpRight />
-                  </Button>,
+                  <div key={s.id} className="actions">
+                    <Button variant="outline" onClick={() => go('students', s.id)}>
+                      Открыть <ArrowUpRight />
+                    </Button>
+                    {owner&&s.active===1&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.data.email.trim())&&
+                      <Button variant="outline" disabled={busy} onClick={()=>void inviteResource(s)}>Создать приглашение</Button>}
+                  </div>,
                 ];
               })}
           />
@@ -1574,16 +1591,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
               <Button
                 key={i.id + '-invite'}
                 variant="outline"
-                onClick={async () => {
-                  try {
-                    const r = await act(
-                      'invites',
-                      { resourceId: i.id },
-                      'Приглашение создано',
-                    );
-                    setInviteLink(typeof r.url === 'string' ? r.url : '');
-                  } catch {}
-                }}
+                onClick={() => void inviteResource(i)}
               >
                 Пригласить
               </Button>,
