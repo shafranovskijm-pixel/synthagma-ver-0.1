@@ -132,6 +132,41 @@ export async function readProgramFile(scope: ProgramFileScope, documentId: strin
   if (!row.success || row.data.id !== documentId || row.data.organization_id !== scope.organizationId) throw new ProgramFileError('SOURCE_CHANGED');
   return (await withVersions(scope, [row.data], deadline))[0];
 }
+/** Exact historical source, not the document's current version. RLS remains authoritative. */
+export interface RecordedProgramFileVersion {
+  id: string; document_id: string; organization_id: string; file_path: string;
+  file_name: string | null; file_size: number | null;
+}
+export async function readRecordedProgramFileVersion(scope: ProgramFileScope, documentId: string, versionId: string, signal?: AbortSignal): Promise<RecordedProgramFileVersion> {
+  if (!uuid.safeParse(documentId).success || !uuid.safeParse(versionId).success) throw new ProgramFileError('SOURCE_CHANGED');
+  const deadline = Date.now() + 45000;
+  const ensureActive = () => { active(scope, deadline); if (signal?.aborted) throw new ProgramFileError('ACCESS_DENIED'); };
+  ensureActive();
+  const bearer = await authorization(scope, deadline); ensureActive();
+  // A retained historical programme may be archived/deleted. Do not demand current publication or approval.
+  const documentRequest = supabase.from('org_documents').select('id,organization_id,type')
+    .eq('organization_id', scope.organizationId).eq('id', documentId).eq('type', PROGRAM_FILE_TYPE)
+    .setHeader('Authorization', bearer);
+  if (signal) documentRequest.abortSignal(signal);
+  const documentResult = await bounded(documentRequest.maybeSingle(), deadline); ensureActive(); checked(documentResult.error);
+  const document = z.object({ id: uuid, organization_id: uuid, type: z.literal(PROGRAM_FILE_TYPE) }).strict().safeParse(documentResult.data);
+  if (!document.success || document.data.id !== documentId || document.data.organization_id !== scope.organizationId) throw new ProgramFileError('SOURCE_CHANGED');
+  const versionRequest = supabase.from('org_document_versions').select('id,document_id,organization_id,file_path,file_name,file_size')
+    .eq('organization_id', scope.organizationId).eq('document_id', documentId).eq('id', versionId)
+    .setHeader('Authorization', bearer);
+  if (signal) versionRequest.abortSignal(signal);
+  const versionResult = await bounded(versionRequest.maybeSingle(), deadline); ensureActive(); checked(versionResult.error);
+  const parsed = z.object({ id: uuid, document_id: uuid, organization_id: uuid, file_path: z.string().min(1).max(2048),
+    file_name: z.string().nullable(), file_size: z.number().int().nonnegative().nullable() }).strict().safeParse(versionResult.data);
+  if (!parsed.success || parsed.data.id !== versionId || parsed.data.document_id !== documentId || parsed.data.organization_id !== scope.organizationId) throw new ProgramFileError('SOURCE_CHANGED');
+  const path = parsed.data.file_path;
+  if (!path.startsWith(scope.organizationId + '/') || path.split('/').some(part => !part || part === '.' || part === '..')
+    || /[\\?#\u0000-\u001f]/.test(path) || /%(?:2e|2f|5c)/i.test(path)) throw new ProgramFileError('SOURCE_CHANGED');
+  ensureActive();
+  return { id: parsed.data.id, document_id: parsed.data.document_id, organization_id: parsed.data.organization_id,
+    file_path: parsed.data.file_path, file_name: parsed.data.file_name, file_size: parsed.data.file_size };
+}
+
 export async function listProgramFiles(scope: ProgramFileScope, after: string | null = null) {
   if (after !== null && !uuid.safeParse(after).success) throw new ProgramFileError('SOURCE_CHANGED');
   const deadline = Date.now() + 45000, bearer = await authorization(scope, deadline);

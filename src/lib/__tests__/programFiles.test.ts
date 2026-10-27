@@ -53,7 +53,7 @@ describe('independent programme PDF custody', () => {
     for (const [q] of m.read.mock.calls) if (q.table === 'org_documents') expect(q.columns).not.toMatch(/file_name|file_size/);
     expect(m.identity).toHaveBeenCalledWith('synthetic-token');
   });
-  it.each([['<html>not PDF</html>', 'renamed.pdf', 'application/pdf'], ['%PDF-x', 'wrong.html', 'application/pdf'], ['%PDF-x', 'wrong.pdf', 'text/html'], ['', 'empty.pdf', 'application/pdf']])('rejects format/MIME/empty input before storage (%s)', async (body, name, mime) => {
+  it.each([['<html>not PDF</html>', 'renamed.pdf', 'application/pdf'], ['%PDF-x', 'wrong.html', 'application/pdf'], ['%PDF-x', 'wrong.pdf', 'text/html'], ['', 'empty.pdf', 'application/pdf']])('rejects format/MIME/empty input before storage (%s; row %#)', async (body, name, mime) => {
     await expect(prepareProgramFile(scope, 'Программа', pdf(body, name, mime))).rejects.toThrow(); expect(m.upload).not.toHaveBeenCalled(); expect(m.rpc).not.toHaveBeenCalled();
   });
   it('normalizes empty browser MIME without altering bytes and enforces the explicit technical cap', async () => {
