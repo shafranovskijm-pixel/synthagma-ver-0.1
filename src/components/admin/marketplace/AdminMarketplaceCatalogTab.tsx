@@ -100,7 +100,7 @@ export function AdminMarketplaceCatalogTab({
                 {validation.validationReport.length > 0 ? (
                   <><AlertTriangle className="w-4 h-4 text-destructive" />Результаты проверки</>
                 ) : (
-                  <><CheckCircle2 className="w-4 h-4 text-green-600" />Все курсы готовы</>
+                  <><CheckCircle2 className="w-4 h-4 text-green-600" />Структурная проверка пройдена</>
                 )}
               </CardTitle>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => validation.setValidationReport(null)}>
@@ -110,7 +110,7 @@ export function AdminMarketplaceCatalogTab({
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0 space-y-2">
             {validation.validationReportOk > 0 && (
-              <p className="text-sm text-muted-foreground">✅ {validation.validationReportOk} курсов готово</p>
+              <p className="text-sm text-muted-foreground">✅ Структурная проверка пройдена: {validation.validationReportOk} курсов</p>
             )}
             {validation.validationReport.length > 0 && (
               <>
