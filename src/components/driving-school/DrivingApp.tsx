@@ -701,7 +701,11 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
       <div className="empty">
         <CalendarDays />
         <h3>Занятий пока нет</h3>
-        <p>Добавьте рабочую смену и запишите ученика на удобное время.</p>
+        <p>{owner
+          ? 'Добавьте рабочую смену и запишите ученика на удобное время.'
+          : isStudent
+            ? 'Откройте раздел «Записаться», чтобы выбрать время, или уточните расписание в автошколе.'
+            : 'На выбранную дату занятий нет. Уточните расписание у администратора автошколы.'}</p>
       </div>
     );
   }
@@ -1272,7 +1276,8 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
             {lessonList(
               isStudent
                 ? state.lessons
-                    .filter((l) => l.status === 'booked' && l.start > now)
+                    .filter((l) => l.status === 'booked' && l.end > now)
+                    .sort((a, b) => a.start - b.start)
                     .slice(0, 5)
                 : todays,
             )}
