@@ -1,0 +1,713 @@
+{
+  "schemaVersion": 1,
+  "status": "AS_DASHBOARD_ONGOING_NINE_PINNED_FRONTEND_SOURCE_ONLY_NOT_EXECUTED",
+  "asOfDate": "2026-10-28",
+  "repository": "shafranovskijm-pixel/synthagma-ver-0.1",
+  "baseCommit": "a9e087dbd7dc2969d53a9af0bf5a03ef6be641ec",
+  "runtime": {
+    "node": "24.22.1",
+    "npm": "10.9.2",
+    "platform": "linux",
+    "productionNodeEnginesUnchanged": "20.x",
+    "nodeVersionPurpose": "CI only; exact official Node24 distribution available 2026-10-21; not a production runtime upgrade"
+  },
+  "packageBlob": "38098878514254b0d741e61e4c2265c26d3598a6",
+  "lockBlob": "414c0ac5bbaa094d800a2cdbd6c5efd81de38a0a",
+  "dependencyInstall": "npm ci --ignore-scripts --include=optional --no-audit --no-fund; existing legacy-peer-deps .npmrc preserved",
+  "installedDependencyPins": [
+    {
+      "path": "node_modules/typescript",
+      "version": "5.8.3"
+    },
+    {
+      "path": "node_modules/vitest",
+      "version": "4.0.18"
+    },
+    {
+      "path": "node_modules/vitest/node_modules/vite",
+      "version": "7.3.1"
+    },
+    {
+      "path": "node_modules/vite",
+      "version": "5.4.19"
+    },
+    {
+      "path": "node_modules/esbuild",
+      "version": "0.25.12"
+    },
+    {
+      "path": "node_modules/jsdom",
+      "version": "25.0.1"
+    },
+    {
+      "path": "node_modules/@testing-library/react",
+      "version": "16.3.2"
+    }
+  ],
+  "ciCheckoutFiles": [
+    ".github/workflows/pinned-frontend-candidates.yml",
+    "scripts/ci/deny-backend-network.mjs",
+    "scripts/ci/check-vitest-report.mjs",
+    "scripts/ci/run-frontend-candidate.mjs",
+    ".ci/frontend-candidates/manifest.json",
+    ".ci/frontend-candidates/as-dashboard-ongoing.json"
+  ],
+  "baselinePins": [
+    {
+      "path": "src/components/course-learning/HomeworkSubmission.tsx",
+      "blob": "9b58a0247cd642182d7c544335fb13276b3926a5",
+      "sha256": "64a0551ff5a884c42241fa69e7b7da7c2c824a390032be729b8b325100d3221b",
+      "bytes": 16248
+    },
+    {
+      "path": "src/components/course-learning/HomeworkTaskDescription.tsx",
+      "blob": "7ef0518e03fb117c9a804b5594578f507f688642",
+      "sha256": "259b741672adca3cd978144d8dbb714880d4895bdcaee5c8bcc94a38c878d554",
+      "bytes": 3344
+    },
+    {
+      "path": "src/components/course-preview/CoursePreviewView.tsx",
+      "blob": "78adcab25b5138105c01b6e830ce1af1a0d10e31",
+      "sha256": "c61bf60c8dd9022b542af44547dbbbe270e69c863dfd84cb3bd94c7b35bf8f62",
+      "bytes": 36266
+    },
+    {
+      "path": "src/hooks/useCoursePreview.ts",
+      "blob": "2657439cc1202fcc79558cc06756775b7036885a",
+      "sha256": "5b0aefe62ad3fdb75170d80314268450cae35e4c361f967c228b9d0fe9691121",
+      "bytes": 9059
+    },
+    {
+      "path": "src/pages/CourseLearning.tsx",
+      "blob": "005fa9a6af96c6b82e09a2058bd3b72da85171f3",
+      "sha256": "debfc7f4bfa385814ad02cbb9023471181319dcad24fbe633833c8a0740fc633",
+      "bytes": 43177
+    },
+    {
+      "path": "src/hooks/useDrivingSchoolEntry.ts",
+      "blob": "064bf2fe8951f59a8a9b5a511bc975e12122f185",
+      "sha256": "9bd456fd92e2f4f398a0e97013c9b657c7f44de03e352d2c9c6a908e74a1efc8",
+      "bytes": 1840
+    },
+    {
+      "path": "src/pages/DrivingSchoolPage.tsx",
+      "blob": "79373b57c34a2d30018830dd1178780f734698ff",
+      "sha256": "2765f1d77880faec201619f4c8a3f9902be4053892735f41961a50a0f0ed2b73",
+      "bytes": 8853
+    },
+    {
+      "path": "src/pages/AutoSchools.tsx",
+      "blob": "85ab654efcb0d713f6204833fd4087810e426cc2",
+      "sha256": "051e77cbaf571baf1489e27c2f8477c027edde6f30279115ab4682d55f61975a",
+      "bytes": 4496
+    },
+    {
+      "path": "src/components/driving-school/DrivingApp.tsx",
+      "blob": "ebabd335eea8c225ddfb7b2e10e53d9fd02f6d13",
+      "bytes": 83236,
+      "sha256": "a9ee3936dbd0d4f48a04de16f0510aa2177ccd9fc621c6bc872e0823d3c0529d"
+    },
+    {
+      "path": "src/lib/driving-school/cloud-adapter.ts",
+      "blob": "ffdba106fdcea2f13a35afba65988f4eb0857401",
+      "bytes": 18592,
+      "sha256": "361b94dc83dd0c2f5ce8fbf51d46338b563d568e053d3d1ecb947723fc9a9d0b"
+    },
+    {
+      "path": "src/components/driving-school/sidebar.tsx",
+      "blob": "c6ba871281a5d55ce873bbc7a95a7039c327fc46",
+      "sha256": "7dbcb572935c86e0ade6769ebbcb9294cfc37f7a087425169636189ebadf2e5a",
+      "bytes": 2079
+    },
+    {
+      "path": "src/components/driving-school/driving-school.css",
+      "blob": "a8cda0c4b95edec0a66251cdb22e7eaae6647354",
+      "sha256": "f8ac97c9ee2c74a234f6179303e6a2a212c142dbb07df5f9d408e9b6441d65f9",
+      "bytes": 20288
+    },
+    {
+      "path": "src/utils/authReturn.ts",
+      "blob": "b635776d54b39d01c230f89469740109071b09b0",
+      "sha256": "866e416711e3613096e2696df05997f94074662275558369ac5a574a9313ad60",
+      "bytes": 2879
+    },
+    {
+      "path": "src/utils/loginDestination.ts",
+      "blob": "d02a90769f291e226394855e47d6396701d04c50",
+      "sha256": "93f1126c68b4a86eb99ac58d29e4843a166d16c4292443670880e07ba5b6fc51",
+      "bytes": 1325
+    },
+    {
+      "path": "src/hooks/useAuth.tsx",
+      "blob": "2dc046efe9b39b1dbe30853ae2784b09174c2f99",
+      "sha256": "d19e1a7ec27a857a4a41402103d67e9aec079eb0078384c2a6f23639dd675359",
+      "bytes": 14002
+    },
+    {
+      "path": "src/components/ProtectedRoute.tsx",
+      "blob": "c0a2ee5b8e8b3835ffb9cbd9536674f526d40695",
+      "sha256": "df82d947c1946ca661274b989d9df9a64a39a1fa79d2808b3bd13ff992e47458",
+      "bytes": 4614
+    },
+    {
+      "path": "src/routes/organizationRoutes.tsx",
+      "blob": "202db3fa4fdb4141b7e49cd29a03992b3d55186d",
+      "sha256": "2c200de9b5ffc43f91d350f4e2d09dedaf9d4d79c81dc6fd633b15d980468db2",
+      "bytes": 4411
+    },
+    {
+      "path": "src/components/organization/OrgSidebar.tsx",
+      "blob": "517803263f50fb5c9ae862c4bd3457d19922fef7",
+      "sha256": "f3b5625636487db1ebfcdce3d0fecb8d451288534b470b338c6d6ad6334ffd63",
+      "bytes": 48873
+    },
+    {
+      "path": "src/components/student/StudentSidebar.tsx",
+      "blob": "22defcb0af3ed256e2549e7d4eb38150fe235b39",
+      "sha256": "ccfc27071c8f0ca45e64240062d40bd3c6ad8b7f282ffc37063760917a6cb416",
+      "bytes": 6357
+    },
+    {
+      "path": "src/components/student/StudentProfileSidebar.tsx",
+      "blob": "cff751aa2734bbfec52edef71fce2dc982e31122",
+      "sha256": "b45c53929c1b6e65f4be183cd302c8267a8f4e8c0688ce866a95798391e74a3c",
+      "bytes": 6502
+    },
+    {
+      "path": "src/components/student/StudentFooter.tsx",
+      "blob": "dcecc33838cd222b90d05ba377b3743cc3433afa",
+      "sha256": "e1341a9c293fee80730889464381cceca6c64c85426d9e181ade4059ffade721",
+      "bytes": 2737
+    },
+    {
+      "path": "src/pages/StudentDashboard.tsx",
+      "blob": "c48eb6db07effd06897f377e7e6398079282e589",
+      "sha256": "ffb90c3cc6563358af3e0a44ba592550702a69ba70a3f95928d49560bcf4c7d9",
+      "bytes": 27938
+    },
+    {
+      "path": "src/contexts/OrgDashboardContext.tsx",
+      "blob": "9281cea0c60a23d89ed85e21294cfb5424f085cd",
+      "sha256": "25f15af72fc5c861cd7458324027e0772758b2ffc5b772447e22c840e85031dd",
+      "bytes": 765
+    },
+    {
+      "path": "src/hooks/useOrganizationDataLoader.ts",
+      "blob": "3783aaa98ba8768c185b804bdb29c4f1bfa0dec8",
+      "sha256": "bdb609aa696eefa8e1a09cdbdedc559ee83a76606fb9180c72eaca2a83ec2958",
+      "bytes": 13295
+    },
+    {
+      "path": ".npmrc",
+      "blob": "6c2c96a2128d8627d9076487cd6f0206ba015365",
+      "sha256": "f48f7bf8de51e25495c49f6074a9444b5e372c24afbb1f358b252876f8af5414",
+      "bytes": 38
+    },
+    {
+      "path": ".node-version",
+      "blob": "2edeafb09db0093bae6ff060e2dcd2166f5c9387",
+      "sha256": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+      "bytes": 2
+    },
+    {
+      "path": ".nvmrc",
+      "blob": "2edeafb09db0093bae6ff060e2dcd2166f5c9387",
+      "sha256": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+      "bytes": 2
+    },
+    {
+      "path": "package.json",
+      "blob": "38098878514254b0d741e61e4c2265c26d3598a6",
+      "sha256": "afa85db7b143615bb994936c2d4c502048a22b2f630e187dee35d15dad7a59bd",
+      "bytes": 4343
+    },
+    {
+      "path": "package-lock.json",
+      "blob": "414c0ac5bbaa094d800a2cdbd6c5efd81de38a0a",
+      "sha256": "6dd560210f8787d053eed40f2d24e83d0c823567471d7c7fb459a59cbb94dace",
+      "bytes": 493695
+    },
+    {
+      "path": "tsconfig.app.json",
+      "blob": "dbf29bcd37532cc07aac60f7789b8c367957b2eb",
+      "bytes": 709,
+      "sha256": "0ad23538e82c760b67276f05d9bb302a59d6d3512725e473c0907cc94980a196"
+    },
+    {
+      "path": "tsconfig.json",
+      "blob": "6b68d80b7d92d0c4a5d774897f2bedfa95b42669",
+      "sha256": "406e63e666958bb699aae6562e561a0cec963ee3dfe771c644ace7d97304974f",
+      "bytes": 396
+    },
+    {
+      "path": "vitest.config.ts",
+      "blob": "3b437d29026892339996a22ac061ca694752c498",
+      "sha256": "82f31c27d7c0f39a5ad8ce98a7cb58b0d8b6d9aab00f3a7980dbbb0d7cfe615b",
+      "bytes": 601
+    },
+    {
+      "path": "tests/homework-html/vitest.config.mjs",
+      "blob": "c115a1f1a4cd202df9423343f811759ab8ba0a9d",
+      "sha256": "6dae87578e317a328383aa0446ecd6c957807bdd746ca06cae291603a7e41142",
+      "bytes": 496
+    },
+    {
+      "path": "tests/homework-html/setup.ts",
+      "blob": "201adcaae0c2df0a8de3c9e904aa07c90e033729",
+      "sha256": "3ac813e1cd20f1d6ed147f2a94409d6e455091c095017b2a0870a7975fb71573",
+      "bytes": 1327
+    },
+    {
+      "path": "tests/homework-html/homework-html.test.tsx",
+      "blob": "7ac76f3ee26a8f2f60baf863c314139df9ab1352",
+      "sha256": "6fed823aac215ef56e3bbdd03a2174a1087fda5d6bfcd358e7492078b283e89a",
+      "bytes": 8415
+    },
+    {
+      "path": "tests/public-course-explorer/vitest.config.mjs",
+      "blob": "94bb0194b5f6fd86da5efba6a772ca28ad4b15c4",
+      "sha256": "f66414325116490fdbcfc391406c9428ca3440c7f7faf9a9130cf79ede65af7f",
+      "bytes": 517
+    },
+    {
+      "path": "tests/public-course-explorer/setup.ts",
+      "blob": "02023144d93edf571c7454ac1c9950c91646fd15",
+      "sha256": "ae34ddbc9d8a6ce6cbc9c9fab9d395ca41033dca089824b48b4e8090a5fa9196",
+      "bytes": 3498
+    },
+    {
+      "path": "tests/public-course-explorer/deep-link.test.tsx",
+      "blob": "bac19c212bf8bf48a4ffd16ba99568f99c70d43b",
+      "sha256": "1d1d729cd17b647e303e313eabb9835e5a404089a2b1830b86d98004cc55a855",
+      "bytes": 11001
+    },
+    {
+      "path": "tests/public-course-explorer/explorer.test.tsx",
+      "blob": "eca9f091433f8e11dc3635eb0d45bff3c093e747",
+      "sha256": "10e34d2b95e3cbf78c2d7549e13c75ee8f1b0cc2735394273579acabc9140f76",
+      "bytes": 5717
+    },
+    {
+      "path": "tests/public-course-explorer/registration-return.test.tsx",
+      "blob": "70c583e7bfb21fa6d64e0409a90dc80fe6f6dc50",
+      "sha256": "e011beb044c5354c1b0c5284491ae80d1184858666213e7f0381f9cd0f877b2b",
+      "bytes": 6454
+    },
+    {
+      "path": "src/hooks/usePlatformHomeworkTaskProof.ts",
+      "blob": "fa9bee73930c7ebba47f14b4ea567f1f846f19ee",
+      "sha256": "8f16b632e808f62331326bdfabc05e4f9e22e980b1547b3bd19cb1cf17c0423e",
+      "bytes": 6393
+    },
+    {
+      "path": "tests/homework-proof/homework-proof.test.tsx",
+      "blob": "b1f5f25250dfb4ec94af9e32a3002dce1e9ae068",
+      "sha256": "1009b79dd7c4ee629c8fad6ea45f61e546195bd10aaeeed2edd3db2539324b78",
+      "bytes": 10593
+    },
+    {
+      "path": "tests/homework-proof/setup.ts",
+      "blob": "1ccde0ec36e83fe652d3ba0843d859912235b281",
+      "sha256": "2ca1c5fcff0b2a29ddfe3c95c6c45f7262e20b477a4eab107174c11b3b897c4a",
+      "bytes": 980
+    },
+    {
+      "path": "tests/homework-proof/vitest.config.mjs",
+      "blob": "3ec3bf85cffbf3bbff692745dc0b0f6723a7c7b2",
+      "sha256": "84a7e52b52bf0d8aeeb76997ade67d3944c266955299d4cd57f25c9fee801d6c",
+      "bytes": 499
+    },
+    {
+      "path": "src/hooks/course-learning/markLessonProgress.ts",
+      "blob": "82af83b41232deaab79a6366c85d533ef6d51e2f",
+      "sha256": "40e61e8d5dc2d2555ae0b3498ce058c26bea4bdaaa7445f6398cf50c8f4393ac",
+      "bytes": 6464
+    },
+    {
+      "path": "src/hooks/course-learning/__tests__/markLessonProgress.test.ts",
+      "blob": "21f46156449773df91d1ab7e1bf719c1813c59c7",
+      "sha256": "c8ad27096cb7fcfc1dfc5d2b6a4c4fd80921fbce0081b13d27720e70c8f35057",
+      "bytes": 13847
+    },
+    {
+      "path": "tests/course-progress/vitest.config.mjs",
+      "blob": "88b333b4f5fcbdbf7d4726d9efa3d478b1979466",
+      "sha256": "3d0821bae4bd889f227c6cab7c4e72c4467295af514075505dbb841f462fd39c",
+      "bytes": 351
+    },
+    {
+      "path": "tests/autoschool-entry/setup.ts",
+      "blob": "eb05fea4951faf213f5845273b20f86c7a7c93f4",
+      "bytes": 926,
+      "sha256": "c2beb7efbedc2f1fe0e99709c30dc6fbdc904bb7973dcf9a8f0b91f563d6ca3c"
+    },
+    {
+      "path": "tests/autoschool-entry/fixtures.ts",
+      "blob": "e09d5fb2a2873fadc0acd1255d85e06b35030655",
+      "sha256": "076bc09257dd6c37626961c1d8874ea60060b914b790977fda588386790a04b3",
+      "bytes": 1937
+    },
+    {
+      "path": "tests/autoschool-entry/entry.test.tsx",
+      "blob": "706d31fe0508865d40ba547702960d5acab1c49d",
+      "sha256": "7ab559a14992995098b28685d4e2db9e172e74e4f41947a1491c97a1e5a133eb",
+      "bytes": 3693
+    },
+    {
+      "path": "tests/autoschool-entry/access-closure.test.tsx",
+      "blob": "90c39e523626c6c7440792f4567def732dd7c92e",
+      "sha256": "47ac514d214a26c4786a9e1521a94d2d69794119ebc621f370a490c7bdbc3f61",
+      "bytes": 7574
+    },
+    {
+      "path": "tests/autoschool-entry/participant-entry.test.tsx",
+      "blob": "c61110af9fb5a42d8aa18056f55b014d3052c6b4",
+      "sha256": "99b756de4336cbab0754b18ae5866d9edefe9f2c49632a0f67ed908c15e4ddad",
+      "bytes": 4841
+    },
+    {
+      "path": "tests/autoschool-entry/auth-default-and-landing.test.tsx",
+      "blob": "5ca8a5b7761c47894ba25aadd4bfd47eee886aec",
+      "sha256": "88fdf578fd31caee285238ace042df99f4548ae12d98486f05c2cc0a34cb1b4b",
+      "bytes": 2891
+    },
+    {
+      "path": "tests/autoschool-entry/adapter-boundaries.test.ts",
+      "blob": "0e5b09e6b4c0f2876f17ab05a669af4456a7d5a0",
+      "sha256": "1c0f277e5f6dc467f00a3ecc8f9da4d6269f561ea232ab480c392fdca0ebbafd",
+      "bytes": 1844
+    },
+    {
+      "path": "vitest.autoschool-entry.config.mjs",
+      "blob": "1701ccc045344018985a096ba2e823ef51df49d6",
+      "sha256": "21406a4cfd554dae30cd936427284aa0864a488c592e4e95e22069e74696cfd1",
+      "bytes": 483
+    },
+    {
+      "path": "src/lib/driving-school/program-version.ts",
+      "blob": "3b8fb2b20b21cb65725bae43e0a82622ed1abab7",
+      "sha256": "e7ea7dcda81c2b2ec130b6140ddd7d8a3645691cc02159b1b0a2d9b34fd74b3e",
+      "bytes": 526
+    },
+    {
+      "path": "tests/autoschool-entry/program-version.test.tsx",
+      "blob": "9a9c041696e35864f0200d2c8a56f1bafb78e581",
+      "sha256": "487f62ba0d864c183ed393176885dcc50f2535c15a143447a3f6c2e510a92a61",
+      "bytes": 7576
+    },
+    {
+      "path": "tests/autoschool-entry/existing-account-invite.test.tsx",
+      "blob": "1ec54b2d44603b78a1f92adab2fbb11d78bb0ca5",
+      "bytes": 16186,
+      "sha256": "56c4cff40e31621d495889f9e95ffa682e67dbfe1462fc5b6f03c23645eb0b17"
+    },
+    {
+      "path": "src/components/organization/education-issuance/RecordDialog.tsx",
+      "sha256": "17404506ebbc641b98194a75ce4b9629d94d4b04189151b6447100c15f7982bf",
+      "blob": "f2ea22dc0a79e76823022b04de86327f852620a9",
+      "bytes": 29579
+    },
+    {
+      "path": "src/lib/admissionCases/contract.ts",
+      "blob": "297c5ed1157bf2465d745042481b93763befa498",
+      "bytes": 19787,
+      "sha256": "d15de8dcc0068c231cc6d02bf542b62e5d9bd8c8471dc938924fb87a0a238f7e"
+    },
+    {
+      "path": "src/lib/copyRegistry/value.ts",
+      "blob": "0f7ae3463495c7f202a2e405e6ac24a4fcc79f32",
+      "bytes": 548,
+      "sha256": "2858c6aed3eb10774f7e495617567ae001689a906b0bd87c6174b098694ed633"
+    },
+    {
+      "path": "src/lib/educationIssuance/__tests__/fixtures.ts",
+      "blob": "a0cd32b8e0bbaac9129cdc7a7f9d1c533b8fe0e6",
+      "bytes": 7537,
+      "sha256": "d6cb1a74fbf6ac0335c090ef28c8ceb7011c15acf681b7667b3bbb4fbcc93709"
+    },
+    {
+      "path": "src/lib/educationIssuance/client.ts",
+      "blob": "b86b0f1dc948b2370b211216516fc898123152e6",
+      "bytes": 25010,
+      "sha256": "f1f5ae2fbbd2b64b6177bcc7fccdef479b6a6d02aa452a1e781224a54af8571b"
+    },
+    {
+      "path": "src/lib/educationIssuance/contract.ts",
+      "blob": "096db50123852e3f135092986006cf758b2ebd18",
+      "bytes": 32446,
+      "sha256": "007daea1a84aea11c33b3f9098ea93b8427a9f0897ae9151212d19fddb66bb1d"
+    },
+    {
+      "path": "src/lib/educationIssuance/types.ts",
+      "blob": "42030ae0b822a3cbca10eaa5b1b414e2a144a67d",
+      "bytes": 2488,
+      "sha256": "90e9ad33252b435981a63ab13508aa3433a03a68831eea1c2c3af9129291ce3a"
+    },
+    {
+      "path": "src/lib/learningOutcomes/contract.ts",
+      "blob": "faf05f11db156419ffc7ce0e867f4de294a584aa",
+      "bytes": 14586,
+      "sha256": "0e9af32d889ff3c86d74f69ee63751ff24476b6523c032a59dc9439efc010202"
+    },
+    {
+      "path": "src/test/setup.ts",
+      "blob": "817a9afe6804d07fe5bce0be6b38309190d4edb6",
+      "sha256": "1e69f34a877ad6f11f2342436f51522c5a06a609dc254b68c930352cbec4644d",
+      "bytes": 388
+    },
+    {
+      "path": "src/lib/programFiles.ts",
+      "sha256": "0089da4546cd215f3a2cd181faa4d451db2d9314bd2a25d35ead3bdb673ccf72",
+      "blob": "9cea1b626903c6084421cf9e6a5506a8785378be",
+      "bytes": 26909
+    },
+    {
+      "path": "src/utils/storageHelpers.ts",
+      "blob": "e273c08451d5ea65b35625e34a74955713f6902b",
+      "bytes": 7482,
+      "sha256": "51310ffedce1e3824efe649ef15ab34ab69b589bec951705797438ce26ef7bf9"
+    },
+    {
+      "path": "src/lib/customJournals/client.ts",
+      "blob": "64f3a6e014b3a0716057ea7c507b9d6b0b996714",
+      "bytes": 8242,
+      "sha256": "a255ca35abe64a9250f6183c32fb36b65b0a5aafcd030d1b20925f5df0388139"
+    },
+    {
+      "path": "src/hooks/useStaffPermissions.tsx",
+      "blob": "4a5c72cf087eecd39a82f459a9eb3a621e651e9f",
+      "bytes": 7849,
+      "sha256": "959ce7eeec6be87cabd3f9bba028519cbc7df743efed6aae15bc33e51a53fb6f"
+    },
+    {
+      "path": "src/hooks/useDocumentActionPermissions.ts",
+      "blob": "c9837baa2ff6745e504d8596286e426dba3ca6f9",
+      "bytes": 1382,
+      "sha256": "863472cad1655bfefc2247fe6df4e4a38dc9a9eacc60686d47b0d229241121e9"
+    },
+    {
+      "path": "src/utils/courseCache.ts",
+      "blob": "5e75a7ba09f6d3a6e090a5bc4ea2a3aa0ba5e7f3",
+      "bytes": 11386,
+      "sha256": "078e4e653f5a58b9e206c9b46e734190bed409d5bbd0fef707c0049af9977732"
+    },
+    {
+      "path": "src/utils/proxyFetch.ts",
+      "blob": "e440a787b7905685492b992141345cecc548b61c",
+      "bytes": 20385,
+      "sha256": "ee99c79895786612e310264425fdb87fb27126357728222e8fbbdf2d1c904497"
+    },
+    {
+      "path": "src/components/organization/education-issuance/IssuanceProvenanceDetails.tsx",
+      "blob": "9a47af2e9147be6a6fcd57e3a36054906f1a5fce",
+      "bytes": 6454,
+      "sha256": "314d44e9163f153b707fb383b7de1b53b2034eda7828e9f0ef64420ce36868b5"
+    },
+    {
+      "path": "src/components/organization/education-issuance/__tests__/IssuanceProvenanceDetails.test.tsx",
+      "blob": "303111ddb5269943a73d379d7276b514980c1a72",
+      "bytes": 8468,
+      "sha256": "eac377faaef0f40576a02e8dd5103934daf656692b93013c36fc2c9d6b6ac1eb"
+    },
+    {
+      "path": "src/lib/__tests__/programFiles.test.ts",
+      "sha256": "08bc80b7da27017ef827f16979711bac74e3d2d8852e97416276434e41fcee0b",
+      "blob": "d977884a8aebd498b497d71673621b26240b917b",
+      "bytes": 18687
+    },
+    {
+      "path": "src/lib/__tests__/programFiles.signingPlainJson.test.ts",
+      "blob": "468dcd4b2d9db1a029e1f35f08f900a3a42825dc",
+      "bytes": 5221,
+      "sha256": "2fa346883f41bf939d312671e25c7d9a0f8e706c0ae43e1ded74ae8403610169"
+    },
+    {
+      "path": "src/components/admin/marketplace/AdminMarketplaceCatalogTab.tsx",
+      "blob": "71f0634cd9181531523d61852a0394d3b78c48f6",
+      "bytes": 24965,
+      "sha256": "61af31ac481becc9711f672c1340b5ed7975961f8efe46a687c87f4255fea2fc"
+    },
+    {
+      "path": "src/components/admin/marketplace/useMarketplaceValidation.ts",
+      "blob": "91b83d5dda4a1009c2a23009e6e809995b7ce78f",
+      "bytes": 23702,
+      "sha256": "ffe27b31a8360bfe36d8a1bfcf4f0ea7ae46821b08ad24a757b1318b812eb90e"
+    },
+    {
+      "path": "src/components/admin/marketplace/validationHelpers.ts",
+      "sha256": "a6b9ff0463470c2b050b33ff7d84f07a028e98339f58c48636994761ecba250f",
+      "blob": "f49987d83ce004f1b962ef3f6ca0f298112afd5a",
+      "bytes": 8743
+    },
+    {
+      "path": "src/integrations/supabase/client.ts",
+      "sha256": "c1a7ebcf29c80b16d0cf29acd06793cbce839496596593ae2c1e7134bac574fe",
+      "blob": "12f3d36db6d2bac27fa82f78d888a4742c89b102",
+      "bytes": 665
+    },
+    {
+      "path": "src/integrations/supabase/types.ts",
+      "sha256": "180336a6aefb58e4142041b61c72f09c7182f9bc0ca41e9a323ee7f4a3591e7b",
+      "blob": "8aa091c29cc91508e8af1f9305df68f7903d457c",
+      "bytes": 904820
+    },
+    {
+      "path": "src/lib/driving-school/types.ts",
+      "blob": "3111aa226f1181ceaa2faf5721b7a7150611e830",
+      "bytes": 2427,
+      "sha256": "66b9c3fb16c1806012db6938acf6ae5d77f1789ff9fd63d5ada93b87bf316100"
+    },
+    {
+      "path": "src/lib/driving-school/time.ts",
+      "blob": "731d70a624cd39d8ac93a4c6c98adc447019c66e",
+      "bytes": 2395,
+      "sha256": "e6d74243f03cc48de1620bea8f5b7d0d158ba725e929bee1107ec67a46b3337f"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "blob": "ff7e6f11421ff6f84ad6e95e23eeb8f9816d19d6",
+      "bytes": 1805,
+      "sha256": "9635665e9bc2eb42f7a0e3876a9ef8b38c61746342be76ef0d8ea5f436697212"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "blob": "09700f605e069e1856565869ac994f978d1be0b3",
+      "bytes": 799,
+      "sha256": "aacef8933fe99ab553e12a82c874a23c97e2b5602eb6f00018454fa0a8d4f7f2"
+    },
+    {
+      "path": "src/components/ui/dialog.tsx",
+      "blob": "8249e2f0a047f20a712e369ce56b8bc0c3ecdec2",
+      "bytes": 3761,
+      "sha256": "8e755711b3fd5e8d7339baea7627da546293fe2df1a88775729c2857e0de4b57"
+    },
+    {
+      "path": "src/components/ui/table.tsx",
+      "blob": "991cdbf3ba12cf4d8e768a7b161471077568d4a6",
+      "bytes": 2694,
+      "sha256": "fab18d9eeb84781f534330ff4b2c2cbe3a93f9bdf5c449debff2f682a83a4876"
+    },
+    {
+      "path": "src/components/ui/tabs.tsx",
+      "blob": "ba20fbb1b869b15d60f3e79507b68ebd2ee577ce",
+      "bytes": 1897,
+      "sha256": "b313d08a8c85e586a282b615cf30ce0b6ec1eca3ea92149b731f14b4082f4d71"
+    },
+    {
+      "path": "src/components/admin/marketplace/__tests__/useMarketplaceValidation.result.test.tsx",
+      "blob": "f165f9ee604ce487c89805c0a8de55a9e7d55473",
+      "bytes": 18076,
+      "sha256": "68e29f5596708b0cdd104f62b73b15256daef3f774bca3c6a7175916b6de87c2"
+    }
+  ],
+  "variants": {
+    "as-dashboard-ongoing": {
+      "sourceFiles": 2,
+      "allowedPaths": [
+        "src/components/driving-school/DrivingApp.tsx",
+        "tests/autoschool-entry/dashboard-ongoing.test.tsx"
+      ],
+      "packet": {
+        "path": ".ci/frontend-candidates/as-dashboard-ongoing.json",
+        "sha256": "cd0c35292d31393a903309a95aaa6db6413b3ead98e3ce8f6a306f0263da8686"
+      },
+      "suites": [
+        {
+          "id": "as-dashboard-ongoing-9",
+          "config": "vitest.autoschool-entry.config.mjs",
+          "include": [
+            "tests/autoschool-entry/dashboard-ongoing.test.tsx"
+          ],
+          "cases": 9,
+          "files": {
+            "tests/autoschool-entry/dashboard-ongoing.test.tsx": 9
+          }
+        }
+      ],
+      "productionReleaseAllowed": false
+    }
+  },
+  "acceptance": {
+    "stockTsconfigRequired": true,
+    "expectedPassedCases": 9,
+    "exactFilesRequired": true,
+    "noSkippedOrTodo": true,
+    "applicationRelease": false,
+    "backendCredentials": false,
+    "exactExpectedIdentitiesRequireRootArtifactComparison": true
+  },
+  "sourceBaseProvenance": {
+    "commit": "a9e087dbd7dc2969d53a9af0bf5a03ef6be641ec",
+    "expectedPublishedMergeTree": "0cf7f75936abcf975e9960a961d9591d496ba785",
+    "previousAcceptedCI177Base": "b4694b9be55b391d94952f40c4bead5b5a967ee2",
+    "previousBaselinePins": 83,
+    "refreshedExistingPR178Pins": 2,
+    "addedCurrentPins": 8,
+    "totalPins": 91,
+    "freshFullByteAndGitBlobVerifiedSourceFiles": 11,
+    "all91MustBeVerifiedFromExactGitCommitBeforeRuntime": true
+  },
+  "actions": {
+    "sourceOnly": true,
+    "CIExecuted": false,
+    "GitWrites": false,
+    "CloudWrites": false,
+    "productionSourceWrites": false
+  },
+  "exactASDashboardExpectedCaseIdentitiesForRootArtifactComparison": [
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD01 student still sees a booked lesson five minutes after its start without granting completed minutes",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD01 student still sees a booked lesson five minutes after its start without granting completed minutes"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD02 the exact start instant is included alongside a future booked lesson",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD02 the exact start instant is included alongside a future booked lesson"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD03 the end boundary is half-open: one millisecond before end is included but exact end and expired are excluded",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD03 the end boundary is half-open: one millisecond before end is included but exact end and expired are excluded"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD04 cancelled, completed and no-show records never appear as upcoming even when their end is later",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD04 cancelled, completed and no-show records never appear as upcoming even when their end is later"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD05 the five nearest unended bookings include the ongoing lesson even when loaded in reverse order",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD05 the five nearest unended bookings include the ongoing lesson even when loaded in reverse order"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD06 an empty student view points to student booking and never tells the student to add a work shift",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD06 an empty student view points to student booking and never tells the student to add a work shift"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD07 an empty instructor view points to the school administrator rather than owner setup or student booking",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD07 an empty instructor view points to the school administrator rather than owner setup or student booking"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD08 the empty owner view retains the original setup guidance and owner actions",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD08 the empty owner view retains the original setup guidance and owner actions"
+    },
+    {
+      "file": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "describe": "dashboard ongoing lessons and role-specific empty guidance",
+      "title": "ASD09 the existing minute timer removes an ended booking without changing its status or awarding practice",
+      "fullName": "dashboard ongoing lessons and role-specific empty guidance ASD09 the existing minute timer removes an ended booking without changing its status or awarding practice"
+    }
+  ]
+}
