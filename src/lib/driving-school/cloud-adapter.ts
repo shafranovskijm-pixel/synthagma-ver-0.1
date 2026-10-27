@@ -96,6 +96,14 @@ export function createCloudAdapter(organizationId:string, canCreateStudents=fals
     if(b.kind==='instructor') return finish('driving_save_instructor',{_name:text(b.name),_email:text(b.email),_car_id:b.carId});
     if(b.kind==='course') return finish('driving_save_course',{_name:text(b.name),_program_id:b.programId,_material:text(b.material),_pass_percent:Number(b.passPercent),_questions:b.questions,_lms_course_id:null});
     if(b.kind==='student') {
+     if(b.accountMode!==undefined&&b.accountMode!=='new'&&b.accountMode!=='existing')throw new Error('Неизвестный способ добавления ученика');
+     if(b.accountMode==='existing') {
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text(b.email)))throw new Error('Укажите email для входа существующего аккаунта вашей организации');
+      // Create only a driving-school record. The existing account accepts a separately created invite.
+      const saved=await finish('driving_save_student',{_name:text(b.name),_email:text(b.email),_phone:text(b.phone),_program_id:b.programId,_group_id:nullable(b.groupId),_instructor_id:nullable(b.instructorId),_user_id:null});
+      if(typeof saved.id!=='string'||!saved.id.trim())throw new Error('Создание записи ученика не подтверждено. Обновите список перед повторением.');
+      return saved;
+     }
      if(!canCreateStudents)throw new Error('В первом пилоте новых учеников добавляет владелец организации');
      // Existing handler resolves authoritative user_id, capacity and organization. profiles.id is never an Auth id.
      const {data,error}=await supabase.functions.invoke('register-student',{body:{email:text(b.email),full_name:text(b.name),password:text(b.password),organization_id:organizationId}});
@@ -123,7 +131,17 @@ export function createCloudAdapter(organizationId:string, canCreateStudents=fals
    if(path==='reverse-entry') return finish('driving_reverse_entry',{_entry_id:b.id,_reason:text(b.reason)});
    if(path==='settings') return finish('driving_save_settings',{_name:text(b.name),_timezone:text(b.timezone),_horizon_days:Number(b.horizonDays),_cancel_hours:Number(b.cancelHours)});
    if(path==='attempts') return finish('driving_submit_attempt',{_course_id:b.courseId,_answers:b.answers});
-   if(path==='invites') {const target=state.resources.find(r=>r.id===b.resourceId);if(!target||!['student','instructor'].includes(target.kind))throw new Error('Получатель не найден');const result=await call<{token:string}>('driving_create_invite',{_role:target.kind,_target_id:target.id});if(!result?.token)throw new Error('Ссылка не подтверждена');return {url:`${window.location.origin}/driving-school?invite=${encodeURIComponent(result.token)}`};}
+   if(path==='invites') {
+    if(state.user.role!=='owner')throw new Error('Приглашать участников может только владелец автошколы');
+    if(b.resourceKind!==undefined&&b.resourceKind!=='student'&&b.resourceKind!=='instructor')throw new Error('Получатель не найден');
+    const matches=state.resources.filter(r=>r.id===b.resourceId&&['student','instructor'].includes(r.kind)&&(b.resourceKind===undefined||r.kind===b.resourceKind));
+    if(matches.length!==1)throw new Error('Получатель не найден');
+    const target=matches[0];
+    if((target.kind!=='student'&&target.kind!=='instructor')||target.active!==1||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text(target.data.email)))throw new Error('Для приглашения нужна действующая запись с email для входа');
+    const result=await call<{token:string}>('driving_create_invite',{_role:target.kind,_target_id:target.id});
+    if(typeof result?.token!=='string'||!/^[a-f0-9]{64}$/i.test(result.token))throw new Error('Ссылка не подтверждена');
+    return {url:`${window.location.origin}/driving-school?invite=${encodeURIComponent(result.token)}`};
+   }
    throw new Error('Это действие ещё не подключено');
   },
  };
