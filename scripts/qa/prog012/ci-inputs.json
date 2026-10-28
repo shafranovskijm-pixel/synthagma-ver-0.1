@@ -45,8 +45,8 @@
     },
     {
       "path": "run_ci_postgres.py",
-      "bytes": 13559,
-      "sha256": "61a0fc4d882510716e3728bd88e6cd18541074aa8f54db30a2a9ccbb850f61e2"
+      "bytes": 14126,
+      "sha256": "c3da4c01afa9f9dd0e6ea19318246cacc095c1bbb3810989c4d9a209027f7dfa"
     }
   ],
   "expected": {

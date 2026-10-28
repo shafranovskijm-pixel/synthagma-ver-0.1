@@ -110,10 +110,17 @@ def main():
             "networkMode": host.get("NetworkMode"), "publishedPorts": False}
         # The service contains only the official image and synthetic CI settings.
         # No host files are mounted. Host scripts stream through native psql stdin.
-        base = [docker, "exec", "-i", "--env", "PGCLIENTENCODING=UTF8", "--env",
-                "PGOPTIONS=-c pcr.lab_authorized=source-reviewed-root-run-only", args.container_id,
-                "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "--no-password",
+        exec_base = [docker, "exec", "-i", "--env", "PGCLIENTENCODING=UTF8", "--env",
+                "PGOPTIONS=-c pcr.lab_authorized=source-reviewed-root-run-only", args.container_id]
+        psql_args = ["-X", "-q", "-v", "ON_ERROR_STOP=1", "--no-password",
                 "--host=127.0.0.1", "--port=5432", "--username=postgres", "--dbname=" + DATABASE]
+        # File stages keep native stdout/stderr separate for notice assertions.
+        base = exec_base + ["psql"] + psql_args
+        # Join interactive stderr inside the container, before Docker multiplexes
+        # its streams; otherwise stdout PCR_DONE can overtake an earlier error.
+        # The shell program is constant; every psql option remains a distinct argv
+        # item, and all SQL still travels only through the original Session stdin.
+        interactive_base = exec_base + ["sh", "-c", 'exec psql "$@" 2>&1', "pcr-ci"] + psql_args
         version = command("00-psql-version", [docker, "exec", args.container_id, "psql", "--version"], timeout=20)
         if not re.fullmatch(r"psql \(PostgreSQL\) 17\.11(?:[^\r\n]*)\r?\n?", version.stdout.decode("utf-8")):
             raise RuntimeError("EXACT_PSQL_1711_REQUIRED")
@@ -178,7 +185,7 @@ def main():
                 closed.add(session.proc.pid)
                 trace({"nativeProcessExit": receipt})
             cases.Session.close = checked_close
-            actual = cases.run_cases(base, env, trace)
+            actual = cases.run_cases(interactive_base, env, trace)
         if (not report["nativeSessionExits"] or any(r["exitCode"] != 0 or r["closeError"] for r in report["nativeSessionExits"])):
             raise RuntimeError("ALL_NATIVE_CONCURRENT_CLIENTS_MUST_EXIT_NATURALLY_ZERO")
         if [name.split(" ", 1)[0] for name in actual] != ["PCRV2C" + str(i).zfill(2) for i in range(1, 19)]:
