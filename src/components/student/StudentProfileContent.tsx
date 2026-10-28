@@ -122,7 +122,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false, pe
             <CardContent className="space-y-5">
               <div className="space-y-2">
                 <Label>Email</Label>
-                <Input value={user?.email || ""} disabled className="rounded-xl bg-muted/50" />
+                <Input value={isAdminView ? (sp.profile?.email || "") : (user?.email || "")} disabled className="rounded-xl bg-muted/50" />
               </div>
               <div className="space-y-2">
                 <Label>Имя и Фамилия</Label>

@@ -133,7 +133,7 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
       if (!effectiveUserId) return null;
       const { data: p, error } = await (supabase
         .from("profiles")
-        .select("full_name, organization_id, phone, city, bio, avatar_url")
+        .select("full_name, email, organization_id, phone, city, bio, avatar_url")
         .eq("user_id", effectiveUserId)
         .maybeSingle() as any);
       if (error) throw error;
@@ -149,6 +149,7 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
       }
       return {
         full_name: p.full_name,
+        email: p.email || "",
         organization_id: p.organization_id,
         organization_name: orgName,
         phone: (p as any).phone || "",
