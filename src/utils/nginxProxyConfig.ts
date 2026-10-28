@@ -93,7 +93,7 @@ server {
         add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Vary "Origin" always;
         add_header Access-Control-Allow-Credentials "true" always;
-        add_header Access-Control-Expose-Headers "content-range, content-length, x-supabase-api-version" always;
+        add_header Access-Control-Expose-Headers "content-range, content-length, x-supabase-api-version, x-file-sha256, x-file-receipt-id" always;
         proxy_pass https://$sb_host/;
     }
 
