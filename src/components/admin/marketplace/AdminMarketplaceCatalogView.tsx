@@ -3,15 +3,17 @@ import { Eye, BookOpen, Edit, Trash2, Building2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { MarketplacePublicationAction, type PublicationControls } from "./MarketplacePublicationAction";
 
 interface AdminMarketplaceGridViewProps {
   courses: any[];
   dbCategories: any[];
   h: any;
   onBulkGenerate: (item: any) => void;
+  publication?: PublicationControls;
 }
 
-export function AdminMarketplaceGridView({ courses, dbCategories, h, onBulkGenerate }: AdminMarketplaceGridViewProps) {
+export function AdminMarketplaceGridView({ courses, dbCategories, h, onBulkGenerate, publication }: AdminMarketplaceGridViewProps) {
   const navigate = useNavigate();
 
   return (
@@ -35,6 +37,7 @@ export function AdminMarketplaceGridView({ courses, dbCategories, h, onBulkGener
             </div>
             <div className="p-3 flex flex-col flex-1">
               <h3 className="font-semibold text-sm line-clamp-2 mb-1">{item.course?.title || ""}</h3>
+              <MarketplacePublicationAction item={item} controls={publication} />
               {item.description_short && <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description_short}</p>}
               <div className="mt-auto space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">

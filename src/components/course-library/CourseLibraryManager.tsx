@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   BookOpen,
@@ -23,8 +23,10 @@ import { CourseLibraryResourceDialog } from "@/components/course-library/CourseL
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCourseLibrary } from "@/hooks/useCourseLibrary";
+import { useAuth } from "@/hooks/useAuth";
+import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
-import { courseLibraryToCsv, sortLibraryResources } from "@/lib/courseLibrary";
+import { courseLibraryToCsv, getCourseLibraryPreviewType, sortLibraryResources } from "@/lib/courseLibrary";
 
 const CATEGORY_LABELS: Record<string, string> = {
   legal_acts: "Нормативные правовые акты",
@@ -113,9 +115,19 @@ export function CourseLibraryManager({
   };
   previewCanWrite?: boolean;
 }) {
+  const { user } = useAuth();
+  const actorId = user?.id ?? null;
+  const scopeRef = useRef({ actorId, courseId, organizationId, demo: !!previewData });
+  if (scopeRef.current.actorId !== actorId || scopeRef.current.courseId !== courseId
+    || scopeRef.current.organizationId !== organizationId || scopeRef.current.demo !== !!previewData) {
+    scopeRef.current = { actorId, courseId, organizationId, demo: !!previewData };
+  }
+  const scope = scopeRef.current;
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const { can } = useStaffPermissions();
   const canWrite = previewCanWrite ?? can("library.write");
-  const live = useCourseLibrary(previewData ? undefined : courseId);
+  const live = useCourseLibrary(courseId, !previewData);
   const resources = previewData?.resources ?? live.resources;
   const modules = previewData?.modules ?? live.modules;
   const loading = previewData ? false : live.loading;
@@ -126,6 +138,10 @@ export function CourseLibraryManager({
   const [editing, setEditing] = useState<CourseLibraryResource | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const orderedResources = useMemo(() => sortLibraryResources(resources), [resources]);
+  const resourcesRef = useRef(resources); resourcesRef.current = resources;
+  const [selected, setSelected] = useState<{ scope: typeof scope; resource: CourseLibraryResource } | null>(null);
+  const currentSelection = selected?.scope === scope && resources.includes(selected.resource)
+    && selected.resource.courseId === courseId ? selected : null;
 
   const openCreate = () => {
     setEditing(null);
@@ -152,20 +168,11 @@ export function CourseLibraryManager({
     await refresh();
   };
 
-  const openResource = async (resource: CourseLibraryResource) => {
-    setBusyId(resource.assignmentId);
-    const pendingWindow = window.open("about:blank", "_blank");
-    if (pendingWindow) pendingWindow.opener = null;
-    try {
-      if (!pendingWindow) throw new Error("Браузер заблокировал новое окно");
-      const url = await getOpenUrl(resource);
-      pendingWindow.location.replace(url);
-    } catch (caught) {
-      pendingWindow?.close();
-      toast.error(caught instanceof Error ? caught.message : "Ресурс временно недоступен");
-    } finally {
-      setBusyId(null);
-    }
+  const openResource = (resource: CourseLibraryResource) => {
+    if (!mounted.current || scopeRef.current !== scope || !actorId || !organizationId
+      || resource.courseId !== courseId || !resourcesRef.current.includes(resource)) return;
+    if (previewData) { toast.info("Демонстрационный экран: файл не открывается без проверки доступа"); return; }
+    setSelected({ scope, resource });
   };
 
   const archiveResource = async (resource: CourseLibraryResource) => {
@@ -246,7 +253,7 @@ export function CourseLibraryManager({
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => void openResource(resource)} disabled={busyId === resource.assignmentId || (!resource.externalUrl && !resource.storagePath)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void openResource(resource)} disabled={busyId === resource.assignmentId || !resource.assignmentId}>
                     {busyId === resource.assignmentId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : resource.externalUrl ? <ExternalLink className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
                     Проверить
                   </Button>
@@ -259,6 +266,13 @@ export function CourseLibraryManager({
         </div>
       )}
 
+      {currentSelection && <FilePreviewDialog open={true}
+        onOpenChange={open => { if (!open && scopeRef.current === scope) setSelected(null); }}
+        reference={{ courseId, organizationId, referenceKind: "course_document", referenceId: currentSelection.resource.assignmentId,
+          name: currentSelection.resource.title, fileType: getCourseLibraryPreviewType(currentSelection.resource.mimeType, currentSelection.resource.originalFilename),
+          legacyUrl: currentSelection.resource.externalUrl, versionKey: currentSelection.resource.updatedAt }}
+        accessMode="staff_preview" allowDownload={currentSelection.resource.allowDownload}
+        resolveLegacyUrl={(signal, context) => getOpenUrl(currentSelection.resource, context, signal)} /> }
       <CourseLibraryResourceDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

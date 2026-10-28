@@ -22693,6 +22693,32 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      read_platform_course_publication_readiness: {
+        Args: { p_marketplace_id: string }
+        Returns: Json
+      }
+      read_platform_course_publication_review_context: {
+        Args: {
+          p_marketplace_id: string
+          p_proposal_id?: string | null
+          p_expected_edition_sha256?: string | null
+          p_history_before_sequence?: string | null
+          p_confirm_event_id?: string | null
+        }
+        Returns: Json
+      }
+      submit_platform_course_publication_proposal: {
+        Args: { p_marketplace_id: string; p_expected_edition_sha256: string; p_dossier: Json; p_request_id: string }
+        Returns: Json
+      }
+      record_platform_course_publication_review: {
+        Args: { p_marketplace_id: string; p_proposal_id: string; p_expected_edition_sha256: string; p_decision: string; p_notes: string; p_next_review_at: string | null; p_request_id: string }
+        Returns: Json
+      }
+      publish_platform_course_proposal: {
+        Args: { p_marketplace_id: string; p_proposal_id: string; p_expected_edition_sha256: string; p_request_id: string }
+        Returns: Json
+      }
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string

@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { MarketplacePublicationAction, type PublicationControls } from "./MarketplacePublicationAction";
 
 type CourseGroup = { baseTitle: string; items: any[]; suffix: (item: any) => string };
 
@@ -61,11 +62,12 @@ interface CourseRowProps {
   selectedCourses?: Set<string>;
   onToggleSelect?: (id: string) => void;
   suffix?: string;
+  publication?: PublicationControls;
 }
 
 function CourseRowContent({
   item, h, onBulkGenerate, validatedCourses, onValidate, validatingId,
-  selectedCourses, onToggleSelect, suffix }: CourseRowProps) {
+  selectedCourses, onToggleSelect, suffix, publication }: CourseRowProps) {
   const navigate = useNavigate();
   const status = validatedCourses[item.course_id];
   const displayTitle = suffix !== undefined ? (suffix || item.course?.title || "") : (item.course?.title || "");
@@ -84,13 +86,14 @@ function CourseRowContent({
         <button
           className={`text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5${suffix !== undefined ? ' pl-2' : ''}`}
           onClick={() => onValidate(item.course_id)}
-          disabled={validatingId === item.course_id}
+          disabled={validatingId === item.course_id || publication?.busy}
         >
           {validatingId === item.course_id && <SigmaSpinner size="xs" />}
           {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
           {status === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
           {displayTitle}
         </button>
+        <MarketplacePublicationAction item={item} controls={publication} />
       </TableCell>
       <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
       <TableCell className="w-[100px] text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
@@ -123,7 +126,7 @@ function CourseRowContent({
 export function renderGroupedCourses(
   courses: any[], h: any, onBulkGenerate: (item: any) => void,
   validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
-  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void, publication?: PublicationControls
 ) {
   const grouped = groupSimilarCourses(courses);
   return (
@@ -150,7 +153,7 @@ export function renderGroupedCourses(
                             <CourseRowContent
                               key={item.id} item={item} h={h} onBulkGenerate={onBulkGenerate}
                               validatedCourses={validatedCourses} onValidate={onValidate} validatingId={validatingId}
-                              selectedCourses={selectedCourses} onToggleSelect={onToggleSelect}
+                              selectedCourses={selectedCourses} onToggleSelect={onToggleSelect} publication={publication}
                               suffix={g.suffix(item)}
                             />
                           ))}
@@ -166,7 +169,7 @@ export function renderGroupedCourses(
             <CourseRowContent
               key={entry.id} item={entry} h={h} onBulkGenerate={onBulkGenerate}
               validatedCourses={validatedCourses} onValidate={onValidate} validatingId={validatingId}
-              selectedCourses={selectedCourses} onToggleSelect={onToggleSelect}
+              selectedCourses={selectedCourses} onToggleSelect={onToggleSelect} publication={publication}
             />
           );
         })}

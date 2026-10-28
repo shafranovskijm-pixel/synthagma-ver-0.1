@@ -25,7 +25,7 @@ export interface CourseLibraryShell {
 
 export interface CourseLibraryResource {
   assignmentId: string;
-  libraryDocumentId: string;
+  libraryDocumentId: string | null;
   courseId: string;
   moduleId: string | null;
   moduleTitle: string | null;
@@ -71,6 +71,12 @@ type RawLibraryAssignment = {
   course_id: string;
   module_id: string | null;
   library_category: CourseLibraryCategory | null;
+  library_document_id: string | null;
+  name: string;
+  description: string | null;
+  type: string;
+  created_at: string;
+  updated_at: string;
   sort_order: number | null;
   allow_download: boolean | null;
   library_document: {
@@ -161,7 +167,21 @@ function mapResource(
   moduleTitles: Map<string, string>,
 ): CourseLibraryResource | null {
   const doc = row.library_document;
-  if (!doc || row.library_category === null) return null;
+  if (row.library_category === null) return null;
+  if (!doc) {
+    // A frozen copy intentionally has no cross-tenant library FK or live URL.
+    // A denied non-null library join must never become a generic fallback.
+    if (row.library_document_id !== null || typeof row.name !== "string") return null;
+    return {
+      assignmentId: row.id, libraryDocumentId: null, courseId: row.course_id,
+      moduleId: row.module_id, moduleTitle: row.module_id ? moduleTitles.get(row.module_id) ?? null : null,
+      title: row.name, category: row.library_category, description: row.description,
+      sourceName: null, externalUrl: null, storagePath: null, mimeType: null,
+      originalFilename: null, fileSize: null, editionLabel: null, lastCheckedAt: null,
+      usageBasis: null, status: null, sortOrder: row.sort_order ?? 0,
+      allowDownload: row.allow_download !== false, createdAt: row.created_at, updatedAt: row.updated_at,
+    };
+  }
   return {
     assignmentId: row.id,
     libraryDocumentId: doc.id,
@@ -246,6 +266,12 @@ export async function fetchCourseLibrary(courseId: string): Promise<{
         id,
         course_id,
         module_id,
+        library_document_id,
+        name,
+        description,
+        type,
+        created_at,
+        updated_at,
         library_category,
         sort_order,
         allow_download,
@@ -268,7 +294,7 @@ export async function fetchCourseLibrary(courseId: string): Promise<{
         )
       `)
     .eq("course_id", courseId)
-    .not("library_document_id", "is", null)
+    .not("library_category", "is", null)
     .order("sort_order", { ascending: true });
 
   if (resourcesResult.error) throw resourcesResult.error;
@@ -372,6 +398,7 @@ export async function updateCourseLibraryResource(
   resource: CourseLibraryResource,
   input: Omit<CourseLibraryResourceInput, "courseId" | "organizationId" | "file">,
 ): Promise<void> {
+  if (!resource.libraryDocumentId) throw new Error("Сохранённая редакция материала изменяется только через новую публикацию курса.");
   const externalUrl = validateUpdateLocation(resource, input.externalUrl);
   const { error: documentError } = await libraryDb
     .from("library_documents")
@@ -403,6 +430,7 @@ export async function updateCourseLibraryResource(
 }
 
 export async function archiveCourseLibraryResource(resource: CourseLibraryResource): Promise<void> {
+  if (!resource.libraryDocumentId) throw new Error("Сохранённая редакция материала изменяется только через новую публикацию курса.");
   const { error } = await libraryDb
     .from("library_documents")
     .update({ library_status: "archive" })
@@ -417,4 +445,12 @@ export async function createLibrarySignedUrl(storagePath: string): Promise<strin
   if (error) throw error;
   if (!data?.signedUrl) throw new Error("Не удалось получить временную ссылку на файл");
   return data.signedUrl;
+}
+
+/** Ordinary RLS read: a missing/denied course is never an organization guess. */
+export async function fetchCourseFileOrganization(courseId: string): Promise<string | null> {
+  const { data, error } = await supabase.from("courses")
+    .select("id, organization_id").eq("id", courseId).maybeSingle();
+  if (error) throw error;
+  return data?.id === courseId && typeof data.organization_id === "string" ? data.organization_id : null;
 }

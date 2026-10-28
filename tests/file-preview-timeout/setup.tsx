@@ -10,5 +10,6 @@ vi.mock('@/components/ui/dialog',()=>({
 }));
 vi.mock('@/components/ui/button',()=>({Button:({children,...props}:any)=><button {...props}>{children}</button>}));
 vi.mock('@/components/ui/SigmaSpinner',()=>({SigmaSpinner:()=> <span aria-hidden="true"/>}));
-beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal('fetch',vi.fn(()=>{throw Error('NETWORK_NOT_ALLOWED');}));});
-afterEach(()=>{cleanup();vi.restoreAllMocks();vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();});
+// Exact public dummy from the existing timeout config; no .env or real configuration read.
+beforeEach(()=>{vi.stubEnv('VITE_SUPABASE_URL','https://platform.example');vi.useFakeTimers();vi.stubGlobal('fetch',vi.fn(()=>{throw Error('NETWORK_NOT_ALLOWED');}));});
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();vi.unstubAllEnvs();});

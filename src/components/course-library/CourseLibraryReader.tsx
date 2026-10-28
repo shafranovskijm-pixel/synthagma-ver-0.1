@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -14,10 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCourseLibrary } from "@/hooks/useCourseLibrary";
 import {
   filterResourcesByModule,
+  getCourseLibraryPreviewType,
   sortLibraryResources,
   type CourseLibraryCategory,
 } from "@/lib/courseLibrary";
 import type { CourseLibraryResource } from "@/api/courseLibrary";
+import { useCourseFileDeliveryMode } from "@/hooks/useCourseFileDeliveryMode";
+import { useAuth } from "@/hooks/useAuth";
+import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 
 const CATEGORY_ORDER: CourseLibraryCategory[] = [
   "legal_acts",
@@ -48,7 +52,7 @@ function LibraryResourceCard({
   onOpen: (resource: CourseLibraryResource) => Promise<void>;
 }) {
   const [opening, setOpening] = useState(false);
-  const temporarilyUnavailable = !resource.externalUrl && !resource.storagePath;
+  const temporarilyUnavailable = !resource.assignmentId;
 
   const handleOpen = async () => {
     if (opening || temporarilyUnavailable) return;
@@ -61,7 +65,7 @@ function LibraryResourceCard({
   };
 
   return (
-    <article className="rounded-2xl border bg-card p-4 shadow-sm" data-testid={`library-resource-${resource.libraryDocumentId}`}>
+    <article className="rounded-2xl border bg-card p-4 shadow-sm" data-testid={`library-resource-${resource.libraryDocumentId ?? resource.assignmentId}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-semibold leading-snug">{resource.title}</h3>
@@ -101,15 +105,35 @@ function LibraryResourceCard({
 
 export function CourseLibraryReader({
   courseId,
+  organizationId = null,
+  effectiveUserId,
+  accessMode = "learner",
   previewData,
 }: {
   courseId: string;
+  organizationId?: string | null;
+  effectiveUserId?: string | null;
+  accessMode?: "learner" | "staff_preview";
   previewData?: {
     resources: CourseLibraryResource[];
     modules: Array<{ id: string; title: string; orderIndex: number }>;
   };
 }) {
-  const live = useCourseLibrary(previewData ? undefined : courseId);
+  const { user } = useAuth();
+  const actorId = user?.id ?? null;
+  const discovery = useCourseFileDeliveryMode({ courseId, organizationId, effectiveUserId, accessMode }, !organizationId);
+  const resolvedOrganizationId = organizationId ?? (discovery.view.state === "legacy" || discovery.view.state === "frozen_required"
+    ? discovery.view.context.organization_id : null);
+  const scopeRef = useRef({ courseId, organizationId, resolvedOrganizationId, effectiveUserId, accessMode, actorId });
+  if (scopeRef.current.courseId !== courseId || scopeRef.current.organizationId !== organizationId
+    || scopeRef.current.effectiveUserId !== effectiveUserId || scopeRef.current.accessMode !== accessMode
+    || scopeRef.current.actorId !== actorId || scopeRef.current.resolvedOrganizationId !== resolvedOrganizationId) {
+    scopeRef.current = { courseId, organizationId, resolvedOrganizationId, effectiveUserId, accessMode, actorId };
+  }
+  const scope = scopeRef.current;
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const live = useCourseLibrary(courseId, !previewData);
   const resources = previewData?.resources ?? live.resources;
   const modules = previewData?.modules ?? live.modules;
   const loading = previewData ? false : live.loading;
@@ -117,9 +141,14 @@ export function CourseLibraryReader({
   const refresh = live.refresh;
   const getOpenUrl = live.getOpenUrl;
   const [moduleFilter, setModuleFilter] = useState("all");
+  const [selected, setSelected] = useState<{ scope: typeof scope; resource: CourseLibraryResource; organizationId: string } | null>(null);
+  const currentResources = useRef(resources);
+  currentResources.current = resources;
+  const currentSelection = selected?.scope === scope && selected.organizationId === resolvedOrganizationId
+    && resources.includes(selected.resource) ? selected : null;
 
   const visibleResources = useMemo(() => {
-    const activeResources = resources.filter((resource) => resource.status === "active");
+    const activeResources = resources.filter((resource) => resource.status === "active" || resource.libraryDocumentId === null);
     return sortLibraryResources(filterResourcesByModule(activeResources, moduleFilter));
   }, [moduleFilter, resources]);
 
@@ -131,16 +160,16 @@ export function CourseLibraryReader({
   }, [visibleResources]);
 
   const openResource = async (resource: CourseLibraryResource) => {
-    const pendingWindow = window.open("about:blank", "_blank");
-    if (pendingWindow) pendingWindow.opener = null;
+    const current = () => mounted.current && scopeRef.current === scope && !!actorId
+      && (!effectiveUserId || effectiveUserId === actorId) && resource.courseId === courseId
+      && currentResources.current.includes(resource);
+    if (!current()) return;
     try {
-      if (!pendingWindow) throw new Error("Браузер заблокировал новое окно");
-      const url = await getOpenUrl(resource);
-      pendingWindow.location.replace(url);
+      if (!resolvedOrganizationId) throw new Error("Материал недоступен в текущем кабинете");
+      setSelected({ scope, resource, organizationId: resolvedOrganizationId });
     } catch (caught) {
-      pendingWindow?.close();
-      const message = caught instanceof Error ? caught.message : "Ресурс временно недоступен";
-      toast.error(message);
+      if (!current()) return;
+      toast.error(caught instanceof Error ? caught.message : "Ресурс временно недоступен");
     }
   };
 
@@ -205,6 +234,18 @@ export function CourseLibraryReader({
           );
         })
       )}
+      {currentSelection && <FilePreviewDialog
+        open={true}
+        onOpenChange={open => { if (!open && scopeRef.current === scope) setSelected(null); }}
+        reference={{ courseId, organizationId: currentSelection.organizationId, referenceKind: "course_document",
+          referenceId: currentSelection.resource.assignmentId, name: currentSelection.resource.title,
+          fileType: getCourseLibraryPreviewType(currentSelection.resource.mimeType, currentSelection.resource.originalFilename),
+          legacyUrl: currentSelection.resource.externalUrl, versionKey: currentSelection.resource.updatedAt }}
+        accessMode={accessMode}
+        effectiveUserId={effectiveUserId}
+        allowDownload={currentSelection.resource.allowDownload}
+        resolveLegacyUrl={(signal, context) => getOpenUrl(currentSelection.resource, context, signal)}
+      />}
     </section>
   );
 }

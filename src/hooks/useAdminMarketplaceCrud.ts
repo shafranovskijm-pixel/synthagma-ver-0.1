@@ -5,7 +5,7 @@ import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 interface CourseWithDetails {
   id: string;
   course_id: string;
-  course?: { id: string; title: string; description: string | null; duration: string | null; category_id?: string | null };
+  course?: { id: string; title: string; description: string | null; duration: string | null; organization_id: string; category_id?: string | null };
   price_student: number;
   price_organization: number;
   description_short: string | null;
@@ -25,7 +25,7 @@ interface DbCategory {
 export async function fetchMarketplaceCourses() {
   const { data, error } = await supabase
     .from("marketplace_courses")
-    .select("*, course:courses(id, title, description, duration, category_id), organization:organizations(name)")
+    .select("*, course:courses(id, title, description, duration, organization_id, category_id), organization:organizations(name)")
     .order("created_at", { ascending: false });
   if (error) { console.error("Error fetching marketplace courses:", error); return []; }
   return data || [];

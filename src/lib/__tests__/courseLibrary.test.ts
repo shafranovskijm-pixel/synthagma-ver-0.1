@@ -12,6 +12,7 @@ import {
   LIBRARY_USAGE_BASIS_LABELS,
   LIBRARY_USAGE_BASES,
   courseLibraryToCsv,
+  getCourseLibraryPreviewType,
   exportCourseLibraryResourcesToCsv,
   filterResourcesByModule,
   filterCourseLibraryResourcesByModule,
@@ -23,6 +24,8 @@ import {
   sortLibraryResources,
   type CourseLibraryResourceInput,
 } from "@/lib/courseLibrary";
+
+import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
 
 const baseResource: CourseLibraryResourceInput = {
   id: "resource-1",
@@ -361,5 +364,29 @@ describe("courseLibrary", () => {
     expect(csv).toContain('"Источник ожидает замены"');
     expect(csv).toContain('"Недоступно"');
     expect(csv).toContain('"требует проверки"');
+  });
+});
+
+describe("library legacy display hints keep MIME separate from filename extensions", () => {
+  it("renders an actual PDF MIME through the existing PDF classifier", () => {
+    const hint = getCourseLibraryPreviewType(" Application/PDF; charset=binary ", "old-name.docx");
+    expect(hint).toBe("pdf");
+    expect(courseDocumentPreview("https://storage.example.test/sb-storage/object/sign/library-files/file.pdf?token=synthetic", hint, ["https://storage.example.test"], "https://page.example.test").mode).toBe("native_pdf");
+  });
+  it("maps Office MIME without giving a signed library URL to an external viewer", () => {
+    const hint = getCourseLibraryPreviewType("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "old-name.pdf");
+    expect(hint).toBe("docx");
+    const preview = courseDocumentPreview("https://storage.example.test/sb-storage/object/sign/library-files/file.docx?token=synthetic", hint, ["https://storage.example.test"], "https://page.example.test");
+    expect(preview.mode).toBe("direct_only"); expect(preview.previewUrl).toBeNull();
+  });
+  it.each(["application/x-private-format", "application/octet-stream", "", "constructor", "__proto__", "toString"])("does not promote unknown MIME %s to PDF using a filename", mime => {
+    const hint = getCourseLibraryPreviewType(mime, "looks-like-pdf.pdf"); expect(hint).toBe("unknown");
+    expect(courseDocumentPreview("https://storage.example.test/file.pdf", hint, ["https://storage.example.test"], "https://page.example.test").previewUrl).toBeNull();
+  });
+  it("retains known filename extensions only when MIME is null", () => {
+    expect(getCourseLibraryPreviewType(null, "Материал.PDF")).toBe("pdf");
+    expect(getCourseLibraryPreviewType(null, "Материал.docx")).toBe("docx");
+    expect(getCourseLibraryPreviewType(null, "Материал.exe")).toBe("unknown");
+    expect(getCourseLibraryPreviewType(null, null)).toBeNull();
   });
 });

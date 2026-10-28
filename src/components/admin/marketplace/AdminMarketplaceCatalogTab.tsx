@@ -22,6 +22,8 @@ import { AdminMarketplaceGridView } from "./AdminMarketplaceCatalogView";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { MarketplacePublicationAction } from "./MarketplacePublicationAction";
+import { ownPlatformPublicationTarget } from "@/lib/platformCoursePublication";
 
 interface AdminMarketplaceCatalogTabProps {
   h: any;
@@ -33,16 +35,21 @@ interface AdminMarketplaceCatalogTabProps {
   converting: boolean;
   setConverting: (v: boolean) => void;
   onShowBulkMoveDialog: () => void;
+  onReview: (item: unknown) => void;
 }
 
 export function AdminMarketplaceCatalogTab({
   h, validation, selectedCourses, setSelectedCourses, toggleCourseSelect,
-  onBulkGenerate, converting, setConverting, onShowBulkMoveDialog
+  onBulkGenerate, converting, setConverting, onShowBulkMoveDialog, onReview
 }: AdminMarketplaceCatalogTabProps) {
   const navigate = useNavigate();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor));
   const [selectedUncategorized, setSelectedUncategorized] = useState<Set<string>>(new Set());
   const [bulkMoveTarget, setBulkMoveTarget] = useState("");
+  const publication = { readinessByCourse: validation.publicationByCourse, onReview,
+    busy: !validation.canModerate || !!validation.validatingId || !!validation.bulkValidatingGroup };
+  const reportHasIssues = validation.validationReport?.length > 0 || validation.publicationReport.some((row: any) =>
+    validation.reportKind === "publish" ? !row.published : !row.readiness);
 
   return (
     <div className="space-y-4">
@@ -93,11 +100,13 @@ export function AdminMarketplaceCatalogTab({
 
       {/* Validation Report */}
       {validation.validationReport && (
-        <Card className={`shadow-sm ${validation.validationReport.length > 0 ? "border-destructive/40 bg-destructive/5" : "border-green-500/40 bg-green-500/5"}`}>
+        <Card className={`shadow-sm ${reportHasIssues ? "border-destructive/40 bg-destructive/5" : "border-green-500/40 bg-green-500/5"}`}>
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                {validation.validationReport.length > 0 ? (
+                {validation.reportKind === "publish" ? (
+                  <>{reportHasIssues ? <AlertTriangle className="w-4 h-4 text-destructive" /> : <CheckCircle2 className="w-4 h-4 text-green-600" />}Результат выпуска редакций</>
+                ) : reportHasIssues ? (
                   <><AlertTriangle className="w-4 h-4 text-destructive" />Результаты проверки</>
                 ) : (
                   <><CheckCircle2 className="w-4 h-4 text-green-600" />Структурная проверка пройдена</>
@@ -125,6 +134,19 @@ export function AdminMarketplaceCatalogTab({
                 </ul>
               </>
             )}
+            {validation.reportKind === "publish" && <p className="text-sm text-muted-foreground">Подтверждён выпуск: {validation.publishedCount} собственных редакций</p>}
+            {validation.publicationReport.length > 0 && <div className="space-y-2">
+              <p className="text-sm font-medium">Готовность для каталога и выпуск учитываются отдельно:</p>
+              {validation.publicationReport.map((row: any) => <div key={row.marketplaceId} className="text-xs space-y-1">
+                <p><span className="font-medium">{row.title}</span> · {row.message}</p>
+                <MarketplacePublicationAction item={h.courses.find((item: any) => item.id === row.marketplaceId)} controls={publication} />
+              </div>)}
+              {validation.reportKind === "structure" && <Button variant="outline" size="sm" className="rounded-xl" disabled={publication.busy}
+                onClick={() => validation.handleBulkPublishReviewed({ category: "reviewed-report", courses: h.courses.filter((item: any) =>
+                  ownPlatformPublicationTarget(item) && validation.validatedCourses[item.course_id] === "ok" && validation.publicationReport.some((row: any) => row.marketplaceId === item.id)) })}>
+                Выпустить проверенные редакции из отчёта
+              </Button>}
+            </div>}
           </CardContent>
         </Card>
       )}
@@ -197,12 +219,12 @@ export function AdminMarketplaceCatalogTab({
                           <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
                             ✅ {group.courses.filter((c: any) => validation.validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter((c: any) => validation.validatedCourses[c.course_id] === 'error').length}
                           </Badge>
-                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" disabled={!!validation.bulkValidatingGroup}
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" disabled={publication.busy}
                             onClick={(e: any) => { e.stopPropagation(); validation.handleBulkValidate(group); }}
                           >
                             {validation.bulkValidatingGroup === group.category
                               ? <><SigmaSpinner size="xs" className="mr-1" />{validation.bulkValidateProgress}</>
-                              : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
+                              : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить структуру</>}
                           </Button>
                         </>
                       )}
@@ -252,7 +274,7 @@ export function AdminMarketplaceCatalogTab({
                                     {sub.courses.length === 0 ? (
                                       <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                                     ) : (
-                                      renderGroupedCourses(sub.courses, h, onBulkGenerate, validation.validatedCourses, validation.handleValidateCourse, validation.validatingId, selectedCourses, toggleCourseSelect)
+                                      renderGroupedCourses(sub.courses, h, onBulkGenerate, validation.validatedCourses, validation.handleValidateCourse, validation.validatingId, selectedCourses, toggleCourseSelect, publication)
                                     )}
                                   </CollapsibleContent>
                                 </Collapsible>
@@ -332,6 +354,7 @@ export function AdminMarketplaceCatalogTab({
                                     </TableCell>
                                     <TableCell>
                                       <span className="text-sm">{item.course?.title || ""}</span>
+                                      <MarketplacePublicationAction item={item} controls={publication} />
                                     </TableCell>
                                     <TableCell className="w-[100px] text-sm">{item.price_student?.toLocaleString()} ₽</TableCell>
                                     <TableCell className="w-[60px]">
@@ -369,7 +392,7 @@ export function AdminMarketplaceCatalogTab({
           </div>
         </div>
       ) : (
-        <AdminMarketplaceGridView courses={h.filteredCourses} dbCategories={h.dbCategories} h={h} onBulkGenerate={onBulkGenerate} />
+        <AdminMarketplaceGridView courses={h.filteredCourses} dbCategories={h.dbCategories} h={h} onBulkGenerate={onBulkGenerate} publication={publication} />
       )}
     </div>
   );

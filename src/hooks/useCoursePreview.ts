@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { getAdminAwareBackPath, getCourseDetailsPath } from "@/lib/utils";
 import { orderCourseLessons } from "@/lib/courseLessonOrder";
 import { usePlatformHomeworkTaskProof } from "@/hooks/usePlatformHomeworkTaskProof";
+import { useCourseFileDeliveryMode } from "@/hooks/useCourseFileDeliveryMode";
+import type { CourseFilePreviewReference } from "@/lib/courseFileConsumer";
 
 export interface Lesson {
   id: string;
@@ -45,14 +47,31 @@ export interface UseCoursePreviewOptions {
   onNavigateToEditor?: () => void;
 }
 
+export interface CoursePreviewDocument {
+  id: string;
+  course_id: string;
+  name: string;
+  type: string;
+  file_url: string | null;
+  allow_download?: boolean;
+}
+export interface CoursePreviewAttachment {
+  id: string;
+  lesson_id: string;
+  name: string;
+  file_url: string | null;
+  file_type: string | null;
+  file_size: number | null;
+  category: string;
+}
 interface CoursePreviewData {
   course: Course | null;
   lessons: Lesson[];
-  lessonAttachments: Record<string, any[]>;
-  courseDocuments: any[];
+  lessonAttachments: Record<string, CoursePreviewAttachment[]>;
+  courseDocuments: CoursePreviewDocument[];
 }
 
-const coursePreviewKey = (courseId?: string) => ['coursePreview', courseId] as const;
+const coursePreviewKey = (courseId?: string, actorId?: string) => ['coursePreview', courseId, actorId] as const;
 const testQuestionsKey = (lessonId?: string, userId?: string) => ['testQuestions', lessonId, userId] as const;
 
 async function fetchLessonContent(lessonId: string): Promise<string | null> {
@@ -64,7 +83,7 @@ async function fetchLessonContent(lessonId: string): Promise<string | null> {
 }
 
 async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewData> {
-  const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }, modulesResult] = await Promise.all([
+  const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData, error: docsError }, modulesResult] = await Promise.all([
     supabase.from('courses').select('*').eq('id', courseId).single(),
     // PERF: skip heavy `content` column for the list; fetched per-lesson on open.
     supabase
@@ -78,18 +97,20 @@ async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewDa
 
   if (courseError) throw courseError;
   if (lessonsError) throw lessonsError;
+  if (docsError) throw docsError;
   if (modulesResult.error) throw modulesResult.error;
 
   const lessons = orderCourseLessons((lessonsData || []) as Lesson[], modulesResult.data || []);
-  let lessonAttachments: Record<string, any[]> = {};
+  const lessonAttachments: Record<string, CoursePreviewAttachment[]> = {};
 
   if (lessons.length > 0) {
     const lessonIds = lessons.map(l => l.id);
-    const { data: attData } = await supabase
+    const { data: attData, error: attachmentsError } = await supabase
       .from('lesson_attachments')
       .select('*')
       .in('lesson_id', lessonIds)
       .order('order_index');
+    if (attachmentsError) throw attachmentsError;
     if (attData) {
       for (const a of attData) {
         if (!lessonAttachments[a.lesson_id]) lessonAttachments[a.lesson_id] = [];
@@ -110,6 +131,14 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const params = useParams();
   const courseId = options.courseIdOverride ?? params.courseId;
   const { user } = useAuth();
+  const actorId = user?.id;
+  const fileScopeRef = useRef({ actorId, courseId });
+  if (fileScopeRef.current.actorId !== actorId || fileScopeRef.current.courseId !== courseId) {
+    fileScopeRef.current = { actorId, courseId };
+  }
+  const fileScope = fileScopeRef.current;
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -120,10 +149,14 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [showDocumentsView, setShowDocumentsView] = useState(false);
-  const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string | null } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{
+    scope: typeof fileScope; pane: object; reference: CourseFilePreviewReference;
+    source: CoursePreviewDocument | CoursePreviewAttachment;
+    purpose: "preview" | "download"; allowDownload: boolean;
+  } | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: coursePreviewKey(courseId),
+    queryKey: coursePreviewKey(courseId, actorId),
     queryFn: () => fetchCoursePreviewData(courseId!),
     enabled: !!courseId && !!user,
     staleTime: 60_000,
@@ -133,10 +166,12 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
     },
   });
 
-  const course = data?.course ?? null;
+  const course = data?.course?.id === courseId ? data.course : null;
   const lessons = data?.lessons ?? [];
   const lessonAttachments = data?.lessonAttachments ?? {};
-  const courseDocuments = data?.courseDocuments ?? [];
+  const courseDocuments = course ? data?.courseDocuments ?? [] : [];
+  const deliveryMode = useCourseFileDeliveryMode({ courseId, organizationId: course?.organization_id, accessMode: "staff_preview" });
+  const legacyEmbeddedMediaAllowed = deliveryMode.view.state === "legacy";
 
   const baseLesson = showDocumentsView ? null : lessons[currentLessonIndex];
 
@@ -177,6 +212,41 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   });
 
   const testQuestions = testQuestionsData ?? [];
+  const paneKey = JSON.stringify([course?.organization_id, showDocumentsView, currentLesson?.id]);
+  const paneRef = useRef({ key: paneKey, ticket: {} });
+  if (paneRef.current.key !== paneKey) paneRef.current = { key: paneKey, ticket: {} };
+  const pane = paneRef.current.ticket;
+  const fileView = useRef({ fileScope, pane, course, courseDocuments, lessonAttachments, currentLesson });
+  fileView.current = { fileScope, pane, course, courseDocuments, lessonAttachments, currentLesson };
+  const openFile = (reference: CourseFilePreviewReference, purpose: "preview" | "download", allowDownload: boolean, source: CoursePreviewDocument | CoursePreviewAttachment) => {
+    const current = fileView.current;
+    if (!mounted.current || fileScopeRef.current !== fileScope || current.fileScope !== fileScope || current.pane !== pane
+      || !actorId || !course || course.id !== courseId || !course.organization_id
+      || reference.courseId !== course.id || reference.organizationId !== course.organization_id) return;
+    setSelectedFile({ scope: fileScope, pane, reference, purpose, allowDownload, source });
+  };
+  const openCourseDocument = (doc: CoursePreviewDocument, purpose: "preview" | "download" = "preview") => {
+    if (doc.course_id !== courseId || !fileView.current.courseDocuments.includes(doc) || !course?.organization_id) return;
+    openFile({ courseId: course.id, organizationId: course.organization_id, referenceKind: "course_document", referenceId: doc.id,
+      name: doc.name, fileType: doc.name.split(".").pop() ?? doc.type, legacyUrl: doc.file_url }, purpose,
+      course.allow_materials_download !== false && doc.allow_download !== false, doc);
+  };
+  const openLessonAttachment = (att: CoursePreviewAttachment) => {
+    const current = fileView.current;
+    if (!current.currentLesson || current.currentLesson.id !== att.lesson_id || !course?.organization_id
+      || !current.lessonAttachments[att.lesson_id]?.includes(att)) return;
+    openFile({ courseId: course.id, organizationId: course.organization_id, referenceKind: "lesson_attachment", referenceId: att.id,
+      name: att.name, fileType: att.file_type, legacyUrl: att.file_url }, "preview", course.allow_materials_download !== false, att);
+  };
+  const previewFile = selectedFile?.scope === fileScope && selectedFile.pane === pane && course?.id === selectedFile.reference.courseId
+    && course.organization_id === selectedFile.reference.organizationId
+    && (selectedFile.reference.referenceKind === "course_document"
+      ? courseDocuments.some(doc => doc === selectedFile.source)
+      : !!currentLesson && lessonAttachments[currentLesson.id]?.some(att => att === selectedFile.source)) ? selectedFile : null;
+  const closePreviewFile = () => {
+    if (mounted.current && fileScopeRef.current === fileScope && paneRef.current.ticket === pane) setSelectedFile(null);
+  };
+
 
   // Reset answers when test lesson changes
   useEffect(() => {
@@ -230,7 +300,8 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
     lessonContentError: currentContentQuery.isError,
     reloadLessonContent: () => currentContentQuery.refetch(),
     testQuestions, selectedAnswers, setSelectedAnswers, lessonAttachments, courseDocuments,
-    showDocumentsView, previewFile, setPreviewFile, contentRef, fromStore,
+    showDocumentsView, previewFile, closePreviewFile, openCourseDocument, openLessonAttachment,
+    legacyEmbeddedMediaAllowed, fileDeliveryModeState: deliveryMode.view.state, contentRef, fromStore,
     goToNextLesson, goToPrevLesson, goToLesson, goToDocumentsView,
     navigateBack, navigateToEditor, fetchTestQuestions,
   };

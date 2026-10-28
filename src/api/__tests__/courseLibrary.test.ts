@@ -511,4 +511,38 @@ describe("course library API contracts", () => {
       10 * 60,
     );
   });
+  it("retains a frozen NULL-FK assignment without inventing live source metadata", async () => {
+    const row = { id: "frozen-target-document", course_id: "course-1", module_id: "module-1", library_document_id: null,
+      name: "Сохранённый материал.pdf", description: "Метаданные редакции", type: "library_resource",
+      created_at: "2026-10-28T00:00:00Z", updated_at: "2026-10-28T00:00:00Z",
+      library_category: "educational_materials", sort_order: 3, allow_download: false, library_document: null };
+    const order = vi.fn().mockResolvedValue({ data: [row], error: null });
+    const not = vi.fn().mockReturnValue({ order });
+    const eq = vi.fn().mockReturnValue({ not });
+    mocks.from.mockReturnValue({ select: vi.fn().mockReturnValue({ eq }) });
+    const result = await fetchCourseLibrary("course-1");
+    expect(not).toHaveBeenCalledWith("library_category", "is", null);
+    expect(result.resources).toEqual([expect.objectContaining({ assignmentId: row.id, libraryDocumentId: null,
+      title: row.name, moduleTitle: "Модуль 1", allowDownload: false, externalUrl: null, storagePath: null,
+      sourceName: null, editionLabel: null, usageBasis: null, status: null })]);
+    expect(mocks.storageFrom).not.toHaveBeenCalled();
+  });
+
+  it("does not substitute row metadata for an inaccessible non-null library join", async () => {
+    const row = { id: "denied-target", course_id: "course-1", module_id: null, library_document_id: "denied-source",
+      name: "Must not fallback", description: "hidden", library_category: "legal_acts", library_document: null };
+    const order = vi.fn().mockResolvedValue({ data: [row], error: null });
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ not: () => ({ order }) }) }) });
+    expect((await fetchCourseLibrary("course-1")).resources).toEqual([]);
+    expect(mocks.storageFrom).not.toHaveBeenCalled();
+  });
+
+  it.each(["update", "archive"] as const)("rejects %s of a frozen target without using a fake library document ID", async operation => {
+    const resource = { ...existingExternalResource, libraryDocumentId: null };
+    const action = operation === "update" ? updateCourseLibraryResource(resource, updateInput()) : archiveCourseLibraryResource(resource);
+    await expect(action).rejects.toThrow("новую публикацию");
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.storageFrom).not.toHaveBeenCalled();
+  });
+
 });
