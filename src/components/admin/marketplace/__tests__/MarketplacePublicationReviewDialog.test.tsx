@@ -4,9 +4,10 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { P, parsedContext, proposalDto, readinessDto } from "@/lib/__tests__/platformCoursePublication.fixtures";
 const mock = vi.hoisted(() => ({ hook: vi.fn(), review: vi.fn(), publish: vi.fn(), save: vi.fn(), reload: vi.fn(),
-  selectProposal: vi.fn(), loadMore: vi.fn(), info: vi.fn(), success: vi.fn(), sourceFiles: vi.fn() }));
+  selectProposal: vi.fn(), loadMore: vi.fn(), info: vi.fn(), success: vi.fn(), sourceFiles: vi.fn(), captureFiles: vi.fn() }));
 vi.mock("@/hooks/usePlatformPublicationReview", () => ({ usePlatformPublicationReview: mock.hook }));
 vi.mock("../SelectedPlatformProposalFiles", () => ({ SelectedPlatformProposalFiles: (props: unknown) => { mock.sourceFiles(props); return null; } }));
+vi.mock("../CurrentPlatformFilesCapture", () => ({ CurrentPlatformFilesCapture: (props: unknown) => { mock.captureFiles(props); return null; } }));
 vi.mock("sonner", () => ({ toast: { info: mock.info, success: mock.success } }));
 import { MarketplacePublicationReviewDialog } from "../MarketplacePublicationReviewDialog";
 function mount() { return render(<MemoryRouter><MarketplacePublicationReviewDialog target={{ ...P.target, title: "Synthetic own course" }}
@@ -27,6 +28,7 @@ describe("explicit persisted dossier controls", () => {
     expect(screen.getByRole("checkbox")).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("button", { name: "Подтвердить готовность для каталога" })).toBeDisabled();
     expect(mock.review).not.toHaveBeenCalled(); expect(mock.save).not.toHaveBeenCalled(); expect(mock.publish).not.toHaveBeenCalled();
+    expect(mock.captureFiles).toHaveBeenCalledWith(expect.objectContaining({ context: expect.objectContaining({ actorId: P.actor, marketplaceId: P.target.marketplaceId, courseId: P.target.courseId, currentSource: expect.any(Object) }), enabled: true, isCurrentContext: expect.any(Function), onRefresh: mock.reload }));
     expect(mock.sourceFiles).toHaveBeenCalledWith(expect.objectContaining({ context: expect.objectContaining({ actorId: P.actor, marketplaceId: P.target.marketplaceId, courseId: P.target.courseId, proposal: expect.objectContaining({ id: P.proposal, editionSha256: P.sha }) }), enabled: true, isCurrentContext: expect.any(Function) }));
   });
   it("requires explicit notes, finite next review and acknowledgement before accepting", async () => {

@@ -16,6 +16,7 @@ import { DOSSIER_SECTIONS, PASSPORT_FIELDS, emptyPublicationDossier, canAcceptPu
   type PublicationReadiness, type PublicationTarget } from "@/lib/platformCoursePublication";
 
 import { SelectedPlatformProposalFiles } from "./SelectedPlatformProposalFiles";
+import { CurrentPlatformFilesCapture } from "./CurrentPlatformFilesCapture";
 
 const passportLabels: Record<PassportField, string> = {
   purpose: "Назначение", audience: "Аудитория", entry_requirements: "Входные требования", outcomes: "Результаты обучения",
@@ -154,6 +155,7 @@ export function MarketplacePublicationReviewDialog({ target, onOpenChange, onPub
           {!context.proposal.isCurrent && <p className="text-sm text-destructive">Историческая редакция: подтвердить её как текущую нельзя. Историческое содержимое не восстанавливается из текущего банка.</p>}
           <p className="text-xs text-muted-foreground">Зафиксировано модулей: {context.proposal.source.modules.length}, занятий: {context.proposal.source.lessons.length}. Источником служит сохранённый контекст этой редакции.</p>
         </div>}
+        <CurrentPlatformFilesCapture context={context} scopeVersion={review.scopeVersion} enabled={!actionDisabled} isCurrentContext={review.isCurrentContext} onRefresh={review.reload} />
         {context.proposal && <SelectedPlatformProposalFiles context={context} scopeVersion={review.scopeVersion} enabled={!actionDisabled} isCurrentContext={review.isCurrentContext} />}
         {!editing && context.proposal && <Button variant="outline" size="sm" disabled={actionDisabled} onClick={() => {
           const value = context.proposal?.supportedDossier ? cloneDossier(context.proposal.supportedDossier) : emptyPublicationDossier();
