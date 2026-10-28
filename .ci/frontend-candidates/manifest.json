@@ -674,7 +674,7 @@
       ],
       "packet": {
         "path": ".ci/frontend-candidates/as-participant-entry.json",
-        "sha256": "a890ced65b7348788391cf774c2bf91bb937d915b1d662342ed0a533c20c3abc"
+        "sha256": "e8c36d96e055c26a81dd61ea7ad007a2ff3682e215bbe7a758b292967a408c63"
       },
       "suites": [
         {
