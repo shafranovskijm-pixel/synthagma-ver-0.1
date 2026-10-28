@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Capacitor } from '@capacitor/core';
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useDrivingSchoolParticipantEntry } from "@/hooks/useDrivingSchoolParticipantEntry";
 import {
   BookOpen, MessageCircle, Menu, Eye, X, User,
 } from "lucide-react";
@@ -270,6 +271,11 @@ function LearnerDashboard() {
   })();
   const effectiveStudentId = (isAdminView && targetStudentUserId) ? targetStudentUserId : user?.id;
   const effectiveStudentName = profile?.full_name || (isAdminView ? adminViewStudentName : null) || "Ученик";
+  const showDrivingSchool = useDrivingSchoolParticipantEntry(
+    profile?.organization_id ?? null, user?.id ?? null,
+    !loading && !loadError && !offlineCopy && !isAdminView && !isPreviewMode && !isDemoStudent
+      && !isAdminViewFromStorage && !isPreviewFromStorage && effectiveStudentId === user?.id,
+  );
 
   const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
   const currentTab: StudentTab = (activeTab === "store" || activeTab === "library" ? "catalog" : activeTab) as StudentTab;
@@ -476,6 +482,7 @@ function LearnerDashboard() {
           showAchievements={!isNativeLearner && dashboardSettings.showAchievements}
           showRadio={!isNativeLearner && dashboardSettings.showRadio}
           showAnnouncements={dashboardSettings.showAnnouncements}
+          showDrivingSchool={showDrivingSchool}
 
           onShowVideoId={() => setShowVideoIdentification(true)}
           onShowConsent={() => setShowConsentForm(true)}
