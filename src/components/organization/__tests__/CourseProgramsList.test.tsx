@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const testState = vi.hoisted(() => ({
   courses: [] as Array<{ id: string; title: string; is_published: boolean }>,
   orders: [] as Array<{ notes: string | null; status: string }>,
-  documents: [] as Array<{ course_id: string; file_url: string | null }>,
+  documents: [] as Array<{ id: string; course_id: string; name: string; file_url: string | null; allow_download: boolean }>,
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -12,23 +12,18 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: (table: string) => {
       const query = {
         select: vi.fn(() => query),
-        eq: vi.fn((column: string) => {
-          if (table === "service_orders" && column === "service_id") {
-            return Promise.resolve({ data: testState.orders, error: null });
-          }
-          if (table === "course_documents" && column === "type") {
-            return Promise.resolve({ data: testState.documents, error: null });
-          }
-          return query;
-        }),
+        eq: vi.fn(() => query),
         in: vi.fn(() => query),
-        order: vi.fn(() => Promise.resolve({ data: testState.courses, error: null })),
+        order: vi.fn(() => query),
+        then: (resolve: (value: unknown) => unknown, reject: (error: unknown) => unknown) => Promise.resolve({ data: table === "courses" ? testState.courses : table === "service_orders" ? testState.orders : testState.documents, error: null }).then(resolve, reject),
       };
 
       return query;
     },
   },
 }));
+
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "synthetic-actor" } }) }));
 
 vi.mock("sonner", () => ({
   toast: {
@@ -47,22 +42,25 @@ describe("CourseProgramsList", () => {
     testState.documents = [];
   });
 
-  it("marks a program as added only when its document has a non-blank file URL", async () => {
+  it("labels stable program-document metadata neutrally, including frozen files without a live URL", async () => {
     testState.courses = [
       { id: "course-null", title: "Курс без файла", is_published: true },
       { id: "course-blank", title: "Курс с пустой ссылкой", is_published: true },
       { id: "course-valid", title: "Курс с программой", is_published: true },
+      { id: "course-absent", title: "Курс без документа", is_published: true },
     ];
     testState.documents = [
-      { course_id: "course-null", file_url: null },
-      { course_id: "course-blank", file_url: "   " },
-      { course_id: "course-valid", file_url: "https://files.example/program.pdf" },
+      { id: "program-frozen", course_id: "course-null", name: "Программа.pdf", allow_download: false, file_url: null },
+      { id: "program-blank", course_id: "course-blank", name: "Программа", allow_download: false, file_url: "   " },
+      { id: "program-legacy", course_id: "course-valid", name: "Программа.pdf", allow_download: true, file_url: "https://files.example/program.pdf" },
     ];
 
     render(<CourseProgramsList organizationId="org-1" />);
 
-    expect(await screen.findAllByText("Нет файла программы")).toHaveLength(2);
-    expect(screen.getAllByText("Файл программы добавлен")).toHaveLength(1);
+    expect(await screen.findAllByText("Нет файла программы")).toHaveLength(1);
+    expect(screen.getAllByText("Документ программы добавлен")).toHaveLength(3);
+    expect(screen.queryByText("Файл программы добавлен")).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByText("Курс с программой")).toBeInTheDocument();
   });
 

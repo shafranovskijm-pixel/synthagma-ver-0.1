@@ -21,7 +21,7 @@ interface MarketplaceCourseWithDetails {
   description_short: string | null;
   preview_image_url: string | null;
   created_at: string;
-  course?: { id: string; title: string; description: string | null; duration: string | null; category_id?: string | null };
+  course?: { id: string; title: string; description: string | null; duration: string | null; organization_id: string; category_id?: string | null };
   organization?: { name: string } | null;
 }
 

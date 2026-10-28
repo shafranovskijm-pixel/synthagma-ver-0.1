@@ -1,343 +1,172 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { safeInvoke } from "@/utils/safeInvoke";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { platformCoursePublication } from "@/api/platformCoursePublication";
+import { PublicationError, PublicationIntents, ownPlatformPublicationTarget, canPublishPublication, publicationReadinessLabel,
+  type PublicationReadiness, type PublicationTarget } from "@/lib/platformCoursePublication";
 import { toast } from "sonner";
-import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 import type { ValidationRules, AiPrompts } from "../MarketplaceSettingsTab";
-import {
-  checkCriticalError, validateCourseIssues, validateCourseIssuesSimple,
-  generateContentForLesson, generateQuestionsForTest,
-  type ValidationRulesConfig,
-} from "./validationHelpers";
+import { validateCourseIssues, validateCourseIssuesSimple, type ValidationRulesConfig } from "./validationHelpers";
+import { checkMarketplacePublicationStructure } from "./publicationStructuralCheck";
 
-interface UseMarketplaceValidationProps {
-  courses: any[];
-  dbCategories: any[];
-  fetchData: () => void;
-  aiProvider: string;
-  gigachatModel?: string;
-  aiPrompts: AiPrompts;
-  valRules: ValidationRules;
+interface CourseItem {
+  id: string; course_id: string; organization_id: string | null;
+  course?: { id: string; title: string; organization_id?: string };
 }
+interface UseMarketplaceValidationProps {
+  courses: CourseItem[]; dbCategories: unknown[]; fetchData: () => void;
+  aiProvider: string; gigachatModel?: string; aiPrompts: AiPrompts; valRules: ValidationRules;
+}
+export interface PublicationReportRow extends PublicationTarget {
+  title: string; readiness: PublicationReadiness | null; message: string; published: boolean;
+}
+interface ScopeOperation { serial: number; scope: string; actorId: string }
+type StructuralResult = { kind: "checked"; target: PublicationTarget; title: string; issues: string[]; readiness: PublicationReadiness }
+  | { kind: "unavailable" | "out_of_scope"; target: PublicationTarget; title: string };
 
-export function useMarketplaceValidation({
-  courses, dbCategories, fetchData, aiProvider, gigachatModel, aiPrompts, valRules,
-}: UseMarketplaceValidationProps) {
-  const [validatedCourses, setValidatedCourses] = useState<Record<string, 'ok' | 'error'>>({});
+/** Moderator check/review workflow. It never generates or repairs materials. */
+export function useMarketplaceValidation({ courses, fetchData, valRules }: UseMarketplaceValidationProps) {
+  const auth = useAuth();
+  const actorId = !auth.loading && !auth.authError && auth.userRole === "admin" ? auth.user?.id ?? null : null;
+  const [validatedCourses, setValidatedCourses] = useState<Record<string, "ok" | "error">>({});
+  const [publicationByCourse, setPublicationByCourse] = useState<Record<string, PublicationReadiness>>({});
   const [validatingId, setValidatingId] = useState<string | null>(null);
   const [bulkValidatingGroup, setBulkValidatingGroup] = useState<string | null>(null);
   const [bulkValidateProgress, setBulkValidateProgress] = useState("");
-  const [bulkFixing, setBulkFixing] = useState(false);
   const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
   const [validationReportOk, setValidationReportOk] = useState(0);
-  const autoFixCycleCount = useRef<Map<string, number>>(new Map());
-  const autoFixCriticalError = useRef<Set<string>>(new Set());
-
+  const [publicationReport, setPublicationReport] = useState<PublicationReportRow[]>([]);
+  const [publishedCount, setPublishedCount] = useState(0);
+  const [reportKind, setReportKind] = useState<"structure" | "publish">("structure");
+  const mounted = useRef(false), serial = useRef(0), busy = useRef(false);
+  const intents = useRef(new PublicationIntents());
+  const scope = `${actorId ?? "unavailable"}|${courses.map(c => `${c.id}:${c.course_id}:${c.organization_id}:${c.course?.organization_id ?? "unknown"}`).sort().join("|")}`;
+  const currentScope = useRef(scope); currentScope.current = scope;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; serial.current++; }; }, []);
   useEffect(() => {
-    setValidatedCourses(prev => {
-      const init = { ...prev };
-      courses.forEach((c: any) => { if (c.is_validated && !init[c.course_id]) init[c.course_id] = 'ok'; });
-      return init;
-    });
-  }, [courses]);
-
-  const getProgramType = async (courseId: string): Promise<string | undefined> => {
-    try {
-      const { data: courseData } = await supabase.from("courses").select("category_id").eq("id", courseId).single();
-      if (courseData?.category_id) {
-        const cat = dbCategories.find(c => c.id === courseData.category_id);
-        if (cat?.parent_type) return cat.parent_type;
-      }
-    } catch {}
-    return undefined;
+    serial.current++; busy.current = false; intents.current.clear();
+    setValidatedCourses({}); setPublicationByCourse({}); setValidatingId(null); setBulkValidatingGroup(null); setBulkValidateProgress("");
+    setValidationReport(null); setValidationReportOk(0); setPublicationReport([]); setPublishedCount(0);
+  }, [scope]);
+  const live = (op: ScopeOperation) => mounted.current && op.serial === serial.current && op.scope === currentScope.current;
+  const begin = (): ScopeOperation | null => {
+    if (!actorId || busy.current) return null;
+    busy.current = true;
+    return { serial: ++serial.current, scope: currentScope.current, actorId };
   };
-
-  const autoFixCourse = async (courseId: string, courseTitle: string) => {
-    const toastId = toast.loading("Анализирую курс...", { duration: Infinity });
-    let hadCriticalError = false;
-    const markCritical = (e: any) => { if (checkCriticalError(e)) { hadCriticalError = true; autoFixCriticalError.current.add(courseId); } };
-
-    const programType = await getProgramType(courseId);
-    const CONCURRENCY = 3;
-
+  const end = (op: ScopeOperation) => { if (live(op)) { busy.current = false; setValidatingId(null); setBulkValidatingGroup(null); setBulkValidateProgress(""); } };
+  const titleOf = (item: CourseItem) => item.course?.title || "Курс";
+  const candidates = (items: CourseItem[]) => items.flatMap(item => {
+    const target = ownPlatformPublicationTarget(item);
+    return target ? [{ item, target }] : [];
+  });
+  async function structural(item: CourseItem, target: PublicationTarget, op: ScopeOperation, simple: boolean): Promise<StructuralResult | null> {
+    const title = titleOf(item);
     try {
-      let { data: lessons } = await supabase.from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
-      let allLessons = lessons || [];
-
-      // Generate structure if needed
-      const textPracticeLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
-      const needsStructure = textPracticeLessons.length === 0 || allLessons.length < valRules.minLessons || (valRules.requireTest && allLessons.filter(l => l.type === "test").length === 0);
-      if (needsStructure) {
-        toast.loading("Генерирую структуру курса...", { id: toastId });
-        try {
-          const { data: structData, error: structErr } = await safeInvoke<any>("generate-course-structure", { body: { title: courseTitle, description: "" } });
-          if (structErr) throw structErr;
-          const generated: Array<{ title: string; type: string }> = structData?.lessons || [];
-          if (generated.length > 0) {
-            const maxOrder = allLessons.reduce((mx, l) => Math.max(mx, l.order_index ?? 0), -1);
-            const existingTitles = new Set(allLessons.map(l => l.title.toLowerCase()));
-            const newLessons = generated.filter(gl => !existingTitles.has(gl.title.toLowerCase()));
-            if (newLessons.length > 0) await supabase.from("lessons").insert(newLessons.map((gl, i) => ({ course_id: courseId, title: gl.title, type: gl.type || "text", order_index: maxOrder + 1 + i, content: null })));
-            const { data: refreshed } = await supabase.from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
-            allLessons = refreshed || allLessons;
-          }
-        } catch (e) { console.error("Structure generation failed:", e); markCritical(e); }
-      }
-
-      // Ensure test exists
-      if (valRules.requireTest && allLessons.filter(l => l.type === "test").length === 0) {
-        toast.loading("Создаю тестовый урок...", { id: toastId });
-        const maxOrder = allLessons.reduce((mx, l) => Math.max(mx, l.order_index ?? 0), -1);
-        await supabase.from("lessons").insert({ course_id: courseId, title: "Итоговый тест", type: "test", order_index: maxOrder + 1, content: null });
-        const { data: refreshed2 } = await supabase.from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
-        allLessons = refreshed2 || allLessons;
-      }
-
-      const emptyLessons = allLessons.filter(l => (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength));
-      const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
-      let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; explanation?: string | null; question: string; options: any }> = [];
-      if (testIds.length) { const { data: q } = await supabase.from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds); allQuestions = (q || []) as typeof allQuestions; }
-
-      const emptyTests = allLessons.filter(l => l.type === "test" && !allQuestions.some(q => q.lesson_id === l.id));
-      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
-
-      // Check duplicates
-      const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
-      for (const l of allLessons) { const arr = titleCounts.get(l.title) || []; arr.push(l); titleCounts.set(l.title, arr); }
-      const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
-
-      // Check media needs
-      const allTextLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
-      const lessonsNeedingMedia: typeof allTextLessons = [];
-      const freshLessons = await Promise.all(allTextLessons.map(async (lesson) => { const { data } = await supabase.from("lessons").select("content").eq("id", lesson.id).single(); return { lesson, content: data?.content }; }));
-      for (const { lesson, content } of freshLessons) {
-        if (!content || content === "[]") continue;
-        try { const blocks = JSON.parse(content); if (!Array.isArray(blocks) || blocks.length < 3) continue; if (!blocks.some((b: any) => b.type === "image" || b.type === "slider")) lessonsNeedingMedia.push({ ...lesson, content }); } catch { continue; }
-      }
-
-      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0) + emptyTests.length + (lessonsNeedingMedia.length > 0 ? 1 : 0);
-      if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
-      if (totalTasks === 0) { toast.success("Структура создана! Повторная проверка...", { id: toastId, duration: 3000 }); setTimeout(() => handleValidateCourse(courseId), 1000); return; }
-
-      let completed = 0;
-
-      // Generate content for empty lessons
-      for (let i = 0; i < emptyLessons.length; i += CONCURRENCY) {
-        const chunk = emptyLessons.slice(i, i + CONCURRENCY);
-        await Promise.allSettled(chunk.map(async (lesson, idx) => {
-          completed++;
-          toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
-          try { await generateContentForLesson(lesson, courseId, courseTitle, i + idx, aiProvider, gigachatModel, aiPrompts.content, programType); } catch (e) { console.error(`Failed content for ${lesson.id}:`, e); markCritical(e); }
-        }));
-      }
-      if (hadCriticalError) throw new Error("Critical API error during content generation");
-
-      // Generate questions for empty tests
-      for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
-        const chunk = emptyTests.slice(i, i + CONCURRENCY);
-        await Promise.allSettled(chunk.map(async (test, idx) => {
-          completed++;
-          toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
-          try { await generateQuestionsForTest(test, courseId, courseTitle, i + idx, aiProvider, gigachatModel, aiPrompts.questions, programType); } catch (e) { console.error(`Failed questions for ${test.id}:`, e); markCritical(e); }
-        }));
-      }
-
-      // Solve unanswered questions
-      if (unansweredQuestions.length > 0) {
-        completed++;
-        toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
-        const byLesson = new Map<string, typeof unansweredQuestions>();
-        for (const q of unansweredQuestions) { const arr = byLesson.get(q.lesson_id) || []; arr.push(q); byLesson.set(q.lesson_id, arr); }
-        const entries = Array.from(byLesson.entries());
-        for (let i = 0; i < entries.length; i += CONCURRENCY) {
-          const chunk = entries.slice(i, i + CONCURRENCY);
-          await Promise.allSettled(chunk.map(async ([lessonId, questions], idx) => {
-            const lessonInfo = allLessons.find(l => l.id === lessonId);
-            const batchSize = 20; const startMs = Date.now(); let answeredCount = 0;
-            for (let j = 0; j < questions.length; j += batchSize) {
-              const batch = questions.slice(j, j + batchSize);
-              try {
-                const { data, error } = await safeInvoke<any>("gigachat", { body: { action: "generate_answers", courseTitle, lessonTitle: lessonInfo?.title || "Тест", questions: batch.map(q => ({ question: q.question, options: q.options || [] })), ai_provider: aiProvider, stream_index: i + idx, ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}), ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}) } });
-                if (error) throw error;
-                if (data?.answers && !data.parseError) { for (const ans of data.answers) { const q = batch[ans.questionIndex]; if (q && ans.correctAnswer !== undefined) { answeredCount++; await supabase.from("test_questions").update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null }).eq("id", q.id); } } }
-              } catch (e) { console.error(`Failed solving for ${lessonId}:`, e); markCritical(e); }
-            }
-            await supabase.from("generation_history").insert({ course_id: courseId, course_title: courseTitle, action: "answers", details: `Auto-fix: "${lessonInfo?.title || "Тест"}"`, items_count: answeredCount, stream_index: i + idx, duration_ms: Date.now() - startMs }).then(() => {}, () => {});
-          }));
-        }
-      }
-      if (hadCriticalError) throw new Error("Critical API error during test generation");
-
-      // Enrich with images (uses same logic but with fresh content check)
-      const mediaLimit = programType === "Рабочие профессии" ? 9 : 3;
-      const freshPost = await Promise.all(allTextLessons.map(async (lesson) => { const { data } = await supabase.from("lessons").select("content").eq("id", lesson.id).single(); return { lesson, content: data?.content }; }));
-      const postMediaNeeded: typeof allTextLessons = [];
-      for (const { lesson, content } of freshPost) {
-        if (!content || content === "[]") continue;
-        try { const blocks = JSON.parse(content); if (!Array.isArray(blocks) || blocks.length < 3) continue; if (!blocks.some((b: any) => b.type === "image" || b.type === "slider")) postMediaNeeded.push({ ...lesson, content }); } catch { continue; }
-      }
-      const lessonsToEnrich = postMediaNeeded.slice(0, mediaLimit);
-
-      if (lessonsToEnrich.length > 0) {
-        let enrichedCount = 0; let successCount = 0; let skipCount = 0;
-        toast.loading(`Анализирую уроки: 0/${lessonsToEnrich.length}...`, { id: toastId });
-        type AnalysisResult = { lesson: typeof lessonsToEnrich[0]; streamIndex: number; blocks: any[]; imageVisual: { prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[] }; startMs: number };
-        const analysisResults: AnalysisResult[] = [];
-        for (let b = 0; b < lessonsToEnrich.length; b += CONCURRENCY) {
-          const batch = lessonsToEnrich.slice(b, b + CONCURRENCY);
-          if (b > 0) await new Promise(r => setTimeout(r, 5000));
-          await Promise.allSettled(batch.map(async (lesson, idx) => {
-            try {
-              const { data: freshData } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
-              const contentStr = freshData?.content || lesson.content;
-              if (!contentStr || contentStr === "[]") return;
-              const blocks = JSON.parse(contentStr);
-              if (!Array.isArray(blocks) || blocks.length < 3) return;
-              const textForAnalysis = blocks.filter((bl: any) => bl.type === "paragraph" || bl.type === "heading").map((bl: any) => bl.content || "").join("\n").slice(0, 1500);
-              const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", { body: { action: "analyze_visuals", courseTitle, lessonTitle: lesson.title, lessonContent: textForAnalysis, maxVisuals: 1, ai_provider: aiProvider, stream_index: b + idx, ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}) } });
-              if (analysisErr || !analysisData?.visuals?.length) return;
-              const imageVisual = analysisData.visuals.find((v: any) => v.format === "image");
-              if (imageVisual) analysisResults.push({ lesson, streamIndex: b + idx, blocks, imageVisual, startMs: Date.now() });
-            } catch (e) { console.error(`Analysis error for ${lesson.id}:`, e); markCritical(e); }
-          }));
-        }
-
-        if (analysisResults.length > 0) {
-          const BATCH_SIZE = 2; const MAX_WAVES = 3;
-          let pending = [...analysisResults];
-          for (let wave = 0; wave < MAX_WAVES && pending.length > 0; wave++) {
-            if (wave > 0) await new Promise(r => setTimeout(r, 20000 * wave));
-            const failedThisWave: AnalysisResult[] = [];
-            for (let bs = 0; bs < pending.length; bs += BATCH_SIZE) {
-              if (successCount >= mediaLimit) break;
-              const batch = pending.slice(bs, bs + BATCH_SIZE);
-              if (bs > 0) await new Promise(r => setTimeout(r, 30000));
-              await Promise.allSettled(batch.map(async (item) => {
-                if (successCount >= mediaLimit) return;
-                try {
-                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", { body: { prompt: item.imageVisual.prompt, provider: "gigachat", slotIndex: item.streamIndex } });
-                  if (!imgErr && imgData?.url) {
-                    const insertIdx = Math.min(item.imageVisual.after_block_index + 1, item.blocks.length);
-                    item.blocks.splice(insertIdx, 0, { id: crypto.randomUUID(), type: "image", content: item.imageVisual.prompt, imageSrc: imgData.url, imageAlt: item.imageVisual.prompt });
-                    await supabase.from("lessons").update({ content: JSON.stringify(item.blocks) }).eq("id", item.lesson.id);
-                    successCount++;
-                  } else { if (wave === MAX_WAVES - 1) skipCount++; else failedThisWave.push(item); }
-                  await supabase.from("generation_history").insert({ course_id: courseId, course_title: courseTitle, action: "media", details: `Wave ${wave + 1}: "${item.lesson.title}"`, items_count: imgData?.url ? 1 : 0, stream_index: item.streamIndex, duration_ms: Date.now() - item.startMs }).then(() => {}, () => {});
-                } catch (e) { console.error(`Enrichment error:`, e); markCritical(e); if (wave === MAX_WAVES - 1) skipCount++; else failedThisWave.push(item); }
-              }));
-            }
-            if (successCount >= mediaLimit) break;
-            pending = failedThisWave;
-          }
-        }
-      }
-
-      // Identical titles may be different editions with retained learner history.
-      if (duplicateGroups.length > 0) {
-        completed++;
-        toast.info("Одноимённые уроки сохранены: требуется проверка редакций.", { duration: 6000 });
-      }
-
-      if (hadCriticalError) { toast.warning("Автоисправление прервано: ошибка API (402/429).", { id: toastId, duration: 8000 }); return; }
-      toast.success(`Курс исправлен! Повторная проверка...`, { id: toastId, duration: 3000 });
-      const prevCycles = autoFixCycleCount.current.get(courseId) || 0;
-      autoFixCycleCount.current.set(courseId, prevCycles + 1);
-      setTimeout(() => handleValidateCourse(courseId, true), 1000);
-    } catch (e: any) {
-      console.error("Auto-fix error:", e);
-      markCritical(e);
-      toast.warning(hadCriticalError ? "Автоисправление прервано: ошибка API." : "Ошибка автоисправления", { id: toastId, duration: 8000 });
-    }
-  };
-
-  const handleValidateCourse = async (courseId: string, isAutoRetry = false) => {
-    if (!isAutoRetry) { autoFixCycleCount.current.delete(courseId); autoFixCriticalError.current.delete(courseId); }
-    setValidatingId(courseId);
-    try {
-      const issues = await validateCourseIssues(courseId, valRules as ValidationRulesConfig);
-      const isOk = issues.length === 0;
-      const mpCourse = courses.find((c: any) => c.course_id === courseId);
-      if (!mpCourse) throw new Error("Marketplace course not found");
-      const { data: saved, error } = await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", mpCourse.id).select("id,is_validated").maybeSingle();
-      if (error) throw error;
-      if (!saved || saved.id !== mpCourse.id || saved.is_validated !== isOk) throw new Error("Marketplace validation was not confirmed");
-      setValidatedCourses(prev => ({ ...prev, [courseId]: isOk ? 'ok' : 'error' }));
-
-      if (issues.length > 0) {
-        const title = mpCourse?.course?.title || "";
-        const cycles = autoFixCycleCount.current.get(courseId) || 0;
-        const hadCritical = autoFixCriticalError.current.has(courseId);
-        if (hadCritical) toast.warning(`Проблемы: ${issues.join(" • ")}. Автоисправление остановлено.`, { duration: 8000 });
-        else if (cycles >= 2) toast.warning(`Проблемы: ${issues.join(" • ")}. Лимит автоисправлений достигнут.`, { duration: 8000 });
-        else { toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление (${cycles + 1}/2)...`, { duration: 6000 }); autoFixCourse(courseId, title); }
-      } else toast.success("Структурная проверка пройдена");
-      fetchData();
-    } catch (e) {
-      console.error(e);
-      setValidatedCourses(prev => ({ ...prev, [courseId]: 'error' }));
-      toast.error("Не удалось завершить структурную проверку");
-    }
-    finally { setValidatingId(null); }
-  };
-
-  const handleBulkValidate = async (group: any) => {
-    if (bulkValidatingGroup) return;
-    setBulkValidatingGroup(group.category);
-    let okCount = 0; let errCount = 0;
-    const total = group.courses.length;
-    const failedCourses: { courseId: string; title: string; issues: string[] }[] = [];
-    const coursesToAutoFix: { courseId: string; title: string }[] = [];
-    const CHUNK_SIZE = 5;
-
-    for (let i = 0; i < total; i += CHUNK_SIZE) {
-      const chunk = group.courses.slice(i, i + CHUNK_SIZE);
-      setBulkValidateProgress(`${Math.min(i + CHUNK_SIZE, total)}/${total}...`);
-      const results = await Promise.all(chunk.map(async (item: any) => {
-        try {
-          const issues = await validateCourseIssuesSimple(item.course_id, valRules as ValidationRulesConfig);
-          const isOk = issues.length === 0;
-          const { data: saved, error } = await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", item.id).select("id,is_validated").maybeSingle();
-          if (error) throw error;
-          if (!saved || saved.id !== item.id || saved.is_validated !== isOk) throw new Error("Marketplace validation was not confirmed");
-          setValidatedCourses(prev => ({ ...prev, [item.course_id]: isOk ? 'ok' : 'error' }));
-          return { ok: isOk, courseId: item.course_id, title: item.course?.title || "", issues, canAutoFix: !isOk };
-        } catch (e) {
-          console.error("Bulk validate error for", item.course_id, e);
-          setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
-          return { ok: false, courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"], canAutoFix: false };
-        }
-      }));
+      const before = await platformCoursePublication.readiness(target);
+      if (!live(op)) return null;
+      if (before.state === "out_of_scope") return { kind: "out_of_scope", target, title };
+      const issues = await (simple ? validateCourseIssuesSimple : validateCourseIssues)(target.courseId, valRules as ValidationRulesConfig);
+      if (!live(op)) return null;
+      const after = await platformCoursePublication.readiness(target);
+      if (!live(op)) return null;
+      if (after.state === "out_of_scope") return { kind: "out_of_scope", target, title };
+      if (after.editionSha256 !== before.editionSha256) throw new PublicationError("stale");
+      return { kind: "checked", target, title, issues, readiness: after };
+    } catch { return live(op) ? { kind: "unavailable", target, title } : null; }
+  }
+  function commitStructural(results: StructuralResult[], op: ScopeOperation) {
+    if (!live(op)) return;
+    const checked = results.filter((r): r is Extract<StructuralResult, { kind: "checked" }> => r.kind === "checked");
+    const failures = checked.filter(r => r.issues.length > 0);
+    const unavailable = results.filter(r => r.kind !== "checked");
+    setValidatedCourses(previous => {
+      const next = { ...previous };
       for (const r of results) {
-        if (r.ok) okCount++;
-        else {
-          errCount++;
-          failedCourses.push({ courseId: r.courseId, title: r.title, issues: r.issues });
-          if (r.canAutoFix) coursesToAutoFix.push({ courseId: r.courseId, title: r.title });
+        if (r.kind === "out_of_scope") delete next[r.target.courseId];
+        else next[r.target.courseId] = r.kind === "checked" && !r.issues.length ? "ok" : "error";
+      }
+      return next;
+    });
+    setPublicationByCourse(previous => ({ ...previous, ...Object.fromEntries(checked.map(r => [r.target.courseId, r.readiness])) }));
+    setReportKind("structure"); setPublishedCount(0); setValidationReportOk(checked.length - failures.length);
+    setValidationReport(failures.map(r => ({ courseId: r.target.courseId, title: r.title, issues: r.issues })));
+    setPublicationReport(results.map(r => ({ ...r.target, title: r.title, published: false,
+      readiness: r.kind === "checked" ? r.readiness : null,
+      message: r.kind === "checked" ? publicationReadinessLabel(r.readiness) : r.kind === "out_of_scope" ? "Курс больше не относится к собственным материалам платформы" : "Состояние не подтверждено; повторите проверку" })));
+    toast.info(`Собственные курсы: структурная проверка пройдена для ${checked.length - failures.length}, замечания — ${failures.length}, состояние не подтверждено — ${unavailable.length}. Публикация оформляется отдельно.`);
+  }
+  const handleValidateCourse = async (courseId: string) => {
+    const item = courses.find(c => c.course_id === courseId), target = item && ownPlatformPublicationTarget(item);
+    if (!item || !target) return;
+    const op = begin(); if (!op) return;
+    setValidatingId(courseId);
+    try { const result = await structural(item, target, op, false); if (result) commitStructural([result], op); }
+    finally { end(op); }
+  };
+  const handleBulkValidate = async (group: { category: string; courses: CourseItem[] }) => {
+    const own = candidates(group.courses); if (!own.length) return;
+    const op = begin(); if (!op) return;
+    setBulkValidatingGroup(group.category);
+    const results: StructuralResult[] = [];
+    try {
+      // New PCR RPCs intentionally share an actor TRY fence. Do not issue
+      // five concurrent requests that would contend with this same browser.
+      for (let i = 0; i < own.length && live(op); i++) {
+        setBulkValidateProgress(`${i + 1}/${own.length}...`);
+        const { item, target } = own[i];
+        const result = await structural(item, target, op, true);
+        if (result) results.push(result);
+      }
+      commitStructural(results, op);
+    } finally { end(op); }
+  };
+  const handleBulkPublishReviewed = async (group: { category: string; courses: CourseItem[] }) => {
+    const own = candidates(group.courses); if (!own.length) return;
+    const op = begin(); if (!op) return;
+    setBulkValidatingGroup(group.category);
+    const rows: PublicationReportRow[] = [];
+    try {
+      // Explicit publication only; never submit or accept a dossier in bulk.
+      for (let i = 0; i < own.length && live(op); i++) {
+        const { item, target } = own[i];
+        setBulkValidateProgress(`${i + 1}/${own.length}...`);
+        try {
+          const current = await platformCoursePublication.context(target, op.actorId);
+          if (!live(op)) return;
+          if (!canPublishPublication(current) || !current.proposal) {
+            rows.push({ ...target, title: titleOf(item), readiness: current.readiness, published: false,
+              message: current.currentFileState === "unconfirmed" ? "Версия файлов не подтверждена; выпуск недоступен" : publicationReadinessLabel(current.readiness) });
+            continue;
+          }
+          const issues = await checkMarketplacePublicationStructure(target, current.currentEditionSha256, valRules as ValidationRulesConfig, true);
+          if (!live(op)) return;
+          if (issues.length) {
+            rows.push({ ...target, title: titleOf(item), readiness: current.readiness, published: false, message: `Структурные замечания: ${issues.join(" • ")}. Исправьте курс в редакторе.` });
+            continue;
+          }
+          const requestId = intents.current.id("publish", { actorId: op.actorId, ...target, proposalId: current.proposal.id, edition: current.currentEditionSha256, reviewId: current.readiness.reviewId });
+          const saved = await platformCoursePublication.publish(current, requestId);
+          if (!live(op)) return;
+          rows.push({ ...target, title: titleOf(item), readiness: saved.readiness, published: true, message: "Выпуск точной проверенной редакции подтверждён" });
+        } catch {
+          if (!live(op)) return;
+          rows.push({ ...target, title: titleOf(item), readiness: null, published: false, message: "Выпуск не подтверждён; проверьте досье и повторите" });
         }
       }
-    }
-
-    setBulkValidatingGroup(null); setBulkValidateProgress("");
-    setValidationReportOk(okCount);
-    setValidationReport(errCount > 0 ? failedCourses : null);
-    if (errCount > 0) {
-      toast.info(`Структурная проверка: пройдено ${okCount} из ${total}, не пройдено ${errCount}.${coursesToAutoFix.length > 0 ? " Запускаю исправление замечаний..." : ""}`);
-      if (coursesToAutoFix.length > 0) handleBulkAutoFix(coursesToAutoFix);
-    } else toast.success(`Структурная проверка пройдена для ${okCount} из ${total} курсов`);
+      if (!live(op)) return;
+      const count = rows.filter(r => r.published).length;
+      setReportKind("publish"); setValidationReport([]); setValidationReportOk(0); setPublicationReport(rows); setPublishedCount(count);
+      setPublicationByCourse(previous => ({ ...previous, ...Object.fromEntries(rows.flatMap(r => r.readiness ? [[r.courseId, r.readiness]] : [])) }));
+      toast.info(`Подтверждён выпуск ${count} из ${own.length} собственных редакций. Остальные состояния указаны в отчёте.`);
+      if (count > 0) fetchData();
+    } finally { end(op); }
   };
-
-  const handleBulkAutoFix = async (coursesToFix: { courseId: string; title: string }[]) => {
-    if (bulkFixing) return;
-    setBulkFixing(true);
-    let fixed = 0; let failed = 0;
-    for (let i = 0; i < coursesToFix.length; i++) {
-      toast.loading(`Исправляю ${i + 1}/${coursesToFix.length}: ${coursesToFix[i].title.slice(0, 40)}...`, { id: "bulk-fix-progress", duration: Infinity });
-      try { await autoFixCourse(coursesToFix[i].courseId, coursesToFix[i].title); fixed++; } catch { failed++; }
-    }
-    toast.dismiss("bulk-fix-progress"); setBulkFixing(false);
-    toast.success(`Исправление завершено: ✅ ${fixed}${failed > 0 ? `, ❌ ${failed}` : ""}`, { duration: 10000 });
+  const onPublicationConfirmed = (readiness: PublicationReadiness) => {
+    if (!mounted.current || currentScope.current !== scope || !actorId || readiness.state === "out_of_scope") return;
+    setPublicationByCourse(previous => ({ ...previous, [readiness.courseId]: readiness }));
     fetchData();
   };
-
-  return { validatedCourses, validatingId, bulkValidatingGroup, bulkValidateProgress, bulkFixing, validationReport, validationReportOk, setValidationReport, handleValidateCourse, handleBulkValidate };
+  return { canModerate: !!actorId, validatedCourses, validatingId, bulkValidatingGroup, bulkValidateProgress,
+    validationReport, validationReportOk, setValidationReport, publicationByCourse, publicationReport, publishedCount, reportKind,
+    handleValidateCourse, handleBulkValidate, handleBulkPublishReviewed, onPublicationConfirmed };
 }

@@ -30,9 +30,19 @@ import {
 
 import { ICON_OPTIONS } from "./marketplace/marketplaceConstants";
 import { AdminMarketplaceCatalogTab } from "./marketplace/AdminMarketplaceCatalogTab";
+import { MarketplacePublicationReviewDialog } from "./marketplace/MarketplacePublicationReviewDialog";
+import { ownPlatformPublicationTarget, type PublicationTarget } from "@/lib/platformCoursePublication";
+import { checkMarketplacePublicationStructure } from "./marketplace/publicationStructuralCheck";
 
 export function AdminMarketplaceManager() {
   const h = useAdminMarketplace();
+  const [reviewTarget, setReviewTarget] = useState<(PublicationTarget & { title: string }) | null>(null);
+  const handleReview = (item: unknown) => {
+    const target = ownPlatformPublicationTarget(item);
+    if (!target) return;
+    const source = h.courses.find(c => c.id === target.marketplaceId && c.course_id === target.courseId);
+    setReviewTarget({ ...target, title: source?.course?.title || "Курс" });
+  };
   const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string; description?: string } | null>(null);
   const [converting, setConverting] = useState(false);
   const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
@@ -150,6 +160,7 @@ export function AdminMarketplaceManager() {
           <AdminMarketplaceCatalogTab
             h={h}
             validation={validation}
+            onReview={handleReview}
             selectedCourses={selectedCourses}
             setSelectedCourses={setSelectedCourses}
             toggleCourseSelect={toggleCourseSelect}
@@ -183,6 +194,12 @@ export function AdminMarketplaceManager() {
       </Tabs>
 
       {/* Dialogs */}
+      <MarketplacePublicationReviewDialog
+        target={reviewTarget}
+        onOpenChange={open => { if (!open) setReviewTarget(null); }}
+        onPublicationConfirmed={validation.onPublicationConfirmed}
+        checkStructure={(target, edition) => checkMarketplacePublicationStructure(target, edition, valRules, false)}
+      />
       <MarketplaceEditDialog
         open={h.showEditDialog}
         onOpenChange={h.setShowEditDialog}

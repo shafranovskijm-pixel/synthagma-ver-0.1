@@ -9,6 +9,7 @@ const apiMocks = vi.hoisted(() => ({
   createCourseLibraryResource: vi.fn(),
   createLibrarySignedUrl: vi.fn(),
   fetchCourseLibrary: vi.fn(),
+  fetchCourseFileOrganization: vi.fn(),
   updateCourseLibraryResource: vi.fn(),
 }));
 
@@ -18,7 +19,15 @@ const toastMocks = vi.hoisted(() => ({
   success: vi.fn(),
 }));
 
+const fileDialog = vi.hoisted(() => vi.fn());
+const modeDiscovery = vi.hoisted(() => ({ organizationId: null as string | null }));
+vi.mock("@/hooks/useCourseFileDeliveryMode", () => ({ useCourseFileDeliveryMode: () => ({ view: modeDiscovery.organizationId
+  ? { state: "legacy", context: { schema_version: 1, actor_id: "synthetic-actor", organization_id: modeDiscovery.organizationId, course_id: "course-178", access_mode: "learner", mode: "legacy", state: "legacy", cohort: null } }
+  : { state: "idle" }, refresh: vi.fn() }) }));
+beforeEach(() => { modeDiscovery.organizationId = null; });
 vi.mock("@/api/courseLibrary", () => apiMocks);
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "synthetic-actor" } }) }));
+vi.mock("@/components/course-learning/FilePreviewDialog", () => ({ FilePreviewDialog: (props: unknown) => { fileDialog(props); return <div data-testid="stable-file-dialog" />; } }));
 
 vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({
@@ -104,16 +113,6 @@ function openCreateDialog() {
   return screen.getByRole("dialog");
 }
 
-function fakePendingWindow() {
-  const replace = vi.fn();
-  const close = vi.fn();
-  const value = {
-    close,
-    location: { replace },
-    opener: {} as Window | null,
-  } as unknown as Window;
-  return { close, replace, value };
-}
 
 describe("CourseLibrary organization UI flows", () => {
   beforeEach(() => {
@@ -123,6 +122,47 @@ describe("CourseLibrary organization UI flows", () => {
     apiMocks.createLibrarySignedUrl.mockResolvedValue("https://signed.example.test/material.pdf");
     apiMocks.fetchCourseLibrary.mockResolvedValue({ modules, resources: [] });
     apiMocks.updateCourseLibraryResource.mockResolvedValue(undefined);
+  });
+
+  it("checks a NULL-source manager resource through staff_preview without opening a raw tab or signing", async () => {
+    const frozen = resource({ assignmentId: "manager-target", libraryDocumentId: null, title: "Сохранённая методичка", status: null, sourceName: null, externalUrl: null, storagePath: null });
+    apiMocks.fetchCourseLibrary.mockResolvedValue({ modules, resources: [frozen] });
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<CourseLibraryManager courseId="course-178" courseName="Курс" organizationId="org-csz" />);
+    await screen.findByText("Сохранённая методичка");
+    const button = screen.getByRole("button", { name: "Проверить" }); expect(button).not.toBeDisabled(); fireEvent.click(button);
+    await waitFor(() => expect(fileDialog).toHaveBeenLastCalledWith(expect.objectContaining({ accessMode: "staff_preview", reference: expect.objectContaining({ courseId: "course-178", organizationId: "org-csz", referenceKind: "course_document", referenceId: frozen.assignmentId, legacyUrl: null }), resolveLegacyUrl: expect.any(Function) })));
+    expect(open).not.toHaveBeenCalled(); expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
+  });
+
+  it("keeps demonstration manager metadata from authorizing a file open", () => {
+    const entry = resource({ libraryDocumentId: "demo", title: "Демонстрационный материал" });
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<CourseLibraryManager courseId="course-178" courseName="Курс" organizationId="org-csz" previewData={{ modules, resources: [entry] }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Проверить" }));
+    expect(fileDialog).not.toHaveBeenCalled(); expect(open).not.toHaveBeenCalled(); expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
+    expect(toastMocks.info).toHaveBeenCalledWith("Демонстрационный экран: файл не открывается без проверки доступа");
+  });
+
+  it.each([
+    ["reader", "application/pdf", "old-name.docx", "pdf"],
+    ["manager", "application/pdf", "old-name.docx", "pdf"],
+    ["reader", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "old-name.pdf", "docx"],
+    ["manager", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "old-name.pdf", "docx"],
+    ["reader", "application/x-private-format", "looks.pdf", "unknown"],
+    ["manager", "application/x-private-format", "looks.pdf", "unknown"],
+  ])("passes a normalized %s display hint for MIME %s, never a MIME/category as an extension", async (view, mimeType, originalFilename, expected) => {
+    const entry = resource({ libraryDocumentId: "hint-source", title: "Материал с MIME", mimeType, originalFilename, externalUrl: null, storagePath: "library/org-csz/material" });
+    apiMocks.fetchCourseLibrary.mockResolvedValue({ modules, resources: [entry] });
+    if (view === "manager") {
+      render(<CourseLibraryManager courseId="course-178" courseName="Курс" organizationId="org-csz" />);
+      await screen.findByText(entry.title); fireEvent.click(screen.getByRole("button", { name: "Проверить" }));
+    } else {
+      render(<CourseLibraryReader courseId="course-178" organizationId="org-csz" previewData={{ modules, resources: [entry] }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    }
+    await waitFor(() => expect(fileDialog).toHaveBeenLastCalledWith(expect.objectContaining({ reference: expect.objectContaining({ referenceId: entry.assignmentId, fileType: expected }) })));
+    expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
   });
 
   it("adds an external HTTPS resource and assigns it to a selected module", async () => {
@@ -357,55 +397,36 @@ describe("CourseLibrary learner UI flows", () => {
     apiMocks.createLibrarySignedUrl.mockResolvedValue("https://signed.example.test/material.pdf");
   });
 
-  it("opens an external resource in a new tab and an internal file through a signed URL", async () => {
-    const external = resource({
-      libraryDocumentId: "external",
-      title: "Официальный внешний ресурс",
-      externalUrl: "https://mchs.gov.ru/resource",
-    });
-    const internal = resource({
-      libraryDocumentId: "internal",
-      title: "Внутренний файл",
-      externalUrl: null,
-      originalFilename: "material.pdf",
-      storagePath: "library/org-csz/material.pdf",
-    });
-    const externalWindow = fakePendingWindow();
-    const internalWindow = fakePendingWindow();
-    const open = vi.spyOn(window, "open")
-      .mockReturnValueOnce(externalWindow.value)
-      .mockReturnValueOnce(internalWindow.value);
-
-    render(
-      <CourseLibraryReader
-        courseId="course-178"
-        previewData={{ modules, resources: [external, internal] }}
-      />,
-    );
-
-    fireEvent.click(
-      within(screen.getByTestId("library-resource-external"))
-        .getByRole("button", { name: "Перейти к источнику" }),
-    );
-    await waitFor(() => expect(externalWindow.replace).toHaveBeenCalledWith(
-      "https://mchs.gov.ru/resource",
-    ));
+  it("passes stable assignment IDs to the ordinary dialog without navigating or signing first", async () => {
+    const external = resource({ libraryDocumentId: "external", title: "Официальный внешний ресурс", externalUrl: "https://mchs.gov.ru/resource" });
+    const internal = resource({ libraryDocumentId: "internal", title: "Внутренний файл", externalUrl: null, originalFilename: "material.pdf", storagePath: "library/org-csz/material.pdf" });
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<CourseLibraryReader courseId="course-178" organizationId="org-csz" previewData={{ modules, resources: [external, internal] }} />);
+    fireEvent.click(within(screen.getByTestId("library-resource-external")).getByRole("button", { name: "Перейти к источнику" }));
+    await waitFor(() => expect(fileDialog).toHaveBeenLastCalledWith(expect.objectContaining({ accessMode: "learner", reference: expect.objectContaining({ referenceId: external.assignmentId, courseId: "course-178", organizationId: "org-csz" }) })));
+    fireEvent.click(within(screen.getByTestId("library-resource-internal")).getByRole("button", { name: "Открыть материал" }));
+    await waitFor(() => expect(fileDialog).toHaveBeenLastCalledWith(expect.objectContaining({ reference: expect.objectContaining({ referenceId: internal.assignmentId, legacyUrl: null }), resolveLegacyUrl: expect.any(Function) })));
     expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
-    expect(externalWindow.value.opener).toBeNull();
+    expect(open).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(
-      within(screen.getByTestId("library-resource-internal"))
-        .getByRole("button", { name: "Открыть материал" }),
-    );
-    await waitFor(() => expect(apiMocks.createLibrarySignedUrl).toHaveBeenCalledWith(
-      "library/org-csz/material.pdf",
-    ));
-    expect(internalWindow.replace).toHaveBeenCalledWith(
-      "https://signed.example.test/material.pdf",
-    );
-    expect(internalWindow.value.opener).toBeNull();
-    expect(open).toHaveBeenNthCalledWith(1, "about:blank", "_blank");
-    expect(open).toHaveBeenNthCalledWith(2, "about:blank", "_blank");
+  it("shows frozen target metadata without inventing source status or signing a source-library path", async () => {
+    const frozen = resource({ assignmentId: "frozen-target-reference", libraryDocumentId: null, title: "Сохранённый материал", status: null, sourceName: null, editionLabel: null, lastCheckedAt: null, usageBasis: null, externalUrl: null, storagePath: null });
+    render(<CourseLibraryReader courseId="course-178" organizationId="org-csz" previewData={{ modules: [], resources: [frozen] }} />);
+    fireEvent.click(within(screen.getByTestId("library-resource-frozen-target-reference")).getByRole("button", { name: "Открыть материал" }));
+    await waitFor(() => expect(fileDialog).toHaveBeenLastCalledWith(expect.objectContaining({ reference: expect.objectContaining({ referenceId: frozen.assignmentId, legacyUrl: null }) })));
+    expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
+    expect(screen.getByText("не указан")).toBeInTheDocument();
+  });
+
+  it("uses only validated server organization discovery for a library-only shell whose course row is hidden", async () => {
+    modeDiscovery.organizationId = "server-authorized-library-org";
+    const frozen = resource({ assignmentId: "draft-library-target", libraryDocumentId: null, title: "Материал библиотеки", status: null, externalUrl: null, storagePath: null });
+    render(<CourseLibraryReader courseId="course-178" previewData={{ modules: [], resources: [frozen] }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    await waitFor(() => expect(fileDialog).toHaveBeenLastCalledWith(expect.objectContaining({ reference: expect.objectContaining({ organizationId: "server-authorized-library-org", referenceId: frozen.assignmentId }) })));
+    expect(apiMocks.fetchCourseFileOrganization).not.toHaveBeenCalled();
+    expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
   });
 
   it("displays an absent source without broadening the active-only learner filter", () => {
@@ -452,27 +473,15 @@ describe("CourseLibrary learner UI flows", () => {
     expect(screen.queryByText("Материал модуля А")).not.toBeInTheDocument();
   });
 
-  it("closes the pending tab and shows a clear error when a signed URL cannot be created", async () => {
-    const internal = resource({
-      libraryDocumentId: "unavailable-signed-url",
-      title: "Временно недоступный внутренний файл",
-      externalUrl: null,
-      storagePath: "library/org-csz/unavailable.pdf",
-    });
-    apiMocks.createLibrarySignedUrl.mockRejectedValue(new Error("Ресурс временно недоступен"));
-    const pendingWindow = fakePendingWindow();
-    vi.spyOn(window, "open").mockReturnValue(pendingWindow.value);
-
-    render(
-      <CourseLibraryReader
-        courseId="course-178"
-        previewData={{ modules: [], resources: [internal] }}
-      />,
-    );
-
+  it("holds a missing organization without opening a tab or minting a signed URL", async () => {
+    const internal = resource({ libraryDocumentId: "unavailable-signed-url", title: "Временно недоступный внутренний файл", externalUrl: null, storagePath: "library/org-csz/unavailable.pdf" });
+    apiMocks.fetchCourseFileOrganization.mockResolvedValue(null);
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<CourseLibraryReader courseId="course-178" previewData={{ modules: [], resources: [internal] }} />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
-    await waitFor(() => expect(pendingWindow.close).toHaveBeenCalledTimes(1));
-    expect(toastMocks.error).toHaveBeenCalledWith("Ресурс временно недоступен");
-    expect(pendingWindow.replace).not.toHaveBeenCalled();
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith("Материал недоступен в текущем кабинете"));
+    expect(fileDialog).not.toHaveBeenCalled();
+    expect(apiMocks.createLibrarySignedUrl).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
   });
 });

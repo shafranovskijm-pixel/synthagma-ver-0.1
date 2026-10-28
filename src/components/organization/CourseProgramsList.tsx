@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BookOpen, ShoppingCart, Check, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { ProgramFactsPanel } from "./programs/ProgramFactsPanel";
+import { useAuth } from "@/hooks/useAuth";
 interface CourseProgramsListProps {
   organizationId: string | null;
   canConfigure?: boolean;
@@ -18,52 +19,74 @@ interface CourseWithProgram {
   title: string;
   is_published: boolean;
   has_program: boolean;
+  program: { id: string; name: string; file_url: string | null; allow_download: boolean } | null;
   order_pending: boolean;
 }
 
 export function CourseProgramsList({ organizationId, canConfigure = false }: CourseProgramsListProps) {
+  const { user } = useAuth();
+  const actorId = user?.id ?? null;
+  const scopeRef = useRef({ organizationId, actorId });
+  if (scopeRef.current.organizationId !== organizationId || scopeRef.current.actorId !== actorId) {
+    scopeRef.current = { organizationId, actorId };
+  }
+  const scope = scopeRef.current;
+  const mounted = useRef(false);
+  const loadEpoch = useRef(0);
   const [courses, setCourses] = useState<CourseWithProgram[]>([]);
+  const [loadedScope, setLoadedScope] = useState<typeof scope | null>(null);
+  const visibleCourses = loadedScope === scope ? courses : [];
   const [loading, setLoading] = useState(true);
-  const [ordering, setOrdering] = useState<string | null>(null);
+  const [ordering, setOrdering] = useState<{ scope: typeof scope; id: string } | null>(null);
+  const currentOrdering = ordering?.scope === scope ? ordering.id : null;
 
   useEffect(() => {
-    if (!organizationId) return;
-    fetchCourses();
-  }, [organizationId]);
+    mounted.current = true;
+    if (organizationId && actorId) void fetchCourses();
+    else { setCourses([]); setLoadedScope(scope); setLoading(false); }
+    return () => { mounted.current = false; loadEpoch.current += 1; };
+  }, [scope]);
 
   const fetchCourses = async () => {
-    if (!organizationId) return;
+    if (!organizationId || !actorId || !mounted.current || scopeRef.current !== scope) return;
+    const epoch = ++loadEpoch.current;
+    const current = () => mounted.current && scopeRef.current === scope && epoch === loadEpoch.current;
     setLoading(true);
+    try {
 
     // Fetch courses
-    const { data: coursesData } = await supabase
+    const { data: coursesData, error: coursesError } = await supabase
       .from("courses")
       .select("id, title, is_published")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false });
 
     // Fetch existing program orders
-    const { data: orders } = await supabase
+    if (coursesError) throw coursesError;
+    const { data: orders, error: ordersError } = await supabase
       .from("service_orders")
       .select("notes, status")
       .eq("organization_id", organizationId)
       .eq("service_id", "program");
 
     // Fetch course_documents of type "program"
+    if (ordersError) throw ordersError;
     const courseIds = (coursesData || []).map(c => c.id);
-    const { data: docs } = courseIds.length > 0
+    const { data: docs, error: docsError } = courseIds.length > 0
       ? await supabase
           .from("course_documents")
-          .select("course_id, file_url")
+          .select("id, course_id, name, file_url, allow_download")
           .in("course_id", courseIds)
           .eq("type", "program")
-      : { data: [] };
+          .order("created_at", { ascending: false })
+      : { data: [], error: null };
 
-    const docsSet = new Set(
-      (docs || [])
-        .filter(d => typeof d.file_url === "string" && d.file_url.trim().length > 0)
-        .map(d => d.course_id)
-    );
+    if (docsError) throw docsError;
+    if (!current()) return;
+    // Presence is document metadata, not proof of available bytes or approval.
+    // Frozen files deliberately have no live URL; opening remains in the document manager.
+    const docsByCourse = new Map<string, NonNullable<typeof docs>[number]>();
+    for (const doc of docs || []) if (!docsByCourse.has(doc.course_id)) docsByCourse.set(doc.course_id, doc);
     const pendingOrders = new Set(
       (orders || [])
         .filter(o => o.status === "pending" || o.status === "in_progress")
@@ -73,16 +96,22 @@ export function CourseProgramsList({ organizationId, canConfigure = false }: Cou
     setCourses(
       (coursesData || []).map(c => ({
         ...c,
-        has_program: docsSet.has(c.id),
+        has_program: docsByCourse.has(c.id),
+        program: docsByCourse.get(c.id) ?? null,
         order_pending: pendingOrders.has(c.title),
       }))
     );
-    setLoading(false);
+    setLoadedScope(scope);
+    } catch (error) {
+      if (!current()) return;
+      setCourses([]); setLoadedScope(scope);
+      toast.error(getErrorMessage(error));
+    } finally { if (current()) setLoading(false); }
   };
 
   const handleOrderProgram = async (course: CourseWithProgram) => {
-    if (!organizationId) return;
-    setOrdering(course.id);
+    if (!organizationId || !actorId || !mounted.current || scopeRef.current !== scope || !visibleCourses.includes(course)) return;
+    setOrdering({ scope, id: course.id });
 
     try {
       // Create service order
@@ -112,16 +141,17 @@ export function CourseProgramsList({ organizationId, canConfigure = false }: Cou
         },
       });
 
+      if (!mounted.current || scopeRef.current !== scope) return;
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для уточнения деталей" });
       fetchCourses();
     } catch (e) {
-      toast.error(getErrorMessage(e));
+      if (mounted.current && scopeRef.current === scope) toast.error(getErrorMessage(e));
     } finally {
-      setOrdering(null);
+      if (mounted.current && scopeRef.current === scope) setOrdering(null);
     }
   };
 
-  if (loading) {
+  if (loading || loadedScope !== scope) {
     return (
       <div className="flex items-center justify-center py-12">
         <SigmaSpinner />
@@ -143,9 +173,9 @@ export function CourseProgramsList({ organizationId, canConfigure = false }: Cou
         </CardContent>
       </Card>
 
-      {organizationId && <ProgramFactsPanel organizationId={organizationId} canConfigure={canConfigure} courses={courses.map(c => ({ id: c.id, title: c.title }))} />}
+      {organizationId && <ProgramFactsPanel organizationId={organizationId} canConfigure={canConfigure} courses={visibleCourses.map(c => ({ id: c.id, title: c.title }))} />}
 
-      {courses.length === 0 ? (
+      {visibleCourses.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -155,7 +185,7 @@ export function CourseProgramsList({ organizationId, canConfigure = false }: Cou
         </Card>
       ) : (
         <div className="space-y-2">
-          {courses.map(course => (
+          {visibleCourses.map(course => (
             <Card key={course.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="flex items-center justify-between py-3 px-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -166,7 +196,7 @@ export function CourseProgramsList({ organizationId, canConfigure = false }: Cou
                       {course.has_program ? (
                         <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">
                           <Check className="w-3 h-3 mr-1" />
-                          Файл программы добавлен
+                          Документ программы добавлен
                         </Badge>
                       ) : course.order_pending ? (
                         <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
@@ -186,10 +216,10 @@ export function CourseProgramsList({ organizationId, canConfigure = false }: Cou
                     size="sm"
                     variant="outline"
                     onClick={() => handleOrderProgram(course)}
-                    disabled={ordering === course.id}
+                    disabled={currentOrdering === course.id}
                     className="shrink-0 ml-3"
                   >
-                    {ordering === course.id ? (
+                    {currentOrdering === course.id ? (
                       <SigmaSpinner size="sm" className="mr-1.5" />
                     ) : (
                       <ShoppingCart className="w-4 h-4 mr-1.5" />

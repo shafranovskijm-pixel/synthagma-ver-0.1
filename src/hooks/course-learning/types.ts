@@ -27,6 +27,7 @@ export interface Course {
   duration: string | null;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
+  allow_materials_download?: boolean | null;
   skip_video_identification?: boolean | null;
   require_final_test_photo?: boolean;
   landing_content?: unknown;
@@ -54,3 +55,13 @@ export const getOptionText = (option: unknown): string => {
   }
   return String(option);
 };
+
+/** Stable target assignment metadata; a locator is never delivery authority. */
+export interface CourseMaterialFile {
+  id: string; course_id: string; organization_id: string | null;
+  lesson_id: string | null; module_id: string | null;
+  reference_kind: "course_document" | "lesson_attachment";
+  name: string; file_url: string | null; file_type: string | null; file_size: number | null;
+  category: string; visible_to_students: boolean; allow_download: boolean;
+  library_document_id?: string | null; library_category?: string | null;
+}

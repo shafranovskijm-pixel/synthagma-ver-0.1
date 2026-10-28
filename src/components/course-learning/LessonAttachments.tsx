@@ -1,17 +1,11 @@
 import { FileText, FileSpreadsheet, Presentation, File, Eye } from "lucide-react";
 
-interface Attachment {
-  id: string;
-  name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  category: string;
-}
+import type { CourseMaterialFile as Attachment } from "@/hooks/course-learning/types";
+import type { CourseFilePreviewReference } from "@/lib/courseFileConsumer";
 
 interface LessonAttachmentsProps {
   attachments: Attachment[];
-  onPreview: (file: { url: string; name: string; type: string | null }) => void;
+  onPreview: (reference: CourseFilePreviewReference, allowDownload: boolean) => void;
 }
 
 function getIcon(ft: string | null) {
@@ -48,7 +42,7 @@ function FileGrid({ files, onPreview }: { files: Attachment[]; onPreview: Lesson
         const Icon = getIcon(att.file_type);
         const color = getColor(att.file_type);
         return (
-          <button key={att.id} onClick={() => onPreview({ url: att.file_url, name: att.name, type: att.file_type })}
+          <button key={att.id} onClick={() => onPreview({ courseId: att.course_id, organizationId: att.organization_id ?? "", referenceKind: att.reference_kind, referenceId: att.id, name: att.name, fileType: att.file_type, legacyUrl: att.file_url, versionKey: JSON.stringify([att.module_id, att.lesson_id, att.visible_to_students, att.allow_download]) }, att.allow_download === true)}
             className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
               <Icon className="w-5 h-5" />

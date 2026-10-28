@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'synthetic-user' } }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: mocks.from } }));
 vi.mock('@/components/course-learning/FilePreviewDialog', () => ({ FilePreviewDialog: () => null }));
+vi.mock('@/hooks/useCourseFileDeliveryMode', () => ({ useCourseFileDeliveryMode: () => ({ view: { state: 'held' }, refresh: vi.fn() }) }));
 
 // Real preview hook, query cache and view; only the database is replaced.
 class Query {

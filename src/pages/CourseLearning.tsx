@@ -28,6 +28,8 @@ import { useCourseLearning, getOptionText } from "@/hooks/useCourseLearning";
 import { OfflineBanner } from "@/components/student/OfflineBanner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
+import { isLegacyCourseMediaAllowed, isEmbeddedCourseMedia, type CourseFilePreviewReference } from "@/lib/courseFileConsumer";
+import { CourseTextWithoutResources, CourseFileHeldNotice } from "@/components/course-learning/CourseTextWithoutResources";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
@@ -67,11 +69,25 @@ const CourseLearning = () => {
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest, retryCourseCompletion,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
-    isOfflineMode, offlineCachedAt, isAdminView } = useCourseLearning();
+    isOfflineMode, offlineCachedAt, isAdminView, courseDocuments = [], materialsError = false, courseFileDeliveryMode, fileEffectiveUserId, fileViewGeneration, fileOrganizationId } = useCourseLearning();
 
   const homeworkContext = resolveHomeworkContext(courseId, course, currentLesson, user?.id, isAdminView);
 
-  const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
+  const currentFileOrganizationId = fileOrganizationId ?? course?.organization_id ?? null;
+  const fileViewKey = JSON.stringify([user?.id, fileEffectiveUserId, course?.id, currentFileOrganizationId, isAdminView, fileViewGeneration, isOfflineMode]);
+  const fileViewRef = useRef({ key: fileViewKey });
+  if (fileViewRef.current.key !== fileViewKey) fileViewRef.current = { key: fileViewKey };
+  const fileView = fileViewRef.current;
+  const [selectedFile, setSelectedFile] = useReactState<{ view: typeof fileView; reference: CourseFilePreviewReference; allowDownload: boolean } | null>(null);
+  const previewFile = selectedFile?.view === fileView && selectedFile.reference.courseId === course?.id
+    && selectedFile.reference.organizationId === currentFileOrganizationId ? selectedFile : null;
+  const openMaterial = (reference: CourseFilePreviewReference, allowDownload: boolean) => {
+    if (fileViewRef.current !== fileView || reference.courseId !== course?.id || reference.organizationId !== currentFileOrganizationId || isOfflineMode) return;
+    setSelectedFile({ view: fileView, reference, allowDownload });
+  };
+  const legacyEmbeddedMediaAllowed = !isOfflineMode && isLegacyCourseMediaAllowed(courseFileDeliveryMode);
+  const testMediaHeld = !legacyEmbeddedMediaAllowed && testQuestions.some(question => !!question.image_url);
+  const lessonMediaHeld = !legacyEmbeddedMediaAllowed && isEmbeddedCourseMedia(currentLesson?.type, currentLesson?.content);
   const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
@@ -142,10 +158,10 @@ const CourseLearning = () => {
   useEffect(() => { setHasNativeVideoTracking(false); }, [currentLesson?.id]);
 
   useEffect(() => {
-    if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
+    if (legacyEmbeddedMediaAllowed && currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
       markLessonComplete(false);
     }
-  }, [currentLesson?.id]);
+  }, [currentLesson?.id, legacyEmbeddedMediaAllowed]);
   
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile && !isTestActive && !libraryOpen ? handleSwipeLeft : undefined,
@@ -256,7 +272,7 @@ const CourseLearning = () => {
             onCopy={(course as any)?.landing_content?.copy_protection ? (e: React.ClipboardEvent) => e.preventDefault() : undefined}
           >
             {libraryOpen && courseId ? (
-              <CourseLibraryReader courseId={courseId} />
+              <CourseLibraryReader courseId={courseId} organizationId={currentFileOrganizationId} effectiveUserId={fileEffectiveUserId ?? null} />
             ) : (
               <>
             {/* Text lesson */}
@@ -266,7 +282,7 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-primary/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><FileText className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-primary")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p></div>
                 </div>
-                {(() => { const blocks = currentLesson.content ? (() => { try { const p = JSON.parse(currentLesson.content); return Array.isArray(p) && p.every((x: any) => x.type && x.id) ? p : []; } catch { return []; } })() : []; return blocks.length > 0 ? <BlockRenderer blocks={blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sanitizeCourseHtml(currentLesson.content?.replace(/\n/g, '<br/>')) }} /></div>; })()}
+                {!legacyEmbeddedMediaAllowed ? <CourseTextWithoutResources content={currentLesson.content} /> : (() => { const blocks = currentLesson.content ? (() => { try { const p = JSON.parse(currentLesson.content); return Array.isArray(p) && p.every((x: any) => x.type && x.id) ? p : []; } catch { return []; } })() : []; return blocks.length > 0 ? <BlockRenderer blocks={blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sanitizeCourseHtml(currentLesson.content?.replace(/\n/g, '<br/>')) }} /></div>; })()}
               </div>
             )}
 
@@ -278,7 +294,7 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p></div>
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg relative">
-                  {isVideoProgressLoading ? <div className="flex items-center justify-center"><SigmaSpinner size="lg" /></div> : currentLesson.content ? (
+                  {!legacyEmbeddedMediaAllowed ? <CourseFileHeldNotice /> : isVideoProgressLoading ? <div className="flex items-center justify-center"><SigmaSpinner size="lg" /></div> : currentLesson.content ? (
                     <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} onPlayerTypeDetected={(t) => setHasNativeVideoTracking(t === 'native')} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                   {(course as any)?.landing_content?.video_watermark && user?.email && (
@@ -292,7 +308,7 @@ const CourseLearning = () => {
 
             {/* Slider lesson */}
             {currentLesson?.type === 'slider' && (
-              <SliderLessonViewer content={currentLesson.content ?? null} title={currentLesson.title} lessonIndex={currentLessonIndex} isMobile={!!isMobile} />
+              <>{legacyEmbeddedMediaAllowed ? <SliderLessonViewer content={currentLesson.content ?? null} title={currentLesson.title} lessonIndex={currentLessonIndex} isMobile={!!isMobile} /> : <CourseFileHeldNotice />}</>
             )}
 
             {/* Audio lesson */}
@@ -303,7 +319,7 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Аудиолекция {currentLessonIndex + 1}</p></div>
                 </div>
                 <div className={cn("bg-card rounded-2xl border border-border", isMobile ? "p-4" : "p-6")}>
-                  {currentLesson.content && currentLesson.content.startsWith('http') ? (
+                  {!legacyEmbeddedMediaAllowed ? <CourseFileHeldNotice /> : currentLesson.content && currentLesson.content.startsWith('http') ? (
                     <audio controls preload="auto" className="w-full"><source src={proxiedAssetUrl(currentLesson.content)} type="audio/mpeg" />Ваш браузер не поддерживает аудио.</audio>
                   ) : <div className="text-center text-muted-foreground py-8"><Headphones className={cn(isMobile ? "w-12 h-12" : "w-16 h-16", "mx-auto mb-4 opacity-50")} /><p>Аудио не загружено</p></div>}
                 </div>
@@ -361,7 +377,7 @@ const CourseLearning = () => {
 
             {/* AI Avatar lesson */}
             {currentLesson?.type === 'ai_avatar' && (
-              Capacitor.isNativePlatform()
+              !legacyEmbeddedMediaAllowed ? <CourseFileHeldNotice /> : Capacitor.isNativePlatform()
                 ? <NativeWebMaterial label="Занятие с ИИ-преподавателем" />
                 : <LessonAIAvatar lesson={currentLesson as any} onComplete={() => markLessonComplete(false)} isMobile={!!isMobile} />
             )}
@@ -421,7 +437,7 @@ const CourseLearning = () => {
                               {q.question}
                             </h3>
                             {keyNotice && <p className="text-sm text-muted-foreground">{keyNotice}</p>}
-                            {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-48 rounded-lg border border-border object-contain" />}
+                            {(q as any).image_url && (legacyEmbeddedMediaAllowed ? <img src={(q as any).image_url} alt="Вопрос" className="max-h-48 rounded-lg border border-border object-contain" /> : <CourseFileHeldNotice />)}
                             <div className="space-y-2">
                               {options.map((opt: any, oi: number) => {
                                 const isCorrectOption = hasValidKey && oi === correctAnswer;
@@ -455,9 +471,9 @@ const CourseLearning = () => {
                 {!testQuestionsLoading && !testSubmitted && testQuestions.map((q, i) => (
                   <div key={q.id} className="bg-card rounded-2xl p-6 border border-border shadow-sm">
                     <h3 className="font-semibold mb-4 flex items-center gap-2"><span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">{i + 1}</span>{q.question}</h3>
-                    {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-64 rounded-lg border border-border object-contain mb-4" />}
+                    {(q as any).image_url && (legacyEmbeddedMediaAllowed ? <img src={(q as any).image_url} alt="Вопрос" className="max-h-64 rounded-lg border border-border object-contain mb-4" /> : <CourseFileHeldNotice />)}
                     <div className="space-y-2">{(Array.isArray(q.options) ? q.options : []).map((opt: any, oi: number) => (
-                      <div key={oi} onClick={() => setAnswers(p => ({ ...p, [q.id]: oi }))} className={cn("flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all", answers[q.id] === oi ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:bg-muted")}>
+                      <div key={oi} onClick={() => { if (!testMediaHeld) setAnswers(p => ({ ...p, [q.id]: oi })); }} className={cn("flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all", answers[q.id] === oi ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:bg-muted")}>
                         <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center shrink-0", answers[q.id] === oi ? "border-primary bg-primary" : "border-muted-foreground")}>{answers[q.id] === oi && <div className="w-2 h-2 rounded-full bg-white" />}</div>
                         <span className="text-sm">{opt.text || opt}</span>
                       </div>
@@ -467,9 +483,13 @@ const CourseLearning = () => {
               </div>
             )}
 
+            {/* Course file assignments retain their target IDs; the live gateway checks availability. */}
+            {courseDocuments.length > 0 && <LessonAttachments attachments={courseDocuments} onPreview={openMaterial} />}
+            {materialsError && <p role="status" className="text-sm text-muted-foreground">Не удалось подтвердить список файлов. Подключитесь к Интернету и обновите страницу.</p>}
+            {testMediaHeld && <CourseFileHeldNotice />}
             {/* Attachments */}
             {currentLesson && lessonAttachments[currentLesson.id] && lessonAttachments[currentLesson.id].length > 0 && (
-              <LessonAttachments attachments={lessonAttachments[currentLesson.id]} onPreview={setPreviewFile} />
+              <LessonAttachments attachments={lessonAttachments[currentLesson.id]} onPreview={openMaterial} />
             )}
               </>
             )}
@@ -495,13 +515,15 @@ const CourseLearning = () => {
         {!libraryOpen && <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
-            {currentLesson?.type === 'test' && !!testAttemptId && !testSubmitted && <Button onClick={submitTest} disabled={testSubmitting || testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testSubmitting ? "Отправка…" : testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
+            {currentLesson?.type === 'test' && !!testAttemptId && !testSubmitted && <Button onClick={submitTest} disabled={testMediaHeld || testSubmitting || testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testSubmitting ? "Отправка…" : testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
             {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (() => {
               const VIDEO_FINISH_THRESHOLD = 85; // допускаем 85% — на мобильных последние ~10% часто пропускаются
               const gated = currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < VIDEO_FINISH_THRESHOLD;
               return (
                 <Button
+                  disabled={lessonMediaHeld}
                   onClick={() => {
+                    if (lessonMediaHeld) return;
                     if (gated) {
                       import("sonner").then(({ toast }) => toast.info(`Просмотрите минимум ${VIDEO_FINISH_THRESHOLD}% видео (сейчас ${Math.floor(videoWatchProgress)}%)`));
                       return;
@@ -536,7 +558,7 @@ const CourseLearning = () => {
       {isChatOpen && <AiChatPanel isMobile={!!isMobile} chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} isChatLoading={isChatLoading} chatScrollRef={chatScrollRef} sendChatMessage={sendChatMessage} onClose={() => setIsChatOpen(false)} />}
 
       <TTSSettingsDialog open={ttsSettingsOpen} onOpenChange={setTtsSettingsOpen} settings={ttsSettings} onSettingsChange={setTtsSettings} />
-      {previewFile && <FilePreviewDialog open={!!previewFile} onOpenChange={(o) => { if (!o) setPreviewFile(null); }} fileUrl={previewFile.url} fileName={previewFile.name} fileType={previewFile.type} allowDownload={(course as any)?.allow_materials_download !== false} />}
+      {previewFile && <FilePreviewDialog open onOpenChange={(open) => { if (!open && fileViewRef.current === fileView) setSelectedFile(null); }} reference={previewFile.reference} accessMode={isAdminView ? "staff_preview" : "learner"} effectiveUserId={fileEffectiveUserId ?? null} allowDownload={!isOfflineMode && course?.allow_materials_download === true && previewFile.allowDownload === true} />}
     </div>
   );
 };

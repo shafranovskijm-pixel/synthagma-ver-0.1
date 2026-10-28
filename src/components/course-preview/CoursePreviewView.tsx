@@ -9,6 +9,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { HomeworkTaskDescription } from "@/components/course-learning/HomeworkTaskDescription";
 import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
+import { safeCourseInlineHtml } from "@/lib/courseFileConsumer";
 import { ContentBlock, BlockRenderer, parseLessonContent } from "@/components/course-builder/block-editor";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,29 @@ import {
 } from "lucide-react";
 
 // ---- Helpers ----
+// Text remains readable while unbound embedded resources stay out of the DOM.
+// Do not send this branch through BlockRenderer, which intentionally linkifies legacy text.
+function HeldLessonText({ blocks }: { blocks: ContentBlock[] }) {
+  return <div className="space-y-4">{blocks.map(block => {
+    if (["image", "video", "audio", "slider", "document", "embed", "button"].includes(block.type)) {
+      return <div key={block.id} role="status" className="rounded-xl border border-border p-4 text-sm text-muted-foreground">
+        {block.documentName || block.imageAlt || "Встроенный материал"}: точная редакция пока недоступна.
+      </div>;
+    }
+    if (block.type === "divider") return <hr key={block.id} className="border-border my-2" />;
+    if (block.type === "table") return <table key={block.id}><tbody>{(block.tableRows ?? []).map((row, i) => <tr key={i}>
+      {row.map((cell, j) => block.tableHasHeader && i === 0
+        ? <th key={j} dangerouslySetInnerHTML={{ __html: safeCourseInlineHtml(cell) }} />
+        : <td key={j} dangerouslySetInnerHTML={{ __html: safeCourseInlineHtml(cell) }} />)}
+    </tr>)}</tbody></table>;
+    return <div key={block.id}>
+      {(block.accordionTitle || block.calloutTitle || block.quizQuestion) && <p className="font-semibold">{block.accordionTitle || block.calloutTitle || block.quizQuestion}</p>}
+      <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: safeCourseInlineHtml(block.content) }} />
+      {block.quizOptions?.map((option, i) => <p key={i}>{option.text}</p>)}
+    </div>;
+  })}</div>;
+}
+
 const parseContentToBlocks = (content: string): ContentBlock[] => parseLessonContent(content);
 
 // Video preview now uses the shared VideoPreviewInline (supports MPEG-TS / HLS via hls.js)
@@ -149,7 +173,8 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
     course, lessons, currentLesson, currentLessonIndex, loading, isTransitioning,
     lessonContentLoading, lessonContentError, reloadLessonContent, homeworkTaskScope, homeworkTaskProof,
     testQuestions, selectedAnswers, setSelectedAnswers, lessonAttachments, courseDocuments,
-    showDocumentsView, previewFile, setPreviewFile, contentRef, fromStore,
+    showDocumentsView, previewFile, closePreviewFile, openCourseDocument, openLessonAttachment,
+    legacyEmbeddedMediaAllowed, contentRef, fromStore,
     goToNextLesson, goToPrevLesson, goToLesson, goToDocumentsView,
     navigateBack, navigateToEditor, fetchTestQuestions,
   } = h;
@@ -244,7 +269,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
                   <div><h2 className="font-display font-bold text-xl">Материалы курса</h2><p className="text-sm text-muted-foreground">{courseDocuments.length} {courseDocuments.length === 1 ? 'документ' : courseDocuments.length < 5 ? 'документа' : 'документов'}</p></div>
                 </div>
                 <div className="space-y-4">
-                  {courseDocuments.map((doc: any) => {
+                  {courseDocuments.map(doc => {
                     const ext = doc.type?.toLowerCase() || doc.name?.split('.').pop()?.toLowerCase() || '';
                     const isVideo = ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext);
                     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
@@ -258,13 +283,10 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
                           <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${docColor}`}><DocIcon className="w-5 h-5" /></div>
                           <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{doc.name}</p><p className="text-xs text-muted-foreground">{isVideo ? 'Видео' : isImage ? 'Изображение' : isAudio ? 'Аудио' : ext?.toUpperCase() || 'Файл'}</p></div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {allowDownload && doc.file_url && <a href={doc.file_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8"><Download className="w-4 h-4" /></Button></a>}
-                            {!isVideo && !isImage && !isAudio && doc.file_url && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPreviewFile({ url: doc.file_url, name: doc.name, type: ext || null })}><Eye className="w-4 h-4" /></Button>}
+                            {allowDownload && doc.allow_download !== false && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Скачать: ${doc.name}`} onClick={() => openCourseDocument(doc, "download")}><Download className="w-4 h-4" /></Button>}
+                            {<Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Просмотр: ${doc.name}`} onClick={() => openCourseDocument(doc)}><Eye className="w-4 h-4" /></Button>}
                           </div>
                         </div>
-                        {isVideo && doc.file_url && <div className="px-4 pb-4"><video controls controlsList={allowDownload ? undefined : "nodownload"} className="w-full rounded-lg bg-black" preload="metadata"><source src={doc.file_url} />Ваш браузер не поддерживает видео.</video></div>}
-                        {isImage && doc.file_url && <div className="px-4 pb-4"><img src={doc.file_url} alt={doc.name} className="w-full rounded-lg max-h-[600px] object-contain bg-secondary/20" /></div>}
-                        {isAudio && doc.file_url && <div className="px-4 pb-4"><audio controls controlsList={allowDownload ? undefined : "nodownload"} className="w-full" preload="metadata"><source src={doc.file_url} />Ваш браузер не поддерживает аудио.</audio></div>}
                       </div>
                     );
                   })}
@@ -287,7 +309,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
 
             {lessonContentReady && (currentLesson?.type === 'text' || currentLesson?.type === 'lesson') && (
               <div className="prose prose-lg dark:prose-invert max-w-none">
-                {contentBlocks.length > 0 ? <BlockRenderer blocks={contentBlocks} /> : <div className="text-center py-12 text-muted-foreground"><FileText className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Контент урока пуст</p><p className="text-sm">Добавьте содержимое в редакторе</p></div>}
+                {contentBlocks.length > 0 ? (legacyEmbeddedMediaAllowed ? <BlockRenderer blocks={contentBlocks} /> : <HeldLessonText blocks={contentBlocks} />) : <div className="text-center py-12 text-muted-foreground"><FileText className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Контент урока пуст</p><p className="text-sm">Добавьте содержимое в редакторе</p></div>}
               </div>
             )}
 
@@ -305,13 +327,13 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               </section>
             )}
 
-            {lessonContentReady && currentLesson?.type === 'video' && (
+            {lessonContentReady && currentLesson?.type === 'video' && legacyEmbeddedMediaAllowed && (
               <div className="space-y-6">
                 {currentLesson.content ? <VideoPreview content={currentLesson.content} /> : <div className="aspect-video rounded-2xl border-2 border-dashed border-border flex items-center justify-center"><div className="text-center text-muted-foreground"><Video className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Видео не добавлено</p></div></div>}
               </div>
             )}
 
-            {lessonContentReady && currentLesson?.type === 'audio' && (
+            {lessonContentReady && currentLesson?.type === 'audio' && legacyEmbeddedMediaAllowed && (
               <div className="space-y-6">
                 {currentLesson.content && currentLesson.content.startsWith('http') ? (
                   <div className="bg-card rounded-2xl border border-border p-6">
@@ -322,8 +344,11 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               </div>
             )}
 
+            {lessonContentReady && currentLesson && ["video", "audio", "slider"].includes(currentLesson.type) && !legacyEmbeddedMediaAllowed && (
+              <div role="status" className="rounded-2xl border border-border p-6 text-sm text-muted-foreground">Точная редакция встроенного материала пока недоступна. Обратитесь в учебный центр.</div>
+            )}
             {lessonContentReady && currentLesson?.type === 'image' && <div className="space-y-6"><div className="rounded-2xl border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[300px]"><div className="text-center text-muted-foreground"><Image className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Изображение не добавлено</p></div></div></div>}
-            {lessonContentReady && currentLesson?.type === 'slider' && <SliderPreview content={currentLesson.content} title={currentLesson.title} allowDownload={course?.allow_materials_download !== false} />}
+            {lessonContentReady && currentLesson?.type === 'slider' && legacyEmbeddedMediaAllowed && <SliderPreview content={currentLesson.content} title={currentLesson.title} allowDownload={course?.allow_materials_download !== false} />}
 
             {lessonContentReady && currentLesson?.type === 'feedback' && (
               <div className="space-y-6">
@@ -351,7 +376,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
                       return (
                         <div key={question.id} className="bg-card rounded-2xl border border-border p-6">
                           <div className="flex items-start gap-4 mb-4"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><span className="text-sm font-bold text-primary">{qIndex + 1}</span></div><h4 className="font-medium text-lg">{question.question}</h4></div>
-                          {question.image_url && <img src={question.image_url} alt="Изображение к вопросу" className="rounded-lg max-h-64 object-contain border border-border mt-2 mb-4 ml-12" />}
+                          {legacyEmbeddedMediaAllowed && question.image_url && <img src={question.image_url} alt="Изображение к вопросу" className="rounded-lg max-h-64 object-contain border border-border mt-2 mb-4 ml-12" />}
                           <div className="space-y-3 ml-12">
                             {options.map((option: unknown, oIndex: number) => {
                               const optionText = typeof option === 'object' && option !== null && 'text' in option ? (option as { text: string }).text : String(option);
@@ -375,15 +400,15 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
 
             {currentLesson && lessonAttachments[currentLesson.id] && lessonAttachments[currentLesson.id].length > 0 && (() => {
               const atts = lessonAttachments[currentLesson.id];
-              const lectures = atts.filter((a: any) => a.category === 'lecture');
-              const materials = atts.filter((a: any) => a.category === 'material');
+              const lectures = atts.filter(a => a.category === 'lecture');
+              const materials = atts.filter(a => a.category === 'material');
               const renderFiles = (files: typeof atts) => (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {files.map((att: any) => {
+                  {files.map(att => {
                     const Icon = getFileIcon(att.file_type);
                     const color = getFileColor(att.file_type);
                     return (
-                      <button key={att.id} onClick={() => setPreviewFile({ url: att.file_url, name: att.name, type: att.file_type })} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left">
+                      <button key={att.id} onClick={() => openLessonAttachment(att)} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}><Icon className="w-5 h-5" /></div>
                         <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{att.name}</p><p className="text-xs text-muted-foreground">{att.file_type?.toUpperCase()} {att.file_size ? `• ${formatSize(att.file_size)}` : ''}</p></div>
                         <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
@@ -409,7 +434,8 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
           </div>
         </ScrollArea>
       </main>
-      {previewFile && <FilePreviewDialog open={!!previewFile} onOpenChange={open => !open && setPreviewFile(null)} fileUrl={previewFile.url} fileName={previewFile.name} fileType={previewFile.type} allowDownload={course?.allow_materials_download !== false} />}
+      {previewFile && <FilePreviewDialog open={true} onOpenChange={open => !open && closePreviewFile()} reference={previewFile.reference}
+        accessMode="staff_preview" allowDownload={previewFile.allowDownload} initialPurpose={previewFile.purpose} />}
     </div>
   );
 }

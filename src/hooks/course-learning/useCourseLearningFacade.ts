@@ -17,9 +17,10 @@ import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 import { COURSE_LESSON_ORDER_VERSION, orderCourseLessons } from "@/lib/courseLessonOrder";
 import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
+import { useCourseFileDeliveryMode } from "@/hooks/useCourseFileDeliveryMode";
 import { buildLessonCompletionIndex, isCourseLessonAccessible } from './lessonAccess';
 
-import type { Lesson, Course, LessonProgress } from "./types";
+import type { Lesson, Course, LessonProgress, CourseMaterialFile } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
 import { useLessonChat } from "./useLessonChat";
 import { useLessonTest } from "./useLessonTest";
@@ -62,12 +63,41 @@ export function useCourseLearning() {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lessonAttachments, setLessonAttachments] = useState<Record<string, { id: string; name: string; file_url: string; file_type: string | null; file_size: number | null; category: string }[]>>({});
+  const [lessonAttachments, setLessonAttachments] = useState<Record<string, CourseMaterialFile[]>>({});
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [offlineCachedAt, setOfflineCachedAt] = useState<number | undefined>(undefined);
+  const [courseDocuments, setCourseDocuments] = useState<CourseMaterialFile[]>([]);
+  const [materialsError, setMaterialsError] = useState(false);
+  const cacheCandidate = useRef<{ generation: number; actorId: string; actorRevision: number; effectiveUserId: string; course: Course; lessons: Lesson[]; progress: LessonProgress[]; attachments: Record<string, CourseMaterialFile[]>; documents: CourseMaterialFile[]; enrollmentId: string | null } | null>(null);
+  const { view: courseFileDeliveryMode } = useCourseFileDeliveryMode({
+    courseId: privateVisible ? course?.id : null,
+    organizationId: privateVisible ? course?.organization_id : null,
+    effectiveUserId: effectiveUserId ?? null,
+    accessMode: isAdminView ? "staff_preview" : "learner",
+  }, privateVisible && !isOfflineMode);
+
+  // A successful server classification, not a URL or a client copy flag, permits
+  // a new legacy offline snapshot. Frozen bytes and their locators are not cached.
+  useEffect(() => {
+    if (!privateVisible || isOfflineMode || !user || !effectiveUserId || !courseId) return;
+    const mode = isAdminView ? "preview" as const : "learner" as const;
+    const candidate = cacheCandidate.current;
+    if (courseFileDeliveryMode.state !== "legacy") {
+      forgetOfflineScope(user.id, effectiveUserId, mode, courseId);
+      return;
+    }
+    if (!candidate || candidate.generation !== identityRef.current.generation || candidate.actorId !== user.id
+      || candidate.effectiveUserId !== effectiveUserId || candidate.course.id !== courseId || !candidate.enrollmentId
+      || !isOfflineActorCurrent(candidate.actorId, candidate.actorRevision)) return;
+    const scope = rememberOfflineScope({ actorId: candidate.actorId, effectiveUserId, mode,
+      organizationId: candidate.course.organization_id ?? "" }, courseId, candidate.actorRevision);
+    if (scope) void cacheCourseData(scope, courseId, { ...candidate.course,
+      _lessonOrderVersion: COURSE_LESSON_ORDER_VERSION, _fileDeliveryMode: "legacy", _fileDeliveryAuthority: 1 },
+      candidate.lessons, candidate.progress, candidate.attachments, candidate.documents).catch(() => {});
+  }, [privateVisible, isOfflineMode, user?.id, effectiveUserId, courseId, isAdminView, courseFileDeliveryMode]);
 
   // Lazy-loaded lesson content (PERF: heavy slider lessons can hold 8-11 MB
   // base64 each → we don't fetch `content` in the initial lessons list and
@@ -399,7 +429,7 @@ export function useCourseLearning() {
 
   // Data fetching
   useEffect(() => {
-    setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({});
+    setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false);
     setLessonContents({}); setEnrollmentId(null); setCurrentLessonIndex(0);
     setIsOfflineMode(false); setOfflineCachedAt(undefined); setLoadedGeneration(-1); setSettledGeneration(-1);
     contentLoadingRef.current = new Set();
@@ -471,10 +501,15 @@ export function useCourseLearning() {
       const lookupUserId = effectiveUserId; // target student in admin view, otherwise current user
 
       if (requestedLibraryOnly) {
-        const shell = await fetchCourseLibraryShell(courseId || "");
+        const [shell, filePolicy] = await Promise.all([
+          fetchCourseLibraryShell(courseId || ""),
+          supabase.from('courses').select('organization_id, allow_materials_download').eq('id', courseId).maybeSingle(),
+        ]);
         if (!current()) return;
         setCourse({
           id: shell.courseId,
+          organization_id: filePolicy.error ? null : filePolicy.data?.organization_id ?? null,
+          allow_materials_download: !filePolicy.error && filePolicy.data?.allow_materials_download === true,
           title: shell.title,
           description: null,
           duration: null,
@@ -482,7 +517,7 @@ export function useCourseLearning() {
         });
         setLessons([]);
         setLessonProgress([]);
-        setLessonAttachments({});
+        setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false);
         setEnrollmentId(null);
         setIsOfflineMode(false);
         setLoadedGeneration(generation);
@@ -492,7 +527,7 @@ export function useCourseLearning() {
       const [courseResult, lessonsResult, enrollmentResult, modulesResult] = await Promise.all([
         supabase
           .from('courses')
-          .select('id, organization_id, title, description, duration, sequential_lessons, allow_video_seek, skip_video_identification, landing_content')
+          .select('id, organization_id, title, description, duration, sequential_lessons, allow_video_seek, skip_video_identification, allow_materials_download, landing_content')
           .eq('id', courseId)
           .single(),
         supabase
@@ -544,12 +579,12 @@ export function useCourseLearning() {
       const enrollment = enrollmentResult.data;
       if (enrollment && (enrollment.user_id !== lookupUserId || enrollment.course_id !== courseId)) {
         forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
-        setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null); setLoadedGeneration(-1);
+        setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false); setEnrollmentId(null); setLoadedGeneration(-1);
         toast.error('Доступ к курсу не подтверждён'); navigate('/student'); return;
       }
       if (!isAdminView && enrollment && !['active', 'completed'].includes(enrollment.status || '')) {
         forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
-        setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null); setLoadedGeneration(-1);
+        setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false); setEnrollmentId(null); setLoadedGeneration(-1);
         toast.error('Доступ к курсу не подтверждён'); navigate('/student'); return;
       }
       if (!enrollment) {
@@ -591,32 +626,39 @@ export function useCourseLearning() {
       }
 
       const courseLessonIds = lessonsData.map((l: Lesson) => l.id);
-      let progressData: LessonProgress[] = [];
-      const attMap: Record<string, typeof lessonAttachments[string]> = {};
-
-      if (courseLessonIds.length > 0 && lookupUserId) {
-        const [progressResult, attachmentsResult] = await Promise.all([
-          supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', lookupUserId).in('lesson_id', courseLessonIds),
-          supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
-        ]);
-        if (!current()) return;
-        if (progressResult.error) throw progressResult.error;
-        if (attachmentsResult.error) throw attachmentsResult.error;
-        progressData = (progressResult.data || []) as LessonProgress[];
-        setLessonProgress(progressData);
-        for (const a of (attachmentsResult.data || [])) {
-          if (!attMap[a.lesson_id]) attMap[a.lesson_id] = [];
-          attMap[a.lesson_id].push({ id: a.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null, category: a.category });
-        }
-        setLessonAttachments(attMap);
-      } else {
-        setLessonProgress([]);
+      const [progressResult, attachmentsResult, documentsResult] = await Promise.all([
+        courseLessonIds.length > 0 && lookupUserId
+          ? supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', lookupUserId).in('lesson_id', courseLessonIds)
+          : Promise.resolve({ data: [], error: null }),
+        courseLessonIds.length > 0
+          ? supabase.from('lesson_attachments').select('id, lesson_id, name, file_url, file_type, file_size, category, order_index').in('lesson_id', courseLessonIds).order('order_index')
+          : Promise.resolve({ data: [], error: null }),
+        supabase.from('course_documents').select('id, course_id, name, type, file_url, module_id, visible_to_students, allow_download, library_document_id, library_category, sort_order').eq('course_id', courseId).order('sort_order'),
+      ]);
+      if (!current()) return;
+      if (progressResult.error) throw progressResult.error;
+      const progressData = (progressResult.data || []) as LessonProgress[];
+      const attMap: Record<string, CourseMaterialFile[]> = {};
+      const moduleByLesson = new Map(lessonsData.map((lesson: Lesson) => [lesson.id, lesson.module_id ?? null]));
+      if (!attachmentsResult.error) for (const a of (attachmentsResult.data || [])) {
+        if (!attMap[a.lesson_id]) attMap[a.lesson_id] = [];
+        attMap[a.lesson_id].push({ id: a.id, course_id: courseData.id, organization_id: courseData.organization_id,
+          lesson_id: a.lesson_id, module_id: moduleByLesson.get(a.lesson_id) ?? null, reference_kind: "lesson_attachment",
+          name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null,
+          category: a.category, visible_to_students: true, allow_download: true });
       }
-
+      const documents: CourseMaterialFile[] = documentsResult.error ? [] : (documentsResult.data || [])
+        .filter(d => d.library_document_id === null && d.library_category === null && (isAdminView || d.visible_to_students === true))
+        .map(d => ({ id: d.id, course_id: d.course_id, organization_id: courseData.organization_id,
+          lesson_id: null, module_id: d.module_id, reference_kind: "course_document" as const,
+          name: d.name, file_url: d.file_url, file_type: null, file_size: null,
+          category: "material", visible_to_students: d.visible_to_students === true, allow_download: d.allow_download === true,
+          library_document_id: d.library_document_id, library_category: d.library_category }));
+      setLessonProgress(progressData); setLessonAttachments(attMap); setCourseDocuments(documents);
+      setMaterialsError(!!attachmentsResult.error || !!documentsResult.error);
       if (current()) {
-        const scope = rememberOfflineScope({ actorId, effectiveUserId, mode, organizationId: courseData.organization_id }, courseId, actorRevision);
-        // Preview without an actual target enrollment remains online-only.
-        if (scope && enrollment) cacheCourseData(scope, courseId, { ...courseData, _lessonOrderVersion: COURSE_LESSON_ORDER_VERSION }, lessonsData, progressData, attMap).catch(() => {});
+        cacheCandidate.current = { generation, actorId, actorRevision, effectiveUserId, course: courseData,
+          lessons: lessonsData, progress: progressData, attachments: attMap, documents, enrollmentId: enrollment?.id ?? null };
         setLoadedGeneration(generation);
       }
     } catch (error) {
@@ -626,7 +668,7 @@ export function useCourseLearning() {
         setCourse(null);
         setLessons([]);
         setLessonProgress([]);
-        setLessonAttachments({});
+        setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false);
         toast.error('Электронная библиотека недоступна', {
           description: 'Проверьте зачисление или обратитесь в учебный центр.',
         });
@@ -643,15 +685,15 @@ export function useCourseLearning() {
           cached.lessons.every((lesson: Lesson) => !lesson.module_id)
         );
         if (cached && hasKnownOrder) {
-          setCourse(cached.course); setLessons(cached.lessons); setLessonProgress(cached.lessonProgress); setLessonAttachments(cached.lessonAttachments);
+          setCourse(cached.course); setLessons(cached.lessons); setLessonProgress(cached.lessonProgress); setLessonAttachments(cached.lessonAttachments); setCourseDocuments(cached.courseDocuments ?? []); setMaterialsError(false);
           setIsOfflineMode(true); setOfflineCachedAt(cached.cachedAt);
           setEnrollmentId(null); setLoadedGeneration(generation);
           toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
         } else if (cached) {
-          setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null);
+          setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false); setEnrollmentId(null);
           toast.error('Подключитесь к Интернету, чтобы обновить порядок модулей курса');
         } else {
-          setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null);
+          setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false); setEnrollmentId(null);
           setLoadedGeneration(-1);
           toast.error('Подключитесь к Интернету, чтобы подтвердить доступ к курсу');
         }
@@ -685,6 +727,9 @@ export function useCourseLearning() {
     lessonProgress: privateVisible ? lessonProgress : [], completedCount: privateVisible ? completedCount : 0,
     progressPercent: privateVisible ? progressPercent : 0, isMobile, user, courseId, lessonAttachments: privateVisible ? lessonAttachments : {},
     isOfflineMode, offlineCachedAt,
+    courseDocuments: privateVisible ? courseDocuments : [], materialsError: privateVisible && materialsError,
+    fileOrganizationId: privateVisible ? course?.organization_id ?? ((courseFileDeliveryMode.state === "legacy" || courseFileDeliveryMode.state === "frozen_required") ? courseFileDeliveryMode.context.organization_id : null) : null,
+    courseFileDeliveryMode, fileEffectiveUserId: privateVisible ? effectiveUserId : null, fileViewGeneration: identityRef.current.generation,
     isAdminView, adminViewStudentName: adminView?.name || '',
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
     sidebarOpen, setSidebarOpen, isLessonCompleted, isLessonAccessible,

@@ -13,7 +13,7 @@ afterEach(() => { vi.unstubAllGlobals(); setOfflineAuthActor(null); });
 describe('offline course/dashboard exact ownership', () => {
   it('roundtrips own exact scope, isolates actor, tenant, effective learner and preview mode', async () => {
     const a = scope();
-    await cacheCourseData(a, 'course', { title: 'A private course' }, [], [{ lesson_id: 'l', completed: true }], {});
+    await cacheCourseData(a, 'course', { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'A private course' }, [], [{ lesson_id: 'l', completed: true }], {});
     expect((await getCachedCourseData(a, 'course'))?.course.title).toBe('A private course');
     expect(await getCachedCourseData(scope('a', 'org-b'), 'course')).toBeNull();
     expect(await getCachedCourseData(scope('a', 'org-a', 'student-b', 'preview'), 'course')).toBeNull();
@@ -23,10 +23,10 @@ describe('offline course/dashboard exact ownership', () => {
     expect(await getCachedCourseData(a, 'course')).toBeNull();
   });
   it('quarantines old unowned stores and requires a fresh current tenant after logout or cold actor', async () => {
-    storage.rows('sigma-course-cache', 'courses').set('course', { courseId: 'course', course: { title: 'legacy' }, cachedAt: Date.now() });
+    storage.rows('sigma-course-cache', 'courses').set('course', { courseId: 'course', course: { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'legacy' }, cachedAt: Date.now() });
     expect(getOfflineScope('a', 'a', 'learner', 'course')).toBeNull();
     expect(await getCachedCourseData(null, 'course')).toBeNull();
-    const a = scope(); await cacheCourseData(a, 'course', { title: 'scoped' }, [], [], {});
+    const a = scope(); await cacheCourseData(a, 'course', { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'scoped' }, [], [], {});
     setOfflineAuthActor(null); setOfflineAuthActor('a');
     expect(getOfflineScope('a', 'a', 'learner', 'course')).toBeNull();
     expect(await getCachedCourseData(a, 'course')).toBeNull();
@@ -53,22 +53,22 @@ describe('offline course/dashboard exact ownership', () => {
   });
   it('terminal erasure invalidates already captured effective-subject scope without logging out a different actor', async () => {
     const preview = scope('a', 'org-a', 'deleted-subject', 'preview');
-    await cacheCourseData(preview, 'course', { title: 'deleted' }, [], [], {});
+    await cacheCourseData(preview, 'course', { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'deleted' }, [], [], {});
     markOfflineAccountDeleted('deleted-subject');
     expect(await getCachedCourseData(preview, 'course')).toBeNull();
     expect(captureOfflineActor('a')).not.toBeNull();
   });
   it('rejects replaced same-actor tenant association and observed role downgrade', async () => {
-    const a = scope(); await cacheCourseData(a, 'course', { title: 'private' }, [], [], {});
+    const a = scope(); await cacheCourseData(a, 'course', { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'private' }, [], [], {});
     scope('a', 'org-b'); expect(await getCachedCourseData(a, 'course')).toBeNull();
     const again = scope(); observeOfflineAccess('a', 'server-role:student');
     expect(await getCachedCourseData(again, 'course')).toBeNull();
     expect(getOfflineScope('a', 'a', 'learner', 'course')).toBeNull();
   });
   it.each(['write', 'clear', 'erased-write'])('does not mutate after delayed DB open invalidates %s', async action => {
-    const a = scope(); await cacheCourseData(a, 'course', { title: 'original' }, [], [], {});
+    const a = scope(); await cacheCourseData(a, 'course', { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'original' }, [], [], {});
     let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; }); storage.holdOpens(() => gate);
-    const pending = action === 'clear' ? clearCourseCache(a, 'course') : cacheCourseData(a, 'course', { title: 'stale overwrite' }, [], [], {});
+    const pending = action === 'clear' ? clearCourseCache(a, 'course') : cacheCourseData(a, 'course', { _fileDeliveryMode: 'legacy', _fileDeliveryAuthority: 1, title: 'stale overwrite' }, [], [], {});
     await Promise.resolve();
     if (action === 'erased-write') markOfflineAccountDeleted('a');
     else { setOfflineAuthActor('b'); setOfflineAuthActor('a'); }

@@ -109,7 +109,7 @@ export function forgetOfflineScope(actorId: string, effectiveUserId: string, mod
 export function isOfflineAccessDenied(error: unknown): boolean {
   const e = error as { status?: number; code?: string; message?: string } | null;
   return [401, 403].includes(e?.status || 0) || (e?.status === 404 && e.code !== 'PGRST202')
-    || ['42501', 'PGRST301', 'PGRST302', 'PGRST116'].includes(e?.code || '')
+    || ['42501', 'PGRST301', 'PGRST302', 'PGRST116', 'COURSE_EXACT_FILE_UNAVAILABLE'].includes(e?.code || '')
     || /(?:access denied|permission denied|not authenticated|not authori[sz]ed|forbidden)/i.test(e?.message || '');
 }
 
@@ -138,6 +138,7 @@ interface CachedCourseData {
   lessons: any[];
   lessonProgress: any[];
   lessonAttachments: Record<string, any[]>;
+  courseDocuments?: any[];
   cachedAt: number;
 }
 
@@ -204,15 +205,24 @@ async function getItem<T>(storeName: string, key: string): Promise<T | null> {
 
 // ---- Course Cache ----
 
+/** New snapshots require an actual online legacy classification. Locators and
+ * metadata are never a substitute for the live per-file delivery authority. */
+export function canCacheLegacyCourseFiles(course: any, attachments: Record<string, any[]>, documents: any[] = []): boolean {
+  if (course?._fileDeliveryMode !== 'legacy' || course?._fileDeliveryAuthority !== 1) return false;
+  return [...Object.values(attachments).flat(), ...documents].every(file =>
+    !file?.file_url || (typeof file.file_url === 'string' && !/^\s*(?:urn:|blob:|data:)/i.test(file.file_url)));
+}
+
 export async function cacheCourseData(
   scope: OfflineScope,
   courseId: string,
   course: any,
   lessons: any[],
   lessonProgress: any[],
-  lessonAttachments: Record<string, any[]>
+  lessonAttachments: Record<string, any[]>,
+  courseDocuments: any[] = []
 ): Promise<void> {
-  if (!isOfflineScopeCurrent(scope) || scope.resource !== courseId) return;
+  if (!isOfflineScopeCurrent(scope) || scope.resource !== courseId || !canCacheLegacyCourseFiles(course, lessonAttachments, courseDocuments)) return;
   const { authRevision: _revision, ...owner } = scope;
   const data: CachedCourseData = {
     key: scopedKey(scope, courseId), owner,
@@ -221,6 +231,7 @@ export async function cacheCourseData(
     lessons,
     lessonProgress,
     lessonAttachments,
+    courseDocuments,
     cachedAt: Date.now(),
   };
   await putItem(COURSE_STORE, data, () => isOfflineScopeCurrent(scope));
@@ -230,7 +241,7 @@ export async function getCachedCourseData(scope: OfflineScope | null, courseId: 
   if (!isOfflineScopeCurrent(scope) || scope.resource !== courseId) return null;
   const data = await getItem<CachedCourseData>(COURSE_STORE, scopedKey(scope, courseId));
   if (!isOfflineScopeCurrent(scope) || data?.key !== scopedKey(scope, courseId)) return null;
-  if (!data) return null;
+  if (!data || !canCacheLegacyCourseFiles(data.course, data.lessonAttachments, data.courseDocuments ?? [])) return null;
   if (Date.now() - data.cachedAt > TTL_MS) return null; // expired
   return data;
 }

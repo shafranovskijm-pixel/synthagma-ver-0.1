@@ -296,3 +296,8 @@ verify_jwt = false
 
 [functions.signature-protected-file]
 verify_jwt = false
+
+# Exact file bytes: gateway JWT plus original Auth/user and current SQL checks.
+# This worker captures/reads sealed own-course files; it cannot approve programmes.
+[functions.platform-course-file]
+verify_jwt = true

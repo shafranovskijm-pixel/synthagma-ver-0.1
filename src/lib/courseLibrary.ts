@@ -141,7 +141,7 @@ export interface CourseLibraryListResource {
   sortOrder?: number | null;
   id?: string;
   assignmentId?: string;
-  libraryDocumentId?: string;
+  libraryDocumentId?: string | null;
 }
 
 export interface CourseLibraryCsvResource extends CourseLibraryListResource {
@@ -482,3 +482,24 @@ export function courseLibraryToCsv(
 
 // Concise integration exports used by the organization and learner adapters.
 export const isValidHttpsUrl = isStrictHttpsUrl;
+
+/** Display hint for the existing legacy viewer only. Frozen bytes use the verified lease MIME. */
+export function getCourseLibraryPreviewType(mimeType: string | null, filename: string | null): string | null {
+  const mimeHints: Readonly<Record<string, string>> = {
+    "application/pdf": "pdf",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-powerpoint": "ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  };
+  if (mimeType !== null) {
+    if (typeof mimeType !== "string") return "unknown";
+    const mime = mimeType.split(";", 1)[0].trim().toLowerCase();
+    return Object.prototype.hasOwnProperty.call(mimeHints, mime) ? mimeHints[mime] : "unknown";
+  }
+  if (!filename || !filename.includes(".")) return null;
+  const extension = filename.split(".").pop()?.trim().toLowerCase() ?? "";
+  return ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "jpg", "jpeg", "png", "gif", "webp"].includes(extension) ? extension : "unknown";
+}

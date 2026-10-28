@@ -9,6 +9,11 @@ vi.mock("@/hooks/useCourseLibrary", () => ({
   useCourseLibrary: useCourseLibraryMock,
 }));
 
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "synthetic-actor" } }) }));
+vi.mock("@/api/courseLibrary", () => ({ fetchCourseFileOrganization: vi.fn() }));
+vi.mock("@/hooks/useCourseFileDeliveryMode", () => ({ useCourseFileDeliveryMode: () => ({ view: { state: "idle" }, refresh: vi.fn() }) }));
+vi.mock("@/components/course-learning/FilePreviewDialog", () => ({ FilePreviewDialog: () => null }));
+
 import { CourseLibraryReader } from "@/components/course-library/CourseLibraryReader";
 
 function resource(
@@ -97,17 +102,15 @@ describe("CourseLibraryReader", () => {
     expect(screen.queryByRole("heading", { name: "Инструкции и руководства изготовителей" })).not.toBeInTheDocument();
   });
 
-  it("shows a friendly unavailable message instead of an unusable open button", () => {
+  it("keeps a stable reference openable without inferring authority from an absent URL", () => {
     render(<CourseLibraryReader courseId="course-1" />);
 
     const unavailableCard = screen.getByTestId("library-resource-unavailable");
-    expect(unavailableCard).toHaveTextContent(
-      "Ресурс временно недоступен. Обратитесь в учебный центр.",
-    );
+    expect(unavailableCard).not.toHaveTextContent("Ресурс временно недоступен.");
     expect(
       within(unavailableCard).queryByRole("button", {
         name: /Открыть материал|Перейти к источнику/,
       }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 });

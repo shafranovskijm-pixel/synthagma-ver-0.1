@@ -35,7 +35,8 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
-import { courseDocumentPreview } from "@/lib/courseDocumentPreview";
+import { fetchCourseFileOrganization } from "@/api/courseLibrary";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CourseDocument {
   id: string;
@@ -45,6 +46,7 @@ interface CourseDocument {
   description: string | null;
   file_url: string | null;
   created_at: string;
+  allow_download?: boolean;
 }
 
 const DOCUMENT_TYPES = [
@@ -70,6 +72,8 @@ export function CourseDocumentsManager({
   isOpen = true,
   onClose = () => {},
   embedded = false }: CourseDocumentsManagerProps) {
+  const { user } = useAuth();
+  const actorId = user?.id ?? null;
   const [documents, setDocuments] = useState<CourseDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -78,9 +82,17 @@ export function CourseDocumentsManager({
   // Preview state
   const [previewDoc, setPreviewDoc] = useState<CourseDocument | null>(null);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewPurpose, setPreviewPurpose] = useState<"preview" | "download">("preview");
   const fetchEpoch = useRef(0);
-  const activeContext = useRef({ courseId, isOpen });
-  activeContext.current = { courseId, isOpen };
+  const activeContext = useRef({ courseId, isOpen, actorId });
+  if (activeContext.current.courseId !== courseId || activeContext.current.isOpen !== isOpen
+    || activeContext.current.actorId !== actorId) activeContext.current = { courseId, isOpen, actorId };
+  const viewScope = activeContext.current;
+  const mounted = useRef(false);
+  const [documentsScope, setDocumentsScope] = useState<typeof viewScope | null>(null);
+  const [previewScope, setPreviewScope] = useState<typeof viewScope | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const visibleDocuments = documentsScope === viewScope ? documents : [];
 
   // Form state
   const [docName, setDocName] = useState("");
@@ -90,32 +102,39 @@ export function CourseDocumentsManager({
   const [linkUrl, setLinkUrl] = useState("");
 
   useEffect(() => {
+    mounted.current = true;
     setShowPreviewDialog(false);
     setPreviewDoc(null);
     if (isOpen) {
       fetchDocuments();
     }
-    return () => { fetchEpoch.current += 1; };
-  }, [isOpen, courseId]);
+    return () => { mounted.current = false; fetchEpoch.current += 1; };
+  }, [viewScope]);
 
   const fetchDocuments = async () => {
     const requestedCourseId = courseId;
-    if (!activeContext.current.isOpen || activeContext.current.courseId !== requestedCourseId) return;
+    if (!mounted.current || activeContext.current !== viewScope || !isOpen || !actorId) return;
     const epoch = ++fetchEpoch.current;
-    const isCurrent = () => epoch === fetchEpoch.current && activeContext.current.isOpen && activeContext.current.courseId === requestedCourseId;
+    const isCurrent = () => mounted.current && epoch === fetchEpoch.current && activeContext.current === viewScope
+      && activeContext.current.isOpen && activeContext.current.courseId === requestedCourseId;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const [{ data, error }, actualOrganizationId] = await Promise.all([supabase
         .from("course_documents")
         .select("*")
         .eq("course_id", courseId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }), fetchCourseFileOrganization(courseId)]);
 
       if (!isCurrent()) return;
       if (error) throw error;
       setDocuments(data || []);
+      setDocumentsScope(viewScope);
+      setOrganizationId(actualOrganizationId);
     } catch (error) {
       if (!isCurrent()) return;
+      setOrganizationId(null);
+      setDocuments([]);
+      setDocumentsScope(viewScope);
       console.error("Error fetching course documents:", error);
       toast.error("Ошибка загрузки документов");
     } finally {
@@ -220,16 +239,16 @@ export function CourseDocumentsManager({
     try { return new URL(url, window.location.origin).pathname.split(".").pop()?.toLowerCase() ?? null; } catch { return null; }
   };
 
-  const handlePreview = (doc: CourseDocument) => {
-    if (!doc.file_url || doc.course_id !== courseId) return;
-    // Deliberate link navigation is separate from automatic document preview.
-    if (doc.type === "link") { window.open(doc.file_url, "_blank"); return; }
-    const preview = courseDocumentPreview(doc.file_url, fileTypeFor(doc.file_url), [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
-    if (!preview.sourceUrl) { toast.error("Ссылка на файл недоступна"); return; }
+  const handlePreview = (doc: CourseDocument, purpose: "preview" | "download" = "preview") => {
+    if (!mounted.current || activeContext.current !== viewScope || !isOpen || !actorId
+      || !organizationId || doc.course_id !== courseId || !visibleDocuments.includes(doc)) return;
     setPreviewDoc(doc);
+    setPreviewScope(viewScope);
+    setPreviewPurpose(purpose);
     setShowPreviewDialog(true);
   };
-  const currentPreview = showPreviewDialog && isOpen && previewDoc?.course_id === courseId ? previewDoc : null;
+  const currentPreview = showPreviewDialog && isOpen && previewScope === viewScope
+    && previewDoc?.course_id === courseId && visibleDocuments.includes(previewDoc) ? previewDoc : null;
 
   const content = (
     <div className="space-y-4">
@@ -353,9 +372,9 @@ export function CourseDocumentsManager({
         </Dialog>
       </div>
 
-      {isLoading ? (
+      {(isLoading || documentsScope !== viewScope) ? (
         <TableSkeleton rows={4} cols={3} withHeader={false} />
-      ) : documents.length === 0 ? (
+      ) : visibleDocuments.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Материалы курса"
@@ -364,7 +383,7 @@ export function CourseDocumentsManager({
         />
       ) : (
         <div className="space-y-2">
-          {documents.filter(doc => doc.course_id === courseId).map((doc) => {
+          {visibleDocuments.filter(doc => doc.course_id === courseId).map((doc) => {
             const typeInfo = getDocTypeInfo(doc.type);
             const TypeIcon = typeInfo.icon;
             return (
@@ -391,7 +410,7 @@ export function CourseDocumentsManager({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {doc.file_url && (
+                  {organizationId && (
                     <>
                       <Button
                         variant="ghost"
@@ -405,17 +424,8 @@ export function CourseDocumentsManager({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            if (doc.course_id !== courseId || !doc.file_url) return;
-                            const preview = courseDocumentPreview(doc.file_url, fileTypeFor(doc.file_url), [import.meta.env.VITE_SUPABASE_URL, window.location.origin], window.location.origin);
-                            if (!preview.sourceUrl) { toast.error("Ссылка на файл недоступна"); return; }
-                            const link = document.createElement("a");
-                            link.href = preview.sourceUrl;
-                            link.rel = "noopener noreferrer";
-                            link.referrerPolicy = "no-referrer";
-                            link.download = doc.name;
-                            link.click();
-                          }}
+                          disabled={doc.allow_download === false}
+                          onClick={() => handlePreview(doc, "download")}
                           title="Скачать"
                         >
                           <Download className="w-4 h-4" />
@@ -440,12 +450,15 @@ export function CourseDocumentsManager({
       )}
 
       {/* Preview Dialog */}
-      {currentPreview?.file_url && <FilePreviewDialog
+      {currentPreview && organizationId && <FilePreviewDialog
         open={true}
-        onOpenChange={setShowPreviewDialog}
-        fileUrl={currentPreview.file_url}
-        fileName={currentPreview.name}
-        fileType={fileTypeFor(currentPreview.file_url)}
+        onOpenChange={open => { if (activeContext.current === viewScope) setShowPreviewDialog(open); }}
+        reference={{ courseId, organizationId, referenceKind: "course_document", referenceId: currentPreview.id,
+          name: currentPreview.name, fileType: fileTypeFor(currentPreview.file_url ?? currentPreview.name),
+          legacyUrl: currentPreview.file_url }}
+        accessMode="staff_preview"
+        allowDownload={currentPreview.allow_download !== false}
+        initialPurpose={previewPurpose}
       />}
     </div>
   );
