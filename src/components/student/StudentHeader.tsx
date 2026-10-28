@@ -1,4 +1,4 @@
-import { User, LogOut, Sparkles, HelpCircle } from "lucide-react";
+import { User, LogOut, Sparkles, HelpCircle, Car } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -25,6 +25,7 @@ interface StudentHeaderProps {
   showAchievements: boolean;
   showRadio?: boolean;
   showAnnouncements?: boolean;
+  showDrivingSchool?: boolean;
 
   onShowVideoId: () => void;
   onShowConsent: () => void;
@@ -37,7 +38,7 @@ export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
   pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = false, showAnnouncements = false,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
-  onProfileClick,
+  onProfileClick, showDrivingSchool = false,
 }: StudentHeaderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -153,6 +154,13 @@ export function StudentHeader({
                 </span>
               )}
             </DropdownMenuItem>
+
+            {showDrivingSchool && (
+              <DropdownMenuItem onClick={() => navigate("/driving-school")}>
+                <Car className="w-4 h-4 mr-2" />
+                Автошкола
+              </DropdownMenuItem>
+            )}
 
             <AccountSettingsMenuItem />
             <DropdownMenuItem onClick={() => navigate("/student/whats-new")}>
