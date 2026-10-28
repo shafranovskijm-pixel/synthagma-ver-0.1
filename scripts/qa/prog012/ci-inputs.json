@@ -20,8 +20,8 @@
   "files": [
     {
       "path": "minimal-unit-bootstrap.sql",
-      "bytes": 10824,
-      "sha256": "5c8d5f56bc2417df3e1599a7dace66e5f33a7aef40fe61aad5f509a1098e3bfc"
+      "bytes": 10719,
+      "sha256": "8607d7ec8f9739b98b3a04142f22bbe08a96ca269ee4b69973264a61c18501d7"
     },
     {
       "path": "platform_template_publication_review.candidate.sql",

@@ -41,7 +41,7 @@ jobs:
         run: |
           python3 scripts/qa/prog012/run_ci_postgres.py \
             --container-id "$PCR_SERVICE_CONTAINER" \
-            --expected-manifest-sha256 "d6178b5496fb8fec4bd276d05efa4c6fe8acc1e8ba9bb947c4fc6d266520266d" \
+            --expected-manifest-sha256 "3ccf6d3b9392c5f6ccbdfb6dc6e572e7de50009bacae67f7e785c7077c4addd4" \
             --ci-source-reviewed-only
       - name: Preserve exact native logs and finite result
         if: always()

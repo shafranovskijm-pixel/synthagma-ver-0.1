@@ -102,9 +102,9 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON public.courses,public.course_modules,public
 \set ON_ERROR_STOP on
 DO $gate$ BEGIN
  IF current_database() IS DISTINCT FROM 'sintagma_pcr_v4_r2_lab_20261028'
- OR host(inet_server_addr()) IS DISTINCT FROM '127.0.0.1' OR inet_server_port() IS DISTINCT FROM 65319
+ OR host(inet_server_addr()) IS DISTINCT FROM '127.0.0.1' OR inet_server_port() IS DISTINCT FROM 5432
  OR current_setting('server_version_num') IS DISTINCT FROM '170011'
- OR lower(replace(current_setting('data_directory'),chr(92),'/')) IS DISTINCT FROM lower('C:/Users/max/Documents/Codex/2026-10-16/sintagma-local/work/course-finish-20261026/prog012-isolated-v4-r2-unit-lab-20261028/data')
+ OR lower(replace(current_setting('data_directory'),chr(92),'/')) IS DISTINCT FROM lower('/var/lib/postgresql/data')
  OR current_setting('pcr.lab_authorized',true) IS DISTINCT FROM 'source-reviewed-root-run-only'
  THEN RAISE EXCEPTION 'PCR_V4_EXACT_ISOLATED_LAB_REQUIRED';END IF;
 END;$gate$;
