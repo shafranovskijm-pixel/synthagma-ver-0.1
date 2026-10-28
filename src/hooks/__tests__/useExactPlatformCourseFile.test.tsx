@@ -11,7 +11,7 @@ const target=():SelectedPlatformFileReference=>({actorId:id(1),marketplaceId:id(
 // Gateway exact12/5/binary integrity is tested separately. This suite observes
 // hook scope lifetime only with an opaque sealed context and lease.
 const sealed={state:"bytes_sealed"} as SealedPlatformFileContext;
-const lease=(name:string):ExactPlatformCourseFileLease=>({url:"blob:"+name,mime:"application/pdf",previewKind:"pdf",context:sealed,release:vi.fn()});
+const lease=(name:string):ExactPlatformCourseFileLease=>({url:"blob:"+name,mime:"application/pdf",previewKind:"pdf",context:sealed,copyVerifiedPdfBytes:vi.fn(),release:vi.fn()});
 function delayed<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(yes=>{resolve=yes;});return{promise,resolve};}
 beforeEach(()=>{mock.actor=id(1);mock.role="admin";mock.revision=1;mock.listeners.clear();mock.context.mockReset();mock.bytes.mockReset();mock.context.mockResolvedValue(sealed);Object.defineProperty(document,"visibilityState",{configurable:true,value:"visible"});});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});

@@ -1,0 +1,320 @@
+name: PROG012 selected PDF canvas legacy R2 offline CI only
+on:
+  push:
+    branches: [codex/prog012-selected-pdf-canvas-ci-r2-20261029]
+permissions:
+  contents: read
+concurrency:
+  group: prog012-selected-pdf-canvas-ci
+  cancel-in-progress: false
+jobs:
+  selected-pdf:
+    if: github.repository == 'shafranovskijm-pixel/synthagma-ver-0.1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      NPM_CONFIG_AUDIT: 'false'
+      NPM_CONFIG_FUND: 'false'
+    steps:
+      - name: Checkout exact reviewed CI commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Node22 x64 only
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.13.0'
+          architecture: x64
+          check-latest: false
+      - name: Materialize reviewed CI-only harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .codex-temp/pdf-canvas-ci/artifacts
+          cat > .codex-temp/pdf-canvas-ci/inputs.json <<'SOURCE_INPUTS_JSON_END'
+          {
+            "baseCommit": "715c339575d7212ec413c1d2ab8941f79eac71d1",
+            "branch": "codex/prog012-selected-pdf-canvas-ci-r2-20261029",
+            "workflowPath": ".github/workflows/prog012-selected-pdf-canvas-ci.yml",
+            "sourceFreezeSHA256": "8c17a54e66a3e7f481a0aba2eef4de43f420d9a97c23d102954cec5da1d47660",
+            "exactSuites": [
+              "src/lib/__tests__/selectedPdfCanvas.test.ts",
+              "src/components/admin/marketplace/__tests__/VerifiedSelectedPdfCanvas.test.tsx",
+              "src/lib/__tests__/exactPlatformCourseFile.test.ts",
+              "src/hooks/__tests__/useExactPlatformCourseFile.test.tsx",
+              "src/components/admin/marketplace/__tests__/SelectedPlatformProposalFiles.test.tsx"
+            ],
+            "pdfjsVersion": "6.4.299",
+            "nodeVersion": "22.13.0",
+            "npmMajor": 10,
+            "neverMergeWorkflow": true,
+            "productionAcceptance": false,
+            "parentSourceFreezeSHA256": "a152592d276be49948f630c357e01c62a360d430c7f4ff96139e12a3e8edc5bd",
+            "product16": [
+              {
+                "path": ".node-version",
+                "bytes": 2,
+                "sha256": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09"
+              },
+              {
+                "path": ".nvmrc",
+                "bytes": 2,
+                "sha256": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09"
+              },
+              {
+                "path": "netlify.toml",
+                "bytes": 198,
+                "sha256": "f229dbfface22cbc286aede7ae4ace54efd08483057d6d5bed71ef7186c981e7"
+              },
+              {
+                "path": "package-lock.json",
+                "bytes": 502095,
+                "sha256": "ef8e56e1ccabc81321761c556d6f4f0853de7ca6b5a40d141211c9397e440e34"
+              },
+              {
+                "path": "package.json",
+                "bytes": 4403,
+                "sha256": "fced21f5da5744898ff8d75cea2fb8119e9f81af750950e5f32b102e9f29078e"
+              },
+              {
+                "path": "src/components/admin/marketplace/SelectedPlatformProposalFiles.tsx",
+                "bytes": 4880,
+                "sha256": "bf500827afa25a0ba4edc0b63f237349c9e6473b18e382c4dc8efb62c700b45a"
+              },
+              {
+                "path": "src/components/admin/marketplace/VerifiedSelectedPdfCanvas.tsx",
+                "bytes": 4568,
+                "sha256": "29695112eb6f40c8d87b245c54b0f297dee1a24d974e36b449f8c7238f7e0652"
+              },
+              {
+                "path": "src/components/admin/marketplace/__tests__/SelectedPlatformProposalFiles.test.tsx",
+                "bytes": 4473,
+                "sha256": "b7a1f015a6af1b582f7c83a39d24772218867cf86e9caf64fe2c966b240057f1"
+              },
+              {
+                "path": "src/components/admin/marketplace/__tests__/VerifiedSelectedPdfCanvas.test.tsx",
+                "bytes": 5515,
+                "sha256": "4a7ab4dc190fe76e511cb38ecc3f50a8f0d8dfaf7774a16921309d969daa9b8d"
+              },
+              {
+                "path": "src/hooks/__tests__/useExactPlatformCourseFile.test.tsx",
+                "bytes": 5636,
+                "sha256": "1cf1c6b5a7c33096feb85800f25dd492bdcdc61e56a8189fb14ba9c3b2a32479"
+              },
+              {
+                "path": "src/lib/exactPlatformCourseFile.ts",
+                "bytes": 11047,
+                "sha256": "9344f212bba5262b012359f364dc8aeeb708deb1d54683f61224d3b5d5b9f57e"
+              },
+              {
+                "path": "src/lib/selectedPdf.worker.ts",
+                "bytes": 226,
+                "sha256": "8715d4af08e2821a68a99e1691def2731c9bb1ccc0656498ae77c2cf33c392dd"
+              },
+              {
+                "path": "src/lib/selectedPdfCanvas.ts",
+                "bytes": 6639,
+                "sha256": "46c2009caa031fe1f248230ebffcb025e885b400286d995b5d433d02819a4a1d"
+              },
+              {
+                "path": "src/lib/__tests__/exactPlatformCourseFile.test.ts",
+                "bytes": 9015,
+                "sha256": "26014b919c1a001ddf1a616fe3d34080bb3e7b71659daf876cd13979b98d8126"
+              },
+              {
+                "path": "src/lib/__tests__/selectedPdfCanvas.test.ts",
+                "bytes": 6909,
+                "sha256": "7832d7d6f5fd01b32be3f9ca86d014213162beb87a785743c8e71366b2f776d2"
+              },
+              {
+                "path": "src/types/pdfjs-dist-sealed-legacy.d.ts",
+                "bytes": 374,
+                "sha256": "38eb70d6007a53eaab0669aca9514b4dfbb8b8d313b6c8767e4759a00d5a1250"
+              }
+            ]
+          }
+          SOURCE_INPUTS_JSON_END
+          cat > .codex-temp/pdf-canvas-ci/preflight.mjs <<'SOURCE_PREFLIGHT_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const here=path.dirname(new URL(import.meta.url).pathname), root=fs.realpathSync(process.cwd());
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+          if(process.platform!=='linux'||process.arch!=='x64'||process.versions.node!==inputs.nodeVersion)throw new Error('EXACT_NODE22_LINUX_X64_REQUIRED');
+          if(git('rev-parse','HEAD^')!==inputs.baseCommit)throw new Error('ONE_FRESH_MAIN193_PARENT_REQUIRED');
+          const changed=git('diff','--name-only','--no-renames',inputs.baseCommit,'HEAD').split('\n').filter(Boolean).sort();
+          const expected=[...inputs.product16.map(p=>p.path),inputs.workflowPath].sort();
+          if(JSON.stringify(changed)!==JSON.stringify(expected))throw new Error('EXACT_16_SOURCE_PLUS_ONE_CI_WORKFLOW_REQUIRED');
+          for(const p of inputs.product16){const b=fs.readFileSync(path.join(root,p.path));if(b.length!==p.bytes||sha(b)!==p.sha256)throw new Error('APPROVED_SOURCE_DRIFT:'+p.path);}
+          const lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
+          for(const p of Object.values(lock.packages))if(p.resolved&&!p.resolved.startsWith('https://registry.npmjs.org/'))throw new Error('PUBLIC_NPM_REGISTRY_ONLY');
+          if(lock.packages['node_modules/pdfjs-dist-sealed']?.version!==inputs.pdfjsVersion)throw new Error('PDF_ALIAS_VERSION_DRIFT');
+          const npm=execFileSync('npm',['--version'],{encoding:'utf8'}).trim();
+          if(!/^10\./.test(npm))throw new Error('NPM10_REQUIRED');
+          fs.writeFileSync(path.join(here,'artifacts/source-preflight.json'),JSON.stringify({status:'PASS_SOURCE_ONLY_PREFLIGHT',head:git('rev-parse','HEAD'),base:inputs.baseCommit,changedPaths:changed,sourceFreezeSHA256:inputs.sourceFreezeSHA256,node:process.versions.node,npm,arch:process.arch,workflowSHA256:sha(fs.readFileSync(path.join(root,inputs.workflowPath))),envContentsRead:false,productionAccepted:false},null,2)+'\n');
+          SOURCE_PREFLIGHT_MJS_END
+          cat > .codex-temp/pdf-canvas-ci/snapshot-source.mjs <<'SOURCE_SNAPSHOT_SOURCE_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const root=fs.realpathSync(process.cwd()), here=path.dirname(new URL(import.meta.url).pathname);
+          const mode=process.argv[2];if(!['before','after'].includes(mode))throw new Error('FINITE_SNAPSHOT_MODE_REQUIRED');
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          function walk(relative){const results=[];for(const entry of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){const file=relative+'/'+entry.name;if(entry.isSymbolicLink())throw new Error('SRC_SYMLINK_FORBIDDEN');if(entry.isDirectory())results.push(...walk(file));else if(entry.isFile())results.push(file);else throw new Error('SRC_NONREGULAR_FORBIDDEN');}return results;}
+          const protectedPaths=[...walk('src'),...['package.json','package-lock.json','vite.config.ts','tsconfig.app.json','.node-version','.nvmrc','netlify.toml']].sort();
+          const records=protectedPaths.map(p=>{const b=fs.readFileSync(path.join(root,p));return{path:p,bytes:b.length,sha256:sha(b)};});
+          const file=path.join(here,'artifacts/protected-source-before.json');
+          if(mode==='before')fs.writeFileSync(file,JSON.stringify(records,null,2)+'\n');
+          else{const before=JSON.parse(fs.readFileSync(file,'utf8'));const exact=JSON.stringify(before)===JSON.stringify(records);fs.writeFileSync(path.join(here,'artifacts/protected-source-after.json'),JSON.stringify({exact,files:records.length,records,envContentsRead:false},null,2)+'\n');if(!exact)throw new Error('BUILD_OR_INSTALL_CHANGED_PROTECTED_SOURCE');}
+          SOURCE_SNAPSHOT_SOURCE_MJS_END
+          cat > .codex-temp/pdf-canvas-ci/block-network.cjs <<'SOURCE_BLOCK_NETWORK_CJS_END'
+          /* Isolated UI harness only. No app/source imports. Installed by explicit --require. */
+          'use strict';
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { fileURLToPath } = require('node:url');
+          const { syncBuiltinESMExports } = require('node:module');
+          const deny = () => { throw new Error('UI_HARNESS_NETWORK_DISABLED'); };
+          for (const [name, methods] of [
+            ['node:http', ['request', 'get']], ['node:https', ['request', 'get']],
+            ['node:net', ['connect', 'createConnection']], ['node:tls', ['connect']],
+            ['node:dgram', ['createSocket']],
+            ['node:dns', ['lookup', 'resolve', 'resolve4', 'resolve6', 'reverse']],
+            ['node:dns/promises', ['lookup', 'resolve', 'resolve4', 'resolve6', 'reverse']],
+          ]) {
+            const mod = require(name);
+            for (const key of methods) if (typeof mod[key] === 'function') mod[key] = deny;
+          }
+          require('node:net').Socket.prototype.connect = deny;
+          require('node:net').Server.prototype.listen = deny;
+          globalThis.fetch = deny;
+          globalThis.WebSocket = class { constructor() { deny(); } };
+          function checkFile(value) {
+            if (typeof value === 'number' || value == null) return;
+            const name = value instanceof URL ? fileURLToPath(value) : String(value);
+            if (/^\.env(?:\.|$)/.test(path.basename(name))) throw new Error('UI_HARNESS_ENV_FILE_READ_DISABLED');
+          }
+          for (const key of ['readFileSync', 'openSync', 'readFile', 'open', 'createReadStream']) {
+            const original = fs[key];
+            fs[key] = function (file, ...args) { checkFile(file); return original.call(this, file, ...args); };
+          }
+          for (const key of ['readFile', 'open']) {
+            const original = fs.promises[key];
+            fs.promises[key] = function (file, ...args) { checkFile(file); return original.call(this, file, ...args); };
+          }
+          syncBuiltinESMExports();
+          globalThis.__UI_NETWORK_GUARD_INSTALLED__ = true;
+          SOURCE_BLOCK_NETWORK_CJS_END
+          cat > .codex-temp/pdf-canvas-ci/network-setup.ts <<'SOURCE_NETWORK_SETUP_TS_END'
+          // Harness-only setup, before the byte-exact stock setup. No application imports.
+          const deny = () => { throw new Error("UI_HARNESS_NETWORK_DISABLED"); };
+          Object.defineProperty(globalThis, "fetch", { value: deny, writable: true, configurable: true });
+          for (const key of ["XMLHttpRequest", "WebSocket", "EventSource"] as const) {
+            Object.defineProperty(globalThis, key, { value: class { constructor() { deny(); } }, writable: true, configurable: true });
+          }
+          if (typeof window !== "undefined") {
+            if (window !== globalThis) {
+              Object.defineProperty(window, "fetch", { value: deny, writable: true, configurable: true });
+              for (const key of ["XMLHttpRequest", "WebSocket", "EventSource"] as const) {
+                Object.defineProperty(window, key, { value: class { constructor() { deny(); } }, writable: true, configurable: true });
+              }
+            }
+            Object.defineProperty(window.navigator, "sendBeacon", { value: deny, configurable: true });
+          }
+          SOURCE_NETWORK_SETUP_TS_END
+          cat > .codex-temp/pdf-canvas-ci/run-stage.mjs <<'SOURCE_RUN_STAGE_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {spawn} from 'node:child_process';
+          const root=fs.realpathSync(process.cwd()), here=path.dirname(new URL(import.meta.url).pathname), label=process.argv[2];
+          const guarded=['--max-old-space-size=4096','--require',path.join(here,'block-network.cjs')];
+          const stages={
+           'npm-ci':{exe:'npm',args:['ci','--ignore-scripts','--legacy-peer-deps','--no-audit','--no-fund','--registry=https://registry.npmjs.org'],timeout:600000},
+           'stock-tsc':{exe:process.execPath,args:[...guarded,path.join(root,'node_modules/typescript/bin/tsc'),'-p','tsconfig.app.json','--noEmit'],timeout:300000},
+           'five-suites':{exe:process.execPath,args:[...guarded,path.join(here,'run-tests.mjs')],timeout:180000},
+           'stock-build':{exe:process.execPath,args:[...guarded,path.join(here,'run-build.mjs')],timeout:600000},
+          };
+          const stage=stages[label];if(!stage)throw new Error('FINITE_STAGE_REQUIRED');
+          const dir=path.join(here,'artifacts'), stdout=fs.openSync(path.join(dir,label+'.stdout.log'),'wx'),stderr=fs.openSync(path.join(dir,label+'.stderr.log'),'wx');
+          const started=Date.now();let timedOut=false,spawnError=null,finished=false;
+          fs.writeFileSync(path.join(dir,label+'.started.json'),JSON.stringify({label,args:stage.args,startedAtUtc:new Date().toISOString(),timeoutMs:stage.timeout,shell:false,networkAllowed:label==='npm-ci'?'public npm dependencies only':false},null,2)+'\n');
+          const child=spawn(stage.exe,stage.args,{cwd:root,shell:false,detached:true,stdio:['ignore','pipe','pipe']});
+          child.stdout.on('data',b=>{fs.writeSync(stdout,b);process.stdout.write(b);});child.stderr.on('data',b=>{fs.writeSync(stderr,b);process.stderr.write(b);});
+          const timer=setTimeout(()=>{timedOut=true;try{process.kill(-child.pid,'SIGTERM');}catch{}setTimeout(()=>{if(!finished)try{process.kill(-child.pid,'SIGKILL');}catch{}},2000).unref();},stage.timeout);
+          child.on('error',e=>{spawnError={name:e.name,code:e.code??null,message:e.message};});
+          child.on('close',(code,signal)=>{finished=true;clearTimeout(timer);fs.closeSync(stdout);fs.closeSync(stderr);const ok=!timedOut&&!spawnError&&signal===null&&code===0;fs.writeFileSync(path.join(dir,label+'.process.json'),JSON.stringify({label,pid:child.pid??null,elapsedMs:Date.now()-started,exitCode:code,signal,timedOut,spawnError,naturalExit:!timedOut&&!spawnError&&signal===null,success:ok},null,2)+'\n');if(!ok)process.exitCode=1;});
+          SOURCE_RUN_STAGE_MJS_END
+          cat > .codex-temp/pdf-canvas-ci/run-tests.mjs <<'SOURCE_RUN_TESTS_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {pathToFileURL} from 'node:url';
+          import {createRequire} from 'node:module';
+          const here=path.dirname(new URL(import.meta.url).pathname),root=fs.realpathSync(process.cwd()),deps=path.join(root,'node_modules');
+          if(globalThis.__UI_NETWORK_GUARD_INSTALLED__!==true)throw new Error('EXPLICIT_NETWORK_PRELOAD_REQUIRED');
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          for(const key of Object.keys(process.env))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete process.env[key];
+          process.env.NODE_ENV='test';process.env.VITEST='true';process.env.TEST='true';
+          const ts=(await import(pathToFileURL(path.join(deps,'typescript/lib/typescript.js')).href)).default;
+          const {startVitest}=await import(pathToFileURL(path.join(deps,'vitest/dist/node.js')).href);
+          const requireRoot=createRequire(path.join(root,'package.json'));
+          const installer={isPackageExists(name){try{requireRoot.resolve(name);return true;}catch{return false;}},async ensureInstalled(name){if(!this.isPackageExists(name))throw new Error('INSTALL_DURING_TEST_FORBIDDEN:'+name);return true;}};
+          const plugin={name:'ci-typescript-transpile-only',enforce:'pre',load(id){if(id.replaceAll('\\','/').split('?')[0].endsWith('/src/integrations/supabase/client.ts'))return 'throw new Error("UNMOCKED_REAL_SUPABASE_CLIENT_FORBIDDEN");export const supabase=undefined;';},transform(code,id){const file=id.split('?')[0];if(!/\.[cm]?tsx?$/.test(file)||file.replaceAll('\\','/').includes('/node_modules/'))return null;const r=ts.transpileModule(code,{fileName:file,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,isolatedModules:true,sourceMap:true,inlineSources:true}});if((r.diagnostics??[]).some(d=>d.category===ts.DiagnosticCategory.Error))throw new Error('TRANSPILE_SYNTAX_ERROR');return{code:r.outputText,map:r.sourceMapText?JSON.parse(r.sourceMapText):null};}};
+          const output=path.join(here,'artifacts/vitest-results.json');let context,failure=null,closeError=null,reported=null;
+          try{context=await startVitest('test',[],{root,config:false,run:true,watch:false,ui:false,api:false,open:false,environment:'jsdom',globals:true,include:inputs.exactSuites,setupFiles:[path.join(here,'network-setup.ts'),path.join(root,'src/test/setup.ts')],pool:'threads',maxWorkers:1,fileParallelism:false,isolate:true,execArgv:['--require',path.join(here,'block-network.cjs')],deps:{optimizer:{client:{enabled:false},ssr:{enabled:false}}},coverage:{enabled:false},typecheck:{enabled:false},testTimeout:15000,hookTimeout:15000,teardownTimeout:5000,reporters:['default','json'],outputFile:{json:output}},{configFile:false,envFile:false,esbuild:false,plugins:[plugin],clearScreen:false,root,cacheDir:path.join(here,'vite-cache'),resolve:{alias:{'@':path.join(root,'src')}},optimizeDeps:{noDiscovery:true,include:[]},server:{host:'127.0.0.1',middlewareMode:true,hmr:false,ws:false,watch:null,fs:{strict:true,allow:[here,root,deps]}}},{packageInstaller:installer});reported=JSON.parse(fs.readFileSync(output,'utf8'));}catch(e){failure={name:e?.name??null,message:String(e?.message??e),stack:e?.stack??null};}finally{if(context)try{await context.close();}catch(e){closeError={name:e?.name??null,message:String(e?.message??e)};}}
+          const expected=inputs.exactSuites.map(p=>path.resolve(root,p)).sort();const actual=(reported?.testResults??[]).map(p=>path.resolve(p.name)).sort();
+          const cases=(reported?.testResults??[]).flatMap(p=>p.assertionResults??[]);
+          const exactSuites=JSON.stringify(expected)===JSON.stringify(actual)&&actual.length===5;
+          const allCasesPassed=cases.length>0&&cases.every(p=>p.status==='passed')&&(reported?.testResults??[]).every(p=>(p.assertionResults??[]).length>0);
+          const passed=!failure&&!closeError&&(process.exitCode??0)===0&&exactSuites&&allCasesPassed&&reported?.success===true&&reported.numTotalTests===cases.length&&reported.numFailedTests===0&&reported.numFailedTestSuites===0&&(reported.numPendingTests??0)===0&&(reported.numTodoTests??0)===0;
+          fs.writeFileSync(path.join(here,'artifacts/offline-suite-result.json'),JSON.stringify({status:passed?'PASS_EXACT_FIVE_OFFLINE_MOCKED_SUITES':'FAIL_OR_INCOMPLETE_FIVE_OFFLINE_SUITES',exactSuites,allCasesPassed,totalCases:cases.length,reportedSuccess:reported?.success??null,failure,closeError,exitAfterClose:process.exitCode??0,realAuthSQLStorageOrPDFBytes:false,genuineBrowserWorkerAccepted:false,productionAccepted:false,fullGoalAccepted:false},null,2)+'\n');
+          if(!passed)process.exitCode=1;
+          SOURCE_RUN_TESTS_MJS_END
+          cat > .codex-temp/pdf-canvas-ci/run-build.mjs <<'SOURCE_RUN_BUILD_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const here=path.dirname(new URL(import.meta.url).pathname),root=fs.realpathSync(process.cwd());
+          if(globalThis.__UI_NETWORK_GUARD_INSTALLED__!==true)throw new Error('EXPLICIT_NETWORK_PRELOAD_REQUIRED');
+          for(const key of Object.keys(process.env))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete process.env[key];
+          process.env.NODE_ENV='production';
+          const envDir=path.join(here,'empty-env'),outDir=path.join(here,'production-dist');fs.mkdirSync(envDir,{recursive:false});
+          const {build}=await import('vite');
+          // Full stock config/plugins; only CI-owned output and empty envDir are overridden.
+          await build({root,configFile:path.join(root,'vite.config.ts'),mode:'production',envDir,clearScreen:false,build:{outDir}});
+          const assets=path.join(outDir,'assets');const files=fs.readdirSync(assets);const workers=files.filter(n=>/^selectedPdf\.worker-[A-Za-z0-9_-]+\.js$/.test(n));
+          if(workers.length!==1)throw new Error('ONE_LOCAL_SELECTED_PDF_WORKER_REQUIRED');
+          const worker=fs.readFileSync(path.join(assets,workers[0]));const workerText=worker.toString('utf8');
+          if(!workerText.includes('SELECTED_PDF_EXTERNAL_RESOURCE_DISABLED')||!workerText.includes('6.4.299'))throw new Error('LOCAL_WORKER_VERSION_OR_RESOURCE_GUARD_MISSING');
+          const referenced=files.filter(n=>n.endsWith('.js')&&n!==workers[0]).some(n=>fs.readFileSync(path.join(assets,n),'utf8').includes(workers[0]));
+          if(!referenced)throw new Error('BUNDLE_MUST_REFERENCE_LOCAL_WORKER');
+          fs.writeFileSync(path.join(here,'artifacts/stock-build-local-worker.json'),JSON.stringify({status:'PASS_STOCK_CONFIG_BUILD_LOCAL_WORKER_EMITTED',config:'vite.config.ts',stockPluginsPreserved:true,CIEmptyEnvDir:true,trackedEnvRead:false,worker:workers[0],workerBytes:worker.length,workerSHA256:crypto.createHash('sha256').update(worker).digest('hex'),localWorkerReferenced:true,realPDFBytesUsed:false,browserWorkerOrVisualAcceptance:false,productionAccepted:false},null,2)+'\n');
+          SOURCE_RUN_BUILD_MJS_END
+      - name: Exact source16 and main193 parent preflight
+        run: node .codex-temp/pdf-canvas-ci/preflight.mjs
+      - name: Snapshot protected source without reading env
+        run: node .codex-temp/pdf-canvas-ci/snapshot-source.mjs before
+      - name: Official public npm frozen install with scripts ignored
+        run: node .codex-temp/pdf-canvas-ci/run-stage.mjs npm-ci
+      - name: Full stock TypeScript
+        run: node .codex-temp/pdf-canvas-ci/run-stage.mjs stock-tsc
+      - name: Exact five mocked offline suites
+        run: node .codex-temp/pdf-canvas-ci/run-stage.mjs five-suites
+      - name: Full stock production config and local PDF worker build
+        run: node .codex-temp/pdf-canvas-ci/run-stage.mjs stock-build
+      - name: Verify all protected source and lock bytes after stages
+        if: always()
+        run: node .codex-temp/pdf-canvas-ci/snapshot-source.mjs after
+      - name: Retain only finite logs and receipts, no dist or env files
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prog012-selected-pdf-canvas-offline-ci
+          path: .codex-temp/pdf-canvas-ci/artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

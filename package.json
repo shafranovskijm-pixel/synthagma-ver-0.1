@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "npm@10.9.2",
   "engines": {
-    "node": "20.x",
+    "node": ">=22.13.0 <23",
     "npm": "10.x"
   },
   "scripts": {
@@ -88,6 +88,7 @@
     "next-themes": "^0.3.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "3.11.174",
+    "pdfjs-dist-sealed": "npm:pdfjs-dist@6.4.299",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",

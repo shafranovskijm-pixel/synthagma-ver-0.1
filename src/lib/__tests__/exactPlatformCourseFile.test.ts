@@ -33,7 +33,8 @@ describe("explicit saved-proposal source receipt",()=>{
  it("creates an exact PDF lease only after header and full-byte integrity, then revokes once",async()=>{
   const bytes=vi.fn().mockResolvedValue(binary());const gateway=createExactPlatformCourseFileGateway({context:vi.fn(),bytes});const abort=new AbortController();const lease=await gateway.bytes(selected,sealed(),abort.signal);
   expect(bytes).toHaveBeenCalledWith(id(6),expect.any(AbortSignal));expect(lease.previewKind).toBe("pdf");expect(lease.mime).toBe("application/pdf");expect(createURL).toHaveBeenCalledTimes(1);expect(createURL.mock.calls[0][0]).toBeInstanceOf(Blob);
-  abort.abort();lease.release();expect(revokeURL).toHaveBeenCalledTimes(1);expect(revokeURL).toHaveBeenCalledWith("blob:verified-selected-proposal");
+  const copy=lease.copyVerifiedPdfBytes();expect(Array.from(copy)).toEqual(Array.from(PDF));copy.fill(0);expect(Array.from(lease.copyVerifiedPdfBytes())).toEqual(Array.from(PDF));
+  abort.abort();expect(()=>lease.copyVerifiedPdfBytes()).toThrow();lease.release();expect(revokeURL).toHaveBeenCalledTimes(1);expect(revokeURL).toHaveBeenCalledWith("blob:verified-selected-proposal");
  });
  it.each([{"X-File-Receipt-Id":id(99)},{"X-File-SHA256":"b".repeat(64)},{"Content-Length":"999"},{"Content-Type":"text/html"}])("rejects mismatched binary headers before a lease %j",headers=>{
   const gateway=createExactPlatformCourseFileGateway({context:vi.fn(),bytes:async()=>binary(sealed(),PDF,headers)});return expect(gateway.bytes(selected,sealed(),new AbortController().signal)).rejects.toThrow().then(()=>expect(createURL).not.toHaveBeenCalled());
