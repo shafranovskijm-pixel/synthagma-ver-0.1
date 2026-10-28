@@ -119,7 +119,7 @@ def run_stage(Session, argv, env, trace):
         for table in ('platform_course_file_intents', 'platform_course_file_receipts', 'platform_course_file_binding_events'):
             actor.error('SELECT * FROM public.' + table + ';', '42501')
         admin.error("UPDATE public.platform_course_file_receipts SET file_bytes=decode('00','hex')WHERE id=" + q(receipt) + ';', '55000', 'PCF_APPEND_ONLY_HISTORY')
-        admin.error('TRUNCATE public.platform_course_file_receipts;', '55000', 'PCF_APPEND_ONLY_HISTORY')
+        admin.error('TRUNCATE public.platform_course_file_receipts, public.platform_course_file_binding_events, public.platform_course_file_intents;', '55000', 'PCF_APPEND_ONLY_HISTORY')
         # CHECK constraint is tested without disabling triggers or forging a valid seal.
         admin.error("INSERT INTO public.platform_course_file_receipts SELECT (jsonb_populate_record(NULL::public.platform_course_file_receipts,to_jsonb(r)||jsonb_build_object('id',gen_random_uuid(),'file_sha256',repeat('f',64)))).* FROM public.platform_course_file_receipts r WHERE id=" + q(receipt) + ';', '23514')
         passed(1, {'literalDigest': DIGEST, 'beginAndFinishIdempotence': True, 'actorTargetAndActualDigestChecks': True, 'immutableAndIntegrityAndPrivateACL': True})

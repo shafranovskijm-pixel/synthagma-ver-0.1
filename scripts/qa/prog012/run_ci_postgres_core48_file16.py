@@ -219,7 +219,7 @@ def main():
         file_spec.loader.exec_module(file_stage)
         report["fileStage"] = file_stage.run_file_stage(
             here, command, base, interactive_base, env, output, report,
-            "c90954eaf3df9122bb59eb4f1b7e66a4725b5f1821fcd8f93d5c5e5daed217b4")
+            "3bb9556484ad04499c0c0a4a755a43d3b607930a0c92674a2deb4fee4bf50adf")
         report["status"] = "PASS_MINIMAL_SYNTHETIC_POSTGRES1711_UNIT_NOT_CLOUD_OR_FULL_SCHEMA"
     except Exception as error:
         report["status"] = "FAIL_CI_UNIT_OR_GUARD_NO_RETRY"

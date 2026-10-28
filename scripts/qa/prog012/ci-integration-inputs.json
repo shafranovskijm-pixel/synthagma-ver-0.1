@@ -5,7 +5,7 @@
     {
       "path": "run_ci_postgres_core48_file16.py",
       "bytes": 15728,
-      "sha256": "bb5e6c59edec80eb86e6f6c9274aa7297502f6db6531ae8c926961c1ac680ff0"
+      "sha256": "0b4b184c6dabd36245cf48197bc760a868ae0add4160208f06db1cccac257e44"
     },
     {
       "path": "ci-inputs.json",
@@ -15,11 +15,11 @@
     {
       "path": "ci-file-inputs.json",
       "bytes": 1816,
-      "sha256": "c90954eaf3df9122bb59eb4f1b7e66a4725b5f1821fcd8f93d5c5e5daed217b4"
+      "sha256": "3bb9556484ad04499c0c0a4a755a43d3b607930a0c92674a2deb4fee4bf50adf"
     }
   ],
   "coreManifestSHA256": "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db",
-  "fileManifestSHA256": "c90954eaf3df9122bb59eb4f1b7e66a4725b5f1821fcd8f93d5c5e5daed217b4",
+  "fileManifestSHA256": "3bb9556484ad04499c0c0a4a755a43d3b607930a0c92674a2deb4fee4bf50adf",
   "expected": {
     "originalCore48Preserved": true,
     "separateFileGroups16": true,

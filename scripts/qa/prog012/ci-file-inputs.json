@@ -15,8 +15,8 @@
     },
     {
       "path": "file_authority_cases.py",
-      "bytes": 21014,
-      "sha256": "7ade610b1b69308e24373679cecc4900511f9f1bc81cb35ffe2fbeb58a6d980b"
+      "bytes": 21095,
+      "sha256": "cbb2e11f9b61c5a5b3274b0debcddee1054907baeb244b69a4dd5e875868b8a1"
     },
     {
       "path": "reader-gap-instrumentation.lab-only.sql",
