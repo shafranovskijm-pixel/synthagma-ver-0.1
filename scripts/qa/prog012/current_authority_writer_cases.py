@@ -269,11 +269,11 @@ def run_stage(Session, argv, env, trace, base, authority_pins):
         reader.ok(source_fence(library=lib)); control.check('NOT(' + library_lifecycle(lib) + ')')
         passed(9, 'private_resource_component', {'libraryArchiveWriterFirstRetries': True, 'freshUnchangedPayloadLifecyclePredicateFalse': True})
 
-        lib = library('reader first source scope')
+        lib = library('reader first archive')
         reader.ok('BEGIN;'); reader.ok(source_fence(library=lib)); reader.check(library_lifecycle(lib))
-        wait_writer('UPDATE public.library_documents SET organization_id=' + q(base.OTHER) + ',storage_path=' + q('library/' + base.OTHER + '/caw-' + lib + '.pdf') + ' WHERE id=' + q(lib) + ';', reader)
+        wait_writer("UPDATE public.library_documents SET library_status='archive' WHERE id=" + q(lib) + ";", reader)
         control.check('NOT(' + library_lifecycle(lib) + ')')
-        passed(10, 'private_resource_component', {'pgBlockingPidsWitness': True, 'sourceScopeWriterWaits': True, 'freshExactOwnLifecyclePredicateFalse': True})
+        passed(10, 'private_resource_component', {'pgBlockingPidsWitness': True, 'sourceArchiveWriterWaits': True, 'freshExactOwnLifecyclePredicateFalse': True})
 
         doc, version, newer = uid(), uid(), uid()
         control.ok('INSERT INTO public.org_documents(id,organization_id,name,type)VALUES(' + q(doc) + ',' + q(base.OWN) + ",'CAW exact V1','other');"

@@ -64,8 +64,8 @@
     },
     {
       "path": "current_authority_writer_cases.py",
-      "bytes": 24542,
-      "sha256": "19f104f8619c78ba24eb9ccc97e41451dc5bdba26b28646cec091f24f120bd45"
+      "bytes": 24453,
+      "sha256": "dd5a11c2c6f2bc0d00c729ea0e999c0c55d8fb9b4e7b3e4c95309e3ec590a34d"
     },
     {
       "path": "current-authority12.modeled-schema-extension.sql",
