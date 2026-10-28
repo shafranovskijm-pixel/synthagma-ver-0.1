@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "status": "FROZEN_CI_ONLY_CORE48_EXACT_INPUTS_PLUS_DISTINCT_FILE16_STAGE_SOURCE_NOT_RUN",
+  "files": [
+    {
+      "path": "run_ci_postgres_core48_file16.py",
+      "bytes": 15728,
+      "sha256": "bb5e6c59edec80eb86e6f6c9274aa7297502f6db6531ae8c926961c1ac680ff0"
+    },
+    {
+      "path": "ci-inputs.json",
+      "bytes": 2375,
+      "sha256": "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db"
+    },
+    {
+      "path": "ci-file-inputs.json",
+      "bytes": 1816,
+      "sha256": "c90954eaf3df9122bb59eb4f1b7e66a4725b5f1821fcd8f93d5c5e5daed217b4"
+    }
+  ],
+  "coreManifestSHA256": "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db",
+  "fileManifestSHA256": "c90954eaf3df9122bb59eb4f1b7e66a4725b5f1821fcd8f93d5c5e5daed217b4",
+  "expected": {
+    "originalCore48Preserved": true,
+    "separateFileGroups16": true,
+    "allNativeClientsNaturalExit0": true
+  },
+  "production": false
+}
