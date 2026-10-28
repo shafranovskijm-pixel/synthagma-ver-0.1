@@ -11442,6 +11442,305 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_course_copy_file_bindings: {
+        Row: {
+          copy_generation_id: string
+          course_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          receipt_id: string
+          reference_id: string
+          reference_kind: string
+          source_course_id: string
+          source_lesson_id: string | null
+          source_library_document_id: string | null
+          source_library_metadata: Json | null
+          source_module_id: string | null
+          source_reference_id: string
+          source_reference_metadata: Json
+          target_lesson_id: string | null
+          target_module_id: string | null
+          target_row_sha256: string
+        }
+        Insert: {
+          copy_generation_id: string
+          course_id: string
+          created_at?: string
+          id: string
+          organization_id: string
+          receipt_id: string
+          reference_id: string
+          reference_kind: string
+          source_course_id: string
+          source_lesson_id?: string | null
+          source_library_document_id?: string | null
+          source_library_metadata?: Json | null
+          source_module_id?: string | null
+          source_reference_id: string
+          source_reference_metadata: Json
+          target_lesson_id?: string | null
+          target_module_id?: string | null
+          target_row_sha256: string
+        }
+        Update: {
+          copy_generation_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          receipt_id?: string
+          reference_id?: string
+          reference_kind?: string
+          source_course_id?: string
+          source_lesson_id?: string | null
+          source_library_document_id?: string | null
+          source_library_metadata?: Json | null
+          source_module_id?: string | null
+          source_reference_id?: string
+          source_reference_metadata?: Json
+          target_lesson_id?: string | null
+          target_module_id?: string | null
+          target_row_sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_copy_file_bindings_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "platform_course_file_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_course_copy_file_cohorts: {
+        Row: {
+          actor_id: string
+          copy_generation_id: string
+          course_id: string
+          created_at: string
+          id: string
+          lesson_order: Json
+          marketplace_id: string
+          order_id: string
+          organization_id: string
+          publication_id: string
+          publication_manifest_sha256: string
+          reference_count: number
+          reference_vector_sha256: string
+          source_course_id: string
+          source_scope_generation: string
+          transaction_id: string
+        }
+        Insert: {
+          actor_id: string
+          copy_generation_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+          lesson_order: Json
+          marketplace_id: string
+          order_id: string
+          organization_id: string
+          publication_id: string
+          publication_manifest_sha256: string
+          reference_count: number
+          reference_vector_sha256: string
+          source_course_id: string
+          source_scope_generation: string
+          transaction_id?: string
+        }
+        Update: {
+          actor_id?: string
+          copy_generation_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          lesson_order?: Json
+          marketplace_id?: string
+          order_id?: string
+          organization_id?: string
+          publication_id?: string
+          publication_manifest_sha256?: string
+          reference_count?: number
+          reference_vector_sha256?: string
+          source_course_id?: string
+          source_scope_generation?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_copy_file_cohorts_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "platform_course_publication_review_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_course_file_binding_events: {
+        Row: {
+          actor_id: string
+          course_id: string
+          created_at: string
+          id: string
+          receipt_id: string
+          reference_id: string
+          reference_kind: string
+          scope_generation: string
+          sequence: number
+          transaction_id: string
+        }
+        Insert: {
+          actor_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+          receipt_id: string
+          reference_id: string
+          reference_kind: string
+          scope_generation: string
+          sequence?: never
+          transaction_id?: string
+        }
+        Update: {
+          actor_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          receipt_id?: string
+          reference_id?: string
+          reference_kind?: string
+          scope_generation?: string
+          sequence?: never
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_file_binding_events_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: true
+            referencedRelation: "platform_course_file_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_course_file_intents: {
+        Row: {
+          actor_id: string
+          course_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          marketplace_id: string
+          organization_id: string
+          reference_id: string
+          reference_kind: string
+          reference_snapshot: Json
+          request_id: string
+          scope_generation: string
+          selection_sha256: string
+          source_org_version_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          course_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          marketplace_id: string
+          organization_id: string
+          reference_id: string
+          reference_kind: string
+          reference_snapshot: Json
+          request_id: string
+          scope_generation: string
+          selection_sha256: string
+          source_org_version_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          course_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          marketplace_id?: string
+          organization_id?: string
+          reference_id?: string
+          reference_kind?: string
+          reference_snapshot?: Json
+          request_id?: string
+          scope_generation?: string
+          selection_sha256?: string
+          source_org_version_id?: string | null
+        }
+        Relationships: []
+      }
+      platform_course_file_receipts: {
+        Row: {
+          actor_id: string
+          byte_length: number
+          captured_edition_id: string
+          course_id: string
+          created_at: string
+          enforcement_sha256: string
+          file_bytes: string
+          file_sha256: string
+          id: string
+          intent_id: string
+          marketplace_id: string
+          organization_id: string
+          reference_id: string
+          reference_kind: string
+          reference_snapshot: Json
+          scope_generation: string
+        }
+        Insert: {
+          actor_id: string
+          byte_length: number
+          captured_edition_id: string
+          course_id: string
+          created_at?: string
+          enforcement_sha256: string
+          file_bytes: string
+          file_sha256: string
+          id?: string
+          intent_id: string
+          marketplace_id: string
+          organization_id: string
+          reference_id: string
+          reference_kind: string
+          reference_snapshot: Json
+          scope_generation: string
+        }
+        Update: {
+          actor_id?: string
+          byte_length?: number
+          captured_edition_id?: string
+          course_id?: string
+          created_at?: string
+          enforcement_sha256?: string
+          file_bytes?: string
+          file_sha256?: string
+          id?: string
+          intent_id?: string
+          marketplace_id?: string
+          organization_id?: string
+          reference_id?: string
+          reference_kind?: string
+          reference_snapshot?: Json
+          scope_generation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_file_receipts_intent_id_fkey"
+            columns: ["intent_id"]
+            isOneToOne: true
+            referencedRelation: "platform_course_file_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_course_learning_bindings: {
         Row: {
           bound_at: string
@@ -11578,6 +11877,173 @@ export type Database = {
           source_curriculum_sha256?: string
           source_order_id?: string | null
           source_organization_id?: string
+        }
+        Relationships: []
+      }
+      platform_course_publication_deleted_parents: {
+        Row: {
+          course_id: string
+          organization_id: string | null
+          parent_id: string
+          parent_table: string
+          statement_finished: boolean
+          transaction_id: string
+          trigger_depth: number
+        }
+        Insert: {
+          course_id: string
+          organization_id?: string | null
+          parent_id: string
+          parent_table: string
+          statement_finished?: boolean
+          transaction_id: string
+          trigger_depth: number
+        }
+        Update: {
+          course_id?: string
+          organization_id?: string | null
+          parent_id?: string
+          parent_table?: string
+          statement_finished?: boolean
+          transaction_id?: string
+          trigger_depth?: number
+        }
+        Relationships: []
+      }
+      platform_course_publication_invocations: {
+        Row: {
+          actor_id: string
+          edition_sha256: string
+          marketplace_id: string
+          proposal_id: string
+          request_id: string
+          request_sha256: string
+          transaction_id: string
+        }
+        Insert: {
+          actor_id: string
+          edition_sha256: string
+          marketplace_id: string
+          proposal_id: string
+          request_id: string
+          request_sha256: string
+          transaction_id: string
+        }
+        Update: {
+          actor_id?: string
+          edition_sha256?: string
+          marketplace_id?: string
+          proposal_id?: string
+          request_id?: string
+          request_sha256?: string
+          transaction_id?: string
+        }
+        Relationships: []
+      }
+      platform_course_publication_library_revisions: {
+        Row: {
+          library_document_id: string
+          revision: number
+          touched_at: string
+        }
+        Insert: {
+          library_document_id: string
+          revision?: number
+          touched_at?: string
+        }
+        Update: {
+          library_document_id?: string
+          revision?: number
+          touched_at?: string
+        }
+        Relationships: []
+      }
+      platform_course_publication_review_events: {
+        Row: {
+          actor_id: string
+          canonical_manifest: Json
+          course_id: string
+          edition_sha256: string
+          event_kind: string
+          id: string
+          marketplace_id: string
+          organization_id: string
+          predecessor_event_id: string | null
+          proposal_id: string
+          recorded_at: string
+          request_id: string
+          request_sha256: string
+          review_payload: Json
+          sequence: number
+          transaction_id: string
+        }
+        Insert: {
+          actor_id: string
+          canonical_manifest: Json
+          course_id: string
+          edition_sha256: string
+          event_kind: string
+          id?: string
+          marketplace_id: string
+          organization_id: string
+          predecessor_event_id?: string | null
+          proposal_id: string
+          recorded_at?: string
+          request_id: string
+          request_sha256: string
+          review_payload: Json
+          sequence?: never
+          transaction_id?: string
+        }
+        Update: {
+          actor_id?: string
+          canonical_manifest?: Json
+          course_id?: string
+          edition_sha256?: string
+          event_kind?: string
+          id?: string
+          marketplace_id?: string
+          organization_id?: string
+          predecessor_event_id?: string | null
+          proposal_id?: string
+          recorded_at?: string
+          request_id?: string
+          request_sha256?: string
+          review_payload?: Json
+          sequence?: never
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_publication_review_ev_predecessor_event_id_fkey"
+            columns: ["predecessor_event_id"]
+            isOneToOne: false
+            referencedRelation: "platform_course_publication_review_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_course_publication_scope_revisions: {
+        Row: {
+          active: boolean
+          course_id: string
+          generation: string
+          revision: number
+          touched_at: string
+        }
+        Insert: {
+          active: boolean
+          course_id: string
+          generation?: string
+          revision?: number
+          touched_at?: string
+        }
+        Update: {
+          active?: boolean
+          course_id?: string
+          generation?: string
+          revision?: number
+          touched_at?: string
         }
         Relationships: []
       }
@@ -22689,36 +23155,6 @@ export type Database = {
       }
     }
     Functions: {
-      ensure_my_profile: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      read_platform_course_publication_readiness: {
-        Args: { p_marketplace_id: string }
-        Returns: Json
-      }
-      read_platform_course_publication_review_context: {
-        Args: {
-          p_marketplace_id: string
-          p_proposal_id?: string | null
-          p_expected_edition_sha256?: string | null
-          p_history_before_sequence?: string | null
-          p_confirm_event_id?: string | null
-        }
-        Returns: Json
-      }
-      submit_platform_course_publication_proposal: {
-        Args: { p_marketplace_id: string; p_expected_edition_sha256: string; p_dossier: Json; p_request_id: string }
-        Returns: Json
-      }
-      record_platform_course_publication_review: {
-        Args: { p_marketplace_id: string; p_proposal_id: string; p_expected_edition_sha256: string; p_decision: string; p_notes: string; p_next_review_at: string | null; p_request_id: string }
-        Returns: Json
-      }
-      publish_platform_course_proposal: {
-        Args: { p_marketplace_id: string; p_proposal_id: string; p_expected_edition_sha256: string; p_request_id: string }
-        Returns: Json
-      }
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string
@@ -23200,6 +23636,26 @@ export type Database = {
             Args: { p_accepted_terms?: boolean; p_referred_by?: string }
             Returns: string
           }
+      begin_platform_course_current_file_capture: {
+        Args: {
+          p_expected_edition_sha256: string
+          p_marketplace_id: string
+          p_reference_id: string
+          p_reference_kind: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      begin_platform_course_file_capture: {
+        Args: {
+          p_marketplace_id: string
+          p_reference_id: string
+          p_reference_kind: string
+          p_request_id: string
+          p_source_org_version: string
+        }
+        Returns: Json
+      }
       bind_course_program_version: {
         Args: {
           p_course_id: string
@@ -23960,6 +24416,7 @@ export type Database = {
         Returns: Json
       }
       encrypt_password: { Args: { p_text: string }; Returns: string }
+      ensure_my_profile: { Args: never; Returns: Json }
       ensure_sales_manager_for_current_user: { Args: never; Returns: string }
       expire_staff_invitations: { Args: never; Returns: number }
       expire_temporary_staff_roles: {
@@ -24016,6 +24473,17 @@ export type Database = {
           p_event_id: string
           p_state: string
           p_telegram_message_id?: number
+        }
+        Returns: Json
+      }
+      finish_platform_course_file_capture_worker: {
+        Args: {
+          p_authenticated_user: string
+          p_bytes_hex: string
+          p_capture_enforcement_sha256: string
+          p_captured_edition: string
+          p_file_sha256: string
+          p_intent_id: string
         }
         Returns: Json
       }
@@ -24874,6 +25342,10 @@ export type Database = {
           type_label: string
         }[]
       }
+      load_platform_course_file_capture_worker: {
+        Args: { p_authenticated_user: string; p_intent_id: string }
+        Returns: Json
+      }
       lookup_profile_by_login: {
         Args: { p_login: string }
         Returns: {
@@ -25030,6 +25502,154 @@ export type Database = {
       paid_umk_20260922_valid_grant: {
         Args: { _course_id: string; _document_id: string }
         Returns: boolean
+      }
+      pcc_v1_actor: { Args: never; Returns: string }
+      pcc_v1_add_new_binding: {
+        Args: {
+          p_context: Json
+          p_course: string
+          p_generation: string
+          p_kind: string
+          p_listing: string
+          p_source: string
+          p_source_reference: string
+          p_target_reference: string
+        }
+        Returns: undefined
+      }
+      pcc_v1_authorized_reference: {
+        Args: {
+          p_access_mode: string
+          p_course: string
+          p_kind: string
+          p_purpose: string
+          p_reference: string
+        }
+        Returns: Json
+      }
+      pcc_v1_copy_binding_payload: {
+        Args: { p_access: Json; p_binding: string }
+        Returns: Json
+      }
+      pcc_v1_learner_lesson_ready: {
+        Args: { p_actor: string; p_course: string; p_lesson: string }
+        Returns: boolean
+      }
+      pcc_v1_module_ready: {
+        Args: { p_actor: string; p_course: string; p_module: string }
+        Returns: boolean
+      }
+      pcc_v1_reference_row: {
+        Args: { p_course: string; p_kind: string; p_reference: string }
+        Returns: Json
+      }
+      pcc_v1_seal_new_copy: {
+        Args: {
+          p_attachments: Json
+          p_context: Json
+          p_course: string
+          p_documents: Json
+          p_lesson_map: Json
+          p_listing: string
+          p_order: string
+          p_source: string
+        }
+        Returns: undefined
+      }
+      pcc_v1_source_context: {
+        Args: { p_listing: string; p_source: string }
+        Returns: Json
+      }
+      pcf_v1_binding_state: {
+        Args: { p_course: string; p_kind: string; p_reference: string }
+        Returns: Json
+      }
+      pcf_v1_decode_key: { Args: { p_key: string }; Returns: string }
+      pcf_v1_delivery_capabilities: { Args: never; Returns: Json }
+      pcf_v1_enforcement_stamp: { Args: never; Returns: string }
+      pcf_v1_file_blockers: {
+        Args: { p_course: string; p_dossier: Json }
+        Returns: string[]
+      }
+      pcf_v1_file_manifest: { Args: { p_course: string }; Returns: Json }
+      pcf_v1_pointer: { Args: { p_url: string }; Returns: Json }
+      pcf_v1_receipt_summary: {
+        Args: { p_receipt: string; p_replayed: boolean }
+        Returns: Json
+      }
+      pcf_v1_reference_identity: {
+        Args: {
+          p_course: string
+          p_kind: string
+          p_org_version: string
+          p_reference: string
+        }
+        Returns: Json
+      }
+      pcf_v1_reference_snapshot: {
+        Args: {
+          p_course: string
+          p_kind: string
+          p_org_version: string
+          p_reference: string
+        }
+        Returns: Json
+      }
+      pcf_v1_worker_actor: { Args: { p_actor: string }; Returns: undefined }
+      pcf_v1_worker_enter: {
+        Args: { p_actor: string; p_course: string; p_listing: string }
+        Returns: undefined
+      }
+      pcr_v2_actor: { Args: { p_wait?: boolean }; Returns: string }
+      pcr_v2_blockers: {
+        Args: { p_course: string; p_dossier: Json }
+        Returns: string[]
+      }
+      pcr_v2_claim_touch: { Args: { p_course: string }; Returns: undefined }
+      pcr_v2_enter: { Args: { p_listing: string }; Returns: string }
+      pcr_v2_library_parents: {
+        Args: { p_libraries: string[] }
+        Returns: undefined
+      }
+      pcr_v2_lock: {
+        Args: {
+          p_ids: string[]
+          p_mode: string
+          p_namespace: string
+          p_wait?: boolean
+        }
+        Returns: undefined
+      }
+      pcr_v2_manifest: {
+        Args: { p_course: string; p_listing: string }
+        Returns: Json
+      }
+      pcr_v2_parent_courses: {
+        Args: { p_courses: string[]; p_witness: boolean }
+        Returns: Json
+      }
+      pcr_v2_parent_lesson: {
+        Args: { p_lesson: string; p_lock?: boolean; p_witness: boolean }
+        Returns: string
+      }
+      pcr_v2_readiness: { Args: { p_listing: string }; Returns: Json }
+      pcr_v2_resource_ids: { Args: { p_course: string }; Returns: string[] }
+      pcr_v2_review_source_context: {
+        Args: { p_manifest: Json }
+        Returns: Json
+      }
+      pcr_v2_sha: { Args: { p_value: Json }; Returns: string }
+      pcr_v2_source_scopes: {
+        Args: { p_row: Json; p_table: string }
+        Returns: string[]
+      }
+      pcr_v2_touch_library: {
+        Args: { p_libraries: string[] }
+        Returns: undefined
+      }
+      pcr_v2_touch_scope: {
+        Args: { p_course: string; p_operation: string }
+        Returns: string
       }
       pick_next_email_sender:
         | {
@@ -25304,6 +25924,15 @@ export type Database = {
           used_count: number
         }[]
       }
+      publish_platform_course_proposal: {
+        Args: {
+          p_expected_edition_sha256: string
+          p_marketplace_id: string
+          p_proposal_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       purchase_marketplace_course: {
         Args: {
           p_buyer_type?: string
@@ -25332,6 +25961,18 @@ export type Database = {
         Args: { p_group_id: string; p_organization_id: string; p_query: Json }
         Returns: Json
       }
+      read_copied_course_exact_file: {
+        Args: {
+          p_access_mode: string
+          p_binding_id: string
+          p_copy_generation_id: string
+          p_course_id: string
+          p_purpose: string
+          p_reference_id: string
+          p_reference_kind: string
+        }
+        Returns: Json
+      }
       read_copy_registry: {
         Args: { p_org: string; p_query: Json; p_scope: Json }
         Returns: Json
@@ -25342,6 +25983,20 @@ export type Database = {
           p_group_id: string
           p_organization_id: string
         }
+        Returns: Json
+      }
+      read_course_exact_file_delivery_context: {
+        Args: {
+          p_access_mode: string
+          p_course_id: string
+          p_purpose: string
+          p_reference_id: string
+          p_reference_kind: string
+        }
+        Returns: Json
+      }
+      read_course_exact_file_delivery_mode: {
+        Args: { p_access_mode: string; p_course_id: string }
         Returns: Json
       }
       read_custom_journals: {
@@ -25387,6 +26042,34 @@ export type Database = {
           p_edition_id: string
           p_limit?: number
           p_organization_id: string
+        }
+        Returns: Json
+      }
+      read_platform_course_file_receipt: {
+        Args: { p_receipt_id: string }
+        Returns: Json
+      }
+      read_platform_course_proposal_file_context: {
+        Args: {
+          p_expected_proposal_edition_sha256: string
+          p_marketplace_id: string
+          p_proposal_id: string
+          p_reference_id: string
+          p_reference_kind: string
+        }
+        Returns: Json
+      }
+      read_platform_course_publication_readiness: {
+        Args: { p_marketplace_id: string }
+        Returns: Json
+      }
+      read_platform_course_publication_review_context: {
+        Args: {
+          p_confirm_event_id?: string
+          p_expected_edition_sha256?: string
+          p_history_before_sequence?: string
+          p_marketplace_id: string
+          p_proposal_id?: string
         }
         Returns: Json
       }
@@ -25482,6 +26165,18 @@ export type Database = {
           p_organization_id: string
           p_reason: string
           p_reported_publication_date: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      record_platform_course_publication_review: {
+        Args: {
+          p_decision: string
+          p_expected_edition_sha256: string
+          p_marketplace_id: string
+          p_next_review_at: string
+          p_notes: string
+          p_proposal_id: string
           p_request_id: string
         }
         Returns: Json
@@ -26002,6 +26697,15 @@ export type Database = {
           name_matches: number
           row_index: number
         }[]
+      }
+      submit_platform_course_publication_proposal: {
+        Args: {
+          p_dossier: Json
+          p_expected_edition_sha256: string
+          p_marketplace_id: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       submit_test_attempt: {
         Args: { p_answers: Json; p_attempt_id: string }
