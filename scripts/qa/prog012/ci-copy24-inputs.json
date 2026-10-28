@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_COPY_R6_NATIVE24_R2_STABLE_GROUP21_FIXTURE_NOT_RUN",
+  "candidate": {
+    "migration": "20261028140000_platform_course_copy_file_delivery.sql",
+    "freezeSHA256": "6efe77b6cd7db3e48b28194625df56ff7c3e0cd5cc42cfe608b54302dceb0a1e",
+    "sqlSHA256": "23c002f6737d77301744549e6365fd538c10dbece22713679aa28c2469112ffa",
+    "requiresPriorNative89": true
+  },
+  "files": [
+    {
+      "path": "concurrency_cases.py",
+      "bytes": 24197,
+      "sha256": "802e828549a7bf116d1f2c6deda47cf31a2bc80e11096c68935773a9cd936d3c"
+    },
+    {
+      "path": "run_self_profile_stage.py",
+      "bytes": 17596,
+      "sha256": "6c25dab848536dafed47bff9ff3ed9a76f3b4d196ff5143a8d0f1b0207410289"
+    },
+    {
+      "path": "copy-pcr-core.candidate.sql",
+      "bytes": 55756,
+      "sha256": "3df99badb3d5a271a51d20b7e832cf20e6da425f75fed3d447bcb3b2b4543426"
+    },
+    {
+      "path": "copy-file-r4.candidate.sql",
+      "bytes": 50326,
+      "sha256": "6de784c9d435152c355eccb6573620a321b756b17b8e1bbd39ac709d71c089d8"
+    },
+    {
+      "path": "copy-file-delivery.candidate.sql",
+      "bytes": 64514,
+      "sha256": "23c002f6737d77301744549e6365fd538c10dbece22713679aa28c2469112ffa"
+    },
+    {
+      "path": "copy-file-delivery.inverse.sql",
+      "bytes": 15379,
+      "sha256": "685d0ab0b671a1212f2cd23e7515c19548dc6376220da532e098aa7e14c24796"
+    },
+    {
+      "path": "copy24-modeled-bootstrap.sql",
+      "bytes": 134136,
+      "sha256": "fe83b6f39f2cbe806a246bfdb85bfdf42bf6a3efd43e0dfeb226e2f35cc3448e"
+    },
+    {
+      "path": "copy24-modeled-actors-and-retained-fixtures.sql",
+      "bytes": 4003,
+      "sha256": "adaf29645e19eed2ad2f463863a408448b1c1bd2647f0fd5330428a6ac38b6c0"
+    },
+    {
+      "path": "copy24-conditional-capability.lab-only.sql",
+      "bytes": 1042,
+      "sha256": "68a9aec37687df5e8de408952c5d19235d41ac01fb7a490e9b4340e9d6645720"
+    },
+    {
+      "path": "copy24-exact-capability-restore.sql",
+      "bytes": 927,
+      "sha256": "30baa49fb6c06c7816fcd353a6daba4d85430e0888568f4ae2690c0775ae96af"
+    },
+    {
+      "path": "copy24-inverse-guard.exact.sql",
+      "bytes": 3133,
+      "sha256": "a43d4d0dce79093d59d26ccc29e43a0daeba1fe6ab914f41614aa846554f3b3d"
+    },
+    {
+      "path": "copy24-empty-inverse-rollback.lab-only.sql",
+      "bytes": 15381,
+      "sha256": "0fc7fc7d3dce8429c255be5b314bd3e66ce178fbc362c999861f934f23ed9120"
+    },
+    {
+      "path": "copy24-current23-preimage-component.exact.lab-only.sql",
+      "bytes": 3395,
+      "sha256": "de4c328d2541ebf55f08f8c06c1b79f46cd9c923603055de0d03badbe08c3068"
+    },
+    {
+      "path": "copy24_cases.py",
+      "bytes": 49295,
+      "sha256": "bff8fc0a0d5d6be602382a9271e3f64a457c9d329f21eec90504b0ca61f704c5"
+    },
+    {
+      "path": "run_copy24_stage.py",
+      "bytes": 13422,
+      "sha256": "f8eda0957085aebf24cad121780e3b0b0487e36e9a074addc4daf71e8e6f91d5"
+    }
+  ],
+  "database": "sintagma_copy24_lab_20261028",
+  "expected": {
+    "groups": 24,
+    "nativeClients": 9,
+    "allNativeNaturalZero": true,
+    "exactCapabilityRestoration": true,
+    "original89Untouched": true
+  },
+  "production": false,
+  "providerAuth": false,
+  "realStorageHTTP": false,
+  "fullSchemaParity": false
+}

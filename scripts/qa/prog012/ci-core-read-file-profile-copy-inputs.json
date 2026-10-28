@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_UNCHANGED_ORIGINAL89_THEN_CONDITIONAL_COPY24_R2_STABLE_RACE_FIXTURE_NOT_RUN",
+  "files": [
+    {
+      "path": "run_ci_postgres_core48_read13_file16_profile12_copy24.py",
+      "bytes": 17382,
+      "sha256": "5a24acd1a19e252ec7397d8235a6fc54aaadeefb41e9627658eba27e41338e58"
+    },
+    {
+      "path": "ci-inputs.json",
+      "bytes": 2375,
+      "sha256": "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db"
+    },
+    {
+      "path": "ci-file-inputs.json",
+      "bytes": 1816,
+      "sha256": "3bb9556484ad04499c0c0a4a755a43d3b607930a0c92674a2deb4fee4bf50adf"
+    },
+    {
+      "path": "ci-read-inputs.json",
+      "bytes": 839,
+      "sha256": "e339f1d7736d57bcd0df70d2c205542072143220fe8f8f2391cd48e156651eeb"
+    },
+    {
+      "path": "ci-self-profile-inputs.json",
+      "bytes": 1407,
+      "sha256": "98e83002e7f4844fc1cd4e8ae87f06040d787e49b41d8c2d6568c499482cf77e"
+    },
+    {
+      "path": "ci-copy24-inputs.json",
+      "bytes": 3250,
+      "sha256": "e48f2e209607001f10a90ce4370dd8ab7096951fb20807f19fe19a8800911474"
+    }
+  ],
+  "order": [
+    "core48 exact",
+    "original read13 exact",
+    "file16 exact",
+    "distinct fresh DB self-profile12 exact",
+    "distinct fresh DB conditional copy24"
+  ],
+  "expected": {
+    "original89Preserved": true,
+    "newConditionalCopyGroups": 24,
+    "totalGroups": 113,
+    "newNativeClients": 9,
+    "allNaturalZero": true
+  },
+  "production": false,
+  "providerAuth": false,
+  "realStorageHTTP": false,
+  "fullSchemaParity": false
+}
