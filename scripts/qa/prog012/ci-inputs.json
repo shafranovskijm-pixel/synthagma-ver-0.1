@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "status": "CI_ONLY_FROZEN_NATIVE_UNIT_INPUTS_NOT_PRODUCTION_MIGRATION",
+  "productSourceSHA256": "3df99badb3d5a271a51d20b7e832cf20e6da425f75fed3d447bcb3b2b4543426",
+  "originalR2FreezeSHA256": "44d8e05f436d3afb6b4c4d396e2061771ab5099ffb1224dd15fc3a88c8f27c0d",
+  "image": {
+    "reference": "postgres:17.11@sha256:0b81cec82228160abfa753aeaad0609b709eb26eeb950f2e404ad2326e1cc370",
+    "platform": "linux/amd64",
+    "configDigest": "sha256:81edcaa5ff2923f7be9c1f43d3e5076f29c6c9c216c86964b5fd038959404429",
+    "officialRepository": "library/postgres",
+    "tagObserved": "17.11",
+    "indexDigest": "sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f",
+    "manifestURL": "https://registry-1.docker.io/v2/library/postgres/manifests/sha256:0b81cec82228160abfa753aeaad0609b709eb26eeb950f2e404ad2326e1cc370",
+    "observedAtUtc": "2026-10-28T10:54:24.348Z"
+  },
+  "database": "sintagma_pcr_v4_r2_lab_20261028",
+  "dataDirectory": "/var/lib/postgresql/data",
+  "portInsideContainer": 5432,
+  "hostPublishedPorts": false,
+  "files": [
+    {
+      "path": "minimal-unit-bootstrap.sql",
+      "bytes": 10824,
+      "sha256": "5c8d5f56bc2417df3e1599a7dace66e5f33a7aef40fe61aad5f509a1098e3bfc"
+    },
+    {
+      "path": "platform_template_publication_review.candidate.sql",
+      "bytes": 55756,
+      "sha256": "3df99badb3d5a271a51d20b7e832cf20e6da425f75fed3d447bcb3b2b4543426"
+    },
+    {
+      "path": "review-gate-regression.sql",
+      "bytes": 15743,
+      "sha256": "9c37b45e8bea5d159842696aaba4e5c9344ff39d11ee04034c2dd5f3fc263419"
+    },
+    {
+      "path": "concurrency_cases.py",
+      "bytes": 24197,
+      "sha256": "802e828549a7bf116d1f2c6deda47cf31a2bc80e11096c68935773a9cd936d3c"
+    },
+    {
+      "path": "cascade-extra-ten.sql",
+      "bytes": 11269,
+      "sha256": "031ca1570467c2620cc089ebc04809e24deccd3747812966ff94b5029e96f50a"
+    },
+    {
+      "path": "run_ci_postgres.py",
+      "bytes": 13559,
+      "sha256": "61a0fc4d882510716e3728bd88e6cd18541074aa8f54db30a2a9ccbb850f61e2"
+    }
+  ],
+  "expected": {
+    "base18": true,
+    "concurrency18": true,
+    "freshAuthSubgroups2": true,
+    "cascadeRollbackSubgroups10": true,
+    "allNativeProcessesNaturalExit0": true
+  },
+  "scope": "Synthetic PostgreSQL17.11 minimal unit only; no Cloud/Auth/Storage/full-schema/application or fullPROG012 acceptance"
+}
