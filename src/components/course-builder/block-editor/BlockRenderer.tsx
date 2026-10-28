@@ -122,6 +122,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
         </div>
       );
     case "accordion":
+      if (block.accordionItems) return <div className="space-y-3">{block.accordionItems.map(item => <RenderBlock key={item.id} block={{ ...block, id: item.id, accordionItems: undefined, accordionTitle: item.title, content: item.content }} onQuizAnswer={onQuizAnswer} onQuizSubmit={onQuizSubmit} />)}</div>;
       return (
         <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden not-prose [&_a]:text-primary [&_a]:underline">
           <button className="w-full flex items-center gap-2 p-3 text-left hover:bg-purple-500/10" onClick={() => setAccordionOpen(!accordionOpen)}>
@@ -154,22 +155,25 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
         </div>
       );
     case "quiz":
-      const options = block.quizOptions || [];
+      const options = Array.isArray(block.quizOptions) && block.quizOptions.every(option => typeof option?.text === "string" && typeof option.isCorrect === "boolean") ? block.quizOptions : [];
+      const keyConfirmed = options.every(option => option.text.trim() !== "") && options.filter(option => option.isCorrect === true).length === 1;
+      const evaluated = quizSubmitted && keyConfirmed;
       const correctIndex = options.findIndex(o => o.isCorrect);
-      const isCorrect = quizSubmitted && quizAnswer === correctIndex;
+      const isCorrect = evaluated && quizAnswer === correctIndex;
       return (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3 not-prose">
           <div className="flex items-center gap-2 text-primary"><HelpCircle className="w-5 h-5" /><span className="font-medium">Проверьте себя</span></div>
           <p className="font-medium">{block.quizQuestion}</p>
           <div className="space-y-2">
             {options.map((option, i) => (
-              <button key={i} onClick={() => onQuizAnswer(i)} disabled={quizSubmitted} className={cn("w-full text-left p-3 rounded-lg border transition-all", quizAnswer === i && !quizSubmitted && "border-primary bg-primary/10", quizSubmitted && option.isCorrect && "border-green-500 bg-green-500/10", quizSubmitted && quizAnswer === i && !option.isCorrect && "border-destructive bg-destructive/10", !quizSubmitted && quizAnswer !== i && "border-border hover:border-primary/50")}>
+              <button key={i} onClick={() => onQuizAnswer(i)} disabled={evaluated} className={cn("w-full text-left p-3 rounded-lg border transition-all", quizAnswer === i && !evaluated && "border-primary bg-primary/10", evaluated && option.isCorrect && "border-green-500 bg-green-500/10", evaluated && quizAnswer === i && !option.isCorrect && "border-destructive bg-destructive/10", !evaluated && quizAnswer !== i && "border-border hover:border-primary/50")}>
                 {option.text}
               </button>
             ))}
           </div>
-          {!quizSubmitted && quizAnswer !== undefined && <Button onClick={onQuizSubmit} size="sm">Проверить</Button>}
-          {quizSubmitted && <div className={cn("p-3 rounded-lg text-sm", isCorrect ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive")}>{isCorrect ? "Правильно! " : "Неправильно. "}{block.quizExplanation}</div>}
+          {!keyConfirmed && <p className="text-sm text-muted-foreground">Ответ для этой самопроверки пока не подтверждён</p>}
+          {!evaluated && quizAnswer !== undefined && <Button onClick={onQuizSubmit} size="sm" disabled={!keyConfirmed}>Проверить</Button>}
+          {evaluated && <div className={cn("p-3 rounded-lg text-sm", isCorrect ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive")}>{isCorrect ? "Правильно! " : "Неправильно. "}{block.quizExplanation}</div>}
         </div>
       );
     case "image":

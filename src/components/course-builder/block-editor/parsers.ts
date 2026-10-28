@@ -1,17 +1,26 @@
 import type { ContentBlock } from "./types";
+import { normalizeLessonBlocks, serializeLessonBlocks } from "./legacyLessonBlocks";
 
-export function blocksToJson(blocks: ContentBlock[]): string {
-  return JSON.stringify(blocks);
+export function blocksToJson(blocks: ContentBlock[], originalContent?: string | null): string {
+  let originalIsArray = false;
+  if (typeof originalContent === "string") {
+    try { originalIsArray = Array.isArray(JSON.parse(originalContent)); } catch { /* legacy markdown */ }
+  }
+  if (typeof originalContent === "string" && !originalIsArray) {
+    const withoutGeneratedIds = (values: ContentBlock[]) => values.map(({ id: _id, ...value }) => value);
+    if (JSON.stringify(withoutGeneratedIds(blocks)) === JSON.stringify(withoutGeneratedIds(markdownToBlocks(originalContent)))) return originalContent;
+  }
+  return serializeLessonBlocks(blocks, originalContent);
 }
 
 export function jsonToBlocks(json: string): ContentBlock[] {
-  try { return JSON.parse(json); } catch { return []; }
+  return parseLessonContent(json);
 }
 
 /**
  * Universal lesson-content parser. Used by editor, learner and preview to keep behaviour identical.
  * 1. Empty → []
- * 2. Valid JSON array → as-is
+ * 2. Valid JSON array → view-only legacy aliases; original content stays unchanged
  * 3. Plain markdown / legacy text → markdownToBlocks fallback
  */
 export function parseLessonContent(content: string | null | undefined): ContentBlock[] {
@@ -19,10 +28,9 @@ export function parseLessonContent(content: string | null | undefined): ContentB
   const trimmed = content.trim();
   if (!trimmed) return [];
   if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) return parsed;
-    } catch { /* fall through */ }
+    let parsed: unknown;
+    try { parsed = JSON.parse(trimmed); } catch { /* fall through */ }
+    if (Array.isArray(parsed)) return normalizeLessonBlocks(parsed);
   }
   // Legacy fallback: markdown / plain lines
   return markdownToBlocks(trimmed);
@@ -50,10 +58,9 @@ export function markdownToBlocks(md: string): ContentBlock[] {
 
   const trimmed = md.trim();
   if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) return parsed;
-    } catch { /* not JSON, proceed with markdown parsing */ }
+    let parsed: unknown;
+    try { parsed = JSON.parse(trimmed); } catch { /* not JSON, proceed with markdown parsing */ }
+    if (Array.isArray(parsed)) return normalizeLessonBlocks(parsed);
   }
 
   const blocks: ContentBlock[] = [];

@@ -3,6 +3,7 @@ import type { ContentBlock, StylePreset } from "./types";
 
 // Convert plain-text URLs into <a> tags, skipping URLs already inside <a>
 export function linkifyHtml(html: string): string {
+  if (typeof html !== "string") return "";
   const parts = html.split(/(<a\s[^>]*>.*?<\/a>)/gi);
   return parts.map((part) => {
     if (/^<a\s/i.test(part)) return part;

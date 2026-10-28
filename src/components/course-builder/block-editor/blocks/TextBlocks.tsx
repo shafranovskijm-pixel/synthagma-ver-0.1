@@ -182,6 +182,19 @@ export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, exis
   );
 }
 
+function LegacyAccordionItemEditor({ item, ...props }: BlockAIProps & { item: NonNullable<ContentBlock["accordionItems"]>[number] }) {
+  const [isOpen, setIsOpen] = useState(true);
+  return <AccordionBlock {...props} block={{ ...props.block, id: item.id, accordionItems: undefined, accordionTitle: item.title, content: item.content, accordionOpen: isOpen }} onUpdate={(updates) => {
+    if (typeof updates.accordionOpen === "boolean") setIsOpen(updates.accordionOpen);
+    if (updates.accordionTitle === undefined && updates.content === undefined) return;
+    props.onUpdate({ accordionItems: props.block.accordionItems?.map(section => section.id === item.id ? {
+      ...section,
+      ...(updates.accordionTitle !== undefined ? { title: updates.accordionTitle } : {}),
+      ...(updates.content !== undefined ? { content: updates.content } : {}),
+    } : section) });
+  }} />;
+}
+
 export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
   const { isGenerating, run } = useBlockAIGenerate();
   const isOpen = block.accordionOpen ?? true;
@@ -200,6 +213,8 @@ export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, exis
     });
     return data.accordion;
   }, "Ошибка генерации");
+
+  if (block.accordionItems) return <div className="space-y-3">{block.accordionItems.map(item => <LegacyAccordionItemEditor key={item.id} item={item} block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />)}</div>;
 
   return (
     <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">

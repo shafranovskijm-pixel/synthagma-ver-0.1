@@ -673,7 +673,7 @@ export function useCourseBuilder(propCourseId?: string) {
           if (lesson.id !== lessonId) return lesson;
           if (lesson.__contentLoaded !== false || lesson.type !== base.type || lesson.content !== base.content || lesson.blocks !== base.blocks) return lesson;
           let blocks = lesson.blocks;
-          if (content) { try { blocks = jsonToBlocks(content); } catch { /* preserve the existing representation */ } }
+          blocks = jsonToBlocks(content);
           applied = true;
           const hydrated = { ...lesson, content, blocks, __contentLoaded: true };
           latestStateRef.current = { ...latestStateRef.current, lessons: previous.map(row => row.id === lessonId ? hydrated : row) };

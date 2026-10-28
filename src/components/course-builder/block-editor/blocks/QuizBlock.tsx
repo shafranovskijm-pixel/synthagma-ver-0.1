@@ -25,10 +25,9 @@ export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingC
     onUpdate({ quizOptions: newOptions });
   };
 
-  const addOption = () => onUpdate({ quizOptions: [...options, { text: "", isCorrect: false }] });
+  const addOption = () => onUpdate({ quizOptions: [...options, { ...(options.some(option => typeof option.id === "string") ? { id: crypto.randomUUID() } : {}), text: "", isCorrect: false }] });
   const removeOption = (index: number) => {
     const newOptions = options.filter((_, i) => i !== index);
-    if (!newOptions.some(o => o.isCorrect) && newOptions.length > 0) newOptions[0].isCorrect = true;
     onUpdate({ quizOptions: newOptions });
   };
 
@@ -40,7 +39,7 @@ export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingC
     if (!data?.quiz) return null;
     onUpdate({
       quizQuestion: data.quiz.question,
-      quizOptions: data.quiz.options.map((o: any, i: number) => ({ text: o, isCorrect: i === data.quiz.correctIndex })),
+      quizOptions: data.quiz.options.map((o: any, i: number) => ({ ...(options.some(option => typeof option.id === "string") ? { id: crypto.randomUUID() } : {}), text: o, isCorrect: i === data.quiz.correctIndex })),
       quizExplanation: data.quiz.explanation || "" });
     return data.quiz;
   }, "Ошибка генерации квиза");
