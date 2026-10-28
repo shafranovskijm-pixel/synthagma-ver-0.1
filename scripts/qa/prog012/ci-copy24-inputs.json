@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "SOURCE_ONLY_COPY_R6_NATIVE24_R2_STABLE_GROUP21_FIXTURE_NOT_RUN",
+  "status": "SOURCE_ONLY_COPY_R6_NATIVE24_R3_CURRENT_AUXILIARY_TYPED_CLOSURE_NOT_RUN",
   "candidate": {
     "migration": "20261028140000_platform_course_copy_file_delivery.sql",
     "freezeSHA256": "6efe77b6cd7db3e48b28194625df56ff7c3e0cd5cc42cfe608b54302dceb0a1e",
@@ -40,8 +40,8 @@
     },
     {
       "path": "copy24-modeled-bootstrap.sql",
-      "bytes": 134136,
-      "sha256": "fe83b6f39f2cbe806a246bfdb85bfdf42bf6a3efd43e0dfeb226e2f35cc3448e"
+      "bytes": 134146,
+      "sha256": "599b348fa0c9c7cae644184abce3cdd22d5c995c3d8f3b56ed9ebb50bea82fed"
     },
     {
       "path": "copy24-modeled-actors-and-retained-fixtures.sql",
