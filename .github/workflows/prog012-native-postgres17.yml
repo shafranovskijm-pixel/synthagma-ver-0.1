@@ -35,15 +35,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 1
-      - name: Run unchanged native113 then additive current-reference capture14
+      - name: Run unchanged native127 then additive current-authority12 components
         env:
           PCR_SERVICE_CONTAINER: ${{ job.services.postgres.id }}
         run: |
-          python3 scripts/qa/prog012/run_ci_postgres_original113_then_current_capture.py \
+          python3 scripts/qa/prog012/run_ci_postgres_original127_then_current_authority.py \
             --container-id "$PCR_SERVICE_CONTAINER" \
             --expected-manifest-sha256 "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db" \
             --expected-integration-manifest-sha256 "44c4bb7fbedcf12daf4011b4056fd70075e14f52c4e88f16f54b2e76401bff9e" \
             --expected-current-capture-manifest-sha256 "0ae3040df6a7480fd98695ffa3824115298bfb8dc24361a926812c2c44c30f04" \
+            --expected-current-authority-manifest-sha256 "6632efbe5fae915bfe023f9922c69dd2b7484068a755957c9f834689aa8b0d6f" \
             --ci-source-reviewed-only
       - name: Preserve exact native logs and finite result
         if: always()

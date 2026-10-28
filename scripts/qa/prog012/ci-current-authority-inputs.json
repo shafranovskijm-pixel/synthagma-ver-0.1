@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_UNCHANGED_ORIGINAL127_THEN_AUTHORITY12_COMPONENT_MODEL_NOT_RUN",
+  "exactInputNames": [
+    "run_ci_postgres_original113_then_current_capture.py",
+    "ci-current-capture-inputs.json",
+    "run_current_capture_stage.py",
+    "concurrency_cases.py",
+    "copy24_cases.py",
+    "run_self_profile_stage.py",
+    "run_copy24_stage.py",
+    "run_ci_postgres_original127_then_current_authority.py",
+    "run_current_authority_stage.py",
+    "current_authority_writer_cases.py",
+    "current-authority12.modeled-schema-extension.sql",
+    "current-authority12.modeled.candidate.sql",
+    "current-authority12.body-pins.json"
+  ],
+  "files": [
+    {
+      "path": "run_ci_postgres_original113_then_current_capture.py",
+      "bytes": 10893,
+      "sha256": "ca32df539a15028c9ef5b57121d5acc0a7c9ea1e582178c04d9785a017aef790"
+    },
+    {
+      "path": "ci-current-capture-inputs.json",
+      "bytes": 2316,
+      "sha256": "0ae3040df6a7480fd98695ffa3824115298bfb8dc24361a926812c2c44c30f04"
+    },
+    {
+      "path": "run_current_capture_stage.py",
+      "bytes": 11039,
+      "sha256": "93cff0b367d120cbb7befba464b188c9e1839af04bb033417f077463a7296fd3"
+    },
+    {
+      "path": "concurrency_cases.py",
+      "bytes": 24197,
+      "sha256": "802e828549a7bf116d1f2c6deda47cf31a2bc80e11096c68935773a9cd936d3c"
+    },
+    {
+      "path": "copy24_cases.py",
+      "bytes": 49297,
+      "sha256": "80410b6776fe46b5b2b107b7e681e024438bd1666782d9c588644de6e37a6470"
+    },
+    {
+      "path": "run_self_profile_stage.py",
+      "bytes": 17596,
+      "sha256": "6c25dab848536dafed47bff9ff3ed9a76f3b4d196ff5143a8d0f1b0207410289"
+    },
+    {
+      "path": "run_copy24_stage.py",
+      "bytes": 13627,
+      "sha256": "6e8342b13143f197cccdff72b477911132f4bb3387cf7d85dabdc65d4c17b0c9"
+    },
+    {
+      "path": "run_ci_postgres_original127_then_current_authority.py",
+      "bytes": 12214,
+      "sha256": "09c7f4565d7e533d459b671b03acdf09e0a498136253b09456f3f09caf2685d5"
+    },
+    {
+      "path": "run_current_authority_stage.py",
+      "bytes": 13160,
+      "sha256": "6f7336b31fde54242402f30468a4a10370a4573b77920f1cc439f3ae15726d34"
+    },
+    {
+      "path": "current_authority_writer_cases.py",
+      "bytes": 24542,
+      "sha256": "19f104f8619c78ba24eb9ccc97e41451dc5bdba26b28646cec091f24f120bd45"
+    },
+    {
+      "path": "current-authority12.modeled-schema-extension.sql",
+      "bytes": 19871,
+      "sha256": "a24e89f5ee247628892fde0bfad0fa53481b39635648acd418c7facb3c1e7e14"
+    },
+    {
+      "path": "current-authority12.modeled.candidate.sql",
+      "bytes": 52761,
+      "sha256": "c592c6bff8359af403f744e71f5660320a5d71ceb87e7a93a0009ee31deb65eb"
+    },
+    {
+      "path": "current-authority12.body-pins.json",
+      "bytes": 2332,
+      "sha256": "51f049c1fac1b2913131a0490aa482003732e84e7cff70f986b1b396b1f41104"
+    }
+  ],
+  "authority": {
+    "sourceProductSHA256": "67262f0cd621d3e2df6a1157b503b967721bb1c645d456ad43530a2c10698fb7",
+    "all8FunctionBodiesUnchangedFromR1": true,
+    "actualFourTableMetadataSHA256": "c59e835be3656faaa1ca34ecb0205d111cc946506e502eabbfdc200ba43294e8",
+    "actualStaffRoleMetadataSHA256": "5c97f2fa25f4bfdbfdbb8acf76af00bc4d21d832644ca8be7f701c8cdf63e924",
+    "fullCloud650651PreflightNotExecutedByModel": true
+  },
+  "expected": {
+    "unchangedOriginalGroups": 127,
+    "unchangedOriginalClients": 42,
+    "newComponentGroups": 12,
+    "newNativeClients": 6,
+    "totalGroups": 139,
+    "totalNaturalZeroClientsIfAllPass": 48,
+    "ordinaryZeroReferenceAdmissionGroups": 4,
+    "privateResourceComponentGroups": 8,
+    "capabilityOverride": false,
+    "newBootstrap": false,
+    "newAuthRowsOrRoleAssignments": false
+  },
+  "production": false,
+  "providerAuth": false,
+  "realStorageHTTP": false,
+  "fullCloudSchema": false,
+  "fullThreeAuthorityGapsAccepted": false
+}
