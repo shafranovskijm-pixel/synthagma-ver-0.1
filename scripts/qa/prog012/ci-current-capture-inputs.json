@@ -24,8 +24,8 @@
     },
     {
       "path": "run_current_capture_stage.py",
-      "bytes": 11031,
-      "sha256": "067dc143f22d7901d6e61d5eb1f412c595fdbefede59a148752ae149e86e3959"
+      "bytes": 11039,
+      "sha256": "93cff0b367d120cbb7befba464b188c9e1839af04bb033417f077463a7296fd3"
     },
     {
       "path": "current_capture_cases.py",

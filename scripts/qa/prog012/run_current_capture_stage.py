@@ -59,7 +59,7 @@ def run_current_capture_stage(here, command, base, interactive_base, env, output
                 if path.parent != here or path.stat().st_size != pin['bytes'] or hashlib.sha256(path.read_bytes()).hexdigest() != pin['sha256']:
                     raise RuntimeError('CFC_EXISTING_PINNED_NATIVE_SOURCE_REQUIRED_BEFORE_IMPORT')
                 source_pins.append(pin)
-        old_file = load('cfc_existing_file_snapshot_only', here / 'run_file_stage.py')
+        old_file = load('cfc_existing_file_snapshot_only', here / 'run_self_profile_stage.py')
         old_copy = load('cfc_existing_profile_snapshot_only', here / 'run_copy24_stage.py')
         guard = "SELECT json_build_object('database',current_database(),'address',host(inet_server_addr()),'port',inet_server_port(),'data',current_setting('data_directory'),'actor',current_user,'version',current_setting('server_version_num'),'marker',current_setting('pcr.lab_authorized',true),'newFunctionAbsent',to_regprocedure('public.begin_platform_course_current_file_capture(uuid,text,text,uuid,uuid)')IS NULL,'capabilities',public.pcf_v1_delivery_capabilities());"
         observed = json.loads(command('11c-01-existing-copy-model-preflight', copy_base + ['-A', '-t', '-c', guard]).stdout.decode('utf-8').strip())
