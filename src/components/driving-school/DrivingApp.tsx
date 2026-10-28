@@ -1,3 +1,4 @@
+import { DrivingMembershipAccessButton } from './DrivingMembershipAccess';
 import { useSearchParams } from 'react-router-dom';
 import type { State, Lesson, DrivingAdapter } from '@/lib/driving-school/types';
 import type { DrivingFailureKind } from '@/lib/driving-school/cloud-adapter';
@@ -427,6 +428,14 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
       const result=await act('invites',{resourceId:resource.id,resourceKind:resource.kind},'Приглашение создано');
       if(isCurrent(token))setInviteLink(typeof result.url==='string'?result.url:'');
     } catch { /* act keeps access errors and stale context private. */ }
+  }
+  function membershipAccessControl(resource: Row<'student' | 'instructor'>) {
+    const port=adapter.membershipAccess;
+    const token={adapter,epoch:context.current.epoch};
+    if(!owner||preview||!port)return null;
+    return <DrivingMembershipAccessButton port={port} role={resource.kind} targetId={resource.id}
+      name={resource.name} enabled={!busy&&readConfirmed&&dataAdapter===adapter}
+      onRevoke={async(access,reason,requestId)=>{if(!isCurrent(token))throw new Error('Контекст автошколы изменился. Повторите проверку доступа.');await act('membership-revoke',{access,reason,requestId},'Вход в автошколу для этой записи отозван');}}/>;
   }
   function resourceForm(kind: Kind, studentAccountMode: 'new' | 'existing' = 'new') {
     const existingStudent=kind==='student'&&studentAccountMode==='existing';
@@ -1497,6 +1506,7 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
                     <Button variant="outline" onClick={() => go('students', s.id)}>
                       Открыть <ArrowUpRight />
                     </Button>
+                    {membershipAccessControl(s)}
                     {owner&&s.active===1&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.data.email.trim())&&
                       <Button variant="outline" disabled={busy} onClick={()=>void inviteResource(s)}>Создать приглашение</Button>}
                   </div>,
@@ -1593,13 +1603,10 @@ export default function DrivingApp({adapter,onExit,preview=false}:{adapter:Drivi
               >
                 {i.active ? 'Доступен' : 'Пауза'}
               </Button>,
-              <Button
-                key={i.id + '-invite'}
-                variant="outline"
-                onClick={() => void inviteResource(i)}
-              >
-                Пригласить
-              </Button>,
+              <div key={i.id+'-account-access'} className="actions">
+                <Button variant="outline" disabled={busy} onClick={()=>void inviteResource(i)}>Пригласить</Button>
+                {membershipAccessControl(i)}
+              </div>,
             ])}
           />
         </section>

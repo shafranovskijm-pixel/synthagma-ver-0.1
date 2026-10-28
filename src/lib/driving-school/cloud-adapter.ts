@@ -1,3 +1,4 @@
+import { drivingRevocationArguments, parseDrivingMembershipAccess, parseDrivingRevocationReceipt } from './membership-access';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import type { DrivingAdapter, State, Row, Entry } from './types';
@@ -84,10 +85,20 @@ export function createCloudAdapter(organizationId:string, canCreateStudents=fals
  const text=(value:unknown)=>String(value??'').trim();
  const nullable=(value:unknown)=>text(value)||null;
  return {
+  membershipAccess: { async read(role,targetId) {
+   return parseDrivingMembershipAccess(await call('driving_get_resource_access',{_role:role,_target_id:targetId}),organizationId,role,targetId);
+  } },
   canCreateStudents,
   async load(){return adaptCloudState(await call('driving_get_state'),organizationId);},
   async mutate(path,b,state){
    const finish=async(name:string,args:Record<string,unknown>)=>{const value=await call<unknown>(name,args);return value && typeof value==='object'?value as Record<string,unknown>:{id:value};};
+   if(path==='membership-revoke') {
+    if(state.user.role!=='owner')throw new Error('Отзывать доступ может только владелец автошколы');
+    const {access,args}=drivingRevocationArguments(b.access,organizationId,b.reason,b.requestId);
+    if(!state.resources.some(r=>r.kind===access.role&&r.id===access.targetId))throw new Error('Участник не подтверждён в текущей школе');
+    const receipt=parseDrivingRevocationReceipt(await call('driving_revoke_membership',args),access,args._request_id);
+    return {receipt};
+   }
    if(path==='resources') {
     if(state.user.role!=='owner') throw new Error('Управление доступно только владельцу или администратору');
     if(b.kind==='program') return finish('driving_save_program',{_name:text(b.name),_version:text(b.version),_transmission:b.transmission,_practice_minutes:Number(b.practiceMinutes)});

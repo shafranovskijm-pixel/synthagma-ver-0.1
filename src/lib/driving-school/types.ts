@@ -1,3 +1,4 @@
+import type { DrivingMembershipAccessPort } from './membership-access';
 export type WindowSlot = { id: string; start: string; end: string };
 export type Question = { text: string; options: string[]; correct?: number };
 type Shapes = {
@@ -74,6 +75,7 @@ export type State = {
  audit: { action: string; target: string; created: number; detail: string }[];
 };
 export type DrivingAdapter = {
+ membershipAccess?: DrivingMembershipAccessPort;
  canCreateStudents?: boolean;
  load: () => Promise<State>;
  mutate: (path: string, payload: Record<string, unknown>, state: State) => Promise<Record<string, unknown>>;
