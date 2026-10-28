@@ -240,7 +240,7 @@ def main():
         copy_spec.loader.exec_module(copy_stage)
         report["copy24Stage"] = copy_stage.run_copy24_stage(
             here, command, base, interactive_base, env, output, report,
-            "59d0760b7dea6e3ab7cec2c2a3658b3a63a7b40172190628624e9d2d6f7f74c8")
+            "55ebab990cc1a7ae4e4a1a1e588ea4f7abef4f931e194c07cadf201cfa4b472c")
         report["status"] = "PASS_ORIGINAL89_AND_CONDITIONAL_COPY24_SYNTHETIC_POSTGRES1711_NOT_CLOUD_AUTH_STORAGE"
     except Exception as error:
         report["status"] = "FAIL_CI_UNIT_OR_GUARD_NO_RETRY"

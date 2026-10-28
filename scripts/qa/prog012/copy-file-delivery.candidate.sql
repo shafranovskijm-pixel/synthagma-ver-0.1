@@ -9,7 +9,7 @@ DO $preflight$
 DECLARE r record;p record;BEGIN
  IF current_user<>'postgres' THEN RAISE EXCEPTION 'PCC_TRUSTED_INSTALLER_REQUIRED';END IF;
  IF to_regclass('public.platform_course_copy_file_cohorts') IS NOT NULL OR to_regclass('public.platform_course_copy_file_bindings') IS NOT NULL
- OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND(p.proname LIKE 'pcc_v1_%' OR p.proname IN('read_course_exact_file_delivery_context','read_copied_course_exact_file','read_course_exact_file_delivery_mode'))) THEN
+ OR EXISTS(SELECT 1 FROM pg_proc catalog_proc JOIN pg_namespace n ON n.oid=catalog_proc.pronamespace WHERE n.nspname='public' AND(catalog_proc.proname LIKE 'pcc_v1_%' OR catalog_proc.proname IN('read_course_exact_file_delivery_context','read_copied_course_exact_file','read_course_exact_file_delivery_mode'))) THEN
   RAISE EXCEPTION 'PCC_PREEXISTING_OBJECTS_REVIEW_REQUIRED';END IF;
  -- These exact immediate, validated parent FKs are the INSERT participation proof for the module UPDATE row fence.
  FOR r IN SELECT * FROM(VALUES

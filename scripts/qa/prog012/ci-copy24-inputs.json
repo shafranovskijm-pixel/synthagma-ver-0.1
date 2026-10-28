@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "status": "SOURCE_ONLY_COPY_R6_NATIVE24_R3_CURRENT_AUXILIARY_TYPED_CLOSURE_NOT_RUN",
+  "status": "SOURCE_ONLY_COPY_R7_NATIVE24_R4_ONE_PREFLIGHT_CATALOG_ALIAS_NOT_RUN",
   "candidate": {
     "migration": "20261028140000_platform_course_copy_file_delivery.sql",
-    "freezeSHA256": "6efe77b6cd7db3e48b28194625df56ff7c3e0cd5cc42cfe608b54302dceb0a1e",
-    "sqlSHA256": "23c002f6737d77301744549e6365fd538c10dbece22713679aa28c2469112ffa",
+    "freezeSHA256": "1a3ace4f465ccedc4468de35d54a7d700f976672b1894a3659c756b03dfed8ef",
+    "sqlSHA256": "af3754f5dcc025d77bf9f7d8bf7090507214f5e6a52c59c740c4f010afe73bb7",
     "requiresPriorNative89": true
   },
   "files": [
@@ -30,8 +30,8 @@
     },
     {
       "path": "copy-file-delivery.candidate.sql",
-      "bytes": 64514,
-      "sha256": "23c002f6737d77301744549e6365fd538c10dbece22713679aa28c2469112ffa"
+      "bytes": 64558,
+      "sha256": "af3754f5dcc025d77bf9f7d8bf7090507214f5e6a52c59c740c4f010afe73bb7"
     },
     {
       "path": "copy-file-delivery.inverse.sql",
