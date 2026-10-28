@@ -1,4 +1,4 @@
-import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks } from "@/components/course-builder/block-editor";
+import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks, parseLessonContent } from "@/components/course-builder/block-editor";
 import { isHtmlContent, parseHtmlCourse } from "@/utils/htmlCourseParser";
 import { isCszStructuredCourseHtml } from "@/utils/structuredCourseImport";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
@@ -6,7 +6,6 @@ import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { toast } from "sonner";
 import type { LessonType, TestQuestionLocal, Lesson, LessonAttachmentLocal } from "@/components/course-builder/LessonTypeConfig";
 import type { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
-import { supabase } from "@/integrations/supabase/client";
 import type { CourseImportScope } from "@/lib/courseImportScope";
 
 // --- Local draft helpers ---
@@ -88,42 +87,8 @@ export function normalizeLessonsFromDB(
     // If content column wasn't selected (lazy mode), keep placeholder and skip parsing.
     const hasContentColumn = Object.prototype.hasOwnProperty.call(l, 'content');
     let blocks: ContentBlock[] = [];
-    if (hasContentColumn && l.content) {
-      blocks = jsonToBlocks(l.content);
-      if (blocks.length === 0 && l.content.length > 50 && !l.content.trim().startsWith('[')) {
-        blocks = markdownToBlocks(l.content);
-        if (blocks.length > 0) {
-          const json = blocksToJson(blocks);
-          supabase.from("lessons").update({ content: json }).eq("id", l.id);
-        }
-      }
-      if (blocks.length > 0) {
-        let healed = false;
-        blocks = blocks.flatMap((b): ContentBlock[] => {
-          if (b.type !== "paragraph") return [b];
-          const markerMatch = b.content.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*?)(?::::\s*)?$/i);
-          if (markerMatch) {
-            healed = true;
-            const markerType = markerMatch[1].toLowerCase();
-            const content = (markerMatch[2] || "").replace(/:::?\s*$/, "").trim();
-            const blockType = markerType === "highlight" ? "highlight"
-              : markerType === "accordion" ? "accordion" : `callout-${markerType}`;
-            return [{ ...b, type: blockType as ContentBlock['type'], content }];
-          }
-          if (/:::(info|warning|tip|danger|highlight|accordion)/i.test(b.content)) {
-            healed = true;
-            const cleaned = b.content.replace(/:::(info|warning|tip|danger|highlight|accordion)\s*/gi, "").replace(/:::\s*/g, "").trim();
-            if (!cleaned) return [];
-            return [{ ...b, content: cleaned }];
-          }
-          return [b];
-        });
-        if (healed) {
-          const json = blocksToJson(blocks);
-          supabase.from("lessons").update({ content: json }).eq("id", l.id);
-        }
-      }
-    }
+    if (hasContentColumn && l.content) blocks = parseLessonContent(l.content);
+    // Reading/hydrating a legacy lesson must never save or heal its source row.
     const lessonMetadata: unknown = l.metadata;
     return {
       id: l.id, type: l.type as LessonType, title: l.title,

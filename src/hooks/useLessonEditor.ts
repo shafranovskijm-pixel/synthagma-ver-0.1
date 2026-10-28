@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ContentBlock, parseLessonContent } from "@/components/course-builder/block-editor";
+import { ContentBlock, parseLessonContent, blocksToJson } from "@/components/course-builder/block-editor";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { toast } from "sonner";
@@ -148,7 +148,7 @@ export function useLessonEditor({
   const handleSave = () => {
     if (!title.trim()) return;
     let content = "";
-    if (type === "text") content = JSON.stringify(blocks);
+    if (type === "text") content = blocksToJson(blocks, lesson?.content);
     else if (type === "video") content = videoUrl;
     onSave({
       title, type, content,

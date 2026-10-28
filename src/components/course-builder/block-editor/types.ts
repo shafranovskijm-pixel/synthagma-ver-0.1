@@ -39,6 +39,8 @@ export type BlockType =
 export type AIShortcutType = "ai-image" | "ai-audio" | "ai-quiz";
 
 export interface QuizOption {
+  id?: string;
+  [key: string]: unknown;
   text: string;
   isCorrect: boolean;
 }
@@ -56,6 +58,8 @@ export interface ContentBlock {
   content: string;
   accordionTitle?: string;
   accordionOpen?: boolean;
+  /** Multiple existing legacy sections stay separate, including their IDs and extra fields. */
+  accordionItems?: { id: string; title: string; content: string; [key: string]: unknown }[];
   /** Optional bold heading shown above the body inside callout/highlight blocks. */
   calloutTitle?: string;
   quizQuestion?: string;

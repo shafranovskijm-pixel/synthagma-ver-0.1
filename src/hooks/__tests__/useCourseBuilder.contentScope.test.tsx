@@ -17,10 +17,7 @@ vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: vi.fn(), safeFetch: vi.fn() }
 vi.mock("@/utils/courseBuilderHelpers", () => ({ uploadToStorage: vi.fn() }));
 vi.mock("@/utils/htmlCourseParser", () => ({ isHtmlContent: () => false, parseHtmlCourse: vi.fn() }));
 vi.mock("@/utils/structuredCourseImport", () => ({ isCszStructuredCourseHtml: () => false }));
-vi.mock("@/components/course-builder/block-editor", () => ({
-  htmlToBlocks: () => [], markdownToBlocks: () => [], blocksToJson: JSON.stringify,
-  jsonToBlocks: (raw: string) => JSON.parse(raw),
-}));
+vi.mock("@/components/course-builder/block-editor", async () => vi.importActual("@/components/course-builder/block-editor/parsers"));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 
 import { useCourseBuilder } from "../useCourseBuilder";
