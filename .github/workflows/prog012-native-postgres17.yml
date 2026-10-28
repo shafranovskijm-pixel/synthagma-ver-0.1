@@ -35,14 +35,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 1
-      - name: Run isolated native core48 then original read13 then file16 cases
+      - name: Run unchanged native77 then isolated self-profile12 cases
         env:
           PCR_SERVICE_CONTAINER: ${{ job.services.postgres.id }}
         run: |
-          python3 scripts/qa/prog012/run_ci_postgres_core48_read13_file16.py \
+          python3 scripts/qa/prog012/run_ci_postgres_core48_read13_file16_profile12.py \
             --container-id "$PCR_SERVICE_CONTAINER" \
             --expected-manifest-sha256 "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db" \
-            --expected-integration-manifest-sha256 "ef568ed571fd71b3563de9bfa07955f99e2b946139f7d5f1b815f5cd9c22c903" \
+            --expected-integration-manifest-sha256 "46525f501daddd4d7bb7b4a4a87a2d99051b1f53f3b0da6f7fd9be326e752516" \
             --ci-source-reviewed-only
       - name: Preserve exact native logs and finite result
         if: always()
