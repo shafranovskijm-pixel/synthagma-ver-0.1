@@ -1,0 +1,916 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_PINNED_ADMIN_EXPLICIT_CREDENTIAL_20_CASES_CANDIDATE_NOT_EXECUTED",
+  "asOfDate": "2026-10-28",
+  "repository": "shafranovskijm-pixel/synthagma-ver-0.1",
+  "baseCommit": "cbba3713c08023bd2109ebf3a44c99bc6ee4f58d",
+  "runtime": {
+    "node": "24.22.1",
+    "npm": "10.9.2",
+    "platform": "linux",
+    "productionNodeEnginesUnchanged": "20.x",
+    "nodeVersionPurpose": "CI only; exact official Node24 distribution available 2026-10-21; not a production runtime upgrade"
+  },
+  "packageBlob": "38098878514254b0d741e61e4c2265c26d3598a6",
+  "lockBlob": "414c0ac5bbaa094d800a2cdbd6c5efd81de38a0a",
+  "dependencyInstall": "npm ci --ignore-scripts --include=optional --no-audit --no-fund; existing legacy-peer-deps .npmrc preserved",
+  "installedDependencyPins": [
+    {
+      "path": "node_modules/typescript",
+      "version": "5.8.3"
+    },
+    {
+      "path": "node_modules/vitest",
+      "version": "4.0.18"
+    },
+    {
+      "path": "node_modules/vitest/node_modules/vite",
+      "version": "7.3.1"
+    },
+    {
+      "path": "node_modules/vite",
+      "version": "5.4.19"
+    },
+    {
+      "path": "node_modules/esbuild",
+      "version": "0.25.12"
+    },
+    {
+      "path": "node_modules/jsdom",
+      "version": "25.0.1"
+    },
+    {
+      "path": "node_modules/@testing-library/react",
+      "version": "16.3.2"
+    },
+    {
+      "path": "node_modules/@supabase/supabase-js",
+      "version": "2.90.1"
+    },
+    {
+      "path": "node_modules/@supabase/postgrest-js",
+      "version": "2.90.1"
+    }
+  ],
+  "ciCheckoutFiles": [
+    ".github/workflows/pinned-frontend-candidates.yml",
+    "scripts/ci/deny-backend-network.mjs",
+    "scripts/ci/check-vitest-report.mjs",
+    "scripts/ci/run-frontend-candidate.mjs",
+    ".ci/frontend-candidates/manifest.json",
+    ".ci/frontend-candidates/admin-explicit-credential.json"
+  ],
+  "baselinePins": [
+    {
+      "path": "src/components/course-learning/HomeworkSubmission.tsx",
+      "blob": "9b58a0247cd642182d7c544335fb13276b3926a5",
+      "sha256": "64a0551ff5a884c42241fa69e7b7da7c2c824a390032be729b8b325100d3221b",
+      "bytes": 16248
+    },
+    {
+      "path": "src/components/course-learning/HomeworkTaskDescription.tsx",
+      "blob": "7ef0518e03fb117c9a804b5594578f507f688642",
+      "sha256": "259b741672adca3cd978144d8dbb714880d4895bdcaee5c8bcc94a38c878d554",
+      "bytes": 3344
+    },
+    {
+      "path": "src/components/course-preview/CoursePreviewView.tsx",
+      "blob": "78adcab25b5138105c01b6e830ce1af1a0d10e31",
+      "sha256": "c61bf60c8dd9022b542af44547dbbbe270e69c863dfd84cb3bd94c7b35bf8f62",
+      "bytes": 36266
+    },
+    {
+      "path": "src/hooks/useCoursePreview.ts",
+      "blob": "2657439cc1202fcc79558cc06756775b7036885a",
+      "sha256": "5b0aefe62ad3fdb75170d80314268450cae35e4c361f967c228b9d0fe9691121",
+      "bytes": 9059
+    },
+    {
+      "path": "src/pages/CourseLearning.tsx",
+      "blob": "005fa9a6af96c6b82e09a2058bd3b72da85171f3",
+      "sha256": "debfc7f4bfa385814ad02cbb9023471181319dcad24fbe633833c8a0740fc633",
+      "bytes": 43177
+    },
+    {
+      "path": "src/hooks/useDrivingSchoolEntry.ts",
+      "blob": "064bf2fe8951f59a8a9b5a511bc975e12122f185",
+      "sha256": "9bd456fd92e2f4f398a0e97013c9b657c7f44de03e352d2c9c6a908e74a1efc8",
+      "bytes": 1840
+    },
+    {
+      "path": "src/pages/DrivingSchoolPage.tsx",
+      "blob": "79373b57c34a2d30018830dd1178780f734698ff",
+      "sha256": "2765f1d77880faec201619f4c8a3f9902be4053892735f41961a50a0f0ed2b73",
+      "bytes": 8853
+    },
+    {
+      "path": "src/pages/AutoSchools.tsx",
+      "blob": "85ab654efcb0d713f6204833fd4087810e426cc2",
+      "sha256": "051e77cbaf571baf1489e27c2f8477c027edde6f30279115ab4682d55f61975a",
+      "bytes": 4496
+    },
+    {
+      "path": "src/components/driving-school/DrivingApp.tsx",
+      "blob": "005ab3b47d5d39b642155c907880597dfb600bf8",
+      "bytes": 83673,
+      "sha256": "b89e118ced7d0bf59256b62eea935c2b8d0cab042da9dc538e18aff66b8f6c93"
+    },
+    {
+      "path": "src/lib/driving-school/cloud-adapter.ts",
+      "blob": "ffdba106fdcea2f13a35afba65988f4eb0857401",
+      "bytes": 18592,
+      "sha256": "361b94dc83dd0c2f5ce8fbf51d46338b563d568e053d3d1ecb947723fc9a9d0b"
+    },
+    {
+      "path": "src/components/driving-school/sidebar.tsx",
+      "blob": "c6ba871281a5d55ce873bbc7a95a7039c327fc46",
+      "sha256": "7dbcb572935c86e0ade6769ebbcb9294cfc37f7a087425169636189ebadf2e5a",
+      "bytes": 2079
+    },
+    {
+      "path": "src/components/driving-school/driving-school.css",
+      "blob": "a8cda0c4b95edec0a66251cdb22e7eaae6647354",
+      "sha256": "f8ac97c9ee2c74a234f6179303e6a2a212c142dbb07df5f9d408e9b6441d65f9",
+      "bytes": 20288
+    },
+    {
+      "path": "src/utils/authReturn.ts",
+      "blob": "b635776d54b39d01c230f89469740109071b09b0",
+      "sha256": "866e416711e3613096e2696df05997f94074662275558369ac5a574a9313ad60",
+      "bytes": 2879
+    },
+    {
+      "path": "src/utils/loginDestination.ts",
+      "blob": "d02a90769f291e226394855e47d6396701d04c50",
+      "sha256": "93f1126c68b4a86eb99ac58d29e4843a166d16c4292443670880e07ba5b6fc51",
+      "bytes": 1325
+    },
+    {
+      "path": "src/hooks/useAuth.tsx",
+      "blob": "2dc046efe9b39b1dbe30853ae2784b09174c2f99",
+      "bytes": 14002,
+      "sha256": "d19e1a7ec27a857a4a41402103d67e9aec079eb0078384c2a6f23639dd675359"
+    },
+    {
+      "path": "src/components/ProtectedRoute.tsx",
+      "blob": "c0a2ee5b8e8b3835ffb9cbd9536674f526d40695",
+      "sha256": "df82d947c1946ca661274b989d9df9a64a39a1fa79d2808b3bd13ff992e47458",
+      "bytes": 4614
+    },
+    {
+      "path": "src/routes/organizationRoutes.tsx",
+      "blob": "202db3fa4fdb4141b7e49cd29a03992b3d55186d",
+      "sha256": "2c200de9b5ffc43f91d350f4e2d09dedaf9d4d79c81dc6fd633b15d980468db2",
+      "bytes": 4411
+    },
+    {
+      "path": "src/components/organization/OrgSidebar.tsx",
+      "blob": "517803263f50fb5c9ae862c4bd3457d19922fef7",
+      "sha256": "f3b5625636487db1ebfcdce3d0fecb8d451288534b470b338c6d6ad6334ffd63",
+      "bytes": 48873
+    },
+    {
+      "path": "src/components/student/StudentSidebar.tsx",
+      "blob": "22defcb0af3ed256e2549e7d4eb38150fe235b39",
+      "sha256": "ccfc27071c8f0ca45e64240062d40bd3c6ad8b7f282ffc37063760917a6cb416",
+      "bytes": 6357
+    },
+    {
+      "path": "src/components/student/StudentProfileSidebar.tsx",
+      "blob": "cff751aa2734bbfec52edef71fce2dc982e31122",
+      "sha256": "b45c53929c1b6e65f4be183cd302c8267a8f4e8c0688ce866a95798391e74a3c",
+      "bytes": 6502
+    },
+    {
+      "path": "src/components/student/StudentFooter.tsx",
+      "blob": "dcecc33838cd222b90d05ba377b3743cc3433afa",
+      "sha256": "e1341a9c293fee80730889464381cceca6c64c85426d9e181ade4059ffade721",
+      "bytes": 2737
+    },
+    {
+      "path": "src/pages/StudentDashboard.tsx",
+      "blob": "b1a6de6fbd9f167d30f3f8fdb688018d3aad2c21",
+      "sha256": "9190f0b7998cd25b8ee8d40aa0e1d48ddaf5dfc46164d6bf27398dcdc539ea22",
+      "bytes": 28391
+    },
+    {
+      "path": "src/contexts/OrgDashboardContext.tsx",
+      "blob": "9281cea0c60a23d89ed85e21294cfb5424f085cd",
+      "sha256": "25f15af72fc5c861cd7458324027e0772758b2ffc5b772447e22c840e85031dd",
+      "bytes": 765
+    },
+    {
+      "path": "src/hooks/useOrganizationDataLoader.ts",
+      "blob": "3783aaa98ba8768c185b804bdb29c4f1bfa0dec8",
+      "sha256": "bdb609aa696eefa8e1a09cdbdedc559ee83a76606fb9180c72eaca2a83ec2958",
+      "bytes": 13295
+    },
+    {
+      "path": ".npmrc",
+      "blob": "6c2c96a2128d8627d9076487cd6f0206ba015365",
+      "sha256": "f48f7bf8de51e25495c49f6074a9444b5e372c24afbb1f358b252876f8af5414",
+      "bytes": 38
+    },
+    {
+      "path": ".node-version",
+      "blob": "2edeafb09db0093bae6ff060e2dcd2166f5c9387",
+      "sha256": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+      "bytes": 2
+    },
+    {
+      "path": ".nvmrc",
+      "blob": "2edeafb09db0093bae6ff060e2dcd2166f5c9387",
+      "sha256": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+      "bytes": 2
+    },
+    {
+      "path": "package.json",
+      "blob": "38098878514254b0d741e61e4c2265c26d3598a6",
+      "sha256": "afa85db7b143615bb994936c2d4c502048a22b2f630e187dee35d15dad7a59bd",
+      "bytes": 4343
+    },
+    {
+      "path": "package-lock.json",
+      "blob": "414c0ac5bbaa094d800a2cdbd6c5efd81de38a0a",
+      "sha256": "6dd560210f8787d053eed40f2d24e83d0c823567471d7c7fb459a59cbb94dace",
+      "bytes": 493695
+    },
+    {
+      "path": "tsconfig.app.json",
+      "blob": "dbf29bcd37532cc07aac60f7789b8c367957b2eb",
+      "bytes": 709,
+      "sha256": "0ad23538e82c760b67276f05d9bb302a59d6d3512725e473c0907cc94980a196"
+    },
+    {
+      "path": "tsconfig.json",
+      "blob": "6b68d80b7d92d0c4a5d774897f2bedfa95b42669",
+      "sha256": "406e63e666958bb699aae6562e561a0cec963ee3dfe771c644ace7d97304974f",
+      "bytes": 396
+    },
+    {
+      "path": "vitest.config.ts",
+      "blob": "3b437d29026892339996a22ac061ca694752c498",
+      "sha256": "82f31c27d7c0f39a5ad8ce98a7cb58b0d8b6d9aab00f3a7980dbbb0d7cfe615b",
+      "bytes": 601
+    },
+    {
+      "path": "tests/homework-html/vitest.config.mjs",
+      "blob": "c115a1f1a4cd202df9423343f811759ab8ba0a9d",
+      "sha256": "6dae87578e317a328383aa0446ecd6c957807bdd746ca06cae291603a7e41142",
+      "bytes": 496
+    },
+    {
+      "path": "tests/homework-html/setup.ts",
+      "blob": "201adcaae0c2df0a8de3c9e904aa07c90e033729",
+      "sha256": "3ac813e1cd20f1d6ed147f2a94409d6e455091c095017b2a0870a7975fb71573",
+      "bytes": 1327
+    },
+    {
+      "path": "tests/homework-html/homework-html.test.tsx",
+      "blob": "7ac76f3ee26a8f2f60baf863c314139df9ab1352",
+      "sha256": "6fed823aac215ef56e3bbdd03a2174a1087fda5d6bfcd358e7492078b283e89a",
+      "bytes": 8415
+    },
+    {
+      "path": "tests/public-course-explorer/vitest.config.mjs",
+      "blob": "94bb0194b5f6fd86da5efba6a772ca28ad4b15c4",
+      "sha256": "f66414325116490fdbcfc391406c9428ca3440c7f7faf9a9130cf79ede65af7f",
+      "bytes": 517
+    },
+    {
+      "path": "tests/public-course-explorer/setup.ts",
+      "blob": "02023144d93edf571c7454ac1c9950c91646fd15",
+      "sha256": "ae34ddbc9d8a6ce6cbc9c9fab9d395ca41033dca089824b48b4e8090a5fa9196",
+      "bytes": 3498
+    },
+    {
+      "path": "tests/public-course-explorer/deep-link.test.tsx",
+      "blob": "bac19c212bf8bf48a4ffd16ba99568f99c70d43b",
+      "sha256": "1d1d729cd17b647e303e313eabb9835e5a404089a2b1830b86d98004cc55a855",
+      "bytes": 11001
+    },
+    {
+      "path": "tests/public-course-explorer/explorer.test.tsx",
+      "blob": "eca9f091433f8e11dc3635eb0d45bff3c093e747",
+      "sha256": "10e34d2b95e3cbf78c2d7549e13c75ee8f1b0cc2735394273579acabc9140f76",
+      "bytes": 5717
+    },
+    {
+      "path": "tests/public-course-explorer/registration-return.test.tsx",
+      "blob": "70c583e7bfb21fa6d64e0409a90dc80fe6f6dc50",
+      "sha256": "e011beb044c5354c1b0c5284491ae80d1184858666213e7f0381f9cd0f877b2b",
+      "bytes": 6454
+    },
+    {
+      "path": "src/hooks/usePlatformHomeworkTaskProof.ts",
+      "blob": "fa9bee73930c7ebba47f14b4ea567f1f846f19ee",
+      "sha256": "8f16b632e808f62331326bdfabc05e4f9e22e980b1547b3bd19cb1cf17c0423e",
+      "bytes": 6393
+    },
+    {
+      "path": "tests/homework-proof/homework-proof.test.tsx",
+      "blob": "b1f5f25250dfb4ec94af9e32a3002dce1e9ae068",
+      "sha256": "1009b79dd7c4ee629c8fad6ea45f61e546195bd10aaeeed2edd3db2539324b78",
+      "bytes": 10593
+    },
+    {
+      "path": "tests/homework-proof/setup.ts",
+      "blob": "1ccde0ec36e83fe652d3ba0843d859912235b281",
+      "sha256": "2ca1c5fcff0b2a29ddfe3c95c6c45f7262e20b477a4eab107174c11b3b897c4a",
+      "bytes": 980
+    },
+    {
+      "path": "tests/homework-proof/vitest.config.mjs",
+      "blob": "3ec3bf85cffbf3bbff692745dc0b0f6723a7c7b2",
+      "sha256": "84a7e52b52bf0d8aeeb76997ade67d3944c266955299d4cd57f25c9fee801d6c",
+      "bytes": 499
+    },
+    {
+      "path": "src/hooks/course-learning/markLessonProgress.ts",
+      "blob": "82af83b41232deaab79a6366c85d533ef6d51e2f",
+      "sha256": "40e61e8d5dc2d2555ae0b3498ce058c26bea4bdaaa7445f6398cf50c8f4393ac",
+      "bytes": 6464
+    },
+    {
+      "path": "src/hooks/course-learning/__tests__/markLessonProgress.test.ts",
+      "blob": "21f46156449773df91d1ab7e1bf719c1813c59c7",
+      "sha256": "c8ad27096cb7fcfc1dfc5d2b6a4c4fd80921fbce0081b13d27720e70c8f35057",
+      "bytes": 13847
+    },
+    {
+      "path": "tests/course-progress/vitest.config.mjs",
+      "blob": "88b333b4f5fcbdbf7d4726d9efa3d478b1979466",
+      "sha256": "3d0821bae4bd889f227c6cab7c4e72c4467295af514075505dbb841f462fd39c",
+      "bytes": 351
+    },
+    {
+      "path": "tests/autoschool-entry/setup.ts",
+      "blob": "eb05fea4951faf213f5845273b20f86c7a7c93f4",
+      "bytes": 926,
+      "sha256": "c2beb7efbedc2f1fe0e99709c30dc6fbdc904bb7973dcf9a8f0b91f563d6ca3c"
+    },
+    {
+      "path": "tests/autoschool-entry/fixtures.ts",
+      "blob": "e09d5fb2a2873fadc0acd1255d85e06b35030655",
+      "sha256": "076bc09257dd6c37626961c1d8874ea60060b914b790977fda588386790a04b3",
+      "bytes": 1937
+    },
+    {
+      "path": "tests/autoschool-entry/entry.test.tsx",
+      "blob": "706d31fe0508865d40ba547702960d5acab1c49d",
+      "sha256": "7ab559a14992995098b28685d4e2db9e172e74e4f41947a1491c97a1e5a133eb",
+      "bytes": 3693
+    },
+    {
+      "path": "tests/autoschool-entry/access-closure.test.tsx",
+      "blob": "90c39e523626c6c7440792f4567def732dd7c92e",
+      "sha256": "47ac514d214a26c4786a9e1521a94d2d69794119ebc621f370a490c7bdbc3f61",
+      "bytes": 7574
+    },
+    {
+      "path": "tests/autoschool-entry/participant-entry.test.tsx",
+      "blob": "c61110af9fb5a42d8aa18056f55b014d3052c6b4",
+      "sha256": "99b756de4336cbab0754b18ae5866d9edefe9f2c49632a0f67ed908c15e4ddad",
+      "bytes": 4841
+    },
+    {
+      "path": "tests/autoschool-entry/auth-default-and-landing.test.tsx",
+      "blob": "5ca8a5b7761c47894ba25aadd4bfd47eee886aec",
+      "sha256": "88fdf578fd31caee285238ace042df99f4548ae12d98486f05c2cc0a34cb1b4b",
+      "bytes": 2891
+    },
+    {
+      "path": "tests/autoschool-entry/adapter-boundaries.test.ts",
+      "blob": "0e5b09e6b4c0f2876f17ab05a669af4456a7d5a0",
+      "sha256": "1c0f277e5f6dc467f00a3ecc8f9da4d6269f561ea232ab480c392fdca0ebbafd",
+      "bytes": 1844
+    },
+    {
+      "path": "vitest.autoschool-entry.config.mjs",
+      "blob": "1701ccc045344018985a096ba2e823ef51df49d6",
+      "sha256": "21406a4cfd554dae30cd936427284aa0864a488c592e4e95e22069e74696cfd1",
+      "bytes": 483
+    },
+    {
+      "path": "src/lib/driving-school/program-version.ts",
+      "blob": "3b8fb2b20b21cb65725bae43e0a82622ed1abab7",
+      "sha256": "e7ea7dcda81c2b2ec130b6140ddd7d8a3645691cc02159b1b0a2d9b34fd74b3e",
+      "bytes": 526
+    },
+    {
+      "path": "tests/autoschool-entry/program-version.test.tsx",
+      "blob": "9a9c041696e35864f0200d2c8a56f1bafb78e581",
+      "sha256": "487f62ba0d864c183ed393176885dcc50f2535c15a143447a3f6c2e510a92a61",
+      "bytes": 7576
+    },
+    {
+      "path": "tests/autoschool-entry/existing-account-invite.test.tsx",
+      "blob": "1ec54b2d44603b78a1f92adab2fbb11d78bb0ca5",
+      "bytes": 16186,
+      "sha256": "56c4cff40e31621d495889f9e95ffa682e67dbfe1462fc5b6f03c23645eb0b17"
+    },
+    {
+      "path": "src/components/organization/education-issuance/RecordDialog.tsx",
+      "sha256": "17404506ebbc641b98194a75ce4b9629d94d4b04189151b6447100c15f7982bf",
+      "blob": "f2ea22dc0a79e76823022b04de86327f852620a9",
+      "bytes": 29579
+    },
+    {
+      "path": "src/lib/admissionCases/contract.ts",
+      "blob": "297c5ed1157bf2465d745042481b93763befa498",
+      "bytes": 19787,
+      "sha256": "d15de8dcc0068c231cc6d02bf542b62e5d9bd8c8471dc938924fb87a0a238f7e"
+    },
+    {
+      "path": "src/lib/copyRegistry/value.ts",
+      "blob": "0f7ae3463495c7f202a2e405e6ac24a4fcc79f32",
+      "bytes": 548,
+      "sha256": "2858c6aed3eb10774f7e495617567ae001689a906b0bd87c6174b098694ed633"
+    },
+    {
+      "path": "src/lib/educationIssuance/__tests__/fixtures.ts",
+      "blob": "a0cd32b8e0bbaac9129cdc7a7f9d1c533b8fe0e6",
+      "bytes": 7537,
+      "sha256": "d6cb1a74fbf6ac0335c090ef28c8ceb7011c15acf681b7667b3bbb4fbcc93709"
+    },
+    {
+      "path": "src/lib/educationIssuance/client.ts",
+      "blob": "b86b0f1dc948b2370b211216516fc898123152e6",
+      "bytes": 25010,
+      "sha256": "f1f5ae2fbbd2b64b6177bcc7fccdef479b6a6d02aa452a1e781224a54af8571b"
+    },
+    {
+      "path": "src/lib/educationIssuance/contract.ts",
+      "blob": "096db50123852e3f135092986006cf758b2ebd18",
+      "bytes": 32446,
+      "sha256": "007daea1a84aea11c33b3f9098ea93b8427a9f0897ae9151212d19fddb66bb1d"
+    },
+    {
+      "path": "src/lib/educationIssuance/types.ts",
+      "blob": "42030ae0b822a3cbca10eaa5b1b414e2a144a67d",
+      "bytes": 2488,
+      "sha256": "90e9ad33252b435981a63ab13508aa3433a03a68831eea1c2c3af9129291ce3a"
+    },
+    {
+      "path": "src/lib/learningOutcomes/contract.ts",
+      "blob": "faf05f11db156419ffc7ce0e867f4de294a584aa",
+      "bytes": 14586,
+      "sha256": "0e9af32d889ff3c86d74f69ee63751ff24476b6523c032a59dc9439efc010202"
+    },
+    {
+      "path": "src/test/setup.ts",
+      "blob": "817a9afe6804d07fe5bce0be6b38309190d4edb6",
+      "sha256": "1e69f34a877ad6f11f2342436f51522c5a06a609dc254b68c930352cbec4644d",
+      "bytes": 388
+    },
+    {
+      "path": "src/lib/programFiles.ts",
+      "sha256": "0089da4546cd215f3a2cd181faa4d451db2d9314bd2a25d35ead3bdb673ccf72",
+      "blob": "9cea1b626903c6084421cf9e6a5506a8785378be",
+      "bytes": 26909
+    },
+    {
+      "path": "src/utils/storageHelpers.ts",
+      "blob": "e273c08451d5ea65b35625e34a74955713f6902b",
+      "bytes": 7482,
+      "sha256": "51310ffedce1e3824efe649ef15ab34ab69b589bec951705797438ce26ef7bf9"
+    },
+    {
+      "path": "src/lib/customJournals/client.ts",
+      "blob": "64f3a6e014b3a0716057ea7c507b9d6b0b996714",
+      "bytes": 8242,
+      "sha256": "a255ca35abe64a9250f6183c32fb36b65b0a5aafcd030d1b20925f5df0388139"
+    },
+    {
+      "path": "src/hooks/useStaffPermissions.tsx",
+      "blob": "4a5c72cf087eecd39a82f459a9eb3a621e651e9f",
+      "bytes": 7849,
+      "sha256": "959ce7eeec6be87cabd3f9bba028519cbc7df743efed6aae15bc33e51a53fb6f"
+    },
+    {
+      "path": "src/hooks/useDocumentActionPermissions.ts",
+      "blob": "c9837baa2ff6745e504d8596286e426dba3ca6f9",
+      "bytes": 1382,
+      "sha256": "863472cad1655bfefc2247fe6df4e4a38dc9a9eacc60686d47b0d229241121e9"
+    },
+    {
+      "path": "src/utils/courseCache.ts",
+      "blob": "5e75a7ba09f6d3a6e090a5bc4ea2a3aa0ba5e7f3",
+      "bytes": 11386,
+      "sha256": "078e4e653f5a58b9e206c9b46e734190bed409d5bbd0fef707c0049af9977732"
+    },
+    {
+      "path": "src/utils/proxyFetch.ts",
+      "blob": "e440a787b7905685492b992141345cecc548b61c",
+      "bytes": 20385,
+      "sha256": "ee99c79895786612e310264425fdb87fb27126357728222e8fbbdf2d1c904497"
+    },
+    {
+      "path": "src/components/organization/education-issuance/IssuanceProvenanceDetails.tsx",
+      "blob": "9a47af2e9147be6a6fcd57e3a36054906f1a5fce",
+      "bytes": 6454,
+      "sha256": "314d44e9163f153b707fb383b7de1b53b2034eda7828e9f0ef64420ce36868b5"
+    },
+    {
+      "path": "src/components/organization/education-issuance/__tests__/IssuanceProvenanceDetails.test.tsx",
+      "blob": "303111ddb5269943a73d379d7276b514980c1a72",
+      "bytes": 8468,
+      "sha256": "eac377faaef0f40576a02e8dd5103934daf656692b93013c36fc2c9d6b6ac1eb"
+    },
+    {
+      "path": "src/lib/__tests__/programFiles.test.ts",
+      "sha256": "08bc80b7da27017ef827f16979711bac74e3d2d8852e97416276434e41fcee0b",
+      "blob": "d977884a8aebd498b497d71673621b26240b917b",
+      "bytes": 18687
+    },
+    {
+      "path": "src/lib/__tests__/programFiles.signingPlainJson.test.ts",
+      "blob": "468dcd4b2d9db1a029e1f35f08f900a3a42825dc",
+      "bytes": 5221,
+      "sha256": "2fa346883f41bf939d312671e25c7d9a0f8e706c0ae43e1ded74ae8403610169"
+    },
+    {
+      "path": "src/components/admin/marketplace/AdminMarketplaceCatalogTab.tsx",
+      "blob": "71f0634cd9181531523d61852a0394d3b78c48f6",
+      "bytes": 24965,
+      "sha256": "61af31ac481becc9711f672c1340b5ed7975961f8efe46a687c87f4255fea2fc"
+    },
+    {
+      "path": "src/components/admin/marketplace/useMarketplaceValidation.ts",
+      "blob": "91b83d5dda4a1009c2a23009e6e809995b7ce78f",
+      "bytes": 23702,
+      "sha256": "ffe27b31a8360bfe36d8a1bfcf4f0ea7ae46821b08ad24a757b1318b812eb90e"
+    },
+    {
+      "path": "src/components/admin/marketplace/validationHelpers.ts",
+      "sha256": "a6b9ff0463470c2b050b33ff7d84f07a028e98339f58c48636994761ecba250f",
+      "blob": "f49987d83ce004f1b962ef3f6ca0f298112afd5a",
+      "bytes": 8743
+    },
+    {
+      "path": "src/integrations/supabase/client.ts",
+      "blob": "12f3d36db6d2bac27fa82f78d888a4742c89b102",
+      "bytes": 665,
+      "sha256": "c1a7ebcf29c80b16d0cf29acd06793cbce839496596593ae2c1e7134bac574fe"
+    },
+    {
+      "path": "src/integrations/supabase/types.ts",
+      "sha256": "180336a6aefb58e4142041b61c72f09c7182f9bc0ca41e9a323ee7f4a3591e7b",
+      "blob": "8aa091c29cc91508e8af1f9305df68f7903d457c",
+      "bytes": 904820
+    },
+    {
+      "path": "src/lib/driving-school/types.ts",
+      "blob": "3111aa226f1181ceaa2faf5721b7a7150611e830",
+      "bytes": 2427,
+      "sha256": "66b9c3fb16c1806012db6938acf6ae5d77f1789ff9fd63d5ada93b87bf316100"
+    },
+    {
+      "path": "src/lib/driving-school/time.ts",
+      "blob": "731d70a624cd39d8ac93a4c6c98adc447019c66e",
+      "bytes": 2395,
+      "sha256": "e6d74243f03cc48de1620bea8f5b7d0d158ba725e929bee1107ec67a46b3337f"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "blob": "ff7e6f11421ff6f84ad6e95e23eeb8f9816d19d6",
+      "bytes": 1805,
+      "sha256": "9635665e9bc2eb42f7a0e3876a9ef8b38c61746342be76ef0d8ea5f436697212"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "blob": "09700f605e069e1856565869ac994f978d1be0b3",
+      "bytes": 799,
+      "sha256": "aacef8933fe99ab553e12a82c874a23c97e2b5602eb6f00018454fa0a8d4f7f2"
+    },
+    {
+      "path": "src/components/ui/dialog.tsx",
+      "blob": "8249e2f0a047f20a712e369ce56b8bc0c3ecdec2",
+      "bytes": 3761,
+      "sha256": "8e755711b3fd5e8d7339baea7627da546293fe2df1a88775729c2857e0de4b57"
+    },
+    {
+      "path": "src/components/ui/table.tsx",
+      "blob": "991cdbf3ba12cf4d8e768a7b161471077568d4a6",
+      "bytes": 2694,
+      "sha256": "fab18d9eeb84781f534330ff4b2c2cbe3a93f9bdf5c449debff2f682a83a4876"
+    },
+    {
+      "path": "src/components/ui/tabs.tsx",
+      "blob": "ba20fbb1b869b15d60f3e79507b68ebd2ee577ce",
+      "bytes": 1897,
+      "sha256": "b313d08a8c85e586a282b615cf30ce0b6ec1eca3ea92149b731f14b4082f4d71"
+    },
+    {
+      "path": "src/components/admin/marketplace/__tests__/useMarketplaceValidation.result.test.tsx",
+      "blob": "f165f9ee604ce487c89805c0a8de55a9e7d55473",
+      "bytes": 18076,
+      "sha256": "68e29f5596708b0cdd104f62b73b15256daef3f774bca3c6a7175916b6de87c2"
+    },
+    {
+      "path": "tests/autoschool-entry/dashboard-ongoing.test.tsx",
+      "blob": "a7eb58cb9ce570628970bc059114498b7233fad8",
+      "bytes": 9100,
+      "sha256": "ae90198d6cad9ef8f342d1f83480064047cb2c58f1d29132b09989cbe605d7ce"
+    },
+    {
+      "path": "src/components/student/StudentHeader.tsx",
+      "blob": "4f567865ee23d52789a3888d5853182b0e4ef1e1",
+      "sha256": "3e14615c76e8a8a79bd69588583c16c02a13e0c95bacc8f0a16a856686613dfa",
+      "bytes": 7748
+    },
+    {
+      "path": "src/hooks/useStudentDashboard.ts",
+      "blob": "a65d946427ad5d5ec3979487e53df18a30a70d66",
+      "bytes": 37897,
+      "sha256": "63d2c5c90f4b523f02596c994872a71a0c608b95c52702e7c49bcad4c95673bb"
+    },
+    {
+      "path": "src/components/ui/avatar.tsx",
+      "blob": "68d21bbf6d29fc68b1a19d10e4eaf1e72fa2d68c",
+      "bytes": 1365,
+      "sha256": "4a8bc00e5514912c54d414e207266fa100906aec2754d590adcc8ccc46d4c5c9"
+    },
+    {
+      "path": "src/components/ui/dropdown-menu.tsx",
+      "blob": "c51ee07791a3f2ef59d857c381eb5b3e39aed353",
+      "bytes": 7305,
+      "sha256": "16da419bb2eca5b3e61adc0db6f444c3b0d130e100836f6e9e0e59f13b997978"
+    },
+    {
+      "path": "src/components/ui/tooltip.tsx",
+      "blob": "8fea666a5d5fc4c55e05a12fafd2ebf22ebc41d6",
+      "bytes": 1230,
+      "sha256": "1ccb1b550e0353adc96dedf44beafb254142198cb7c09240c32fcd82995a2186"
+    },
+    {
+      "path": "src/components/ui/SigmaLogo.tsx",
+      "blob": "cf5b7ad1df25c565e241412f2ddfed3121a028ac",
+      "bytes": 1654,
+      "sha256": "0ba93f500c7aa2e0d3938dbb6c073301bae647e8c10768d3f29a62c6bcfccb5f"
+    },
+    {
+      "path": "src/lib/utils.ts",
+      "blob": "3ab7ea423e26ae8e728346d86d596e936d98155c",
+      "bytes": 1109,
+      "sha256": "ddb5326fe646784c64f07f92ab0fa013592c533d35513441b9e9b9ee39cb4e7f"
+    },
+    {
+      "path": "src/hooks/use-mobile.tsx",
+      "blob": "502fd323934501eab408a396a9ae4a07c0ae3560",
+      "bytes": 576,
+      "sha256": "21eff740f9e5c965c7f0782925a7e8f67ddfcdf0f58b6613550f99c3e1c454e9"
+    },
+    {
+      "path": "src/hooks/useDrivingSchoolParticipantEntry.ts",
+      "blob": "cc5b30a278e54b82073dc93f5d8a532c7eba5ad5",
+      "sha256": "bd6c57e1acbbd7bad94dd5d569a4927da95e05e35c7274e80e6e0a12bc529aa2",
+      "bytes": 4019
+    },
+    {
+      "path": "tests/autoschool-entry/participant-link.hook.test.tsx",
+      "blob": "85c17a517d71fd71cb68d541e813303d62481bbb",
+      "sha256": "33b3e2d8e111ec1ded4f52e8996465d464abbad44884e20c2b971af15e6e8ec6",
+      "bytes": 14917
+    },
+    {
+      "path": "tests/autoschool-entry/participant-link.components.test.tsx",
+      "blob": "7d6ed0da6d2bc381459d404cc542a6a5385ad2a2",
+      "sha256": "bb9278e02eade5d6e8dc083e588f77b67dcf7b5e4b546af9dff00471de1e3bfe",
+      "bytes": 13732
+    },
+    {
+      "path": "src/components/admin/UsersManager.tsx",
+      "blob": "d8c466d5f99b3b7dfdeb7baf19f9858ab0327c21",
+      "sha256": "72754912935462be94872eb2b1b67f8450542b71421fa463d8b98a6bfc8f5896",
+      "bytes": 14988
+    },
+    {
+      "path": "src/components/admin/users/UserTableRow.tsx",
+      "blob": "0f9aa156cb1c71f4f0b50fd4d71e1db6dfcf4dc5",
+      "sha256": "6b2ed3edb4a4298225b4c85f2c16939729222c66225013a9f8d5e6052c5829e8",
+      "bytes": 5686
+    },
+    {
+      "path": "src/components/ui/select.tsx",
+      "blob": "6f2525465bc450154ac8083461d0f84b2c1360f2",
+      "sha256": "a2b62120a033b36c8d6c4a1693aa9231645fa69251740e15eacec24c1eea4d82",
+      "bytes": 5575
+    },
+    {
+      "path": "src/components/ui/alert-dialog.tsx",
+      "blob": "6dfbfb49fedb30753b1b2c08402953d40cc3389c",
+      "sha256": "c8b01137c7552e63c9ccf2c38ef92e5417bd6616b6980d56d3015db027465283",
+      "bytes": 4313
+    },
+    {
+      "path": "src/components/ui/card.tsx",
+      "blob": "e28274800fdd298091b911ecadafcf544284df9d",
+      "sha256": "bdfb74248321c52e89c2129d9d8088a56a3e33dd7850a7c9b0563a7b5ac937a0",
+      "bytes": 1785
+    },
+    {
+      "path": "src/components/ui/SigmaSpinner.tsx",
+      "blob": "b3393881ba78876902edca6d66f34505431e1702",
+      "sha256": "b6e89d78a0a7c1ca90b0ec80206a3b85f8daa615b40ca7724141189dd332c144",
+      "bytes": 792
+    },
+    {
+      "path": "src/components/shared/TableSkeleton.tsx",
+      "blob": "9b78ec377591586b3d851ca010be556dc1c1e3fe",
+      "sha256": "46c02a5698fc70a5f44f78848ea5a0a1a1ce94e5f0ac137304e296c23c10850c",
+      "bytes": 1547
+    },
+    {
+      "path": "src/components/shared/EmptyState.tsx",
+      "blob": "f52fb0bb07205c6d58109a33e1f248dff8d0d889",
+      "sha256": "3ddb608cf657166eedad0cdbb0abd5897e23e19f32df55ab432d43ccd408a637",
+      "bytes": 1821
+    },
+    {
+      "path": "src/components/ui/skeleton.tsx",
+      "blob": "6690a131f28488723d7b4bb7d952e12ea3d03ee7",
+      "sha256": "a229c310b9cbcb01ddd5e580865a6f14a19061aff7f6a97ef82a40b6a83583a4",
+      "bytes": 234
+    }
+  ],
+  "variants": {
+    "admin-explicit-credential": {
+      "sourceFiles": 7,
+      "allowedPaths": [
+        "src/hooks/useExplicitUserCredential.ts",
+        "src/components/admin/UsersManager.tsx",
+        "src/components/admin/users/UserTableRow.tsx",
+        "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+        "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+        "tests/admin-credential-reveal/setup.ts",
+        "tests/admin-credential-reveal/vitest.config.mjs"
+      ],
+      "packet": {
+        "path": ".ci/frontend-candidates/admin-explicit-credential.json",
+        "sha256": "6ae88f64541b1d91764307d7e9c7407a52cbd8f747ed7878a400b90044bdbdac"
+      },
+      "suites": [
+        {
+          "id": "admin-explicit-hook-12",
+          "config": "tests/admin-credential-reveal/vitest.config.mjs",
+          "include": [
+            "tests/admin-credential-reveal/explicit-credential.hook.test.tsx"
+          ],
+          "cases": 12,
+          "files": {
+            "tests/admin-credential-reveal/explicit-credential.hook.test.tsx": 12
+          }
+        },
+        {
+          "id": "admin-explicit-components-8",
+          "config": "tests/admin-credential-reveal/vitest.config.mjs",
+          "include": [
+            "tests/admin-credential-reveal/explicit-credential.components.test.tsx"
+          ],
+          "cases": 8,
+          "files": {
+            "tests/admin-credential-reveal/explicit-credential.components.test.tsx": 8
+          }
+        }
+      ],
+      "productionReleaseAllowed": false
+    }
+  },
+  "acceptance": {
+    "stockTsconfigRequired": true,
+    "expectedPassedCases": 20,
+    "exactFilesRequired": true,
+    "noSkippedOrTodo": true,
+    "applicationRelease": false,
+    "backendCredentials": false,
+    "exactExpectedIdentitiesRequireRootArtifactComparison": true
+  },
+  "sourceBaseProvenance": {
+    "commit": "cbba3713c08023bd2109ebf3a44c99bc6ee4f58d",
+    "expectedPublishedMergeTree": "1818c5dcf643200581ea5447bb29e3d2fd55fde2",
+    "previousAcceptedCI": 181,
+    "previousAcceptedHead": "45ae7a71597b319e99b95616b77d570fc9d7a6b5",
+    "previousAcceptedActualRun": 40627878546,
+    "previousRootReceiptSHA256": "7274466d124c1d791bf2a8c676bb3ebf34b5c8a449800629e598a17c6a99accf",
+    "previousBaselinePins": 100,
+    "refresh182StudentHeaderAndDashboard": 2,
+    "add182ParticipantHookAndTwoTests": 3,
+    "baseAfter182RefreshAndAddition": 103,
+    "addedCurrentAdminAndDirectUIImports": 9,
+    "totalPins": 112,
+    "freshPublicSourcesFullBytesAndGitBlobVerified": 14,
+    "unchangedPackageAndLockBlob": true,
+    "SDKInstalledVersionsPinnedFromSameAcceptedExactLock": true,
+    "all112MustBeVerifiedFromExactCommitBeforeRuntime": true
+  },
+  "actions": {
+    "sourceOnly": true,
+    "GitWrites": false,
+    "CloudWrites": false,
+    "enginesExecuted": 0,
+    "productionSourcesWritten": false
+  },
+  "exactAdminCredentialExpectedCaseIdentitiesForRootArtifactComparison": [
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH01 initial ready list and invalid Auth or malformed target never call either decrypt RPC",
+      "fullName": "explicit one-target administrator credential hook ACRH01 initial ready list and invalid Auth or malformed target never call either decrypt RPC"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH02 only explicit reveal reads the exact UUID once and exposes only that current target",
+      "fullName": "explicit one-target administrator credential hook ACRH02 only explicit reveal reads the exact UUID once and exposes only that current target"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH03 hide clears the value and reopening performs a new authorized read without cached plaintext",
+      "fullName": "explicit one-target administrator credential hook ACRH03 hide clears the value and reopening performs a new authorized read without cached plaintext"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH04 A to B to A aborts predecessors and old success or failure cannot restore an earlier target",
+      "fullName": "explicit one-target administrator credential hook ACRH04 A to B to A aborts predecessors and old success or failure cannot restore an earlier target"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH05 logout loading Auth error role loss and renewed session dispose pending reads and close revealed values",
+      "fullName": "explicit one-target administrator credential hook ACRH05 logout loading Auth error role loss and renewed session dispose pending reads and close revealed values"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH06 filtering paging row removal and organization login or role replacement close the exact old scope",
+      "fullName": "explicit one-target administrator credential hook ACRH06 filtering paging row removal and organization login or role replacement close the exact old scope"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH07 denied network null empty malformed ciphertext and mask results remain unknown and expose nothing to copy",
+      "fullName": "explicit one-target administrator credential hook ACRH07 denied network null empty malformed ciphertext and mask results remain unknown and expose nothing to copy"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH08 pending re-click cancels and bounded timeout aborts the physical signal before a new explicit read",
+      "fullName": "explicit one-target administrator credential hook ACRH08 pending re-click cancels and bounded timeout aborts the physical signal before a new explicit read"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH09 hiding blur and unmount dispose values requests listeners and timers and focus never decrypts automatically",
+      "fullName": "explicit one-target administrator credential hook ACRH09 hiding blur and unmount dispose values requests listeners and timers and focus never decrypts automatically"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH10 session expiry closes a revealed value and refuses any new read from the expired context",
+      "fullName": "explicit one-target administrator credential hook ACRH10 session expiry closes a revealed value and refuses any new read from the expired context"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH11 actor A through B back to A never waits for a hung predecessor and rejects both old actor responses",
+      "fullName": "explicit one-target administrator credential hook ACRH11 actor A through B back to A never waits for a hung predecessor and rejects both old actor responses"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.hook.test.tsx",
+      "title": "ACRH12 actual installed Supabase builder forwards AbortSignal to offline fetch and target timeout and unmount keep at most one physical request",
+      "fullName": "explicit one-target administrator credential hook ACRH12 actual installed Supabase builder forwards AbortSignal to offline fetch and target timeout and unmount keep at most one physical request"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC01 normal list mounting and remounting hydrate profiles roles organizations with zero decrypt requests",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC01 normal list mounting and remounting hydrate profiles roles organizations with zero decrypt requests"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC02 one explicit eye read enables only that row copy and hiding removes plaintext and disables copy",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC02 one explicit eye read enables only that row copy and hiding removes plaintext and disables copy"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC03 RPC denial unknown payload ciphertext pending and Auth changes never write a placeholder or stale password to clipboard",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC03 RPC denial unknown payload ciphertext pending and Auth changes never write a placeholder or stale password to clipboard"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC04 the existing role selector still sends the exact role update and clears a revealed credential before changing the row",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC04 the existing role selector still sends the exact role update and clears a revealed credential before changing the row"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC05 choosing a second real row closes the first and its late result cannot be displayed or copied under another login",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC05 choosing a second real row closes the first and its late result cannot be displayed or copied under another login"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC06 existing pagination and name email filtering remain usable while hidden rows lose the revealed value and require a fresh read",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC06 existing pagination and name email filtering remain usable while hidden rows lose the revealed value and require a fresh read"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC07 a revealed real UserTableRow forwards only password-free metadata to delete and view actions and UUID to copy",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC07 a revealed real UserTableRow forwards only password-free metadata to delete and view actions and UUID to copy"
+    },
+    {
+      "file": "tests/admin-credential-reveal/explicit-credential.components.test.tsx",
+      "title": "ACRC08 actual UsersManager opens delete dialog with credential already masked and keeps it closed after blur and cancel",
+      "fullName": "actual UsersManager and UserTableRow explicit credential wiring ACRC08 actual UsersManager opens delete dialog with credential already masked and keeps it closed after blur and cancel"
+    }
+  ]
+}
