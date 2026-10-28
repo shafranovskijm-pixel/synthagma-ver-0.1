@@ -1,3 +1,6 @@
+[build.environment]
+NODE_VERSION = "22"
+
 # The deploy-preview build reached the default 2 GiB V8 heap while bundling.
 [context.deploy-preview.environment]
 NODE_OPTIONS = "--max-old-space-size=4096"

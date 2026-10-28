@@ -26,7 +26,7 @@ export type SelectedPlatformFileContext =
 export type SealedPlatformFileContext = Extract<SelectedPlatformFileContext, { state: "bytes_sealed" }>;
 export interface ExactPlatformCourseFileLease {
   readonly url: string; readonly mime: string; readonly previewKind: "pdf" | "image";
-  readonly context: Readonly<SealedPlatformFileContext>; release(): void;
+  readonly context: Readonly<SealedPlatformFileContext>; copyVerifiedPdfBytes(): Uint8Array; release(): void;
 }
 export class ExactPlatformCourseFileUnavailable extends Error {
   readonly code = "PLATFORM_SOURCE_FILE_UNAVAILABLE";
@@ -116,9 +116,10 @@ export function createExactPlatformCourseFileGateway(port:SelectedPlatformFilePo
       },cancellation,45_000);
       cancellation.throwIfAborted(); const {bytes,media}=verified;
       const url=URL.createObjectURL(new Blob([bytes],{type:media.mime})); let released=false;
-      const release=()=>{if(!released){released=true;URL.revokeObjectURL(url);cancellation.removeEventListener("abort",release);}};
+      const release=()=>{if(!released){released=true;bytes.fill(0);URL.revokeObjectURL(url);cancellation.removeEventListener("abort",release);}};
       cancellation.addEventListener("abort",release,{once:true});if(cancellation.aborted){release();cancellation.throwIfAborted();}
-      return Object.freeze({url,...media,context:c,release});
+      const copyVerifiedPdfBytes=()=>{if(released||cancellation.aborted||media.previewKind!=="pdf")deny();return bytes.slice();};
+      return Object.freeze({url,...media,context:c,copyVerifiedPdfBytes,release});
     },
   });
 }
