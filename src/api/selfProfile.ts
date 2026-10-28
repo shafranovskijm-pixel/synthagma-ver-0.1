@@ -17,7 +17,7 @@ const ownProfilePort: SelfProfilePort = {
       && "Bearer " + session.data.session?.access_token === authority.authorization;
   },
   async ensure(authority) {
-    return await supabase.rpc("ensure_my_profile", {}).setHeader("Authorization", authority.authorization);
+    return await supabase.rpc("ensure_my_profile").setHeader("Authorization", authority.authorization);
   },
   async update(authority, changes) {
     return await supabase.from("profiles").update(changes).eq("user_id", authority.userId)
