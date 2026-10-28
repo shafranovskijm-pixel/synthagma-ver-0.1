@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "SOURCE_ONLY_COPY_R7_NATIVE24_R4_ONE_PREFLIGHT_CATALOG_ALIAS_NOT_RUN",
+  "status": "SOURCE_ONLY_COPY_R7_NATIVE24_R5_SQL_WHITESPACE_AND_VERIFIED_RESTORE_REPORT_NOT_RUN",
   "candidate": {
     "migration": "20261028140000_platform_course_copy_file_delivery.sql",
     "freezeSHA256": "1a3ace4f465ccedc4468de35d54a7d700f976672b1894a3659c756b03dfed8ef",
@@ -75,13 +75,13 @@
     },
     {
       "path": "copy24_cases.py",
-      "bytes": 49295,
-      "sha256": "bff8fc0a0d5d6be602382a9271e3f64a457c9d329f21eec90504b0ca61f704c5"
+      "bytes": 49297,
+      "sha256": "80410b6776fe46b5b2b107b7e681e024438bd1666782d9c588644de6e37a6470"
     },
     {
       "path": "run_copy24_stage.py",
-      "bytes": 13422,
-      "sha256": "f8eda0957085aebf24cad121780e3b0b0487e36e9a074addc4daf71e8e6f91d5"
+      "bytes": 13627,
+      "sha256": "6e8342b13143f197cccdff72b477911132f4bb3387cf7d85dabdc65d4c17b0c9"
     }
   ],
   "database": "sintagma_copy24_lab_20261028",

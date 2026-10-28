@@ -116,7 +116,10 @@ def run_copy24_stage(here, command, base, interactive_base, env, output, core, e
                     trace_count += 1
                     if value.get('case'): proof['actualGroups'].append(value['case'])
                     if value.get('copyNativeSessionExit'): proof['nativeSessionExits'].append(value['copyNativeSessionExit'])
-                    if value.get('copyCapabilityRestore'): proof['capabilityRestoreReceipt'] = value['copyCapabilityRestore']
+                    if value.get('copyCapabilityRestore'):
+                        receipt = value['copyCapabilityRestore']
+                        proof['capabilityRestoreReceipt'] = receipt
+                        proof['capabilityOriginalRestored'] = isinstance(receipt, dict) and receipt.get('exactDefinitionOwnerACL') is True
                     log.write(json.dumps(value, ensure_ascii=False) + '\n'); log.flush()
             native = load('copy24_unchanged_native_session', here / 'concurrency_cases.py')
             cases = load('copy24_conditional_modeled_cases', here / 'copy24_cases.py')

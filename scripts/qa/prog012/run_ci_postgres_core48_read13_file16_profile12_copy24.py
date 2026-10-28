@@ -233,14 +233,14 @@ def main():
             here, command, base, interactive_base, env, output, report,
             "98e83002e7f4844fc1cd4e8ae87f06040d787e49b41d8c2d6568c499482cf77e")
         copy_entry = here / "run_copy24_stage.py"
-        if copy_entry.stat().st_size != 13422 or sha(copy_entry.read_bytes()) != "f8eda0957085aebf24cad121780e3b0b0487e36e9a074addc4daf71e8e6f91d5":
+        if copy_entry.stat().st_size != 13627 or sha(copy_entry.read_bytes()) != "6e8342b13143f197cccdff72b477911132f4bb3387cf7d85dabdc65d4c17b0c9":
             raise RuntimeError("REVIEWED_COPY24_STAGE_SOURCE_REQUIRED_BEFORE_IMPORT")
         copy_spec = importlib.util.spec_from_file_location("pcr_ci_native_copy24_stage", here / "run_copy24_stage.py")
         copy_stage = importlib.util.module_from_spec(copy_spec)
         copy_spec.loader.exec_module(copy_stage)
         report["copy24Stage"] = copy_stage.run_copy24_stage(
             here, command, base, interactive_base, env, output, report,
-            "55ebab990cc1a7ae4e4a1a1e588ea4f7abef4f931e194c07cadf201cfa4b472c")
+            "e3dabba41d0926c0fd2855efefe33059fc21beae2fa37b8ce691a324b4f00bc8")
         report["status"] = "PASS_ORIGINAL89_AND_CONDITIONAL_COPY24_SYNTHETIC_POSTGRES1711_NOT_CLOUD_AUTH_STORAGE"
     except Exception as error:
         report["status"] = "FAIL_CI_UNIT_OR_GUARD_NO_RETRY"

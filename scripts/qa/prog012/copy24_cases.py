@@ -371,9 +371,9 @@ def run_stage(Session, argv, env, trace):
             ('auth.users', "banned_until=clock_timestamp()+interval'1 day'", 'banned_until=NULL'), ('auth.users', 'deleted_at=clock_timestamp()', 'deleted_at=NULL')):
             table = relation if '.' in relation else 'public.' + relation
             key = 'id' if relation == 'auth.users' else 'user_id'
-            control.ok('UPDATE ' + table + ' SET ' + mutation + 'WHERE ' + key + '=' + q(LEARNER) + ';')
+            control.ok('UPDATE ' + table + ' SET ' + mutation + ' WHERE ' + key + '=' + q(LEARNER) + ';')
             try: learner.error(read_sql(course, b), '42501', 'PCC_CURRENT_ACCOUNT_REQUIRED')
-            finally: control.ok('UPDATE ' + table + ' SET ' + restore + 'WHERE ' + key + '=' + q(LEARNER) + ';')
+            finally: control.ok('UPDATE ' + table + ' SET ' + restore + ' WHERE ' + key + '=' + q(LEARNER) + ';')
         control.ok('INSERT INTO public.account_deletion_revocations VALUES(' + q(LEARNER) + ');')
         try: learner.error(read_sql(course, b), '42501', 'PCC_CURRENT_ACCOUNT_REQUIRED')
         finally: control.ok('DELETE FROM public.account_deletion_revocations WHERE user_id=' + q(LEARNER) + ';')

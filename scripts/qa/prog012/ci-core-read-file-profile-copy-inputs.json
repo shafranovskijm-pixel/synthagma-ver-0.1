@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "status": "SOURCE_ONLY_UNCHANGED_ORIGINAL89_THEN_NATIVE24_COPY_R7_PREFLIGHT_ALIAS_NOT_RUN",
+  "status": "SOURCE_ONLY_UNCHANGED_ORIGINAL89_THEN_NATIVE24_R5_WHITESPACE_AND_RESTORE_REPORT_NOT_RUN",
   "files": [
     {
       "path": "run_ci_postgres_core48_read13_file16_profile12_copy24.py",
       "bytes": 17382,
-      "sha256": "21e2e66e43e951a5273ff1a12ed7b6808dc6e1204d4295bc5dbbb46643cda8d9"
+      "sha256": "61ca68afba994d414c1353221dea9530a5b31466ea961e19fa5c9774ccd33d6a"
     },
     {
       "path": "ci-inputs.json",
@@ -29,8 +29,8 @@
     },
     {
       "path": "ci-copy24-inputs.json",
-      "bytes": 3255,
-      "sha256": "55ebab990cc1a7ae4e4a1a1e588ea4f7abef4f931e194c07cadf201cfa4b472c"
+      "bytes": 3270,
+      "sha256": "e3dabba41d0926c0fd2855efefe33059fc21beae2fa37b8ce691a324b4f00bc8"
     }
   ],
   "order": [
