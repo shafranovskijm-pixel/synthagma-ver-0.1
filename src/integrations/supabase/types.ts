@@ -11442,6 +11442,145 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_course_learning_bindings: {
+        Row: {
+          bound_at: string
+          course_id: string
+          enrollment_id: string
+          organization_id: string
+          policy_id: string
+          user_id: string
+        }
+        Insert: {
+          bound_at?: string
+          course_id: string
+          enrollment_id: string
+          organization_id: string
+          policy_id: string
+          user_id: string
+        }
+        Update: {
+          bound_at?: string
+          course_id?: string
+          enrollment_id?: string
+          organization_id?: string
+          policy_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_learning_bindings_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "platform_course_learning_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_course_learning_evidence: {
+        Row: {
+          actor_id: string | null
+          course_id: string
+          enrollment_id: string
+          evidence_sha256: string
+          id: string
+          kind: string
+          lesson_id: string | null
+          organization_id: string
+          policy_id: string
+          recorded_at: string
+          redacted: boolean
+          source_id: string
+          transaction_id: number
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          course_id: string
+          enrollment_id: string
+          evidence_sha256: string
+          id?: string
+          kind: string
+          lesson_id?: string | null
+          organization_id: string
+          policy_id: string
+          recorded_at?: string
+          redacted?: boolean
+          source_id: string
+          transaction_id?: number
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          course_id?: string
+          enrollment_id?: string
+          evidence_sha256?: string
+          id?: string
+          kind?: string
+          lesson_id?: string | null
+          organization_id?: string
+          policy_id?: string
+          recorded_at?: string
+          redacted?: boolean
+          source_id?: string
+          transaction_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_course_learning_evidence_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "platform_course_learning_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_course_learning_policies: {
+        Row: {
+          course_id: string
+          created_at: string
+          curriculum_sha256: string
+          id: string
+          lesson_map: Json
+          organization_id: string
+          required_components: Json
+          scope_kind: string
+          source_course_id: string
+          source_curriculum_sha256: string
+          source_order_id: string | null
+          source_organization_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          curriculum_sha256: string
+          id?: string
+          lesson_map: Json
+          organization_id: string
+          required_components: Json
+          scope_kind: string
+          source_course_id: string
+          source_curriculum_sha256: string
+          source_order_id?: string | null
+          source_organization_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          curriculum_sha256?: string
+          id?: string
+          lesson_map?: Json
+          organization_id?: string
+          required_components?: Json
+          scope_kind?: string
+          source_course_id?: string
+          source_curriculum_sha256?: string
+          source_order_id?: string | null
+          source_organization_id?: string
+        }
+        Relationships: []
+      }
       platform_invoice_acts: {
         Row: {
           act_date: string
@@ -24282,6 +24421,10 @@ export type Database = {
           subscription_plan: string
         }[]
       }
+      get_platform_learning_task_proof: {
+        Args: { p_course_id: string; p_lesson_id: string }
+        Returns: Json
+      }
       get_postpaid_access_profile: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -24883,6 +25026,90 @@ export type Database = {
               port: number
             }[]
           }
+      plp_assert_actor: { Args: { p_subject: string }; Returns: undefined }
+      plp_assert_current: {
+        Args: { p_policy: string }
+        Returns: {
+          course_id: string
+          created_at: string
+          curriculum_sha256: string
+          id: string
+          lesson_map: Json
+          organization_id: string
+          required_components: Json
+          scope_kind: string
+          source_course_id: string
+          source_curriculum_sha256: string
+          source_order_id: string | null
+          source_organization_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "platform_course_learning_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      plp_binding: {
+        Args: { p_enrollment: string }
+        Returns: {
+          bound_at: string
+          course_id: string
+          enrollment_id: string
+          organization_id: string
+          policy_id: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "platform_course_learning_bindings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      plp_component_ready: {
+        Args: { p_enrollment: string; p_lesson: string }
+        Returns: boolean
+      }
+      plp_curriculum_sha: { Args: { p_course: string }; Returns: string }
+      plp_enrollment_ready: { Args: { p_enrollment: string }; Returns: boolean }
+      plp_homework_sha: {
+        Args: {
+          h: Database["public"]["Tables"]["homework_submissions"]["Row"]
+          p_review: boolean
+        }
+        Returns: string
+      }
+      plp_lesson_policy_id: { Args: { p_lesson: string }; Returns: string }
+      plp_policy_fence: {
+        Args: { p_exclusive?: boolean; p_policy: string }
+        Returns: undefined
+      }
+      plp_privacy_erase: { Args: { p_user: string }; Returns: boolean }
+      plp_question_bank: {
+        Args: { p_lesson: string; p_semantic?: boolean }
+        Returns: Json
+      }
+      plp_register_policy: {
+        Args: {
+          p_components: Json
+          p_course: string
+          p_map: Json
+          p_org: string
+          p_qa?: boolean
+          p_source: string
+          p_source_sha: string
+          p_target_sha: string
+        }
+        Returns: string
+      }
+      plp_session_sha: {
+        Args: {
+          s: Database["public"]["Tables"]["test_attempt_sessions"]["Row"]
+        }
+        Returns: string
+      }
+      plp_sha: { Args: { p_value: Json }; Returns: string }
       postpaid_append_event: {
         Args: {
           p_bytes?: number
