@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+import { saveOwnProfile } from "@/api/selfProfile";
 
 export const PROFILE_TABS = [
   { id: "profile", label: "Профиль" },
@@ -44,6 +45,16 @@ function buildDefaultNotifSettings(): Record<string, Record<string, boolean>> {
 
 export function useStudentProfile(effectiveUserId: string, isAdminView: boolean, userId?: string) {
   const queryClient = useQueryClient();
+  const profileScopeRef = useRef({ effectiveUserId, isAdminView, userId });
+  if (profileScopeRef.current.effectiveUserId !== effectiveUserId || profileScopeRef.current.isAdminView !== isAdminView || profileScopeRef.current.userId !== userId) {
+    profileScopeRef.current = { effectiveUserId, isAdminView, userId };
+  }
+  const profileScope = profileScopeRef.current;
+  const profileMounted = useRef(true);
+  useEffect(() => {
+    profileMounted.current = true;
+    return () => { profileMounted.current = false; };
+  }, []);
 
   // Profile form state
   const [fullName, setFullName] = useState("");
@@ -51,7 +62,8 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
   const [city, setCity] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSavingScope, setProfileSavingScope] = useState<typeof profileScope | null>(null);
+  const [profileFormScope, setProfileFormScope] = useState<typeof profileScope | null>(null);
 
   // Change email state
   const [newEmail, setNewEmail] = useState("");
@@ -115,15 +127,16 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
     }
   }, [effectiveUserId, isAdminView, notifSettings]);
 
-  const { data: profile } = useQuery({
+  const { data: profile, isSuccess: profileLoaded } = useQuery({
     queryKey: ["student-profile-page", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return null;
-      const { data: p } = await (supabase
+      const { data: p, error } = await (supabase
         .from("profiles")
         .select("full_name, organization_id, phone, city, bio, avatar_url")
         .eq("user_id", effectiveUserId)
         .maybeSingle() as any);
+      if (error) throw error;
       if (!p) return null;
       let orgName: string | null = null;
       if (p.organization_id) {
@@ -178,30 +191,32 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
   });
 
   useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || "");
-      setPhone(profile.phone || "");
-      setCity(profile.city || "");
-      setBio(profile.bio || "");
-      setAvatarUrl(profile.avatar_url || null);
-    }
-  }, [profile]);
+    if (!profileLoaded) { setProfileFormScope(null); return; }
+    setFullName(profile?.full_name || "");
+    setPhone(profile?.phone || "");
+    setCity(profile?.city || "");
+    setBio(profile?.bio || "");
+    setAvatarUrl(profile?.avatar_url || null);
+    setProfileFormScope(profileScope);
+  }, [profileScope, profile, profileLoaded]);
 
   const handleSaveProfile = async () => {
-    if (!userId) return;
-    setProfileSaving(true);
+    const operationScope = profileScope;
+    if (!profileMounted.current || profileScopeRef.current !== operationScope || !userId || isAdminView || effectiveUserId !== userId) return;
+    if (!profileLoaded || profileFormScope !== operationScope) {
+      toast.error("Профиль ещё не загружен", { description: "Обновите страницу перед сохранением" });
+      return;
+    }
+    setProfileSavingScope(operationScope);
     try {
-      const { error } = await (supabase
-        .from("profiles")
-        .update({ full_name: fullName, phone, city, bio } as any)
-        .eq("user_id", userId) as any);
-      if (error) throw error;
+      await saveOwnProfile(userId, { full_name: fullName, phone, city, bio });
+      if (!profileMounted.current || profileScopeRef.current !== operationScope) return;
       queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
       toast.success("Профиль сохранён");
     } catch {
-      toast.error("Ошибка", { description: "Не удалось сохранить профиль" });
+      if (profileMounted.current && profileScopeRef.current === operationScope) toast.error("Ошибка", { description: "Не удалось сохранить профиль" });
     } finally {
-      setProfileSaving(false);
+      if (profileMounted.current && profileScopeRef.current === operationScope) setProfileSavingScope(null);
     }
   };
 
@@ -269,8 +284,11 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
     // Profile data
     profile, branding, orgSettings, initials,
     // Form state
-    fullName, setFullName, phone, setPhone, city, setCity, bio, setBio,
-    avatarUrl, profileSaving,
+    fullName: profileFormScope === profileScope ? fullName : "", setFullName,
+    phone: profileFormScope === profileScope ? phone : "", setPhone,
+    city: profileFormScope === profileScope ? city : "", setCity,
+    bio: profileFormScope === profileScope ? bio : "", setBio,
+    avatarUrl: profileFormScope === profileScope ? avatarUrl : null, profileSaving: profileSavingScope === profileScope,
     // Email
     newEmail, setNewEmail, emailSaving,
     // Password
