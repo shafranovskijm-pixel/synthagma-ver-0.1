@@ -3,6 +3,7 @@ import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { useAuth } from "@/hooks/useAuth";
+import { saveOwnProfile } from "@/api/selfProfile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,10 +88,24 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
   const { user } = useAuth();
   const initialKey = SECTIONS.find(s => s.key === initialSubTab)?.key ?? "profile";
   const [activeSection, setActiveSection] = useUrlQueryState<SectionKey>("section", initialKey, SECTIONS.map(s => s.key));
+  const profileScopeRef = useRef({ actor: user?.id, organizationId, loadVersion: 0 });
+  if (profileScopeRef.current.actor !== user?.id || profileScopeRef.current.organizationId !== organizationId) {
+    profileScopeRef.current = { actor: user?.id, organizationId, loadVersion: 0 };
+  }
+  const profileScope = profileScopeRef.current;
+  const profileMounted = useRef(true);
+  useEffect(() => {
+    profileMounted.current = true;
+    return () => { profileMounted.current = false; };
+  }, []);
+  const [savingScope, setSavingScope] = useState<typeof profileScope | null>(null);
+  const profileSaving = savingScope === profileScope;
   const [saving, setSaving] = useState(false);
+  const [profileLoadedScope, setProfileLoadedScope] = useState<typeof profileScope | null>(null);
 
-  const [profile, setProfile] = useState<ProfileData>({
+  const [profileForm, setProfile] = useState<ProfileData>({
     full_name: "", email: "", phone: "", avatar_url: "", vk_link: "", telegram_link: "", bio: "" });
+  const profile = profileLoadedScope === profileScope ? profileForm : { full_name: "", email: "", phone: "", avatar_url: "", vk_link: "", telegram_link: "", bio: "" };
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -125,7 +140,6 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     if (!user) return;
     // Параллельная загрузка всех настроек профиля — экономит ~60% времени открытия раздела
     Promise.all([
-      loadProfile(),
       loadNotificationPrefs(),
       loadOrgIcon(),
       loadOrgCredentials(),
@@ -182,15 +196,22 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
   };
 
   const loadProfile = async () => {
-    const { data } = await supabase.from("profiles").select("full_name, email, phone, avatar_url, vk_link, telegram_link, bio").eq("user_id", user!.id).single();
-    if (data) {
-      setProfile({
-        full_name: data.full_name || "", email: data.email || user!.email || "", phone: data.phone || "",
-        avatar_url: data.avatar_url || "", vk_link: (data as any).vk_link || "",
-        telegram_link: (data as any).telegram_link || "", bio: (data as any).bio || "" });
-      setNewEmail(data.email || user!.email || "");
-    }
+    const operationScope = profileScope;
+    const actor = operationScope.actor;
+    if (!profileMounted.current || !actor || profileScopeRef.current !== operationScope) return;
+    const loadVersion = ++operationScope.loadVersion;
+    setProfileLoadedScope(null);
+    const { data, error } = await supabase.from("profiles").select("full_name, email, phone, avatar_url, vk_link, telegram_link, bio").eq("user_id", actor).maybeSingle();
+    if (!profileMounted.current || profileScopeRef.current !== operationScope || operationScope.loadVersion !== loadVersion) return;
+    if (error) throw error;
+    setProfile({
+      full_name: data?.full_name || "", email: data?.email || user?.email || "", phone: data?.phone || "",
+      avatar_url: data?.avatar_url || "", vk_link: data?.vk_link || "",
+      telegram_link: data?.telegram_link || "", bio: data?.bio || "" });
+    setNewEmail(data?.email || user?.email || "");
+    setProfileLoadedScope(operationScope);
   };
+  useEffect(() => { void loadProfile().catch((error) => { if (profileMounted.current && profileScopeRef.current === profileScope) console.warn("OrgProfileTab profile load failed:", error); }); }, [profileScope]);
 
   const loadNotificationPrefs = async () => {
     const { data } = await supabase.from("notification_preferences").select("*").eq("user_id", user!.id);
@@ -286,15 +307,17 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
   };
 
   const handleSaveProfile = async () => {
-    setSaving(true);
+    const operationScope = profileScope;
+    if (!profileMounted.current || !user || profileScopeRef.current !== operationScope) return;
+    if (profileLoadedScope !== operationScope) { toast.error("Профиль ещё не загружен"); return; }
+    setSavingScope(operationScope);
     try {
-      const { error } = await supabase.from("profiles").update({
+      await saveOwnProfile(user.id, {
         full_name: profile.full_name, phone: profile.phone,
-        vk_link: profile.vk_link, telegram_link: profile.telegram_link, bio: profile.bio } as any).eq("user_id", user!.id);
-      if (error) throw error;
-      toast.success("Профиль сохранён");
-    } catch (e: any) { toast.error(e.message); }
-    finally { setSaving(false); }
+        vk_link: profile.vk_link, telegram_link: profile.telegram_link, bio: profile.bio });
+      if (profileMounted.current && profileScopeRef.current === operationScope) toast.success("Профиль сохранён");
+    } catch (e: any) { if (profileMounted.current && profileScopeRef.current === operationScope) toast.error(e.message); }
+    finally { if (profileMounted.current && profileScopeRef.current === operationScope) setSavingScope(null); }
   };
 
   const handleChangeEmail = async () => {
@@ -495,7 +518,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">О себе</label>
                   <Textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} placeholder="Расскажите о себе..." className="rounded-xl min-h-[100px]" />
                 </div>
-                <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveProfile} disabled={saving}>
+                <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveProfile} disabled={profileSaving}>
                   <Save className="w-4 h-4" /> Сохранить
                 </Button>
               </CardContent>

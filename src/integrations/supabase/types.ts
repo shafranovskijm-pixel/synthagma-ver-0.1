@@ -22689,6 +22689,10 @@ export type Database = {
       }
     }
     Functions: {
+      ensure_my_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string
