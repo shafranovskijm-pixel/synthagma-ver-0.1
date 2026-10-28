@@ -24,8 +24,10 @@ interface UserTableRowProps {
   user: UserWithRole;
   organizations: { id: string; name: string }[];
   isPasswordVisible: boolean;
+  revealedPassword?: string | null;
+  isPasswordLoading?: boolean;
   onTogglePassword: (userId: string) => void;
-  onCopyCredentials: (login: string, password: string) => void;
+  onCopyCredentials: (userId: string) => void;
   onRoleChange: (userId: string, role: "admin" | "organization" | "student") => void;
   onOrgChange: (userId: string, orgId: string | null) => void;
   onViewAsStudent: (user: UserWithRole) => void;
@@ -34,7 +36,7 @@ interface UserTableRowProps {
 }
 
 export function UserTableRow({
-  user, organizations, isPasswordVisible, onTogglePassword, onCopyCredentials,
+  user, organizations, isPasswordVisible, revealedPassword = null, isPasswordLoading = false, onTogglePassword, onCopyCredentials,
   onRoleChange, onOrgChange, onViewAsStudent, onDelete, onNavigate
 }: UserTableRowProps) {
   return (
@@ -58,14 +60,14 @@ export function UserTableRow({
               <span className="text-xs text-muted-foreground">Логин:</span>
               <span className="text-sm font-mono">{user.login}</span>
             </div>
-            {user.generated_password && (
+            {(
               <div className="flex items-center gap-1">
                 <span className="text-xs text-muted-foreground">Пароль:</span>
-                <span className="text-sm font-mono">{isPasswordVisible ? user.generated_password : '••••••••'}</span>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={(e) => { e.stopPropagation(); onTogglePassword(user.user_id); }}>
-                  {isPasswordVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                <span className="text-sm font-mono">{isPasswordVisible && revealedPassword ? revealedPassword : isPasswordLoading ? 'Загрузка…' : '••••••••'}</span>
+                <Button variant="ghost" size="icon" className="h-5 w-5" aria-label={`${isPasswordVisible ? "Скрыть пароль" : isPasswordLoading ? "Отменить показ пароля" : "Показать пароль"} ${user.login}`} aria-busy={isPasswordLoading} onClick={(e) => { e.stopPropagation(); onTogglePassword(user.user_id); }}>
+                  {isPasswordVisible || isPasswordLoading ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={(e) => { e.stopPropagation(); onCopyCredentials(user.login!, user.generated_password!); }}>
+                <Button variant="ghost" size="icon" className="h-5 w-5" disabled={!isPasswordVisible || !revealedPassword} aria-label={`Скопировать показанные учётные данные ${user.login}`} onClick={(e) => { e.stopPropagation(); onCopyCredentials(user.user_id); }}>
                   <Copy className="w-3 h-3" />
                 </Button>
               </div>
@@ -104,7 +106,7 @@ export function UserTableRow({
               <ExternalLink className="w-3.5 h-3.5" />Войти как ученик
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(user); }}>
+          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label={`Удалить профиль ${user.full_name || user.login || user.email || user.user_id}`} onClick={(e) => { e.stopPropagation(); onDelete(user); }}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>

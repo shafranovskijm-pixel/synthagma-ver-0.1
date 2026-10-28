@@ -13,6 +13,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { UserTableRow, type UserWithRole } from "./users/UserTableRow";
+import { useExplicitUserCredential } from "@/hooks/useExplicitUserCredential";
 
 
 export function UsersManager() {
@@ -23,7 +24,6 @@ export function UsersManager() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [visibleCount, setVisibleCount] = useState(10);
   const [deleteUser, setDeleteUser] = useState<UserWithRole | null>(null);
-  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   const viewAsStudent = (user: UserWithRole) => {
@@ -34,30 +34,26 @@ export function UsersManager() {
     navigate('/student');
   };
 
-  const togglePasswordVisibility = (userId: string) => {
-    setVisiblePasswords(prev => {
-      const next = new Set(prev);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
-      }
-      return next;
-    });
-  };
+  const togglePasswordVisibility = (userId: string) => { void credentials.toggle(userId); };
 
-  const copyCredentials = (login: string, password: string) => {
-    const text = `Логин: ${login}\nПароль: ${password}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Скопировано", { description: "Логин и пароль скопированы в буфер обмена" });
+  const copyCredentials = async (userId: string) => {
+    const row = displayedUsers.find(user => user.user_id === userId);
+    const password = credentials.passwordFor(userId);
+    if (!row?.login || !password) return;
+    try {
+      await navigator.clipboard.writeText(`Логин: ${row.login}\nПароль: ${password}`);
+      toast.success("Скопировано", { description: "Логин и пароль скопированы в буфер обмена" });
+    } catch {
+      toast.error("Не удалось скопировать учётные данные");
+    }
   };
-
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    credentials.clear();
     try {
       // Fetch profiles with roles (exclude generated_password - it's encrypted)
       const { data: profiles, error: profilesError } = await supabase
@@ -66,13 +62,6 @@ export function UsersManager() {
         .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
-
-      // Fetch decrypted passwords via admin RPC
-      const { data: decryptedPasswords } = await supabase.rpc("get_all_decrypted_passwords");
-      const passwordMap = new Map<string, string>();
-      (decryptedPasswords || []).forEach((row: any) => {
-        if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
-      });
 
       // Fetch user roles
       const { data: roles, error: rolesError } = await supabase.from("user_roles").select("*");
@@ -94,7 +83,7 @@ export function UsersManager() {
         const org = orgs?.find((o) => o.id === profile.organization_id);
         return {
           ...profile,
-          generated_password: passwordMap.get(profile.user_id) || null,
+          generated_password: null,
           role: userRole?.role || null,
           organization_name: org?.name || null };
       });
@@ -109,6 +98,7 @@ export function UsersManager() {
   };
 
   const handleRoleChange = async (userId: string, newRole: "admin" | "organization" | "student") => {
+    credentials.clear(userId);
     try {
       // Use secure RPC function for admin role management
       const { error } = await supabase.rpc('admin_update_user_role', {
@@ -135,6 +125,7 @@ export function UsersManager() {
   };
 
   const handleOrgChange = async (userId: string, orgId: string | null) => {
+    credentials.clear(userId);
     try {
       // Update profile
       const { error: profileError } = await supabase
@@ -162,6 +153,7 @@ export function UsersManager() {
 
   const handleDelete = async () => {
     if (!deleteUser) return;
+    credentials.clear(deleteUser.user_id);
 
     try {
       // Delete user roles
@@ -193,6 +185,10 @@ export function UsersManager() {
   });
 
   const displayedUsers = filteredUsers.slice(0, visibleCount);
+  const credentials = useExplicitUserCredential(displayedUsers, JSON.stringify([searchQuery, roleFilter, visibleCount]));
+  useEffect(() => {
+    if (credentials.failedVersion !== null) toast.error("Не удалось показать пароль. Повторите запрос.");
+  }, [credentials.failedVersion]);
 
   // Reset visible count when filters change
   useEffect(() => {
@@ -313,14 +309,19 @@ export function UsersManager() {
                   <UserTableRow
                     key={user.id}
                     user={user}
+                    revealedPassword={credentials.passwordFor(user.user_id)}
                     organizations={organizations}
-                    isPasswordVisible={visiblePasswords.has(user.user_id)}
+                    isPasswordVisible={credentials.passwordFor(user.user_id) !== null}
+                    isPasswordLoading={credentials.pendingUserId === user.user_id}
                     onTogglePassword={togglePasswordVisibility}
                     onCopyCredentials={copyCredentials}
                     onRoleChange={handleRoleChange}
                     onOrgChange={handleOrgChange}
                     onViewAsStudent={viewAsStudent}
-                    onDelete={setDeleteUser}
+                    onDelete={(user) => {
+                      credentials.clear(user.user_id);
+                      setDeleteUser(user);
+                    }}
                     onNavigate={(uid) => navigate(`/admin/user/${uid}`)}
                   />
                 ))

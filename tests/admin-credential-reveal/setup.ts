@@ -1,0 +1,10 @@
+import { afterEach, vi } from 'vitest';
+import { cleanup } from '@testing-library/react';
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+globalThis.fetch = vi.fn(() => { throw new Error('Unexpected network access in offline administrator credential test'); }) as typeof fetch;
+globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+Object.defineProperty(window, 'matchMedia', { configurable: true, value: () => ({ matches:false, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){}, dispatchEvent(){return false;} }) });
+HTMLElement.prototype.scrollIntoView = vi.fn();
+if (!HTMLElement.prototype.hasPointerCapture) HTMLElement.prototype.hasPointerCapture = () => false;
+if (!HTMLElement.prototype.setPointerCapture) HTMLElement.prototype.setPointerCapture = () => {};
+if (!HTMLElement.prototype.releasePointerCapture) HTMLElement.prototype.releasePointerCapture = () => {};
