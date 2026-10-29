@@ -2,73 +2,79 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 import { notifyStudent, isPrefEnabled } from "../_shared/notification-prefs.ts";
+import { createHomeworkNotificationHandler } from "./handler.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const STATUS_LABEL: Record<string, string> = { approved: "Выполнено ✅", revision: "На доработку 🔄", rejected: "Незачёт ❌" };
+const escapeHtml = (value: string) => value.replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c] ?? ''));
 
-const STATUS_LABEL: Record<string, string> = {
-  approved: "Выполнено ✅",
-  revision: "На доработку 🔄",
-  rejected: "Незачёт ❌",
-};
-
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  try {
-    const { submission_id } = await req.json();
-    if (!submission_id) {
-      return new Response(JSON.stringify({ error: "submission_id required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
-
-    const { data: sub, error: subErr } = await admin
-      .from("homework_submissions")
-      .select("id, user_id, lesson_id, status, score, reviewer_comment")
-      .eq("id", submission_id)
-      .single();
-
-    if (subErr || !sub) {
-      return new Response(JSON.stringify({ error: "Submission not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: lesson } = await admin
-      .from("lessons")
-      .select("id, title, course_id, courses(title, organization_id)")
-      .eq("id", sub.lesson_id)
-      .single();
-
-    const courseTitle = (lesson as any)?.courses?.title || "Курс";
-    const lessonTitle = (lesson as any)?.title || "Урок";
-    const statusLabel = STATUS_LABEL[sub.status] || sub.status;
-
-    // In-app (gated by platform pref inside notifyStudent)
-    await notifyStudent({
-      userId: sub.user_id,
-      type: "homework",
-      title: `Проверено ДЗ: ${lessonTitle}`,
-      message: `Статус: ${statusLabel}${sub.score != null ? ` · Балл: ${sub.score}` : ""}`,
-      relatedId: (lesson as any)?.course_id ?? null,
+serve(createHomeworkNotificationHandler({
+  ordinary(bearer) {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!url || !key) throw new Error('ordinary_client_unavailable');
+    const client = createClient(url, key, {
+      global: { headers: { Authorization: 'Bearer ' + bearer } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-
-    // Email (gated by email pref, default OFF for homework)
+    let actor: string | null = null;
+    return {
+      async currentUser() {
+        const { data, error } = await client.auth.getUser(bearer);
+        actor = error || !data.user || data.user.is_anonymous === true ? null : data.user.id;
+        return actor;
+      },
+      async readSubmission(id) {
+        const { data, error } = await client.from('homework_submissions')
+          .select('id,student_id,lesson_id,course_id,organization_id,status,score,reviewer_id,reviewer_comment,reviewed_at')
+          .eq('id', id).maybeSingle();
+        return error ? null : data;
+      },
+      async readScope(lessonId, courseId, studentId) {
+        const [{ data: lesson, error: lessonError }, { data: course, error: courseError },
+          { data: student, error: studentError }, { data: enrollment, error: enrollmentError }] = await Promise.all([
+          client.from('lessons').select('id,course_id,title').eq('id', lessonId).eq('course_id', courseId).maybeSingle(),
+          client.from('courses').select('id,organization_id,title').eq('id', courseId).maybeSingle(),
+          client.from('profiles').select('user_id,organization_id,blocked_at,archived_at').eq('user_id', studentId).maybeSingle(),
+          client.from('enrollments').select('id,user_id,course_id,status,expires_at').eq('user_id', studentId).eq('course_id', courseId).maybeSingle(),
+        ]);
+        if (lessonError || courseError || studentError || enrollmentError || !lesson || !course || !student || !enrollment
+          || lesson.course_id !== course.id || student.user_id !== studentId || student.organization_id !== course.organization_id
+          || student.blocked_at !== null || student.archived_at !== null || enrollment.user_id !== studentId || enrollment.course_id !== courseId
+          || (enrollment.status !== 'active' && enrollment.status !== 'completed')) return null;
+        if (enrollment.status !== 'completed' && enrollment.expires_at !== null
+          && (!Number.isFinite(Date.parse(enrollment.expires_at)) || Date.parse(enrollment.expires_at) <= Date.now())) return null;
+        return { lesson_id: lesson.id, course_id: course.id, organization_id: course.organization_id, lesson_title: lesson.title, course_title: course.title,
+          student_id: student.user_id, student_organization_id: student.organization_id, enrollment_user_id: enrollment.user_id,
+          enrollment_course_id: enrollment.course_id, enrollment_status: enrollment.status }; 
+      },
+      async canReview(courseId) {
+        if (!actor) return false;
+        const { data: profile, error: profileError } = await client.from('profiles')
+          .select('user_id,blocked_at,archived_at').eq('user_id', actor).maybeSingle();
+        if (profileError || !profile || profile.user_id !== actor || profile.blocked_at !== null || profile.archived_at !== null) return false;
+        const { data, error } = await client.rpc('can_access_course', { _course_id: courseId, _permission: 'homework.write' });
+        return !error && data === true;
+      },
+    };
+  },
+  async deliver(context) {
+    // No service-role client or notification helper is reached before ordinary authorization.
+    const sub = context.review;
+    const statusLabel = STATUS_LABEL[sub.status];
+    await notifyStudent({ userId: sub.student_id, type: 'homework', title: 'Проверено ДЗ: ' + context.lessonTitle,
+      message: 'Статус: ' + statusLabel + (sub.score != null ? ' · Балл: ' + sub.score : ''), relatedId: sub.course_id });
     let emailSent = false;
-    const allowEmail = await isPrefEnabled(sub.user_id, "homework", "email");
-    if (allowEmail) {
-      const { data: authUser } = await admin.auth.admin.getUserById(sub.user_id);
+    if (await isPrefEnabled(sub.student_id, 'homework', 'email')) {
+      const url = Deno.env.get('SUPABASE_URL');
+      const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (!url || !key) throw new Error('delivery_client_unavailable');
+      const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { data: authUser, error } = await admin.auth.admin.getUserById(sub.student_id);
+      if (error || authUser?.user?.id !== sub.student_id) throw new Error('delivery_recipient_unavailable');
       const email = authUser?.user?.email;
       if (email) {
+        const courseTitle = escapeHtml(context.courseTitle);
+        const lessonTitle = escapeHtml(context.lessonTitle);
         const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f1f5f9;">
@@ -95,7 +101,7 @@ serve(async (req: Request) => {
           <p style="margin:0;font-size:14px;color:#334155;white-space:pre-wrap;">${sub.reviewer_comment.replace(/[<>&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]!))}</p>
         </div>` : ""}
         <div style="text-align:center;margin-top:24px;">
-          <a href="https://sintagma.com.ru/course/${(lesson as any)?.course_id ?? ""}"
+          <a href="https://xn--80aaiswd0ak.xn--p1ai/course/${sub.course_id}/learn"
              style="display:inline-block;background:#0891b2;color:white;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;">
             Открыть курс
           </a>
@@ -107,24 +113,11 @@ serve(async (req: Request) => {
     </div>
   </div>
 </body></html>`;
-        const r = await sendPlatformEmail({
-          to: email,
-          subject: `ДЗ проверено: ${lessonTitle}`,
-          html,
-          skipRateLimit: true,
-        });
+        const r = await sendPlatformEmail({ to: email, subject: 'ДЗ проверено: ' + context.lessonTitle, html, skipRateLimit: true });
         emailSent = r.ok;
-        if (!r.ok) console.error("homework email send error:", email, r.error);
+        if (!r.ok) throw new Error('email_delivery_failed');
       }
     }
-
-    return new Response(JSON.stringify({ success: true, emailSent }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("notify-homework-graded error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+    return { emailSent };
+  },
+}));
