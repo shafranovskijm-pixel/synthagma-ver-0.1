@@ -1,0 +1,434 @@
+name: PROG012 lazy PDF preview Node22 offline CI only
+on:
+  push:
+    branches: [codex/prog012-learner-pdf-lazy-node22-ci-r1-20261029]
+permissions:
+  contents: read
+concurrency:
+  group: prog012-learner-pdf-lazy-node22-ci
+  cancel-in-progress: false
+jobs:
+  lazy-preview:
+    if: github.repository == 'shafranovskijm-pixel/synthagma-ver-0.1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      NPM_CONFIG_AUDIT: 'false'
+      NPM_CONFIG_FUND: 'false'
+    steps:
+      - name: Checkout exact reviewed CI commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Node22 x64 only
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.13.0'
+          architecture: x64
+          check-latest: false
+      - name: Materialize exact reviewed CI-only harness
+        id: materialize
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .codex-temp/learner-pdf-lazy-ci/artifacts
+          cat > .codex-temp/learner-pdf-lazy-ci/inputs.json <<'LAZY_PDF_CI_REVIEWED_0_END'
+          {
+            "schemaVersion": 1,
+            "baseCommit": "2410ab686f7f02afc8bfb1185588f817bf9a5e9d",
+            "baseTree": "da8dce9a4420d22f3f04a5aaff497a61eb7f153b",
+            "branch": "codex/prog012-learner-pdf-lazy-node22-ci-r1-20261029",
+            "nodeVersion": "22.13.0",
+            "npmVersion": "10.9.2",
+            "sourceFreezeSHA256": "9e5dfacfd71130cb4569faaaf1088e1efae5030a842e76e415d8c57aaa267d52",
+            "workflowPath": ".github/workflows/prog012-learner-pdf-lazy-node22-ci.yml",
+            "inputsPath": ".codex-temp/learner-pdf-lazy-ci/inputs.json",
+            "files": [
+              {
+                "path": "src/components/course-learning/FilePreviewDialog.tsx",
+                "bytes": 15121,
+                "sha256": "fec1d8dfb024d26876b38cc901ada5f70e5d56214f7f829550a38d5e8c1f2ef9"
+              },
+              {
+                "path": "src/components/course-learning/__tests__/FilePreviewDialog.file-delivery.test.tsx",
+                "bytes": 11460,
+                "sha256": "0607aaf08937ce1a37d3b1bb9ba326c7969bcd9506a08a8cebd04c8b8c61a54d"
+              }
+            ],
+            "harness": [
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/block-network.cjs",
+                "bytes": 1784,
+                "sha256": "7ab849ea2cbd0395e496d8d2810f2dabc84c7098e69894e134fc3326f88b9e94"
+              },
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/network-setup.ts",
+                "bytes": 934,
+                "sha256": "937f7d512f386ca5a3f4b260a8bfe6fabba81fde197ae629a146f700170dcd36"
+              },
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/preflight.mjs",
+                "bytes": 2881,
+                "sha256": "7bac010739437c9964599d00743de6dab0acbcb59e4ca9bfd29ee0dddbf3e5b7"
+              },
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/run-stage.mjs",
+                "bytes": 2579,
+                "sha256": "4433c48be190d0e355b9a8a31644c28ab6f0a2b9671e13f2e35c519c39d8edf9"
+              },
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/run-tests.mjs",
+                "bytes": 5224,
+                "sha256": "7c7a2d17efd596a6229570dfd8439c06efc86631315ccbd5ba72289c0da15ade"
+              },
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/run-build.mjs",
+                "bytes": 7231,
+                "sha256": "d556cacf53db1b37743c54f55d1e2e6aa9b8de2cf526a9244a7fc47403e1905b"
+              },
+              {
+                "path": ".codex-temp/learner-pdf-lazy-ci/snapshot-source.mjs",
+                "bytes": 2032,
+                "sha256": "939503d9148f35e8525565bfe48d4307b40cc73d26edf8d56f021f0ae189de90"
+              }
+            ],
+            "before": [
+              {
+                "path": "src/components/course-learning/FilePreviewDialog.tsx",
+                "gitBlobSHA1": "4165d879df068bba328c8ebb099339b2873d76d2"
+              },
+              {
+                "path": "src/components/course-learning/__tests__/FilePreviewDialog.file-delivery.test.tsx",
+                "gitBlobSHA1": "e7eb69ebcf66f0f1ab53c8ef84eff41b81067850"
+              },
+              {
+                "path": ".github/workflows/prog012-learner-pdf-lazy-node22-ci.yml",
+                "gitBlobSHA1": null
+              }
+            ],
+            "unchangedBase": [
+              {
+                "path": ".node-version",
+                "gitBlobSHA1": "8fdd954df9831dfd29ceec0d74829b02f3f5d8c3"
+              },
+              {
+                "path": ".nvmrc",
+                "gitBlobSHA1": "8fdd954df9831dfd29ceec0d74829b02f3f5d8c3"
+              },
+              {
+                "path": "netlify.toml",
+                "gitBlobSHA1": "d04de62f7341d406228836c04be55baeb40550e3"
+              },
+              {
+                "path": "package-lock.json",
+                "gitBlobSHA1": "3243b5f272724c4c2a72caf7756c00a44fe3868c"
+              },
+              {
+                "path": "package.json",
+                "gitBlobSHA1": "bcf8b52bc19b95959be615f4c3d77e3bca0bf82f"
+              },
+              {
+                "path": "src/components/course-learning/VerifiedPdfCanvas.tsx",
+                "gitBlobSHA1": "a06034510baf4510ca6eb8f40c632c0af1320081"
+              },
+              {
+                "path": "src/components/course-learning/__tests__/FilePreviewDialog.source-review-guide.test.tsx",
+                "gitBlobSHA1": "cb715b2c3fcde2d22d9363dbcfd2555449286939"
+              },
+              {
+                "path": "src/lib/courseExactFileDelivery.ts",
+                "gitBlobSHA1": "94183598d7711f60f30f601666245b7caf250cac"
+              },
+              {
+                "path": "src/lib/selectedPdf.worker.ts",
+                "gitBlobSHA1": "ae7abcdf84c2fc24b885cfbe848cdc9566623d62"
+              },
+              {
+                "path": "src/lib/selectedPdfCanvas.ts",
+                "gitBlobSHA1": "c9029813b2f6662564ee0652a917e0340dea0508"
+              },
+              {
+                "path": "src/pages/CourseLearning.tsx",
+                "gitBlobSHA1": "bdaaedee6eb9dc9997dbcc099abfe1246d11a308"
+              },
+              {
+                "path": "src/test/setup.ts",
+                "gitBlobSHA1": "817a9afe6804d07fe5bce0be6b38309190d4edb6"
+              },
+              {
+                "path": "tsconfig.app.json",
+                "gitBlobSHA1": "dbf29bcd37532cc07aac60f7789b8c367957b2eb"
+              },
+              {
+                "path": "tsconfig.json",
+                "gitBlobSHA1": "6b68d80b7d92d0c4a5d774897f2bedfa95b42669"
+              },
+              {
+                "path": "tsconfig.node.json",
+                "gitBlobSHA1": "3133162c20350e1741b94b8d2ff77b811bec8363"
+              },
+              {
+                "path": "vite.config.ts",
+                "gitBlobSHA1": "e9cf0a3a3a0256838fae5db055dd2d3d1bb52467"
+              }
+            ],
+            "exactSuites": [
+              "src/components/course-learning/__tests__/FilePreviewDialog.file-delivery.test.tsx",
+              "src/components/course-learning/__tests__/FilePreviewDialog.source-review-guide.test.tsx"
+            ],
+            "suiteCounts": [
+              {
+                "path": "src/components/course-learning/__tests__/FilePreviewDialog.file-delivery.test.tsx",
+                "tests": 12
+              },
+              {
+                "path": "src/components/course-learning/__tests__/FilePreviewDialog.source-review-guide.test.tsx",
+                "tests": 2
+              }
+            ],
+            "expectedTests": 14,
+            "expectedSrcFilesAfterOverlay": 2522,
+            "neverMergeWorkflow": true,
+            "productionAcceptance": false,
+            "SQL": false,
+            "Auth": false,
+            "Cloud": false
+          }
+          LAZY_PDF_CI_REVIEWED_0_END
+          cat > .codex-temp/learner-pdf-lazy-ci/block-network.cjs <<'LAZY_PDF_CI_REVIEWED_1_END'
+          /* Isolated UI harness only. No app/source imports. Installed by explicit --require. */
+          'use strict';
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { fileURLToPath } = require('node:url');
+          const { syncBuiltinESMExports } = require('node:module');
+          const deny = () => { throw new Error('UI_HARNESS_NETWORK_DISABLED'); };
+          for (const [name, methods] of [
+            ['node:http', ['request', 'get']], ['node:https', ['request', 'get']],
+            ['node:net', ['connect', 'createConnection']], ['node:tls', ['connect']],
+            ['node:dgram', ['createSocket']],
+            ['node:dns', ['lookup', 'resolve', 'resolve4', 'resolve6', 'reverse']],
+            ['node:dns/promises', ['lookup', 'resolve', 'resolve4', 'resolve6', 'reverse']],
+          ]) {
+            const mod = require(name);
+            for (const key of methods) if (typeof mod[key] === 'function') mod[key] = deny;
+          }
+          require('node:net').Socket.prototype.connect = deny;
+          require('node:net').Server.prototype.listen = deny;
+          globalThis.fetch = deny;
+          globalThis.WebSocket = class { constructor() { deny(); } };
+          function checkFile(value) {
+            if (typeof value === 'number' || value == null) return;
+            const name = value instanceof URL ? fileURLToPath(value) : String(value);
+            if (/^\.env(?:\.|$)/.test(path.basename(name))) throw new Error('UI_HARNESS_ENV_FILE_READ_DISABLED');
+          }
+          for (const key of ['readFileSync', 'openSync', 'readFile', 'open', 'createReadStream']) {
+            const original = fs[key];
+            fs[key] = function (file, ...args) { checkFile(file); return original.call(this, file, ...args); };
+          }
+          for (const key of ['readFile', 'open']) {
+            const original = fs.promises[key];
+            fs.promises[key] = function (file, ...args) { checkFile(file); return original.call(this, file, ...args); };
+          }
+          syncBuiltinESMExports();
+          globalThis.__UI_NETWORK_GUARD_INSTALLED__ = true;
+          LAZY_PDF_CI_REVIEWED_1_END
+          cat > .codex-temp/learner-pdf-lazy-ci/network-setup.ts <<'LAZY_PDF_CI_REVIEWED_2_END'
+          // Harness-only setup, before the byte-exact stock setup. No application imports.
+          const deny = () => { throw new Error("UI_HARNESS_NETWORK_DISABLED"); };
+          Object.defineProperty(globalThis, "fetch", { value: deny, writable: true, configurable: true });
+          for (const key of ["XMLHttpRequest", "WebSocket", "EventSource"] as const) {
+            Object.defineProperty(globalThis, key, { value: class { constructor() { deny(); } }, writable: true, configurable: true });
+          }
+          if (typeof window !== "undefined") {
+            if (window !== globalThis) {
+              Object.defineProperty(window, "fetch", { value: deny, writable: true, configurable: true });
+              for (const key of ["XMLHttpRequest", "WebSocket", "EventSource"] as const) {
+                Object.defineProperty(window, key, { value: class { constructor() { deny(); } }, writable: true, configurable: true });
+              }
+            }
+            Object.defineProperty(window.navigator, "sendBeacon", { value: deny, configurable: true });
+          }
+          LAZY_PDF_CI_REVIEWED_2_END
+          cat > .codex-temp/learner-pdf-lazy-ci/preflight.mjs <<'LAZY_PDF_CI_REVIEWED_3_END'
+          import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import{execFileSync}from'node:child_process';
+          const here=path.dirname(new URL(import.meta.url).pathname),root=fs.realpathSync(process.cwd());
+          const raw=fs.readFileSync(path.join(here,'inputs.json')),sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          if(process.argv[2]!==sha(raw))throw new Error('EXACT_REVIEWED_CI_INPUTS_REQUIRED');
+          const inputs=JSON.parse(raw),git=(...args)=>execFileSync('git',['-C',root,...args],{cwd:root,encoding:'utf8'}).trim();
+          if(globalThis.__UI_NETWORK_GUARD_INSTALLED__!==true||process.platform!=='linux'||process.arch!=='x64'||process.versions.node!==inputs.nodeVersion)throw new Error('NETWORK_GUARDED_NODE22_X64_REQUIRED');
+          if(git('rev-parse','HEAD^')!==inputs.baseCommit||git('rev-parse',inputs.baseCommit+'^{tree}')!==inputs.baseTree||process.env.GITHUB_REF!=='refs/heads/'+inputs.branch)throw new Error('CURRENT_MAIN199_PARENT_TREE_FIXED_BRANCH_REQUIRED');
+          const changed=git('diff','--name-only','--no-renames',inputs.baseCommit,'HEAD').split('\n').filter(Boolean).sort();
+          const expected=[...inputs.files.map(p=>p.path),inputs.workflowPath].sort();
+          if(JSON.stringify(changed)!==JSON.stringify(expected)||expected.length!==3)throw new Error('EXACT_THREE_CI_PATH_SET_REQUIRED');
+          for(const p of [...inputs.files,...inputs.harness]){const b=fs.readFileSync(path.join(root,p.path));if(b.length!==p.bytes||sha(b)!==p.sha256)throw new Error('SOURCE_DRIFT:'+p.path);}
+          for(const p of inputs.before){const old=git('ls-tree','--format=%(objectname)',inputs.baseCommit,'--',p.path);if(old!==(p.gitBlobSHA1??''))throw new Error('EXACT_BASE_PREIMAGE_OR_NEW_ABSENCE_REQUIRED:'+p.path);}
+          for(const p of inputs.unchangedBase){if(git('hash-object',p.path)!==p.gitBlobSHA1)throw new Error('CURRENT_MAIN199_BASE_DRIFT:'+p.path);}
+          const lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
+          for(const p of Object.values(lock.packages))if(p.resolved&&!p.resolved.startsWith('https://registry.npmjs.org/'))throw new Error('PUBLIC_NPM_REGISTRY_ONLY');
+          const npm=execFileSync('npm',['--version'],{encoding:'utf8'}).trim();if(npm!==inputs.npmVersion)throw new Error('EXACT_NPM10_REQUIRED');
+          for(const key of Object.keys(process.env))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete process.env[key];
+          const dir=path.join(here,'artifacts');fs.mkdirSync(dir,{recursive:true});
+          fs.writeFileSync(path.join(dir,'preflight.json'),JSON.stringify({status:'PASS_CLEAN_MAIN199_EXACT_LAZY_PDF3_PREFLIGHT',node:process.versions.node,npm,platform:process.platform,arch:process.arch,head:git('rev-parse','HEAD'),parent:inputs.baseCommit,baseTree:inputs.baseTree,sourceFiles:inputs.files.length,harnessFiles:inputs.harness.length,tests:inputs.expectedTests,envFileRead:false,Cloud:false,SQL:false,productionAccepted:false},null,2)+'\n');
+          LAZY_PDF_CI_REVIEWED_3_END
+          cat > .codex-temp/learner-pdf-lazy-ci/run-stage.mjs <<'LAZY_PDF_CI_REVIEWED_4_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {spawn} from 'node:child_process';
+          const root=fs.realpathSync(process.cwd()), here=path.dirname(new URL(import.meta.url).pathname), label=process.argv[2];
+          const guarded=['--max-old-space-size=4096','--require',path.join(here,'block-network.cjs')];
+          const stages={
+           'npm-ci':{exe:'npm',args:['ci','--ignore-scripts','--legacy-peer-deps','--no-audit','--no-fund','--registry=https://registry.npmjs.org'],timeout:600000},
+           'stock-tsc':{exe:process.execPath,args:[...guarded,path.join(root,'node_modules/typescript/bin/tsc'),'-p','tsconfig.app.json','--noEmit'],timeout:300000},
+           'two-suites':{exe:process.execPath,args:[...guarded,path.join(here,'run-tests.mjs')],timeout:180000},
+           'stock-build':{exe:process.execPath,args:[...guarded,path.join(here,'run-build.mjs')],timeout:600000},
+          };
+          const stage=stages[label];if(!stage)throw new Error('FINITE_STAGE_REQUIRED');
+          const dir=path.join(here,'artifacts'), stdout=fs.openSync(path.join(dir,label+'.stdout.log'),'wx'),stderr=fs.openSync(path.join(dir,label+'.stderr.log'),'wx');
+          const started=Date.now();let timedOut=false,spawnError=null,finished=false;
+          fs.writeFileSync(path.join(dir,label+'.started.json'),JSON.stringify({label,args:stage.args,startedAtUtc:new Date().toISOString(),timeoutMs:stage.timeout,shell:false,networkAllowed:label==='npm-ci'?'public npm dependencies only':false},null,2)+'\n');
+          const childEnv={...process.env};
+          for(const key of Object.keys(childEnv))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete childEnv[key];
+          const child=spawn(stage.exe,stage.args,{cwd:root,env:childEnv,shell:false,detached:true,stdio:['ignore','pipe','pipe']});
+          child.stdout.on('data',b=>{fs.writeSync(stdout,b);process.stdout.write(b);});child.stderr.on('data',b=>{fs.writeSync(stderr,b);process.stderr.write(b);});
+          const timer=setTimeout(()=>{timedOut=true;try{process.kill(-child.pid,'SIGTERM');}catch{}setTimeout(()=>{if(!finished)try{process.kill(-child.pid,'SIGKILL');}catch{}},2000).unref();},stage.timeout);
+          child.on('error',e=>{spawnError={name:e.name,code:e.code??null,message:e.message};});
+          child.on('close',(code,signal)=>{finished=true;clearTimeout(timer);fs.closeSync(stdout);fs.closeSync(stderr);const ok=!timedOut&&!spawnError&&signal===null&&code===0;fs.writeFileSync(path.join(dir,label+'.process.json'),JSON.stringify({label,pid:child.pid??null,elapsedMs:Date.now()-started,exitCode:code,signal,timedOut,spawnError,naturalExit:!timedOut&&!spawnError&&signal===null,success:ok},null,2)+'\n');if(!ok)process.exitCode=1;});
+          LAZY_PDF_CI_REVIEWED_4_END
+          cat > .codex-temp/learner-pdf-lazy-ci/run-tests.mjs <<'LAZY_PDF_CI_REVIEWED_5_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {pathToFileURL} from 'node:url';
+          import {createRequire} from 'node:module';
+          const here=path.dirname(new URL(import.meta.url).pathname),root=fs.realpathSync(process.cwd()),deps=path.join(root,'node_modules');
+          if(globalThis.__UI_NETWORK_GUARD_INSTALLED__!==true)throw new Error('EXPLICIT_NETWORK_PRELOAD_REQUIRED');
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          for(const key of Object.keys(process.env))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete process.env[key];
+          process.env.NODE_ENV='test';process.env.VITEST='true';process.env.TEST='true';
+          const ts=(await import(pathToFileURL(path.join(deps,'typescript/lib/typescript.js')).href)).default;
+          const {startVitest}=await import(pathToFileURL(path.join(deps,'vitest/dist/node.js')).href);
+          const requireRoot=createRequire(path.join(root,'package.json'));
+          const installer={isPackageExists(name){try{requireRoot.resolve(name);return true;}catch{return false;}},async ensureInstalled(name){if(!this.isPackageExists(name))throw new Error('INSTALL_DURING_TEST_FORBIDDEN:'+name);return true;}};
+          const tsPlugin={name:'learner-pdf-lazy-typescript-only',enforce:'pre',
+           resolveId(id){if(/^https?:\/\//i.test(id))throw new Error('REMOTE_MODULE_FORBIDDEN');},
+           load(id){if(id.replaceAll('\\','/').split('?')[0].endsWith('/src/integrations/supabase/client.ts'))
+           return 'throw new Error("UNMOCKED_REAL_SUPABASE_CLIENT_FORBIDDEN"); export const supabase=undefined;';},
+           transform(code,id){const file=id.split('?')[0];if(!/\.[cm]?tsx?$/.test(file)||file.replaceAll('\\','/').includes('/node_modules/'))return null;
+           const result=ts.transpileModule(code,{fileName:file,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,
+           module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,isolatedModules:true,sourceMap:true,inlineSources:true}});
+           const errors=(result.diagnostics??[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
+           if(errors.length)throw new Error('TRANSPILE_SYNTAX_ERROR:'+ts.formatDiagnosticsWithColorAndContext(errors,{getCanonicalFileName:p=>p,getCurrentDirectory:()=>root,getNewLine:()=>'\n'}));
+           return{code:result.outputText,map:result.sourceMapText?JSON.parse(result.sourceMapText):null};}};
+          const artifactRoot=path.join(here,'artifacts');
+          const output=path.join(artifactRoot,'vitest-results.json');let context,failure=null,closeError=null,reported=null;
+          try{context=await startVitest('test',[],{root,config:false,run:true,watch:false,ui:false,api:false,open:false,environment:'jsdom',globals:true,include:inputs.exactSuites,setupFiles:[path.join(here,'network-setup.ts'),path.join(root,'src/test/setup.ts')],pool:'threads',maxWorkers:1,fileParallelism:false,isolate:true,execArgv:['--require',path.join(here,'block-network.cjs')],deps:{optimizer:{client:{enabled:false},ssr:{enabled:false}}},coverage:{enabled:false},typecheck:{enabled:false},testTimeout:15000,hookTimeout:15000,teardownTimeout:5000,reporters:['default','json'],outputFile:{json:output}},{configFile:false,envFile:false,esbuild:false,plugins:[tsPlugin],clearScreen:false,root,cacheDir:path.join(here,'vite-cache'),resolve:{alias:{'@':path.join(root,'src')}},optimizeDeps:{noDiscovery:true,include:[]},server:{host:'127.0.0.1',middlewareMode:true,hmr:false,ws:false,watch:null,fs:{strict:true,allow:[here,root,deps]}}},{packageInstaller:installer});reported=JSON.parse(fs.readFileSync(output,'utf8'));}catch(e){failure={name:e?.name??null,message:String(e?.message??e),stack:e?.stack??null};}finally{if(context)try{await context.close();}catch(e){closeError={name:e?.name??null,message:String(e?.message??e)};}}
+          const expected=inputs.exactSuites.map(p=>path.resolve(root,p)).sort();const actual=(reported?.testResults??[]).map(p=>path.resolve(p.name)).sort();
+          const cases=(reported?.testResults??[]).flatMap(p=>p.assertionResults??[]);
+          const exactSuites=JSON.stringify(expected)===JSON.stringify(actual)&&actual.length===2;
+          const suiteCountsExact=inputs.suiteCounts.every(entry=>{const result=(reported?.testResults??[]).find(p=>path.resolve(p.name)===path.resolve(root,entry.path));return (result?.assertionResults??[]).length===entry.tests;});
+          const allCasesPassed=cases.length>0&&cases.every(p=>p.status==='passed')&&(reported?.testResults??[]).every(p=>(p.assertionResults??[]).length>0);
+          const passed=!failure&&!closeError&&(process.exitCode??0)===0&&exactSuites&&suiteCountsExact&&allCasesPassed&&reported?.success===true&&cases.length===inputs.expectedTests&&reported.numTotalTests===cases.length&&reported.numFailedTests===0&&reported.numFailedTestSuites===0&&(reported.numPendingTests??0)===0&&(reported.numTodoTests??0)===0;
+          fs.writeFileSync(path.join(artifactRoot,'offline-suite-result.json'),JSON.stringify({status:passed?'PASS_EXACT_TWO_LAZY_PDF14_OFFLINE_SUITES':'FAIL_OR_INCOMPLETE_LAZY_PDF_SUITES',exactSuites,suiteCountsExact,allCasesPassed,totalCases:cases.length,reportedSuccess:reported?.success??null,failure,closeError,exitAfterClose:process.exitCode??0,realAuthSQLHTTPOrSMTP:false,actualNotificationDelivered:false,productionAccepted:false,fullGoalAccepted:false},null,2)+'\n');
+          if(!passed)process.exitCode=1;
+          LAZY_PDF_CI_REVIEWED_5_END
+          cat > .codex-temp/learner-pdf-lazy-ci/run-build.mjs <<'LAZY_PDF_CI_REVIEWED_6_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const here=path.dirname(new URL(import.meta.url).pathname),root=fs.realpathSync(process.cwd());
+          if(globalThis.__UI_NETWORK_GUARD_INSTALLED__!==true)throw new Error('EXPLICIT_NETWORK_PRELOAD_REQUIRED');
+          for(const key of Object.keys(process.env))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete process.env[key];
+          process.env.NODE_ENV='production';
+          const envDir=path.join(here,'empty-env'),outDir=path.join(here,'production-dist');fs.mkdirSync(envDir,{recursive:false});
+          const {build}=await import('vite');
+          // Full stock config/plugins; only CI-owned output and empty envDir are overridden.
+          const buildResult=await build({root,configFile:path.join(root,'vite.config.ts'),mode:'production',envDir,clearScreen:false,build:{outDir}});
+          const assets=path.join(outDir,'assets');const files=fs.readdirSync(assets);const workers=files.filter(n=>/^selectedPdf\.worker-[A-Za-z0-9_-]+\.js$/.test(n));
+          if(workers.length!==1)throw new Error('ONE_LOCAL_SELECTED_PDF_WORKER_REQUIRED');
+          const worker=fs.readFileSync(path.join(assets,workers[0]));const workerText=worker.toString('utf8');
+          if(!workerText.includes('SELECTED_PDF_EXTERNAL_RESOURCE_DISABLED')||!workerText.includes('6.4.299'))throw new Error('LOCAL_WORKER_VERSION_OR_RESOURCE_GUARD_MISSING');
+          const referenced=files.filter(n=>n.endsWith('.js')&&n!==workers[0]).some(n=>fs.readFileSync(path.join(assets,n),'utf8').includes(workers[0]));
+          if(!referenced)throw new Error('BUNDLE_MUST_REFERENCE_LOCAL_WORKER');
+          fs.writeFileSync(path.join(here,'artifacts/stock-build-local-worker.json'),JSON.stringify({status:'PASS_STOCK_CONFIG_BUILD_LOCAL_WORKER_EMITTED',config:'vite.config.ts',stockPluginsPreserved:true,CIEmptyEnvDir:true,trackedEnvRead:false,worker:workers[0],workerBytes:worker.length,workerSHA256:crypto.createHash('sha256').update(worker).digest('hex'),localWorkerReferenced:true,realPDFBytesUsed:false,browserWorkerOrVisualAcceptance:false,productionAccepted:false},null,2)+'\n');
+          
+          // Inspect the REAL returned Rollup chunks; no filename guessing or fake graph.
+          const returned=Array.isArray(buildResult)?buildResult:[buildResult];
+          if(!returned.length||returned.some(value=>!value||!Array.isArray(value.output)))throw new Error('FINITE_ROLLUP_OUTPUT_REQUIRED');
+          const normal=value=>String(value).replaceAll('\\','/').split('?')[0];
+          const graph=returned.map((value,outputIndex)=>({outputIndex,chunks:value.output.filter(item=>item.type==='chunk').map(item=>{
+           if(typeof item.fileName!=='string'||!Array.isArray(item.moduleIds)||!Array.isArray(item.imports)||!Array.isArray(item.dynamicImports))throw new Error('ROLLUP_CHUNK_METADATA_REQUIRED');
+           return{fileName:item.fileName,moduleIds:[...item.moduleIds],imports:[...item.imports],dynamicImports:[...item.dynamicImports],facadeModuleId:item.facadeModuleId??null,codeBytes:Buffer.byteLength(item.code),codeSHA256:crypto.createHash('sha256').update(item.code).digest('hex')};
+          })}));
+          const graphBytes=JSON.stringify({schemaVersion:1,source:'Vite stock build returned RollupOutput',outputs:graph},null,2)+'\n';
+          fs.writeFileSync(path.join(here,'artifacts/stock-build-rollup-chunk-graph.json'),graphBytes);
+          const courseTail='/src/pages/CourseLearning.tsx',previewTail='/src/components/course-learning/FilePreviewDialog.tsx',rendererTail='/src/components/course-learning/VerifiedPdfCanvas.tsx';
+          const isPDF=id=>normal(id).includes('/node_modules/pdfjs-dist-sealed/');
+          const proofs=[];let failure=null;
+          try{
+           for(const output of graph){
+            const chunks=new Map();for(const chunk of output.chunks){if(chunks.has(chunk.fileName))throw new Error('DUPLICATE_CHUNK_NAME');chunks.set(chunk.fileName,chunk);}
+            const containing=tail=>output.chunks.filter(chunk=>chunk.moduleIds.some(id=>normal(id).endsWith(tail)));
+            const courses=containing(courseTail);if(!courses.length)continue;
+            const previews=containing(previewTail),renderers=containing(rendererTail),pdfChunks=output.chunks.filter(chunk=>chunk.moduleIds.some(isPDF));
+            if(courses.length!==1||previews.length!==1||!renderers.length||!pdfChunks.length)throw new Error('EXACT_LEARNER_PREVIEW_RENDERER_ENGINE_GRAPH_REQUIRED');
+            const resolve=(from,specifier)=>{if(chunks.has(specifier))return specifier;const joined=path.posix.normalize(path.posix.join(path.posix.dirname(from),specifier));if(chunks.has(joined))return joined;if(specifier.startsWith('/')&&chunks.has(specifier.slice(1)))return specifier.slice(1);return null;};
+            const closure=start=>{const seen=new Set(),pending=[start],unknown=[];while(pending.length){const file=pending.pop();if(seen.has(file))continue;seen.add(file);const chunk=chunks.get(file);if(!chunk)throw new Error('UNKNOWN_GRAPH_START');for(const imported of chunk.imports){const target=resolve(file,imported);if(target)pending.push(target);else unknown.push({from:file,specifier:imported});}}return{files:[...seen].sort(),unknown};};
+            const course=courses[0],preview=previews[0],courseStatic=closure(course.fileName),previewStatic=closure(preview.fileName);
+            const forbidden=courseStatic.files.flatMap(file=>chunks.get(file).moduleIds.filter(id=>normal(id).endsWith(rendererTail)||isPDF(id)).map(moduleId=>({fileName:file,moduleId})));
+            const rendererNames=new Set(renderers.map(chunk=>chunk.fileName));
+            const dynamicTargets=preview.dynamicImports.map(specifier=>{const fileName=resolve(preview.fileName,specifier);if(!fileName)return{specifier,fileName:null,staticClosure:[],unknown:[],reachesRenderer:false};const target=closure(fileName);return{specifier,fileName,staticClosure:target.files,unknown:target.unknown,reachesRenderer:target.files.some(file=>rendererNames.has(file))};});
+            const matched=dynamicTargets.filter(target=>target.reachesRenderer&&target.unknown.length===0);
+            const exact=courseStatic.files.includes(preview.fileName)&&courseStatic.unknown.length===0&&previewStatic.unknown.length===0&&forbidden.length===0&&renderers.every(chunk=>!previewStatic.files.includes(chunk.fileName))&&matched.length>0;
+            proofs.push({outputIndex:output.outputIndex,courseChunk:course.fileName,filePreviewChunk:preview.fileName,rendererChunks:[...rendererNames].sort(),pdfjsSealedChunks:pdfChunks.map(chunk=>chunk.fileName).sort(),courseStaticClosure:courseStatic,previewStaticClosure:previewStatic,forbiddenStaticModules:forbidden,filePreviewDynamicTargets:dynamicTargets,exact});
+            if(!exact)throw new Error('LEARNER_STATIC_PDF_CLOSURE_NOT_ISOLATED');
+           }
+           if(!proofs.length||proofs.some(proof=>!proof.exact))throw new Error('LEARNER_STATIC_GRAPH_NOT_PROVEN');
+          }catch(error){failure={name:error?.name??null,message:String(error?.message??error)};}
+          const pass=!failure&&proofs.length>0&&proofs.every(proof=>proof.exact);
+          fs.writeFileSync(path.join(here,'artifacts/stock-build-learner-static-pdf-isolation.json'),JSON.stringify({status:pass?'PASS_REAL_ROLLUP_LEARNER_STATIC_PDF_ISOLATION':'FAIL_OR_INCOMPLETE_REAL_ROLLUP_LEARNER_STATIC_PDF_ISOLATION',graphSHA256:crypto.createHash('sha256').update(graphBytes).digest('hex'),proofs,failure,fullStockConfig:true,syntheticGraph:false,realBrowserLoadAcceptance:false,productionAccepted:false},null,2)+'\n');
+          if(!pass)throw new Error('REAL_ROLLUP_LEARNER_STATIC_PDF_ISOLATION_REQUIRED');
+          LAZY_PDF_CI_REVIEWED_6_END
+          cat > .codex-temp/learner-pdf-lazy-ci/snapshot-source.mjs <<'LAZY_PDF_CI_REVIEWED_7_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const root=fs.realpathSync(process.cwd()), here=path.dirname(new URL(import.meta.url).pathname);
+          const mode=process.argv[2];if(!['before','after'].includes(mode))throw new Error('FINITE_SNAPSHOT_MODE_REQUIRED');
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          function walk(relative){const results=[];for(const entry of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){const file=relative+'/'+entry.name;if(entry.isSymbolicLink())throw new Error('SRC_SYMLINK_FORBIDDEN');if(entry.isDirectory())results.push(...walk(file));else if(entry.isFile())results.push(file);else throw new Error('SRC_NONREGULAR_FORBIDDEN');}return results;}
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          const srcFiles=walk('src');if(srcFiles.length!==inputs.expectedSrcFilesAfterOverlay)throw new Error('EXACT_CURRENT_SRC_FILE_COUNT_REQUIRED');
+          const protectedPaths=[...new Set([...srcFiles,...inputs.files.map(p=>p.path),inputs.inputsPath,...inputs.harness.map(p=>p.path),inputs.workflowPath,...['package.json','package-lock.json','vite.config.ts','tsconfig.json','tsconfig.app.json','tsconfig.node.json','.node-version','.nvmrc','netlify.toml']])].sort();
+          const records=protectedPaths.map(p=>{const b=fs.readFileSync(path.join(root,p));return{path:p,bytes:b.length,sha256:sha(b)};});
+          const artifactRoot=path.join(here,'artifacts');
+          fs.mkdirSync(artifactRoot,{recursive:true});
+          const file=path.join(artifactRoot,'protected-source-before.json');
+          if(mode==='before')fs.writeFileSync(file,JSON.stringify(records,null,2)+'\n');
+          else{const before=JSON.parse(fs.readFileSync(file,'utf8'));const exact=JSON.stringify(before)===JSON.stringify(records);fs.writeFileSync(path.join(artifactRoot,'protected-source-after.json'),JSON.stringify({exact,files:records.length,srcFiles:srcFiles.length,records,envContentsRead:false},null,2)+'\n');if(!exact)throw new Error('BUILD_OR_INSTALL_CHANGED_PROTECTED_SOURCE');}
+          LAZY_PDF_CI_REVIEWED_7_END
+      - name: Strict parent tree and three-path source preflight
+        run: node --require ./.codex-temp/learner-pdf-lazy-ci/block-network.cjs .codex-temp/learner-pdf-lazy-ci/preflight.mjs ed73013805d454e6aa8db1072f6cf086a8bdb397d3505ffc8671abac0dc0e614
+      - name: Preserve exact source before install and checks
+        id: before
+        run: node --require ./.codex-temp/learner-pdf-lazy-ci/block-network.cjs .codex-temp/learner-pdf-lazy-ci/snapshot-source.mjs before
+      - name: Canonical public lock install without lifecycle scripts
+        run: node .codex-temp/learner-pdf-lazy-ci/run-stage.mjs npm-ci
+      - name: Full stock TypeScript
+        run: node --require ./.codex-temp/learner-pdf-lazy-ci/block-network.cjs .codex-temp/learner-pdf-lazy-ci/run-stage.mjs stock-tsc
+      - name: Two focused offline preview suites 14 cases
+        run: node --require ./.codex-temp/learner-pdf-lazy-ci/block-network.cjs .codex-temp/learner-pdf-lazy-ci/run-stage.mjs two-suites
+      - name: Full stock build with actual Rollup static isolation proof
+        run: node --require ./.codex-temp/learner-pdf-lazy-ci/block-network.cjs .codex-temp/learner-pdf-lazy-ci/run-stage.mjs stock-build
+      - name: Exact protected source after checks even on failure
+        if: always() && steps.before.outcome == 'success'
+        run: node --require ./.codex-temp/learner-pdf-lazy-ci/block-network.cjs .codex-temp/learner-pdf-lazy-ci/snapshot-source.mjs after
+      - name: Retain raw process receipts and actual chunk graph
+        if: always() && steps.materialize.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: learner-pdf-lazy-node22-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .codex-temp/learner-pdf-lazy-ci/artifacts
+          if-no-files-found: error
+          retention-days: 14
