@@ -1,4 +1,5 @@
 import { useEffect,useRef,useState } from "react";
+import { VerifiedSelectedPdfCanvas } from "./VerifiedSelectedPdfCanvas";
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -38,7 +39,7 @@ export function SelectedPlatformProposalFiles({context,scopeVersion,enabled,isCu
         <DialogHeader className="px-6 py-4 border-b border-border"><DialogTitle className="text-base font-medium truncate pr-4">{chosen.label} · сохранённая редакция</DialogTitle></DialogHeader>
         <div className="flex-1 relative overflow-hidden bg-muted/30">
           {file.view.state==="loading"?<div className="absolute inset-0 flex items-center justify-center"><div className="flex flex-col items-center gap-3"><SigmaSpinner size="lg"/><p className="text-sm text-muted-foreground">Подтверждаю точную редакцию файла…</p></div></div>
-            :file.view.state==="exact"&&file.view.lease.previewKind==="pdf"?<iframe src={file.view.lease.url} title={chosen.label} sandbox="" referrerPolicy="no-referrer" className="w-full h-full border-0"/>
+            :file.view.state==="exact"&&file.view.lease.previewKind==="pdf"?<VerifiedSelectedPdfCanvas lease={file.view.lease} title={chosen.label}/>
             :file.view.state==="exact"&&file.view.lease.previewKind==="image"?<img src={file.view.lease.url} alt={chosen.label} className="w-full h-full object-contain"/>
             :<div className="flex flex-col items-center justify-center h-full gap-4 p-8"><p role="status" className="text-sm text-muted-foreground text-center">Зафиксированная версия для этого файла или безопасный предпросмотр пока не подтверждены.</p><Button type="button" variant="outline" onClick={()=>{if(current())file.refresh();}}>Проверить ещё раз</Button></div>}
         </div>
