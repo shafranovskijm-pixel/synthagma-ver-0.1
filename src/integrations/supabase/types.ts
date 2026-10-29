@@ -3745,6 +3745,54 @@ export type Database = {
           },
         ]
       }
+      driving_membership_revocations: {
+        Row: {
+          actor_id: string
+          expected_updated_at: string
+          member_snapshot: Json
+          membership_id: string
+          organization_id: string
+          reason: string
+          receipt: Json
+          request_id: string
+          request_sha256: string
+          revoked_at: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          expected_updated_at: string
+          member_snapshot: Json
+          membership_id: string
+          organization_id: string
+          reason: string
+          receipt: Json
+          request_id: string
+          request_sha256: string
+          revoked_at: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          expected_updated_at?: string
+          member_snapshot?: Json
+          membership_id?: string
+          organization_id?: string
+          reason?: string
+          receipt?: Json
+          request_id?: string
+          request_sha256?: string
+          revoked_at?: string
+          role?: Database["public"]["Enums"]["driving_member_role"]
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       driving_memberships: {
         Row: {
           created_at: string
@@ -24273,6 +24321,10 @@ export type Database = {
         Args: { _organization_id: string; _role: string; _target_id: string }
         Returns: Json
       }
+      driving_get_resource_access: {
+        Args: { _organization_id: string; _role: string; _target_id: string }
+        Returns: Json
+      }
       driving_get_state: { Args: { _organization_id: string }; Returns: Json }
       driving_is_member: {
         Args: { _organization_id: string }
@@ -24321,6 +24373,19 @@ export type Database = {
       driving_my_schools: { Args: never; Returns: Json }
       driving_reverse_entry: {
         Args: { _entry_id: string; _organization_id: string; _reason: string }
+        Returns: Json
+      }
+      driving_revoke_membership: {
+        Args: {
+          _expected_updated_at: string
+          _expected_user_id: string
+          _membership_id: string
+          _organization_id: string
+          _reason: string
+          _request_id: string
+          _role: string
+          _target_id: string
+        }
         Returns: Json
       }
       driving_save_car: {
@@ -25559,6 +25624,23 @@ export type Database = {
       pcc_v1_source_context: {
         Args: { p_listing: string; p_source: string }
         Returns: Json
+      }
+      pcc_v2_copy_course_fences: {
+        Args: { p_access_mode: string; p_course: string }
+        Returns: undefined
+      }
+      pcc_v2_current_rights_keys: {
+        Args: { p_exclusive: boolean; p_ids: string[]; p_namespace: string }
+        Returns: undefined
+      }
+      pcc_v2_source_resource_fences: {
+        Args: {
+          p_buyer_course: string
+          p_library: string
+          p_order: string
+          p_org_version: string
+        }
+        Returns: undefined
       }
       pcf_v1_binding_state: {
         Args: { p_course: string; p_kind: string; p_reference: string }
