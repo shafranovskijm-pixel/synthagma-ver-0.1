@@ -1,6 +1,10 @@
 import { AnnotationMode, PDFWorker, VerbosityLevel, getDocument } from "pdfjs-dist-sealed/legacy/build/pdf.mjs";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist-sealed/types/src/display/api";
-import type { ExactPlatformCourseFileLease } from "@/lib/exactPlatformCourseFile";
+/** Memory port only. Each caller gateway retains its own authority and revocation checks. */
+export interface VerifiedPdfBytesLease {
+  readonly mime: string; readonly previewKind: "pdf" | "image" | "download_only";
+  copyVerifiedPdfBytes(): Uint8Array;
+}
 
 export const SELECTED_PDF_LIMITS = Object.freeze({ bytes:8*1024*1024, pages:500, pixels:4_000_000, dimension:4096, loadMs:20_000, renderMs:10_000 });
 export class SelectedPdfUnavailable extends Error { constructor(){super("Безопасный предпросмотр PDF недоступен");this.name="SelectedPdfUnavailable";} }
@@ -22,7 +26,7 @@ class BoundedCanvasFactory {
 export interface SelectedPdfSession {readonly pages:number;render(canvas:HTMLCanvasElement,page:number,signal:AbortSignal):Promise<void>;close():void;}
 /** Already verified memory only. No file URL, range transport, viewer, annotation
  * layer, scripting manager, global worker configuration or network fallback. */
-export async function openSelectedPdf(lease:ExactPlatformCourseFileLease,signal:AbortSignal):Promise<SelectedPdfSession> {
+export async function openSelectedPdf(lease:VerifiedPdfBytesLease,signal:AbortSignal):Promise<SelectedPdfSession> {
   if(lease.previewKind!=="pdf"||lease.mime!=="application/pdf")unavailable();
   signal.throwIfAborted();const bytes=lease.copyVerifiedPdfBytes();
   if(bytes.byteLength<=0||bytes.byteLength>SELECTED_PDF_LIMITS.bytes)unavailable();

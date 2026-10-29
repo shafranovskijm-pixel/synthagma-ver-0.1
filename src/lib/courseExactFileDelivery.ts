@@ -74,6 +74,7 @@ export interface CopiedCourseExactFileLease {
   readonly mime: string;
   readonly previewKind: "pdf" | "image" | "download_only";
   readonly binding: Readonly<CopiedCourseExactFileBinding>;
+  copyVerifiedPdfBytes(): Uint8Array;
   release(): void;
 }
 
@@ -222,11 +223,15 @@ export function createCourseExactFileGateway(client: CourseExactFileRPC) {
       const url = URL.createObjectURL(new Blob([bytes], { type: media.mime }));
       let released = false;
       const release = () => {
-        if (!released) { released = true; URL.revokeObjectURL(url); cancellation.removeEventListener("abort", release); }
+        if (!released) { released = true; bytes.fill(0); URL.revokeObjectURL(url); cancellation.removeEventListener("abort", release); }
       };
       cancellation.addEventListener("abort", release, { once: true });
       if (cancellation.aborted) { release(); cancellation.throwIfAborted(); }
-      return Object.freeze({ url, ...media, binding, release });
+      const copyVerifiedPdfBytes = () => {
+        if (released || cancellation.aborted || media.previewKind !== "pdf") unavailable();
+        return bytes.slice();
+      };
+      return Object.freeze({ url, ...media, binding, copyVerifiedPdfBytes, release });
     },
   });
 }
