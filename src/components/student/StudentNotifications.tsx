@@ -94,13 +94,13 @@ export function StudentNotifications({ userId }: { userId: string }) {
     markRead(n.id);
     if (n.type === "course_completed" && n.related_id) {
       setOpen(false);
-      navigate(`/student/courses/${n.related_id}`);
+      navigate(`/course/${n.related_id}/learn`);
     } else if (n.type === "webinar_reminder" && n.related_id) {
       setOpen(false);
       navigate(`/webinar/${n.related_id}/live`);
     } else if (n.type === "homework" && n.related_id) {
       setOpen(false);
-      navigate(`/student/courses/${n.related_id}`);
+      navigate(`/course/${n.related_id}/learn`);
     } else if (n.type === "partner_changes") {
       setOpen(false);
       navigate(`/student/profile?section=partner`);
