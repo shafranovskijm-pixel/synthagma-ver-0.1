@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_UNCHANGED_ORIGINAL77_THEN_DISTINCT_SELF_PROFILE12_NOT_RUN",
+  "files": [
+    {
+      "path": "run_ci_postgres_core48_read13_file16_profile12.py",
+      "bytes": 16636,
+      "sha256": "3d4aa6b8dc87699bc6989a65799b616e78f958e1e89370eb15b636e008a01fab"
+    },
+    {
+      "path": "ci-inputs.json",
+      "bytes": 2375,
+      "sha256": "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db"
+    },
+    {
+      "path": "ci-file-inputs.json",
+      "bytes": 1816,
+      "sha256": "3bb9556484ad04499c0c0a4a755a43d3b607930a0c92674a2deb4fee4bf50adf"
+    },
+    {
+      "path": "ci-read-inputs.json",
+      "bytes": 839,
+      "sha256": "e339f1d7736d57bcd0df70d2c205542072143220fe8f8f2391cd48e156651eeb"
+    },
+    {
+      "path": "ci-self-profile-inputs.json",
+      "bytes": 1407,
+      "sha256": "98e83002e7f4844fc1cd4e8ae87f06040d787e49b41d8c2d6568c499482cf77e"
+    }
+  ],
+  "order": [
+    "core48 exact",
+    "original read13 exact",
+    "file16 exact",
+    "separate fresh DB self-profile12"
+  ],
+  "expected": {
+    "original77Preserved": true,
+    "newSelfProfile12": 12,
+    "totalGroups": 89,
+    "newNativeClients": 3,
+    "allClientsNatural0": true
+  },
+  "production": false,
+  "providerAuth": false,
+  "fullSchemaParity": false
+}
