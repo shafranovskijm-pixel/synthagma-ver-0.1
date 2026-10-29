@@ -1,0 +1,55 @@
+name: PROG012 two new public learner PostgreSQL components (CI only)
+
+on:
+  push:
+    branches:
+      - codex/prog012-public-learner-native2-ci-r2-20261029
+    paths:
+      - '.github/workflows/prog012-public-learner-native2.yml'
+      - 'scripts/qa/prog012-native2/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-learner-native2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.11@sha256:0b81cec82228160abfa753aeaad0609b709eb26eeb950f2e404ad2326e1cc370
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: '--auth-local=trust --auth-host=trust'
+        # Fresh job-private bridge; no published host port and no host-file mount.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout only the exact CI branch commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Run only PCL01 and PCL02 on the isolated private service
+        env:
+          PCL2_SERVICE_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          python3 scripts/qa/prog012-native2/run_ci_public_learner_native2.py \
+            --container-id "$PCL2_SERVICE_CONTAINER" \
+            --expected-manifest-sha256 '3cdeaa1d1c40314044c0b78c9b5bfeda49357425b686ecc0732963cc805163b2' \
+            --ci-source-reviewed-only
+      - name: Preserve exact native logs and finite result even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: prog012-public-native2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/prog012-public-native2-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 7
