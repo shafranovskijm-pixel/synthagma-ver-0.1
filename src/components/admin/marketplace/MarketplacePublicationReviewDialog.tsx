@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { usePlatformPublicationReview } from "@/hooks/usePlatformPublicationReview";
 import { DOSSIER_SECTIONS, PASSPORT_FIELDS, emptyPublicationDossier, canAcceptPublicationReview, canPublishPublication,
-  publicationReadinessLabel, type DossierSectionName, type PassportField, type PublicationDossier,
+  publicationReadinessLabel, currentFileDossierReference, isDossierFileReference, type SourceContext, type DossierSectionName, type PassportField, type PublicationDossier,
   type PublicationReadiness, type PublicationTarget } from "@/lib/platformCoursePublication";
 
 import { SelectedPlatformProposalFiles } from "./SelectedPlatformProposalFiles";
@@ -47,8 +47,9 @@ function blockerLabel(code: string) {
   const section = DOSSIER_SECTIONS.find(name => code.startsWith(name));
   return section ? `${sectionLabels[section]}: уточните статус, основание, редакцию и дату источника` : "Досье требует уточнения перед решением";
 }
-function DossierFields({ value, onChange, readOnly, pending }: {
+function DossierFields({ value, onChange, readOnly, pending, currentFiles, onBindFile }: {
   value: PublicationDossier; onChange: (value: PublicationDossier) => void; readOnly: boolean; pending: boolean;
+  currentFiles?: SourceContext["fileBindings"]; onBindFile?: (kind: "course_document" | "lesson_attachment", referenceId: string) => Promise<void>;
 }) {
   return <div className="space-y-4">
     <div className="grid gap-3 sm:grid-cols-2">
@@ -82,9 +83,21 @@ function DossierFields({ value, onChange, readOnly, pending }: {
             onChange={event => onChange({ ...value, [name]: { ...section, evidence: section.evidence.map((old, i) => i === index ? { ...old, edition: event.target.value } : old) } })} />
           <Input aria-label={`${sectionLabels[name]} — проверено ${index + 1}`} type="datetime-local" value={localDate(ref.checked_at)} readOnly={readOnly} disabled={pending}
             onChange={event => onChange({ ...value, [name]: { ...section, evidence: section.evidence.map((old, i) => i === index ? { ...old, checked_at: isoDate(event.target.value) } : old) } })} />
+          {isDossierFileReference(ref) && <p className="text-xs text-muted-foreground break-all sm:col-span-3">
+            Сохранённая версия: {ref.reference_kind === "course_document" ? "документ курса" : "вложение занятия"} · {ref.reference_id}<br />
+            Подтверждение файла: {ref.file_receipt_id} · SHA-256: {ref.file_bytes_sha256}<br />
+            Редакция файла: {ref.captured_edition_id}{ref.source_org_version_id && <> · Версия документа организации: {ref.source_org_version_id}</>}
+          </p>}
         </div>)}
         {!readOnly && <Button type="button" variant="outline" size="sm" disabled={pending}
           onClick={() => onChange({ ...value, [name]: { ...section, evidence: [...section.evidence, { reference: "", edition: "", checked_at: "" }] } })}>Добавить источник</Button>}
+        {name === "document_links" && !readOnly && currentFiles && currentFiles.length > 0 && onBindFile && <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Выберите сохранённую версию файла. Источник, редакцию и дату проверки заполните после её изучения.</p>
+          {currentFiles.map(ref => <Button key={ref.kind + "/" + ref.referenceId} type="button" variant="outline" size="sm" disabled={pending}
+            onClick={() => void onBindFile?.(ref.kind, ref.referenceId)}>
+            Привязать сохранённую версию: {ref.kind === "course_document" ? "документ курса" : "вложение занятия"} · {ref.referenceId}
+          </Button>)}
+        </div>}
       </section>;
     })}
   </div>;
@@ -125,6 +138,24 @@ export function MarketplacePublicationReviewDialog({ target, onOpenChange, onPub
   const nextReviewISO = nextReview ? isoDate(nextReview) : "";
   const canAccept = !!context && !editing && canAcceptPublicationReview(context) && confirmed && !!notes.trim()
     && !!nextReviewISO && Date.parse(nextReviewISO) > Date.now();
+  const bindCurrentFile = async (kind: "course_document" | "lesson_attachment", referenceId: string) => {
+    if (!editing || actionDisabled || !context?.proposal?.isCurrent || !review.isCurrentContext(context)
+      || editorScope.current !== renderEditorScope) return;
+    const prior = context, proposalId = context.proposal.id, currentDraft = draft;
+    const saved = await review.selectProposal(proposalId);
+    if (!saved || editorScope.current !== renderEditorScope || !review.isCurrentContext(saved)
+      || saved.actorId !== prior.actorId || saved.marketplaceId !== prior.marketplaceId || saved.courseId !== prior.courseId
+      || saved.currentEditionSha256 !== prior.currentEditionSha256 || saved.proposal?.id !== proposalId) return;
+    const binding = currentFileDossierReference(saved, kind, referenceId);
+    if (!binding) { toast.info("Сохранённая версия этого файла пока не подтверждена для выбранной редакции."); return; }
+    const section = currentDraft.document_links;
+    const indexes = section.evidence.flatMap((ref, index) => isDossierFileReference(ref)
+      && ref.reference_kind === kind && ref.reference_id === referenceId ? [index] : []);
+    if (indexes.length > 1) { toast.info("Для этого файла есть несколько связей. Проверьте отдельную новую редакцию досье."); return; }
+    const evidence = indexes.length ? section.evidence.map((ref, index) => index === indexes[0]
+      ? { ...binding, reference: ref.reference, edition: ref.edition, checked_at: ref.checked_at } : ref) : [...section.evidence, binding];
+    setDraft({ ...currentDraft, document_links: { ...section, evidence } });
+  };
   return <Dialog open={!!target} onOpenChange={onOpenChange}>
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
@@ -163,7 +194,8 @@ export function MarketplacePublicationReviewDialog({ target, onOpenChange, onPub
           setDraft(value); setEditing(true); setConfirmed(false);
         }}>Подготовить новую редакцию досье</Button>}
         {!editing && context.proposal && !context.proposal.supportedDossier ? <p className="text-sm text-muted-foreground">Формат сохранённого досье не поддерживается целиком. Подтверждение заблокировано; подготовьте новое досье или верните его на доработку.</p>
-          : <DossierFields value={editing ? draft : context.proposal?.supportedDossier ?? draft} onChange={setDraft} readOnly={!editing} pending={actionDisabled} />}
+          : <DossierFields value={editing ? draft : context.proposal?.supportedDossier ?? draft} onChange={setDraft} readOnly={!editing} pending={actionDisabled}
+            currentFiles={editing && context.proposal?.isCurrent ? context.currentSource.fileBindings : undefined} onBindFile={bindCurrentFile} />}
         {editing && <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Сохранение создаст отдельную неизменяемую редакцию для текущих материалов. Предыдущее досье и решения сохранятся.</p>
           <Button disabled={actionDisabled} onClick={async () => {

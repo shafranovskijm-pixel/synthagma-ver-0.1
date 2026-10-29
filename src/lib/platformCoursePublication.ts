@@ -28,7 +28,16 @@ export const PASSPORT_FIELDS = ["purpose", "audience", "entry_requirements", "ou
 export const DOSSIER_SECTIONS = ["source_review", "subject_keys", "practices", "rights", "document_links"] as const;
 export type PassportField = typeof PASSPORT_FIELDS[number];
 export type DossierSectionName = typeof DOSSIER_SECTIONS[number];
-export type DossierReference = { reference: string; edition: string; checked_at: string };
+export type DossierTextReference = { reference: string; edition: string; checked_at: string };
+export type DossierFileReference = DossierTextReference & {
+  reference_kind: "course_document" | "lesson_attachment"; reference_id: string;
+  file_receipt_id: string; captured_edition_id: string; file_bytes_sha256: string;
+  source_org_version_id: string | null;
+};
+export type DossierReference = DossierTextReference | DossierFileReference;
+export function isDossierFileReference(ref: DossierReference): ref is DossierFileReference {
+  return "file_receipt_id" in ref;
+}
 export type DossierSection = { state: "unconfirmed" | "confirmed" | "not_applicable"; rationale: string; evidence: DossierReference[] };
 export type PublicationDossier = { schema_version: 1; passport: Record<PassportField, string> } & Record<DossierSectionName, DossierSection>;
 export function emptyPublicationDossier(): PublicationDossier {
@@ -137,13 +146,57 @@ export function supportedPublicationDossier(value: unknown): PublicationDossier 
       if (state !== "unconfirmed" && state !== "confirmed" && state !== "not_applicable") return null;
       result[name] = { state, rationale: text(section.rationale), evidence: list(section.evidence).map(value => {
         const ref = object(value);
-        if (!onlyKeys(ref, ["reference", "edition", "checked_at"])) return invalid();
-        return { reference: text(ref.reference), edition: text(ref.edition), checked_at: text(ref.checked_at) };
+        const common = { reference: text(ref.reference), edition: text(ref.edition), checked_at: text(ref.checked_at) };
+        if (Object.keys(ref).length === 3 && onlyKeys(ref, ["reference", "edition", "checked_at"])) return common;
+        if (name !== "document_links" || Object.keys(ref).length !== 9 || !onlyKeys(ref, ["reference", "edition", "checked_at", "reference_kind", "reference_id",
+          "file_receipt_id", "captured_edition_id", "file_bytes_sha256", "source_org_version_id"]) ||
+          (ref.reference_kind !== "course_document" && ref.reference_kind !== "lesson_attachment")) return invalid();
+        return { ...common, reference_kind: ref.reference_kind, reference_id: uuid(ref.reference_id),
+          file_receipt_id: uuid(ref.file_receipt_id), captured_edition_id: uuid(ref.captured_edition_id),
+          file_bytes_sha256: hash(ref.file_bytes_sha256),
+          source_org_version_id: ref.source_org_version_id === null ? null : uuid(ref.source_org_version_id) };
       }) };
     }
     return result;
   } catch { return null; }
 }
+
+/** A draft annotation for one explicitly selected current sealed reference.
+ * This copies technical identity only; it records no human check or approval.
+ * Current SQL bindings and all delivery/readiness blockers remain authoritative.
+ */
+export function currentFileDossierReference(context: PublicationReviewContext,
+  kind: DossierFileReference["reference_kind"], referenceId: string): DossierFileReference | null {
+  try {
+    const proof = context.currentFileContext, proposal = context.proposal;
+    if (!proof || !proposal?.isCurrent || context.currentFileState !== "sealed_current" || proof.state !== "sealed_current"
+      || proof.actorId !== context.actorId || proof.marketplaceId !== context.marketplaceId || proof.courseId !== context.courseId
+      || proof.proposalId !== proposal.id || proof.proposalEditionSha256 !== proposal.editionSha256
+      || proof.currentEditionSha256 !== context.currentEditionSha256 || proposal.editionSha256 !== context.currentEditionSha256
+      || proof.referenceCount < 1 || proof.referenceCount !== proof.references.length
+      || !Number.isSafeInteger(proof.referenceCount)) return null;
+    uuid(context.actorId); uuid(context.marketplaceId); uuid(context.courseId); uuid(proposal.id);
+    hash(context.currentEditionSha256); uuid(proof.scopeGeneration); uuid(referenceId);
+    if (kind !== "course_document" && kind !== "lesson_attachment") return null;
+    const pairs = proof.references.map(ref => ref.kind + "/" + ref.referenceId).sort();
+    const current = context.currentSource.fileBindings.map(ref => ref.kind + "/" + ref.referenceId).sort();
+    const selected = proposal.source.fileBindings.map(ref => ref.kind + "/" + ref.referenceId).sort();
+    if (new Set(pairs).size !== pairs.length || JSON.stringify(pairs) !== JSON.stringify(current)
+      || JSON.stringify(pairs) !== JSON.stringify(selected)) return null;
+    for (const ref of proof.references) {
+      if ((ref.kind !== "course_document" && ref.kind !== "lesson_attachment") || ref.state !== "bytes_sealed" || !ref.receipt) return null;
+      uuid(ref.referenceId); uuid(ref.receipt.receiptId); uuid(ref.receipt.capturedEditionId); hash(ref.receipt.fileBytesSha256);
+      if (ref.receipt.sourceOrgVersionId !== null) uuid(ref.receipt.sourceOrgVersionId);
+      if (!Number.isSafeInteger(ref.receipt.byteLength) || ref.receipt.byteLength < 1 || ref.receipt.byteLength > 8388608) return null;
+    }
+    const ref = proof.references.find(ref => ref.kind === kind && ref.referenceId === referenceId);
+    if (!ref?.receipt) return null;
+    return { reference: "", edition: "", checked_at: "", reference_kind: kind, reference_id: referenceId,
+      file_receipt_id: ref.receipt.receiptId, captured_edition_id: ref.receipt.capturedEditionId,
+      file_bytes_sha256: ref.receipt.fileBytesSha256, source_org_version_id: ref.receipt.sourceOrgVersionId };
+  } catch { return null; }
+}
+
 export function parsePublicationReadiness(value: unknown, target: PublicationTarget): PublicationReadiness {
   const row = object(value); assertTarget(row, target);
   const state = row.state;
