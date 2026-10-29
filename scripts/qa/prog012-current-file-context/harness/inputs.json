@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_CLEAN_MAIN196_NATIVE_FULL_MIGRATION_AND_PARSER71_NOT_RUN",
+  "baseCommit": "27fcf0af8aad312f0882008cd03311b26465b2f9",
+  "baseTree": "4ceee0a90a64d32f1180d814cf9d464abf6956d0",
+  "branch": "codex/prog012-current-file-review-context-ci-r2-20261029",
+  "workflowPath": ".github/workflows/prog012-current-file-review-context.yml",
+  "wrapperPath": "scripts/qa/prog012-current-file-context/run_ci_current_file_review_context.py",
+  "inputsPath": "scripts/qa/prog012-current-file-context/harness/inputs.json",
+  "nativeManifestPath": "scripts/qa/prog012-current-file-context/current-file-context-inputs.json",
+  "nativeManifestSHA256": "8d56c1e9bef8607b51959a9061b72dea73fb3158c0531da060101d0cec5c2f74",
+  "sourceFreezeSHA256": "f42366e1d8e1b84919f9f917b84e8ca805b4c03058ca228c09beef321e768250",
+  "nodeVersion": "22.13.0",
+  "npmVersion": "10.9.2",
+  "exactSuites": [
+    "src/lib/__tests__/platformCoursePublication.test.ts",
+    "src/lib/__tests__/platformCoursePublication.currentFiles.test.ts"
+  ],
+  "expectedTests": 71,
+  "unchangedBase": [
+    {
+      "path": "package.json",
+      "gitBlobSHA1": "bcf8b52bc19b95959be615f4c3d77e3bca0bf82f"
+    },
+    {
+      "path": "package-lock.json",
+      "gitBlobSHA1": "3243b5f272724c4c2a72caf7756c00a44fe3868c"
+    },
+    {
+      "path": "src/lib/__tests__/platformCoursePublication.test.ts",
+      "gitBlobSHA1": "ca504e541dd53d875ed457282d890c6c51438ba2"
+    },
+    {
+      "path": "src/lib/__tests__/platformCoursePublication.fixtures.ts",
+      "gitBlobSHA1": "a6ab35ddd1951433dda5d0989769840bac6b4153"
+    }
+  ],
+  "neverMergeWorkflow": true,
+  "productionAcceptance": false,
+  "files": [
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/copy24-modeled-bootstrap.sql",
+      "bytes": 134159,
+      "sha256": "e3ab7d0cce9ebb3899a94df999494484c381ec347dee848f4db53ef0b9d00b2f",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/copy24-modeled-actors-and-retained-fixtures.sql",
+      "bytes": 4016,
+      "sha256": "4557bb58a789c834804cbfe8b50c57c10a5f6db81d794e083bad44b84b4a17fa",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/copy-pcr-core.candidate.sql",
+      "bytes": 55756,
+      "sha256": "3df99badb3d5a271a51d20b7e832cf20e6da425f75fed3d447bcb3b2b4543426",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/copy-file-r4.candidate.sql",
+      "bytes": 50326,
+      "sha256": "6de784c9d435152c355eccb6573620a321b756b17b8e1bbd39ac709d71c089d8",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/copy-file-delivery.candidate.sql",
+      "bytes": 64558,
+      "sha256": "af3754f5dcc025d77bf9f7d8bf7090507214f5e6a52c59c740c4f010afe73bb7",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/current-capture6.modeled.candidate.sql",
+      "bytes": 13532,
+      "sha256": "dd179360b0ec4cdde23b71e82b846fdebb889526aef973c07e400283f5e25660",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/current-authority12.modeled-schema-extension.sql",
+      "bytes": 19884,
+      "sha256": "a9900fbfabf67584624d9c955fc5ea4f90866960dc26ab24f813874e261227bc",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/current-authority12.modeled.candidate.sql",
+      "bytes": 52774,
+      "sha256": "2cf0bdc64e591e419c8c431e4c92fc6391765d25e7e20fe9153c50003cab2119",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/concurrency_cases.py",
+      "bytes": 24197,
+      "sha256": "802e828549a7bf116d1f2c6deda47cf31a2bc80e11096c68935773a9cd936d3c",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/copy24_cases.py",
+      "bytes": 49297,
+      "sha256": "80410b6776fe46b5b2b107b7e681e024438bd1666782d9c588644de6e37a6470",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/persisted-review-read.candidate.sql",
+      "bytes": 16004,
+      "sha256": "ab1e7a126f6509771d25452965b0b099fee4a7bf0788809a75544c23039bfb72",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/selected-proposal-metadata.candidate.sql",
+      "bytes": 18442,
+      "sha256": "9a8dc71cd64124eeea1a2b133a834269407bcee0ae46dbca9b99b8030c3157a2",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/local-only-synthetic653-ledger.fixture.sql",
+      "bytes": 1443,
+      "sha256": "9dd756c89defb6dca987a9f5e6101a2ef59bf81b1e93fbad38fb9d20226cf68c",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/inputs/current-file-review-context.full-product-migration.sql",
+      "bytes": 14786,
+      "sha256": "e062e1fb2bd07773a9c831fa1b7acc2054999d447bc46872852f364e2b0df5ac",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/cases/current_file_review_context_cases.py",
+      "bytes": 14861,
+      "sha256": "f3ba24fa61beeb5fd7d74bdfc946c8663c1966595a0ceff13bb0a4062baf9cf9",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/stage/run_current_file_review_context_stage.py",
+      "bytes": 13242,
+      "sha256": "a44e6f5e1caef0410e3810301ee39c0ebdcf038f657de39fcabb0b733f9c0d02",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/current-file-context-inputs.json",
+      "bytes": 4006,
+      "sha256": "8d56c1e9bef8607b51959a9061b72dea73fb3158c0531da060101d0cec5c2f74",
+      "before": null
+    },
+    {
+      "path": "supabase/migrations/20261029040000_platform_course_current_file_review_context.sql",
+      "bytes": 14786,
+      "sha256": "e062e1fb2bd07773a9c831fa1b7acc2054999d447bc46872852f364e2b0df5ac",
+      "before": null
+    },
+    {
+      "path": "src/lib/platformCoursePublication.ts",
+      "bytes": 28979,
+      "sha256": "d6ea7d89c47d8ce894adab1dbc047a4e33ef0d32d8f80052c8aa00b319072260",
+      "before": {
+        "bytes": 23377,
+        "sha256": "b9ffa8cb92eaa464362b221dffe6d43b296cf8a635fc5e08522b66dbbc42c39e",
+        "gitBlobSHA1": "bec3b0677272d8f8ece9fb07b7cea1939314e522"
+      }
+    },
+    {
+      "path": "src/lib/__tests__/platformCoursePublication.currentFiles.test.ts",
+      "bytes": 8115,
+      "sha256": "42d8752bb12d4d9f67501001873fcee1c7ec498e835b7433575ebf9e0a143d40",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/harness/block-network.cjs",
+      "bytes": 1784,
+      "sha256": "7ab849ea2cbd0395e496d8d2810f2dabc84c7098e69894e134fc3326f88b9e94",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/harness/network-setup.ts",
+      "bytes": 934,
+      "sha256": "937f7d512f386ca5a3f4b260a8bfe6fabba81fde197ae629a146f700170dcd36",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/harness/preflight.mjs",
+      "bytes": 2616,
+      "sha256": "19197a023df51007422be6c4a7154bc7e2941b88be87c25e68c86c1663ef70cf",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/harness/run-stage.mjs",
+      "bytes": 2484,
+      "sha256": "b2cea748b40fe24db5d21448150db98425ddb9b4dda7d8a34894fc8c6ee74a36",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/harness/run-tests.mjs",
+      "bytes": 5065,
+      "sha256": "6ea9bf4950faadda7bf6232a244895c708e4c82b119096bd1d8284aebce7997f",
+      "before": null
+    },
+    {
+      "path": "scripts/qa/prog012-current-file-context/harness/snapshot-source.mjs",
+      "bytes": 1961,
+      "sha256": "a03f45d3a5e8799505b8758cfcaa6ccfc68834eea6dd8e696fa75690d487d06d",
+      "before": null
+    }
+  ]
+}
