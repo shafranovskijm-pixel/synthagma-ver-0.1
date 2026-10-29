@@ -43,7 +43,7 @@ describe("current selected file review proof (metadata only; no actual capabilit
     expect(canAcceptPublicationReview(result)).toBe(false);
     expect(canPublishPublication(result)).toBe(false);
   });
-  it("CFR03 real exact file dossier remains unsupported even though current receipt metadata is sealed", () => {
+  it("CFR03 preserves exact file dossier metadata while the real consumer blocker still prevents acceptance", () => {
     const base = dossier();
     const fileDossier = { ...base, document_links: { state: "confirmed", rationale: "Exact synthetic file evidence", evidence: [{
       reference: "Explicit selected synthetic receipt", edition: P.sha, checked_at: P.at,
@@ -53,11 +53,9 @@ describe("current selected file review proof (metadata only; no actual capabilit
     const source = sourceDto(P.target, { file_bindings: [sourceBinding()] });
     const result = parse(dto({ proposal: proposalDto({ dossier: fileDossier, source_context: source }) }));
     expect(result.currentFileContext?.state).toBe("sealed_current");
-    expect(result.proposal?.supportedDossier).toBeNull();
+    expect(result.proposal?.supportedDossier).toEqual(fileDossier);
     expect(canAcceptPublicationReview(result)).toBe(false);
     expect(canPublishPublication(result)).toBe(false);
-    // Isolate the strict dossier-format barrier without changing any server flag.
-    expect(canAcceptPublicationReview({ ...result, readiness: { ...result.readiness, blockers: [], state: "review_missing" } })).toBe(false);
   });
   it("CFR04 rejects an unbound sealed state without the authoritative current proof", () => invalid(dto({ current_file_context: null })));
   it("CFR05 a historically sealed selected A cannot authorize current B", () => {
