@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FilePreviewDialog } from "../FilePreviewDialog";
-const mocks = vi.hoisted(() => ({ actor: "00000000-0000-4000-8000-000000000001", revision: 1, mode: null as any, refMode: "legacy", preview: null as any, download: null as any, read: vi.fn(), refresh: vi.fn(), handlers: [] as Array<() => void> }));
+const mocks = vi.hoisted(() => ({ actor: "00000000-0000-4000-8000-000000000001", revision: 1, mode: null as any, refMode: "legacy", preview: null as any, download: null as any, read: vi.fn(), refresh: vi.fn(), canvas: vi.fn(), handlers: [] as Array<() => void> }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: mocks.actor } }) }));
 vi.mock("@/utils/courseCache", () => ({ captureOfflineAuthRevision: () => mocks.revision, captureOfflineContext: () => ({ actorId: mocks.actor, revision: mocks.revision }), subscribeOfflineAuthRevision: () => () => {} }));
 vi.mock("@/hooks/useCourseFileDeliveryMode", () => ({ useCourseFileDeliveryMode: () => ({ view: mocks.mode, refresh: vi.fn() }) }));
@@ -14,14 +14,15 @@ vi.mock("@/hooks/useCourseExactFileDelivery", () => ({ useCourseExactFileDeliver
 vi.mock("@/components/ui/dialog", () => ({ Dialog: ({ open, children }: any) => open ? <div role="dialog">{children}</div> : null, DialogContent: ({ children }: any) => <div>{children}</div>, DialogHeader: ({ children }: any) => <header>{children}</header>, DialogTitle: ({ children }: any) => <h2>{children}</h2> }));
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, onClick, ...props }: any) => { if (onClick) mocks.handlers.push(onClick); return <button {...props} onClick={onClick}>{children}</button>; } }));
 vi.mock("@/components/ui/SigmaSpinner", () => ({ SigmaSpinner: () => <span /> }));
+vi.mock("../VerifiedPdfCanvas", () => ({ VerifiedPdfCanvas: ({ lease, title }: { lease: unknown; title: string }) => { mocks.canvas(lease, title); return <div role="img" aria-label={title} data-testid="verified-pdf-canvas" />; } }));
 const id = (n: number) => "00000000-0000-4000-8000-" + String(n).padStart(12, "0");
 const marker = { schema_version: 1, copy_generation_id: id(8), publication_id: id(9), publication_manifest_sha256: "a".repeat(64), source_course_id: id(10), reference_count: 1, reference_vector_sha256: "b".repeat(64) };
 const context = { schema_version: 1, actor_id: id(1), organization_id: id(2), course_id: id(3), access_mode: "learner", mode: "legacy", state: "legacy", cohort: null };
 const reference = { courseId: id(3), organizationId: id(2), referenceKind: "course_document" as const, referenceId: id(4), name: "Учебный.pdf", fileType: "pdf", legacyUrl: "https://platform.example/storage/v1/object/public/course-files/raw.pdf" };
 const props = { open: true, onOpenChange: vi.fn(), reference, accessMode: "learner" as const, allowDownload: true };
-const lease = (url: string) => ({ url, previewKind: "pdf", mime: "application/pdf", release: vi.fn(), binding: { ...marker, allow_download: true, display_name: "Проверенный.pdf" } });
+const lease = (url: string) => ({ url, previewKind: "pdf", mime: "application/pdf", copyVerifiedPdfBytes: vi.fn(() => new Uint8Array([37, 80, 68, 70, 45])), release: vi.fn(), binding: { ...marker, allow_download: true, display_name: "Проверенный.pdf" } });
 const noRaw = (container: HTMLElement) => expect(container.innerHTML).not.toMatch(/src="https:|href="https:|officeapps|docs.google|urn:/i);
-beforeEach(() => { mocks.actor = id(1); mocks.revision = 1; mocks.mode = { state: "legacy", context }; mocks.refMode = "legacy"; mocks.preview = lease("blob:verified-preview"); mocks.download = lease("blob:verified-download"); mocks.read.mockClear(); mocks.refresh.mockClear(); mocks.handlers = []; vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {}); });
+beforeEach(() => { mocks.actor = id(1); mocks.revision = 1; mocks.mode = { state: "legacy", context }; mocks.refMode = "legacy"; mocks.preview = lease("blob:verified-preview"); mocks.download = lease("blob:verified-download"); mocks.read.mockClear(); mocks.refresh.mockClear(); mocks.canvas.mockClear(); mocks.handlers = []; vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {}); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 describe("stable file preview consumer", () => {
   it("permits a live legacy URL only after both explicit legacy authorities", async () => {
@@ -39,9 +40,9 @@ describe("stable file preview consumer", () => {
     mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: null } };
     const view = render(<FilePreviewDialog {...props} />); noRaw(view.container); expect(mocks.read.mock.calls.every(call => call[1] === false)).toBe(true);
   });
-  it("renders only the verified Blob lease from the matching cohort", () => {
+  it("renders only the matching verified memory lease through the canvas port", () => {
     mocks.refMode = "frozen"; mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: marker } };
-    const view = render(<FilePreviewDialog {...props} allowDownload={false} />); expect(screen.getByTitle(reference.name).getAttribute("src")).toBe("blob:verified-preview"); expect(screen.getByTitle(reference.name).getAttribute("sandbox")).toBe(""); expect(screen.queryByRole("button", { name: "Скачать" })).toBeNull(); noRaw(view.container);
+    const view = render(<FilePreviewDialog {...props} allowDownload={false} />); expect(screen.getByTestId("verified-pdf-canvas")).toBeTruthy(); expect(mocks.canvas).toHaveBeenCalledWith(mocks.preview, reference.name); expect(view.container.querySelector("iframe,object,embed")).toBeNull(); expect(screen.queryByRole("button", { name: "Скачать" })).toBeNull(); noRaw(view.container);
   });
   it("revokes a mismatched cohort lease without opening a raw fallback", () => {
     mocks.refMode = "frozen"; mocks.preview.binding.publication_id = id(90); mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: marker } };

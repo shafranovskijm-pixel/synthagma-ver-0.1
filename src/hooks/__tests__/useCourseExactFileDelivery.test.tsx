@@ -16,7 +16,7 @@ const scope = (): CourseExactFileViewScope => ({ actorId: id(1), organizationId:
 // The gateway protocol is tested separately; the hook observes only this discriminant and an opaque lease.
 const frozen = { mode: "frozen_required", state: "bytes_sealed" } as FrozenCourseFileDelivery;
 function lease(tag: string): CopiedCourseExactFileLease {
-  return { url: `blob:${tag}`, mime: "application/pdf", previewKind: "pdf", binding: {} as CopiedCourseExactFileLease["binding"], release: vi.fn() };
+  return { url: `blob:${tag}`, mime: "application/pdf", previewKind: "pdf", binding: {} as CopiedCourseExactFileLease["binding"], copyVerifiedPdfBytes: vi.fn(() => new Uint8Array()), release: vi.fn() };
 }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
 beforeEach(() => {
