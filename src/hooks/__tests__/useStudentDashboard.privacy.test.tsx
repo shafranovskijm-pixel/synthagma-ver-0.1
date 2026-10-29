@@ -129,9 +129,9 @@ describe('actual dashboard private presentation transition', () => {
   it('fast snapshot hides technically cancelled assignments and counters while preserving NULL legacy status', async () => {
     mocks.liveSnapshot = true; const hold = pending(); mocks.profiles = [hold.promise];
     mocks.snapshotResponse = {data: {profile: {user_id: 'a', full_name: 'a', organization_id: 'org'}, enrollments: [
-      {course_id: 'removed', title: 'Removed', status: 'cancelled', time_spent: 1000, completed_lessons: 9},
-      {course_id: 'active', title: 'Active', status: 'active', time_spent: 60, completed_lessons: 1},
-      {course_id: 'legacy', title: 'Legacy', status: null, time_spent: 30, completed_lessons: 2},
+      {id: 'removed-row', learning_progress_epoch: '0', learning_progress_reset_at: null, course_id: 'removed', title: 'Removed', status: 'cancelled', time_spent: 1000, completed_lessons: 9},
+      {id: 'active-row', learning_progress_epoch: '0', learning_progress_reset_at: null, course_id: 'active', title: 'Active', status: 'active', time_spent: 60, completed_lessons: 1},
+      {id: 'legacy-row', learning_progress_epoch: '0', learning_progress_reset_at: null, course_id: 'legacy', title: 'Legacy', status: null, time_spent: 30, completed_lessons: 2},
     ]}, error: null};
     const hook = renderHook(() => useStudentDashboard(), {wrapper});
     await waitFor(() => expect(hook.result.current.courses.map(c => c.id)).toEqual(['active', 'legacy']));
@@ -141,10 +141,10 @@ describe('actual dashboard private presentation transition', () => {
   it('fallback and public catalog exclude cancelled membership, keeping legacy NULL and avoiding a cancelled library fetch', async () => {
     const course = (id: string) => ({id, title: id, is_published: true});
     mocks.enrollments = [
-      {id: 'removed-row', course_id: 'removed', status: 'cancelled', time_spent: 1000, courses: course('removed')},
-      {id: 'hidden-row', course_id: 'hidden-removed', status: 'cancelled', time_spent: 900, courses: null},
-      {id: 'active-row', course_id: 'active', status: 'active', time_spent: 60, courses: course('active')},
-      {id: 'legacy-row', course_id: 'legacy', status: null, time_spent: 30, courses: course('legacy')},
+      {id: 'removed-row', learning_progress_epoch: 0, learning_progress_reset_at: null, course_id: 'removed', status: 'cancelled', time_spent: 1000, courses: course('removed')},
+      {id: 'hidden-row', learning_progress_epoch: 0, learning_progress_reset_at: null, course_id: 'hidden-removed', status: 'cancelled', time_spent: 900, courses: null},
+      {id: 'active-row', learning_progress_epoch: 0, learning_progress_reset_at: null, course_id: 'active', status: 'active', time_spent: 60, courses: course('active')},
+      {id: 'legacy-row', learning_progress_epoch: 0, learning_progress_reset_at: null, course_id: 'legacy', status: null, time_spent: 30, courses: course('legacy')},
     ]; mocks.catalog = [course('removed'), course('active'), course('legacy')];
     const hook = renderHook(() => useStudentDashboard(), {wrapper});
     await waitFor(() => expect(hook.result.current.loading).toBe(false));
@@ -155,7 +155,7 @@ describe('actual dashboard private presentation transition', () => {
   });
   it('refresh shows the same retained assignment after ordinary reassignment changes cancelled to active', async () => {
     const course = {id: 'restored', title: 'Restored', is_published: true};
-    mocks.enrollments = [{id: 'same-enrollment', course_id: course.id, status: 'cancelled', courses: course, time_spent: 0}]; mocks.catalog = [course];
+    mocks.enrollments = [{id: 'same-enrollment', learning_progress_epoch: 0, learning_progress_reset_at: null, course_id: course.id, status: 'cancelled', courses: course, time_spent: 0}]; mocks.catalog = [course];
     const hook = renderHook(() => useStudentDashboard(), {wrapper}); await waitFor(() => expect(hook.result.current.loading).toBe(false));
     expect(hook.result.current.courses).toEqual([]); expect(hook.result.current.catalogCourses[0]).toMatchObject({is_enrolled: false});
     mocks.enrollments = [{...mocks.enrollments[0], status: 'active'}]; await act(async () => {await hook.result.current.handleRefresh();});

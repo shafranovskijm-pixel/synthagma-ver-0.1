@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enqueueTestSubmission, flushPendingSubmissions, listPendingSubmissions, type PendingTestSubmission } from '../testAnswerQueue';
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn(), rpc: vi.fn(), snapshot: vi.fn() }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mocks.getSession }, rpc: mocks.rpc } }));
+vi.mock('@/lib/learningProgress', async original => ({ ...await original<typeof import('@/lib/learningProgress')>(), fetchOwnLearningProgress: mocks.snapshot }));
 
 // A deterministic storage boundary fake: these tests exercise queue identity,
 // authenticated dispatch and retry semantics, not the IndexedDB engine.
@@ -44,7 +45,7 @@ function memoryIndexedDB() {
   };
 }
 const payload = (overrides = {}) => ({
-  userId: 'user-a', attemptId: 'attempt-a', lessonId: 'lesson-a',
+  userId: 'user-a', attemptId: 'attempt-a', lessonId: 'lesson-a', courseId: 'course-a', enrollmentId: 'enrollment-a', learningProgressEpoch: '0',
   answers: { q1: 0 }, shownQuestionIds: ['q1'], ...overrides,
 });
 let storage: ReturnType<typeof memoryIndexedDB>;
@@ -53,7 +54,8 @@ beforeEach(() => {
   storage = memoryIndexedDB();
   vi.stubGlobal('indexedDB', storage.factory);
   mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'user-a' } } } });
-  mocks.rpc.mockResolvedValue({ data: { score: 1, maxScore: 1 }, error: null });
+  mocks.snapshot.mockResolvedValue({ enrollment: { id: 'enrollment-a' }, learning_progress_epoch: '0' });
+  mocks.rpc.mockResolvedValue({ data: { score: 1, maxScore: 1, learning_progress_epoch: '0' }, error: null });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -97,8 +99,8 @@ describe('test answer queue authenticated delivery', () => {
       expect(sync).not.toHaveBeenCalled();
       expect(await flushPendingSubmissions()).toEqual({ sent: 1, failed: 0 });
       expect(mocks.rpc.mock.calls).toEqual([
-        ['submit_test_attempt', { p_attempt_id: 'attempt-a', p_answers: { q1: 0 } }],
-        ['submit_test_attempt', { p_attempt_id: 'attempt-a', p_answers: { q1: 0 } }],
+        ['submit_test_attempt_at_epoch', { p_attempt_id: 'attempt-a', p_answers: { q1: 0 }, p_expected_epoch: '0' }],
+        ['submit_test_attempt_at_epoch', { p_attempt_id: 'attempt-a', p_answers: { q1: 0 }, p_expected_epoch: '0' }],
       ]);
       expect(await listPendingSubmissions()).toEqual([]);
       expect(sync).toHaveBeenCalledTimes(1);
@@ -113,7 +115,7 @@ describe('test answer queue authenticated delivery', () => {
     const second = flushPendingSubmissions();
     expect(second).toBe(first);
     await vi.waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(1));
-    resolve({ data: { score: 1 }, error: null });
+    resolve({ data: { score: 1, learning_progress_epoch: '0' }, error: null });
     expect(await first).toEqual({ sent: 1, failed: 0 });
     expect(await second).toEqual({ sent: 1, failed: 0 });
     expect(mocks.rpc).toHaveBeenCalledTimes(1);

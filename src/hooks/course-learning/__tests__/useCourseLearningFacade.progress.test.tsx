@@ -64,7 +64,7 @@ class Query {
       case 'profiles': return { data: { organization_id: 'org-a' }, error: null };
       case 'organizations': return { data: { id: 'org-a', name: 'Synthetic organization', subscription_plan: 'start' }, error: null };
       case 'lesson_progress': return { data: [...mocks.savedLessons].map(lesson_id => ({ lesson_id, completed: true })), error: null };
-      case 'lesson_attachments': case 'course_modules': return { data: [], error: null };
+      case 'lesson_attachments': case 'course_modules': case 'course_documents': return { data: [], error: null };
       default: throw new Error('Unexpected synthetic query: ' + this.table);
     }
   }
@@ -82,9 +82,23 @@ beforeEach(() => {
   mocks.completionCount = { data: 0, error: null }; mocks.postpaid = false;
   mocks.protocol.mockResolvedValue(null);
   mocks.from.mockImplementation(table => new Query(table));
-  mocks.rpc.mockImplementation(async name => name === 'count_org_completions_this_month' ? mocks.completionCount
-    : name === 'complete_own_course_enrollment' ? { data: { id: 'enrollment-a', status: 'completed' }, error: null }
-      : { data: null, error: null });
+  const learningSnapshot = () => ({ data: {
+    enrollment: { id: 'enrollment-a', user_id: 'student-a', course_id: 'course-a', status: 'active', progress: mocks.savedProgress, learning_progress_epoch: '0' },
+    lesson_progress: [...mocks.savedLessons].map(lesson_id => ({ lesson_id, completed: true })),
+    learning_progress_epoch: '0', learning_progress_reset_at: null,
+  }, error: null });
+  mocks.rpc.mockImplementation(async (name, args) => {
+    if (name === 'get_course_learning_snapshot') return learningSnapshot();
+    if (name === 'save_own_lesson_progress') {
+      if (mocks.failSave) return { data: null, error: { code: '42501', message: 'permission denied' } };
+      if (args.p_completed) mocks.savedLessons.add(args.p_lesson_id);
+      mocks.savedProgress = Math.floor(mocks.savedLessons.size * 100 / 3);
+      return learningSnapshot();
+    }
+    return name === 'count_org_completions_this_month' ? mocks.completionCount
+      : name === 'complete_own_course_enrollment_at_epoch' ? { data: { id: 'enrollment-a', status: 'completed', progress: 100, learning_progress_epoch: '0', learning_progress_reset_at: null }, error: null }
+      : { data: null, error: null };
+  });
 });
 afterEach(cleanup);
 
@@ -108,7 +122,7 @@ describe('sequential learner progress through the actual facade', () => {
     await ready(result);
     await act(async () => { await result.current.retryCourseCompletion(); });
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(1);
-    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment')).toHaveLength(0);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toHaveLength(0);
     expect(mocks.protocol).not.toHaveBeenCalled();
     expect(result.current.completedCount).toBe(0);
     const { showLimitToast } = await import('@/utils/limitToast');
@@ -124,7 +138,7 @@ describe('sequential learner progress through the actual facade', () => {
     mocks.completionCount = { data: 0, error: null };
     await act(async () => { await result.current.retryCourseCompletion(); });
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(2);
-    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment')).toHaveLength(1);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toHaveLength(1);
     expect(mocks.protocol).toHaveBeenCalledTimes(1);
   });
 
@@ -135,7 +149,7 @@ describe('sequential learner progress through the actual facade', () => {
     await ready(result);
     await act(async () => { await result.current.retryCourseCompletion(); });
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(0);
-    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment')).toHaveLength(1);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toHaveLength(1);
     expect(mocks.protocol).toHaveBeenCalledTimes(1);
   });
 
@@ -149,7 +163,7 @@ describe('sequential learner progress through the actual facade', () => {
     expect(mocks.toast.error).not.toHaveBeenCalled();
     await act(async () => { await result.current.markLessonComplete(); });
     await waitFor(() => expect(result.current.currentLesson?.id).toBe('lesson-test'));
-    expect(mocks.savedProgress).toBe(67);
+    expect(mocks.savedProgress).toBe(66);
     expect([...mocks.savedLessons]).toEqual(['lesson-a', 'lesson-b']);
     expect(mocks.savedLessons.has('lesson-test')).toBe(false);
     unmount();

@@ -27,7 +27,7 @@ const success = () => ({
   ...limits, score: 1, maxScore: 1, scorePercent: 100, passed: true, passingScore: 60,
   correctAnswers: { 'question-a': 0 }, explanations: {}, attemptsUsed: 1, attemptsUsedToday: 1,
 });
-const response = (data: unknown) => ({ data, error: null });
+const response = (data: unknown) => ({ data: data && typeof data === 'object' ? { ...data, learning_progress_epoch: '0', learning_progress_reset_at: null } : data, error: null });
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>(done => { resolve = done; });
@@ -35,6 +35,7 @@ function deferred<T>() {
 }
 function harness(overrides: Partial<Parameters<typeof useLessonTest>[0]> = {}) {
   const params = {
+    learningEpoch: '0', isProgressCurrent: () => true,
     currentLesson: lesson('lesson-a'), user: { id: 'user-a' }, lessons: [lesson('lesson-a')],
     lessonProgress: [], completedCount: 0, enrollmentId: 'enrollment-a', courseId: 'course-a',
     course: { title: 'Course A', duration: null }, setLessonProgress: vi.fn(),
@@ -53,18 +54,18 @@ describe('final test photo gate', () => {
   it('opens a fresh challenge without consuming an attempt and starts after server confirmation', async () => {
     let confirmed = false;
     mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'prepare_final_test_photo' ? { ...challenge, completed: confirmed }
-      : name === 'start_test_attempt' ? active() : { ...idle(), photoRequired: true })));
+      : name === 'start_test_attempt_at_epoch' ? active() : { ...idle(), photoRequired: true })));
     const { result } = harness(); await ready(result);
     await act(async () => { await result.current.startTest(); });
     expect(result.current.testPhotoChallenge?.challengeId).toBe('challenge-a');
     expect(result.current.testAttemptsUsed).toBe(0);
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt_at_epoch')).toBe(false);
     const request = mocks.rpc.mock.calls.find(([name]) => name === 'prepare_final_test_photo')![1].p_request_id;
     confirmed = true;
     await act(async () => { await result.current.completeTestPhoto('challenge-a'); });
     expect(result.current.testAttemptId).toBe('attempt-a');
     expect(result.current.testPhotoChallenge).toBeNull();
-    expect(mocks.rpc).toHaveBeenCalledWith('start_test_attempt', { p_lesson_id: 'lesson-a', p_request_id: request });
+    expect(mocks.rpc).toHaveBeenCalledWith('start_test_attempt_at_epoch', { p_lesson_id: 'lesson-a', p_request_id: request, p_expected_epoch: '0' });
   });
 
   it('restores an unstarted request after reload and does not reuse a prior general verification', async () => {
@@ -78,11 +79,11 @@ describe('final test photo gate', () => {
     const prepares = mocks.rpc.mock.calls.filter(([name]) => name === 'prepare_final_test_photo');
     expect(prepares[prepares.length - 1][1].p_request_id).toBe(request);
     expect(second.result.current.testPhotoChallenge).not.toBeNull();
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt_at_epoch')).toBe(false);
   });
 
   it('does not prepare a photo for disabled/nonfinal tests or a resumed attempt', async () => {
-    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'start_test_attempt' ? active() : idle())));
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'start_test_attempt_at_epoch' ? active() : idle())));
     const first = harness(); await ready(first.result);
     await act(async () => { await first.result.current.startTest(); });
     expect(mocks.rpc.mock.calls.some(([name]) => name === 'prepare_final_test_photo')).toBe(false);
@@ -91,7 +92,7 @@ describe('final test photo gate', () => {
     const resumed = harness(); await ready(resumed.result);
     expect(resumed.result.current.testAttemptId).toBe('attempt-a');
     expect(resumed.result.current.testPhotoChallenge).toBeNull();
-    expect(mocks.rpc.mock.calls.every(([name]) => name === 'get_student_test_state')).toBe(true);
+    expect(mocks.rpc.mock.calls.every(([name]) => name === 'get_student_test_state_at_epoch')).toBe(true);
   });
 
   it('closes photo without starting and ignores a late challenge for another lesson', async () => {
@@ -103,7 +104,7 @@ describe('final test photo gate', () => {
     rerender({ ...params, currentLesson: lesson('lesson-b') }); await ready(result);
     await act(async () => { pending.resolve(response(challenge)); await start; });
     expect(result.current.testPhotoChallenge).toBeNull();
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt_at_epoch')).toBe(false);
   });
 
   it('keeps the requirement after a server denial caused by a freshly enabled course setting', async () => {
@@ -123,7 +124,7 @@ describe('final test photo gate', () => {
     const lateComplete = result.current.completeTestPhoto;
     act(() => result.current.closeTestPhoto());
     await act(async () => { await lateComplete('challenge-a'); });
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt_at_epoch')).toBe(false);
     await act(async () => { await result.current.startTest(); });
     const prepares = mocks.rpc.mock.calls.filter(([name]) => name === 'prepare_final_test_photo');
     expect(prepares[prepares.length - 1][1].p_request_id).not.toBe(request);
@@ -136,7 +137,7 @@ describe('final test photo gate', () => {
     const lateComplete = result.current.completeTestPhoto;
     rerender({ ...params, currentLesson: lesson('lesson-b') }); await ready(result);
     await act(async () => { await lateComplete('challenge-a'); });
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt_at_epoch')).toBe(false);
   });
 
   it('does not overwrite a renewed challenge with a late A-to-B-to-A response', async () => {
@@ -168,7 +169,7 @@ beforeEach(() => {
 
 describe('useLessonTest server attempt lifecycle', () => {
   it('preserves an explicit null answer key returned after submission', async () => {
-    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'submit_test_attempt'
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'submit_test_attempt_at_epoch'
       ? { ...success(), score: 0, scorePercent: 0, passed: false, showAnswers: true, correctAnswers: { 'question-a': null } }
       : { ...idle(), activeAttempt: active() })));
     const { result, params } = harness();
@@ -203,7 +204,7 @@ describe('useLessonTest server attempt lifecycle', () => {
     const { result } = harness();
     await ready(result);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
-    expect(mocks.rpc).toHaveBeenCalledWith('get_student_test_state', { p_lesson_id: 'lesson-a' });
+    expect(mocks.rpc).toHaveBeenCalledWith('get_student_test_state_at_epoch', { p_lesson_id: 'lesson-a', p_expected_epoch: '0' });
     expect(result.current.testAttemptId).toBeNull();
     expect(result.current.testAttemptsUsedToday).toBe(0);
     expect(result.current.testQuestions).toEqual([]);
@@ -232,7 +233,7 @@ describe('useLessonTest server attempt lifecycle', () => {
     await ready(second.result);
     expect(second.result.current.testAttemptId).toBe('attempt-a');
     expect(second.result.current.answers).toEqual({ 'question-a': 1 });
-    expect(mocks.rpc.mock.calls.every(([name]) => name === 'get_student_test_state')).toBe(true);
+    expect(mocks.rpc.mock.calls.every(([name]) => name === 'get_student_test_state_at_epoch')).toBe(true);
   });
 
   it('does not expose the previous user draft after account changes', async () => {
@@ -262,17 +263,17 @@ describe('useLessonTest server attempt lifecycle', () => {
 
   it('starts once on a double click and preserves request identity after a network error', async () => {
     const pending = deferred<ReturnType<typeof response>>();
-    mocks.rpc.mockImplementation(name => name === 'start_test_attempt' ? pending.promise : Promise.resolve(response(idle())));
+    mocks.rpc.mockImplementation(name => name === 'start_test_attempt_at_epoch' ? pending.promise : Promise.resolve(response(idle())));
     const { result } = harness();
     await ready(result);
     let first!: Promise<void>;
     act(() => { first = result.current.startTest(); void result.current.startTest(); });
-    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'start_test_attempt')).toHaveLength(1);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'start_test_attempt_at_epoch')).toHaveLength(1);
     await act(async () => { pending.resolve({ data: null, error: { code: '08006', message: 'connection lost' } } as never); await first; });
-    const requestId = mocks.rpc.mock.calls.find(([name]) => name === 'start_test_attempt')![1].p_request_id;
+    const requestId = mocks.rpc.mock.calls.find(([name]) => name === 'start_test_attempt_at_epoch')![1].p_request_id;
     mocks.rpc.mockResolvedValueOnce(response(active()));
     await act(async () => { await result.current.startTest(); });
-    const calls = mocks.rpc.mock.calls.filter(([name]) => name === 'start_test_attempt');
+    const calls = mocks.rpc.mock.calls.filter(([name]) => name === 'start_test_attempt_at_epoch');
     expect(calls[1][1].p_request_id).toBe(requestId);
     expect(result.current.testAttemptId).toBe('attempt-a');
   });
@@ -305,15 +306,15 @@ describe('useLessonTest server attempt lifecycle', () => {
 
   it('submits the original attempt only once on double click and uses the server score', async () => {
     const pending = deferred<ReturnType<typeof response>>();
-    mocks.rpc.mockImplementation(name => name === 'submit_test_attempt' ? pending.promise
+    mocks.rpc.mockImplementation(name => name === 'submit_test_attempt_at_epoch' ? pending.promise
       : Promise.resolve(response({ ...idle(), activeAttempt: active() })));
     const { result, params } = harness();
     await ready(result);
     act(() => result.current.setAnswers({ 'question-a': 0 }));
     let first!: Promise<void>;
     act(() => { first = result.current.submitTest(); void result.current.submitTest(); });
-    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'submit_test_attempt')).toEqual([
-      ['submit_test_attempt', { p_attempt_id: 'attempt-a', p_answers: { 'question-a': 0 } }],
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'submit_test_attempt_at_epoch')).toEqual([
+      ['submit_test_attempt_at_epoch', { p_attempt_id: 'attempt-a', p_answers: { 'question-a': 0 }, p_expected_epoch: '0' }],
     ]);
     await act(async () => { pending.resolve(response(success())); await first; });
     expect(result.current.testScore).toEqual({ score: 1, max: 1 });
@@ -322,7 +323,7 @@ describe('useLessonTest server attempt lifecycle', () => {
   });
 
   it('queues retryable submissions using the same authenticated owner and attempt', async () => {
-    mocks.rpc.mockImplementation(name => Promise.resolve(name === 'submit_test_attempt'
+    mocks.rpc.mockImplementation(name => Promise.resolve(name === 'submit_test_attempt_at_epoch'
       ? { data: null, error: { code: '08006', message: 'offline' } }
       : response({ ...idle(), activeAttempt: active() })));
     const { result } = harness();
@@ -330,7 +331,7 @@ describe('useLessonTest server attempt lifecycle', () => {
     act(() => result.current.setAnswers({ 'question-a': 1 }));
     await act(async () => { await result.current.submitTest(); });
     expect(mocks.enqueue).toHaveBeenCalledExactlyOnceWith({
-      attemptId: 'attempt-a', userId: 'user-a', lessonId: 'lesson-a',
+      attemptId: 'attempt-a', userId: 'user-a', lessonId: 'lesson-a', courseId: 'course-a', enrollmentId: 'enrollment-a', learningProgressEpoch: '0',
       answers: { 'question-a': 1 }, shownQuestionIds: ['question-a'],
     });
     expect(result.current.testSubmitted).toBe(false);
@@ -343,7 +344,7 @@ describe('useLessonTest server attempt lifecycle', () => {
     const { result } = harness();
     await ready(result);
     act(() => result.current.setAnswers({ 'question-a': 0 }));
-    mocks.rpc.mockImplementation(name => name === 'get_student_test_state' ? refresh.promise : Promise.resolve(response(success())));
+    mocks.rpc.mockImplementation(name => name === 'get_student_test_state_at_epoch' ? refresh.promise : Promise.resolve(response(success())));
     act(() => window.dispatchEvent(new Event('focus')));
     await act(async () => { await result.current.submitTest(); });
     expect(result.current.testSubmitted).toBe(true);
@@ -356,7 +357,7 @@ describe('useLessonTest server attempt lifecycle', () => {
 
   it('does not complete the previous course after switching lessons while saving time', async () => {
     const timeSave = deferred<void>();
-    mocks.rpc.mockImplementation(name => Promise.resolve(name === 'submit_test_attempt'
+    mocks.rpc.mockImplementation(name => Promise.resolve(name === 'submit_test_attempt_at_epoch'
       ? response(success()) : response({ ...idle(), activeAttempt: active() })));
     const { result, params, rerender } = harness({ saveLessonTime: vi.fn(() => timeSave.promise) });
     await ready(result);

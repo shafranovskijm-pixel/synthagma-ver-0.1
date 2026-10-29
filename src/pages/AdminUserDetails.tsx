@@ -1,3 +1,4 @@
+import { normalizeLearningProgressEpoch } from "@/lib/learningProgress";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +53,8 @@ interface StudentEnrollment {
   id: string;
   course_id: string;
   course_title: string;
+  learning_progress_epoch?: string | null;
+  learning_progress_reset_at?: string | null;
   progress: number;
   status: string;
   started_at: string;
@@ -129,13 +132,15 @@ export default function AdminUserDetails() {
       // Load ALL enrollments for user
       const { data: enrs } = await supabase
         .from("enrollments")
-        .select("id, course_id, progress, status, started_at, completed_at, time_spent, courses(title)")
+        .select("id, course_id, progress, status, started_at, completed_at, time_spent, learning_progress_epoch, learning_progress_reset_at, courses(title)")
         .eq("user_id", profile.user_id);
 
       setEnrollments((enrs || []).map((e: any) => ({
         id: e.id,
         course_id: e.course_id,
         course_title: e.courses?.title || "Без названия",
+        learning_progress_epoch: normalizeLearningProgressEpoch(e.learning_progress_epoch),
+        learning_progress_reset_at: e.learning_progress_reset_at ?? null,
         progress: e.progress || 0,
         status: e.status || "active",
         started_at: e.started_at,

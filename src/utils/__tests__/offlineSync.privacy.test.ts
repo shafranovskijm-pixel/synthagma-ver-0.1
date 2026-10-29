@@ -3,13 +3,13 @@ import { offlineMemoryStorage } from '@/test/offlineMemoryStorage';
 import { captureOfflineActor, rememberOfflineScope, setOfflineAuthActor } from '../courseCache';
 import { addToSyncQueue, syncOfflineQueue, type SyncAction } from '../offlineSync';
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), from: vi.fn(), writes: [] as any[], headers: [] as string[], acknowledgement: true, sourceOrg: 'org-a', sourceStatus: 'active', mutationGate: null as Promise<void> | null }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mocks.getSession }, from: mocks.from } }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn(), from: vi.fn(), rpc: vi.fn(), writes: [] as any[], headers: [] as string[], acknowledgement: true, sourceOrg: 'org-a', sourceStatus: 'active', mutationGate: null as Promise<void> | null }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mocks.getSession }, from: mocks.from, rpc: mocks.rpc } }));
 let storage: ReturnType<typeof offlineMemoryStorage>;
 const bind = (actorId = 'a', organizationId = 'org-a', effectiveUserId = actorId, mode: 'learner' | 'preview' = 'learner') =>
   rememberOfflineScope({ actorId, organizationId, effectiveUserId, mode }, 'course', captureOfflineActor(actorId))!;
 const queue = () => storage.rows('sigma-offline-sync', 'sync_queue');
-const owned = (id: string, overrides: Partial<SyncAction> = {}): SyncAction => ({ id, type: 'enrollment_update', data: { id: 'enrollment', progress: 50 },
+const owned = (id: string, overrides: Partial<SyncAction> = {}): SyncAction => ({ id, type: 'lesson_progress', data: { lesson_id: 'lesson', user_id: 'a', completed: true }, enrollmentId: 'enrollment', learningProgressEpoch: '0',
   owner: { actorId: 'a', organizationId: 'org-a', effectiveUserId: 'a', mode: 'learner', resource: 'course' }, courseId: 'course', createdAt: 1, ...overrides });
 function source(table: string) {
   let write = false; let payload: any; let bearer = '';
@@ -34,10 +34,32 @@ function source(table: string) {
   };
   return query;
 }
+function rpcSource(name: string, args: Record<string, unknown>) {
+  let bearer = '';
+  const query: any = {
+    setHeader: (header: string, value: string) => { expect(header).toBe('Authorization'); bearer = value; return query; },
+    then: (resolve: (value: unknown) => unknown, reject?: (error: unknown) => unknown) => (async () => {
+      mocks.headers.push(bearer);
+      const user = bearer === 'Bearer SYNTHETIC_B' ? 'b' : 'a';
+      const enrollmentId = user === 'a' ? 'enrollment' : 'enrollment-b';
+      const snapshot = { enrollment: { id: enrollmentId, user_id: user, course_id: 'course', status: mocks.sourceStatus, progress: 0, expires_at: null, learning_progress_epoch: '0' },
+        lesson_progress: [], learning_progress_epoch: '0', learning_progress_reset_at: null };
+      if (name === 'save_own_lesson_progress') {
+        mocks.writes.push({ table: 'lesson_progress', payload: { lesson_id: args.p_lesson_id, user_id: user, completed: args.p_completed } });
+        if (mocks.mutationGate && user === 'a') await mocks.mutationGate;
+        return { data: mocks.acknowledgement ? snapshot : null, error: null };
+      }
+      if (name === 'get_course_learning_snapshot') return { data: snapshot, error: null };
+      throw new Error('Unexpected RPC ' + name);
+    })().then(resolve, reject),
+  };
+  return query;
+}
+
 beforeEach(() => {
   vi.clearAllMocks(); storage = offlineMemoryStorage(); vi.stubGlobal('indexedDB', storage.factory);
   setOfflineAuthActor(null); setOfflineAuthActor('a'); mocks.writes = []; mocks.headers = []; mocks.acknowledgement = true; mocks.sourceOrg = 'org-a'; mocks.sourceStatus = 'active'; mocks.mutationGate = null;
-  mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'a' }, access_token: 'SYNTHETIC_A' } }, error: null }); mocks.from.mockImplementation(source);
+  mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'a' }, access_token: 'SYNTHETIC_A' } }, error: null }); mocks.from.mockImplementation(source); mocks.rpc.mockImplementation(rpcSource);
 });
 afterEach(() => { vi.unstubAllGlobals(); setOfflineAuthActor(null); });
 
@@ -49,7 +71,7 @@ describe('offline queue original actor/context delivery', () => {
     queue().set('foreign', owned('foreign', { owner: { ...owned('').owner!, actorId: 'b', effectiveUserId: 'b' } }));
     queue().set('preview', owned('preview', { owner: { ...owned('').owner!, mode: 'preview' } }));
     expect(await syncOfflineQueue(scope, 'course')).toBe(1);
-    expect(mocks.writes).toEqual([{ table: 'enrollments', payload: { progress: 50 } }]);
+    expect(mocks.writes).toEqual([{ table: 'lesson_progress', payload: { lesson_id: 'lesson', user_id: 'a', completed: true } }]);
     expect(mocks.headers).toEqual(['Bearer SYNTHETIC_A', 'Bearer SYNTHETIC_A', 'Bearer SYNTHETIC_A']);
     expect([...queue().keys()].sort()).toEqual(['foreign', 'legacy', 'preview']);
   });
@@ -69,7 +91,7 @@ describe('offline queue original actor/context delivery', () => {
     expect(await syncOfflineQueue(scope, 'course')).toBe(0); expect(mocks.writes).toHaveLength(0); expect(queue().has('own')).toBe(true);
   });
   it.each([{ user_id: 'b' }, { course_id: 'other' }, { organization_id: 'other' }, { group_id: 'other' }, { status: 'completed' }])('never forwards an identity/issuance enrollment patch %j', async extra => {
-    const scope = bind(); queue().set('forged', owned('forged', { data: { id: 'enrollment', progress: 10, ...extra } }));
+    const scope = bind(); queue().set('forged', owned('forged', { type: 'enrollment_update', data: { id: 'enrollment', progress: 10, ...extra } }));
     expect(await syncOfflineQueue(scope, 'course')).toBe(0); expect(mocks.writes).toHaveLength(0); expect(queue().has('forged')).toBe(true);
   });
   it('stops deferred getAll on A→B→A and does not infer that returning actor owns legacy work', async () => {
@@ -97,7 +119,7 @@ describe('offline queue original actor/context delivery', () => {
   });
   it('new B context can finish its own batch while a dispatched stopped A request remains pending', async () => {
     const a = bind(); queue().set('a', owned('a'));
-    queue().set('b', owned('b', {data: {id: 'enrollment-b', progress: 30}, owner: {...owned('').owner!, actorId: 'b', effectiveUserId: 'b'}}));
+    queue().set('b', owned('b', {enrollmentId: 'enrollment-b', data: {lesson_id: 'lesson', user_id: 'b', completed: true}, owner: {...owned('').owner!, actorId: 'b', effectiveUserId: 'b'}}));
     let release!: () => void; mocks.mutationGate = new Promise(resolve => {release = resolve;}); const old = syncOfflineQueue(a, 'course');
     await vi.waitFor(() => expect(mocks.writes).toHaveLength(1)); setOfflineAuthActor('b'); const b = bind('b');
     mocks.getSession.mockResolvedValue({data: {session: {user: {id: 'b'}, access_token: 'SYNTHETIC_B'}}, error: null});
@@ -105,9 +127,9 @@ describe('offline queue original actor/context delivery', () => {
     release(); expect(await old).toBe(0); expect(mocks.headers).toContain('Bearer SYNTHETIC_B');
   });
   it('enqueue records exact owner and denies preview writes without inventing a new producer', async () => {
-    const scope = bind(); await addToSyncQueue({ type: 'lesson_progress', data: { lesson_id: 'lesson', user_id: 'a', completed: true } }, scope, 'course');
+    const scope = bind(); await addToSyncQueue({ type: 'lesson_progress', enrollmentId: 'enrollment', learningProgressEpoch: '0', data: { lesson_id: 'lesson', user_id: 'a', completed: true } }, scope, 'course');
     expect([...queue().values()][0].owner).toEqual(owned('').owner);
-    const preview = bind('a', 'org-a', 'b', 'preview'); await addToSyncQueue({ type: 'lesson_progress', data: {} }, preview, 'course');
+    const preview = bind('a', 'org-a', 'b', 'preview'); await addToSyncQueue({ type: 'lesson_progress', enrollmentId: 'enrollment', learningProgressEpoch: '0', data: {} }, preview, 'course');
     expect(queue().size).toBe(1);
   });
 });

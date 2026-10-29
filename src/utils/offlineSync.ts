@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { fetchOwnLearningProgress, isLearningProgressEpoch, isLearningProgressReset, saveOwnLearningProgress, snapshotRun } from '@/lib/learningProgress';
 import { getOfflineScope, isOfflineScopeCurrent, type OfflineScope } from './courseCache';
 
 const DB_NAME = 'sigma-offline-sync';
@@ -17,6 +18,9 @@ export interface SyncAction {
   createdAt: number;
   owner?: Omit<OfflineScope, 'authRevision'>;
   courseId?: string;
+  enrollmentId?: string;
+  learningProgressEpoch?: string;
+  superseded?: boolean;
 }
 
 function openSyncDB(): Promise<IDBDatabase> {
@@ -34,6 +38,7 @@ function openSyncDB(): Promise<IDBDatabase> {
 }
 
 export async function addToSyncQueue(action: Omit<SyncAction, 'id' | 'createdAt' | 'owner' | 'courseId'>, scope: OfflineScope, courseId: string): Promise<void> {
+  if (!action.enrollmentId || !isLearningProgressEpoch(action.learningProgressEpoch)) return;
   if (!isOfflineScopeCurrent(scope) || scope.resource !== courseId || scope.mode !== 'learner' || scope.actorId !== scope.effectiveUserId || !courseId) return;
   const { authRevision: _revision, ...owner } = scope;
   try {
@@ -109,6 +114,7 @@ async function syncOwnedQueue(expectedScope: OfflineScope, courseId: string, con
   for (const action of queue) {
     try {
       if (!batchCurrent()) break;
+      if (action.superseded) continue;
       const owner = action.owner;
       // Old unowned entries remain pending. Never assign them to whoever logs in next.
       if (!owner || owner.actorId !== expectedScope.actorId || owner.organizationId !== expectedScope.organizationId
@@ -125,43 +131,30 @@ async function syncOwnedQueue(expectedScope: OfflineScope, courseId: string, con
       // bearer prevents an A request from silently acquiring B's later session.
       // It stays in memory only; never include it in queue rows or logs.
       const authorization = `Bearer ${token}`;
-      const [course, enrollment] = await Promise.all([
-        supabase.from('courses').select('id, organization_id').eq('id', action.courseId).setHeader('Authorization', authorization).maybeSingle(),
-        supabase.from('enrollments').select('id, user_id, course_id, status, expires_at').eq('course_id', action.courseId).eq('user_id', owner.effectiveUserId).setHeader('Authorization', authorization).maybeSingle(),
-      ]);
+      if (!action.enrollmentId || !isLearningProgressEpoch(action.learningProgressEpoch)) continue;
+      const snapshot = await fetchOwnLearningProgress(action.courseId!, owner.effectiveUserId, authorization);
       if (!current()) break;
-      if (course.error || enrollment.error || course.data?.organization_id !== owner.organizationId
-        || enrollment.data?.user_id !== owner.effectiveUserId || enrollment.data.course_id !== action.courseId
-        || !['active', 'completed'].includes(enrollment.data.status || '')
-        || (enrollment.data.expires_at && new Date(enrollment.data.expires_at).getTime() < Date.now() && enrollment.data.status !== 'completed')) continue;
+      // Untagged/mismatched actions are never upgraded to the current server run.
+      if (snapshot.enrollment.id !== action.enrollmentId || snapshot.learning_progress_epoch !== action.learningProgressEpoch) {
+        await removeFromQueue(action.id, current); continue;
+      }
+      const course = await supabase.from('courses').select('id,organization_id').eq('id', action.courseId).setHeader('Authorization', authorization).maybeSingle();
+      if (!current()) break;
+      if (course.error || course.data?.organization_id !== owner.organizationId || !['active','completed'].includes(String(snapshot.enrollment.status))) continue;
       let acknowledged = false;
-      if (action.type === 'lesson_progress') {
-        if (!action.data || action.data.user_id !== owner.effectiveUserId || typeof action.data.lesson_id !== 'string') continue;
-        if (Object.keys(action.data).some(key => !['lesson_id', 'user_id', 'completed', 'time_spent'].includes(key))
-          || (action.data.completed !== undefined && typeof action.data.completed !== 'boolean')
-          || (action.data.time_spent !== undefined && (typeof action.data.time_spent !== 'number' || !Number.isFinite(action.data.time_spent) || action.data.time_spent < 0))) continue;
-        const lesson = await supabase.from('lessons').select('id, course_id').eq('id', action.data.lesson_id).eq('course_id', action.courseId).setHeader('Authorization', authorization).maybeSingle();
-        if (!current()) break;
-        if (lesson.error || lesson.data?.id !== action.data.lesson_id || lesson.data.course_id !== action.courseId) continue;
-        const { error, data } = await supabase
-          .from('lesson_progress')
-          .upsert(action.data, { onConflict: 'lesson_id,user_id' }).select('lesson_id,user_id').setHeader('Authorization', authorization).maybeSingle();
-        if (!current()) break;
-        acknowledged = !error && data?.lesson_id === action.data.lesson_id && data.user_id === owner.effectiveUserId;
-      } else if (action.type === 'enrollment_update') {
-        if (!action.data || action.data.id !== enrollment.data.id) continue;
-        // No production enqueuers currently exist. Retain progress/time retries,
-        // never turn a queued patch into identity reassignment or qualification issuance.
-        if (Object.keys(action.data).some(key => !['id', 'progress', 'time_spent'].includes(key))
-          || Object.entries(action.data).some(([key, value]) => key !== 'id' && (typeof value !== 'number' || !Number.isFinite(value) || value < 0))
-          || (action.data.progress !== undefined && action.data.progress > 100)) continue;
-        const { id: enrollmentId, ...updateData } = action.data;
-        const { error, data } = await supabase
-          .from('enrollments')
-          .update(updateData)
-          .eq('id', enrollmentId).eq('user_id', owner.effectiveUserId).eq('course_id', action.courseId).select('id,user_id,course_id').setHeader('Authorization', authorization).maybeSingle();
-        if (!current()) break;
-        acknowledged = !error && data?.id === enrollmentId && data.user_id === owner.effectiveUserId && data.course_id === action.courseId;
+      // No production enrollment_update enqueuers exist. Its old client percentage
+      // must never become authority; only guarded per-lesson facts may be replayed.
+      if (action.type !== 'lesson_progress' || !action.data || action.data.user_id !== owner.effectiveUserId
+        || typeof action.data.lesson_id !== 'string' || Object.keys(action.data).some(key => !['lesson_id','user_id','completed','time_spent'].includes(key))
+        || (action.data.completed !== undefined && typeof action.data.completed !== 'boolean')
+        || (action.data.time_spent !== undefined && (typeof action.data.time_spent !== 'number' || !Number.isFinite(action.data.time_spent) || action.data.time_spent < 0))) continue;
+      // Legacy time_spent was an accumulated value, not an epoch-bound delta: do not replay it.
+      if (action.data.time_spent !== undefined) continue;
+      try {
+        await saveOwnLearningProgress(snapshotRun(snapshot), action.data.lesson_id, { completed: action.data.completed }, authorization);
+        acknowledged = true;
+      } catch (error) {
+        if (isLearningProgressReset(error) && current()) await removeFromQueue(action.id, current);
       }
       if (!acknowledged || !current()) continue;
       const removed = await removeFromQueue(action.id, current);

@@ -1,6 +1,7 @@
 /** Durable retries use the original server attempt and authenticated owner. */
 
 import { supabase } from '@/integrations/supabase/client';
+import { fetchOwnLearningProgress, isLearningProgressEpoch, isLearningProgressReset } from '@/lib/learningProgress';
 
 
 const DB_NAME = 'sigma-test-queue';
@@ -10,6 +11,10 @@ const VERSION = 1;
 export interface PendingTestSubmission {
   id: string;
   attemptId?: string;
+  courseId?: string;
+  enrollmentId?: string | null;
+  learningProgressEpoch?: string;
+  superseded?: boolean;
   userId?: string;
   lessonId: string;
   answers: Record<string, number>;
@@ -33,10 +38,12 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 export function isRetryableTestError(error: unknown): boolean {
+  if (isLearningProgressReset(error)) return false;
   const code = (error as { code?: string })?.code;
   return !code || code.startsWith('08') || code === '57014';
 }
 export async function enqueueTestSubmission(payload: Omit<PendingTestSubmission, 'id' | 'createdAt' | 'attempts'> & { attemptId: string; userId: string }): Promise<string> {
+  if (!isLearningProgressEpoch(payload.learningProgressEpoch) || !payload.enrollmentId || !payload.courseId) throw new Error('Learning run is not confirmed');
   const id = payload.userId + ':' + payload.attemptId;
   const item: PendingTestSubmission = { ...payload, id, createdAt: Date.now(), attempts: 0 };
   const db = await openDB();
@@ -89,14 +96,24 @@ async function flushQueue(): Promise<{ sent: number; failed: number }> {
   const items = await listPendingSubmissions();
   let sent = 0, failed = 0;
   for (const item of items) {
+    if (item.superseded) continue;
     // если у нас вообще нет сессии — нет смысла пытаться
     const { data: session } = await supabase.auth.getSession();
     if (!session?.session || !item.attemptId || !item.userId || session.session.user.id !== item.userId) { failed++; continue; }
 
-    const { data, error } = await supabase.rpc('submit_test_attempt' as never, {
-      p_attempt_id: item.attemptId, p_answers: item.answers,
+    // Legacy untagged rows remain retained, never adopted by a later run.
+    if (!item.courseId || !item.enrollmentId || !isLearningProgressEpoch(item.learningProgressEpoch)) { failed++; continue; }
+    let snapshot;
+    try { snapshot = await fetchOwnLearningProgress(item.courseId, item.userId); } catch { failed++; continue; }
+    if (snapshot.enrollment.id !== item.enrollmentId || snapshot.learning_progress_epoch !== item.learningProgressEpoch) {
+      await bumpAttempts({ ...item, superseded: true }); continue;
+    }
+    const { data, error } = await supabase.rpc('submit_test_attempt_at_epoch' as never, {
+      p_attempt_id: item.attemptId, p_answers: item.answers, p_expected_epoch: item.learningProgressEpoch,
     } as never);
-    if (!error && data) {
+    if (isLearningProgressReset(error)) { await bumpAttempts({ ...item, superseded: true }); continue; }
+
+    if (!error && data && (data as { learning_progress_epoch?: string }).learning_progress_epoch === item.learningProgressEpoch) {
       await removePendingSubmission(item.id);
       sent++;
       window.dispatchEvent(new Event('test-submission-synced'));

@@ -1,3 +1,4 @@
+import { normalizeLearningProgressEpoch } from "@/lib/learningProgress";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +64,8 @@ interface StudentEnrollment {
   id: string;
   course_id: string;
   course_title: string;
+  learning_progress_epoch?: string | null;
+  learning_progress_reset_at?: string | null;
   progress: number;
   status: string;
   started_at: string;
@@ -162,7 +165,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
     if (courseIds.length > 0) {
       const { data: enrs } = await supabase
         .from("enrollments")
-        .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
+        .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, learning_progress_epoch, learning_progress_reset_at, courses(title)")
         .eq("user_id", profile.user_id)
         .in("course_id", courseIds);
 
@@ -170,6 +173,8 @@ function StudentPageInner({ studentId }: { studentId: string }) {
         id: e.id,
         course_id: e.course_id,
         course_title: e.courses?.title || "Без названия",
+        learning_progress_epoch: normalizeLearningProgressEpoch(e.learning_progress_epoch),
+        learning_progress_reset_at: e.learning_progress_reset_at ?? null,
         progress: e.progress || 0,
         status: e.status || "active",
         started_at: e.started_at,

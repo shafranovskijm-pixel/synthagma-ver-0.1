@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isLearningProgressEpoch, isLearningProgressReset } from "@/lib/learningProgress";
 import { enqueueTestSubmission, isRetryableTestError } from "@/utils/testAnswerQueue";
 import { toast } from "sonner";
 import { isAdminViewActive } from "@/utils/adminViewMode";
@@ -7,6 +8,9 @@ import type { Lesson, LessonProgress, TestQuestion } from "./types";
 import type { FinalTestPhotoChallenge } from "@/hooks/useVideoIdentification";
 
 interface UseLessonTestParams {
+  learningEpoch?: string | null;
+  isProgressCurrent?: () => boolean;
+  onProgressReset?: (error: unknown) => Promise<boolean>;
   currentLesson: Lesson | undefined;
   user: { id: string } | null;
   lessons: Lesson[];
@@ -55,10 +59,15 @@ const rpc = async <T,>(name: string, args: Record<string, unknown>): Promise<T> 
   const { data, error } = await supabase.rpc(name as never, args as never);
   if (error) throw error;
   if (data == null) throw new Error('Сервер не вернул состояние теста.');
+  if (args.p_expected_epoch !== undefined && (!isLearningProgressEpoch(args.p_expected_epoch)
+    || (data as { learning_progress_epoch?: unknown }).learning_progress_epoch !== args.p_expected_epoch)) {
+    throw Object.assign(new Error('Сервер не подтвердил текущее прохождение.'), { code: 'LEARNING_PROGRESS_UNCONFIRMED' });
+  }
   return data as T;
 };
 export function testErrorMessage(error: unknown): string {
   const message = (error as { message?: string })?.message || '';
+  if (isLearningProgressReset(error)) return 'Организация сбросила учебный прогресс. Обновите состояние курса.';
   if (/final test photo expired/i.test(message)) return 'Время подтверждения истекло. Сделайте новое фото перед началом теста. Попытка не списана.';
   if (/final test photo/i.test(message)) return 'Перед этой попыткой нужно новое фото с камеры. Нажмите «Начать тест». Попытка не списана.';
   if (/test content invalid|no test questions available/i.test(message)) return 'В тесте некорректно настроены вопросы или варианты ответа. Попытка не списана. Обратитесь в учебную организацию.';
@@ -70,7 +79,7 @@ export function testErrorMessage(error: unknown): string {
 function readDraft(userId: string, attemptId: string): Record<string, number> {
   try { return JSON.parse(sessionStorage.getItem('test-draft:' + userId + ':' + attemptId) || '{}'); } catch { return {}; }
 }
-export function useLessonTest({ currentLesson, user, lessons, lessonProgress, setLessonProgress, saveLessonTime, handleCourseCompletion }: UseLessonTestParams) {
+export function useLessonTest({ currentLesson, user, lessons, lessonProgress, enrollmentId, courseId, setLessonProgress, saveLessonTime, handleCourseCompletion, learningEpoch = null, isProgressCurrent, onProgressReset }: UseLessonTestParams) {
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
@@ -90,7 +99,11 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
   const [testPhotoChallenge, setTestPhotoChallenge] = useState<FinalTestPhotoChallenge | null>(null);
   const photoChallengeRef = useRef<FinalTestPhotoChallenge | null>(null);
   photoChallengeRef.current = testPhotoChallenge;
-  const scope = user?.id + ':' + currentLesson?.id;
+  const preview = isAdminViewActive();
+  const authority = useRef({ learningEpoch, isProgressCurrent, onProgressReset });
+  authority.current = { learningEpoch, isProgressCurrent, onProgressReset };
+  const progressCurrent = () => isLearningProgressEpoch(learningEpoch) && authority.current.learningEpoch === learningEpoch && (authority.current.isProgressCurrent?.() ?? true);
+  const scope = user?.id + ':' + currentLesson?.id + ':' + enrollmentId + ':' + (learningEpoch ?? (preview ? 'preview' : 'unconfirmed'));
   const scopeRef = useRef(scope); scopeRef.current = scope;
   const requestRef = useRef(0);
   const activeScopeRef = useRef<string | null>(null);
@@ -113,12 +126,12 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
     setLimits(active);
   };
   const refreshTestState = useCallback(async () => {
-    if (!lessonId || !user) return;
+    if (!lessonId || !user || (!preview && !progressCurrent())) return;
     const expectedScope = scope; const request = ++requestRef.current;
     setTestQuestionsLoading(true); setTestQuestionsError(null);
     try {
-      const data = await rpc<TestState>('get_student_test_state', { p_lesson_id: lessonId });
-      if (scopeRef.current !== expectedScope || request !== requestRef.current) return;
+      const data = await rpc<TestState>(preview ? 'get_student_test_state' : 'get_student_test_state_at_epoch', { p_lesson_id: lessonId, ...(!preview ? { p_expected_epoch: learningEpoch } : {}) });
+      if (scopeRef.current !== expectedScope || request !== requestRef.current || (!preview && !progressCurrent())) return;
       setLimits(data); setTestPassingScore(data.passingScore ?? 60); setTestShowAnswers(data.showAnswers === true);
       setTestManualCredit(data.manualCredit ?? null); setTestLegacy(data.attempt?.legacy === true && !data.manualCredit);
       setTestPhotoRequired(data.photoRequired === true);
@@ -139,7 +152,10 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
       if (data.passed === true && !data.manualCredit) setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
       return data;
     } catch (error) {
-      if (scopeRef.current === expectedScope && request === requestRef.current) setTestQuestionsError(testErrorMessage(error));
+      if (scopeRef.current === expectedScope && request === requestRef.current) {
+        if (isLearningProgressReset(error)) await authority.current.onProgressReset?.(error);
+        else setTestQuestionsError(testErrorMessage(error));
+      }
     } finally {
       if (scopeRef.current === expectedScope && request === requestRef.current) setTestQuestionsLoading(false);
     }
@@ -151,7 +167,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({}); setLimits(emptyLimits);
     setTestManualCredit(null); setTestLegacy(false); setTestAttemptId(null); setTestStartedAt(null); setTestExplanations({}); setTestSubmitting(false);
     setTestPhotoRequired(false); setTestPhotoChallenge(null);
-    setTestQuestionsError(null); setTestQuestionsLoading(!!lessonId);
+    setTestQuestionsError(null); setTestQuestionsLoading(!!lessonId && (preview || isLearningProgressEpoch(learningEpoch)));
     if (lessonId) void refreshTestState();
     return () => { requestRef.current++; startOperationRef.current++; };
   }, [scope, lessonId, refreshTestState]);
@@ -179,11 +195,11 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
   }, [answers, testAttemptId, testSubmitted, user?.id]);
 
   const startTest = async () => {
-    if (scopeRef.current !== scope || !lessonId || !user || busyRef.current || testManualCredit) return;
+    if (scopeRef.current !== scope || !lessonId || !user || busyRef.current || testManualCredit || !progressCurrent()) return;
     if (isAdminViewActive()) { toast.info('Начало теста недоступно в режиме просмотра администратора'); return; }
     const expectedScope = scope;
     const operation = ++startOperationRef.current;
-    const isCurrentStart = () => scopeRef.current === expectedScope && startOperationRef.current === operation;
+    const isCurrentStart = () => scopeRef.current === expectedScope && startOperationRef.current === operation && progressCurrent();
     requestRef.current++;
     busyRef.current = true; setTestQuestionsLoading(true); setTestQuestionsError(null);
     let cachedRequest: string | null = null;
@@ -201,13 +217,14 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
           return;
         }
       }
-      const active = await rpc<ActiveAttempt>('start_test_attempt', { p_lesson_id: lessonId, p_request_id: requestId });
+      const active = await rpc<ActiveAttempt>('start_test_attempt_at_epoch', { p_lesson_id: lessonId, p_request_id: requestId, p_expected_epoch: learningEpoch });
       if (!isCurrentStart()) return;
       if (active.status === "completed") await refreshTestState(); else applyActive(active);
       if (!isCurrentStart()) return;
       clearStartRequest(); setTestPhotoChallenge(null);
     } catch (error) {
       if (isCurrentStart()) {
+        if (isLearningProgressReset(error)) { await authority.current.onProgressReset?.(error); return; }
         if (/final test photo/i.test((error as { message?: string })?.message || '')) setTestPhotoRequired(true);
         setTestQuestionsError(testErrorMessage(error));
       }
@@ -225,21 +242,21 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
     await startTest();
   };
   const submitTest = async () => {
-    if (!lessonId || !user || !testAttemptId || busyRef.current || testSubmitted || testManualCredit) return;
+    if (!lessonId || !user || !testAttemptId || busyRef.current || testSubmitted || testManualCredit || !progressCurrent()) return;
     if (isAdminViewActive()) { toast.info('Отправка теста недоступна в режиме просмотра администратора'); return; }
     if (testQuestions.length === 0 || testQuestions.some(q => answers[q.id] == null)) { toast.error('Ответьте на все вопросы.'); return; }
     const expectedScope = scope; const attemptId = testAttemptId;
     requestRef.current++;
     busyRef.current = true; setTestSubmitting(true); setTestQuestionsLoading(false); setTestQuestionsError(null);
     try {
-      const result = await rpc<Limits & { score: number; maxScore: number; scorePercent: number; passed: boolean; passingScore: number; showAnswers?: boolean; correctAnswers: Record<string, number | null>; explanations: Record<string, string | null> }>('submit_test_attempt', { p_attempt_id: attemptId, p_answers: answers });
-      if (scopeRef.current !== expectedScope) return;
+      const result = await rpc<Limits & { score: number; maxScore: number; scorePercent: number; passed: boolean; passingScore: number; showAnswers?: boolean; correctAnswers: Record<string, number | null>; explanations: Record<string, string | null> }>('submit_test_attempt_at_epoch', { p_attempt_id: attemptId, p_answers: answers, p_expected_epoch: learningEpoch });
+      if (scopeRef.current !== expectedScope || !progressCurrent()) return;
       setLimits(result); if (result.showAnswers !== undefined) setTestShowAnswers(result.showAnswers); setTestPassingScore(result.passingScore); setTestExplanations(result.explanations || {});
       setTestQuestions(prev => prev.map(q => withAnswerKey(q, result.correctAnswers)));
       setTestSubmitted(true); setTestAttemptId(null); setTestScore({ score: result.score, max: result.maxScore });
       try { sessionStorage.removeItem('test-draft:' + user.id + ':' + attemptId); } catch { /* optional cache */ }
       await saveLessonTime();
-      if (scopeRef.current !== expectedScope) return;
+      if (scopeRef.current !== expectedScope || !progressCurrent()) return;
       if (result.passed) {
         setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
         const complete = lessons.every(l => l.id === lessonId || lessonProgress.some(p => p.lesson_id === l.id && p.completed));
@@ -247,10 +264,11 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
         else toast.success('Тест пройден! ' + result.score + '/' + result.maxScore + ' (' + result.scorePercent + '%)');
       } else toast.error('Тест не пройден. ' + result.scorePercent + '%. Нужно: ' + result.passingScore + '%.');
     } catch (error) {
-      if (scopeRef.current !== expectedScope) return;
+      if (scopeRef.current !== expectedScope || !progressCurrent()) return;
+      if (isLearningProgressReset(error)) { await authority.current.onProgressReset?.(error); return; }
       if (isRetryableTestError(error)) {
         try {
-          await enqueueTestSubmission({ attemptId, userId: user.id, lessonId, answers, shownQuestionIds: testQuestions.map(q => q.id) });
+          await enqueueTestSubmission({ attemptId, userId: user.id, lessonId, courseId, enrollmentId, learningProgressEpoch: learningEpoch!, answers, shownQuestionIds: testQuestions.map(q => q.id) });
           toast.warning('Ответы сохранены на этом устройстве и будут отправлены при восстановлении соединения.');
         } catch { toast.error('Не удалось сохранить ответы на устройстве. Оставьте страницу открытой и повторите отправку.'); }
       } else toast.error(testErrorMessage(error));

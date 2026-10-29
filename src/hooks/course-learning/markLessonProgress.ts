@@ -15,6 +15,8 @@
  */
 
 export interface MarkLessonDeps {
+  /** False after an authoritative reset/auth/course change; never commit old async work. */
+  isCurrent?: () => boolean;
   saveLessonTime: () => Promise<void>;
   upsertLessonProgress: (lessonId: string, userId: string) => Promise<{ error: unknown | null }>;
   updateEnrollmentProgress: (enrollmentId: string, progress: number) => Promise<{ error: unknown | null }>;
@@ -59,7 +61,7 @@ export type MarkLessonOutcome =
     }
   | {
       ok: false;
-      reason: "progress_save_failed" | "enrollment_update_failed" | "no_enrollment";
+      reason: "progress_save_failed" | "enrollment_update_failed" | "no_enrollment" | "progress_reset";
     };
 
 function percentOf(count: number, total: number): number {
@@ -71,6 +73,9 @@ function percentOf(count: number, total: number): number {
 
 export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLessonOutcome> {
   const { lessonId, userId, enrollmentId, totalLessons, autoAdvance, state, deps } = input;
+
+  const current = deps.isCurrent ?? (() => true);
+  if (!current()) return { ok: false, reason: "progress_reset" };
 
   // Мьютекс: параллельный клик по этому же уроку не создаёт дублирующие запросы.
   if (state.inFlight.has(lessonId)) {
@@ -96,8 +101,10 @@ export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLe
   state.inFlight.add(lessonId);
   try {
     await deps.saveLessonTime();
+    if (!current()) return { ok: false, reason: "progress_reset" };
 
     const { error: progressErr } = await deps.upsertLessonProgress(lessonId, userId);
+    if (!current()) return { ok: false, reason: "progress_reset" };
     if (progressErr) {
       console.error("[markLessonProgress] lesson_progress upsert failed", progressErr);
       deps.toastError("Ошибка сохранения прогресса. Попробуйте ещё раз.");
@@ -115,6 +122,7 @@ export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLe
     }
 
     const { error: enrollErr } = await deps.updateEnrollmentProgress(enrollmentId, progress);
+    if (!current()) return { ok: false, reason: "progress_reset" };
     if (enrollErr) {
       console.error("[markLessonProgress] enrollments update failed", enrollErr);
       deps.toastError("Не удалось обновить прогресс курса. Попробуйте ещё раз.");
@@ -141,6 +149,7 @@ export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLe
       deps.toastSuccess("Урок завершён!");
     }
 
+    if (!current()) return { ok: false, reason: "progress_reset" };
     if (autoAdvance) deps.goToNextLesson();
     return { ok: true, progress, completed: true };
   } finally {
