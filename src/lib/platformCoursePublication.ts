@@ -62,10 +62,28 @@ export interface PublicationProposal extends PublicationTarget {
   supportedDossier: PublicationDossier | null;
   source: SourceContext;
 }
+
+export interface CurrentReviewFileReceipt {
+  receiptId: string; capturedEditionId: string; sourceOrgVersionId: string | null;
+  fileBytesSha256: string; byteLength: number;
+}
+export interface CurrentReviewFileReference {
+  kind: "course_document" | "lesson_attachment"; referenceId: string;
+  state: "bytes_sealed" | "unconfirmed"; receipt: CurrentReviewFileReceipt | null;
+}
+export interface CurrentFileReviewContext extends PublicationTarget {
+  actorId: string; proposalId: string; proposalEditionSha256: string;
+  currentEditionSha256: string; scopeGeneration: string;
+  state: "unconfirmed" | "no_file_reference_detected" | "sealed_current";
+  referenceCount: number; references: CurrentReviewFileReference[];
+}
+
 export interface PublicationReviewContext extends PublicationTarget {
   actorId: string; currentEditionSha256: string; readiness: PublicationReadiness;
   proposal: PublicationProposal | null; currentSource: SourceContext;
-  currentFileState: "unconfirmed" | "no_file_reference_detected";
+  currentFileState: "unconfirmed" | "no_file_reference_detected" | "sealed_current";
+  /** Present only after an explicit current proposal/edition server read; never a learner grant. */
+  currentFileContext?: CurrentFileReviewContext | null;
   history: ReviewEvent[]; historyHasMore: boolean; historyNextBeforeSequence: string | null;
   confirmedEvent: ReviewEvent | null;
 }
@@ -166,6 +184,47 @@ function parseEvent(value: unknown): ReviewEvent {
     decision: decision ?? null, notes: nullableText(row.notes), nextReviewAt: row.next_review_at == null ? null : date(row.next_review_at),
     samePersonReview: row.same_person_review == null ? null : bool(row.same_person_review) };
 }
+
+function parseCurrentFileContext(value: unknown, target: PublicationTarget, actorId: string,
+  currentEdition: string, proposal: PublicationProposal | null, currentSource: SourceContext,
+  currentFileState: PublicationReviewContext["currentFileState"]): CurrentFileReviewContext {
+  const row = object(value); assertTarget(row, target);
+  if (Object.keys(row).length !== 12 || !onlyKeys(row, ["schema_version", "actor_id", "organization_id", "marketplace_id", "course_id",
+    "proposal_id", "proposal_edition_sha256", "current_edition_sha256", "scope_generation", "state", "reference_count", "references"])
+    || row.schema_version !== 1 || uuid(row.actor_id) !== actorId || row.organization_id !== PLATFORM_REVIEW_ORG_ID
+    || !proposal?.isCurrent || uuid(row.proposal_id) !== proposal.id || hash(row.proposal_edition_sha256) !== proposal.editionSha256
+    || hash(row.current_edition_sha256) !== currentEdition || proposal.editionSha256 !== currentEdition || row.state !== currentFileState) return invalid();
+  const state = row.state;
+  if (state !== "unconfirmed" && state !== "no_file_reference_detected" && state !== "sealed_current") return invalid();
+  const references = list(row.references).map<CurrentReviewFileReference>(value => {
+    const ref = object(value), kind = ref.reference_kind;
+    if (Object.keys(ref).length !== 4 || !onlyKeys(ref, ["reference_kind", "reference_id", "state", "receipt"])
+      || (kind !== "course_document" && kind !== "lesson_attachment")) return invalid();
+    const referenceId = uuid(ref.reference_id);
+    if (ref.state === "unconfirmed" && ref.receipt === null) return { kind, referenceId, state: "unconfirmed", receipt: null };
+    if (ref.state !== "bytes_sealed") return invalid();
+    const receipt = object(ref.receipt), byteLength = receipt.byte_length;
+    if (Object.keys(receipt).length !== 5 || !onlyKeys(receipt, ["receipt_id", "captured_edition_id", "source_org_version_id", "file_bytes_sha256", "byte_length"])
+      || typeof byteLength !== "number" || !Number.isSafeInteger(byteLength) || byteLength < 1 || byteLength > 8388608) return invalid();
+    return { kind, referenceId, state: "bytes_sealed", receipt: {
+      receiptId: uuid(receipt.receipt_id), capturedEditionId: uuid(receipt.captured_edition_id),
+      sourceOrgVersionId: nullableId(receipt.source_org_version_id), fileBytesSha256: hash(receipt.file_bytes_sha256),
+      byteLength,
+    } };
+  });
+  const pairs = references.map(ref => ref.kind + "/" + ref.referenceId).sort();
+  const expected = currentSource.fileBindings.map(ref => ref.kind + "/" + ref.referenceId).sort();
+  const selected = proposal.source.fileBindings.map(ref => ref.kind + "/" + ref.referenceId).sort();
+  if (!Number.isSafeInteger(row.reference_count) || row.reference_count !== references.length
+    || new Set(pairs).size !== pairs.length || JSON.stringify(pairs) !== JSON.stringify(expected)
+    || JSON.stringify(pairs) !== JSON.stringify(selected)
+    || (state === "sealed_current" && (!references.length || references.some(ref => ref.state !== "bytes_sealed" || !ref.receipt)))
+    || (state === "no_file_reference_detected" && references.length !== 0)) return invalid();
+  return { ...target, actorId, proposalId: proposal.id, proposalEditionSha256: proposal.editionSha256,
+    currentEditionSha256: currentEdition, scopeGeneration: uuid(row.scope_generation), state,
+    referenceCount: references.length, references };
+}
+
 export function parsePublicationContext(value: unknown, target: PublicationTarget, actorId: string): PublicationReviewContext {
   const row = object(value); assertTarget(row, target);
   if (row.schema_version !== 1 || row.organization_id !== PLATFORM_REVIEW_ORG_ID || uuid(row.actor_id) !== actorId || row.decision_scope !== TEMPLATE_REVIEW_SCOPE) return invalid();
@@ -185,8 +244,13 @@ export function parsePublicationContext(value: unknown, target: PublicationTarge
   const historyNextBeforeSequence = row.history_next_before_sequence == null ? null : cursor(row.history_next_before_sequence);
   if (historyHasMore !== (historyNextBeforeSequence !== null) || (historyHasMore && history[history.length - 1]?.sequence !== historyNextBeforeSequence)) return invalid();
   const currentFileState = row.current_file_state;
-  if (currentFileState !== "unconfirmed" && currentFileState !== "no_file_reference_detected") return invalid();
-  return { ...target, actorId, currentEditionSha256, readiness, proposal, currentSource: parseSource(row.current_source_context, target), currentFileState,
+  if (currentFileState !== "unconfirmed" && currentFileState !== "no_file_reference_detected" && currentFileState !== "sealed_current") return invalid();
+  const currentSource = parseSource(row.current_source_context, target);
+  const currentFileContext = row.current_file_context == null ? null
+    : parseCurrentFileContext(row.current_file_context, target, actorId, currentEditionSha256, proposal, currentSource, currentFileState);
+  if ((currentFileState === "sealed_current" && !currentFileContext)
+    || (currentFileState === "no_file_reference_detected" && currentSource.fileBindings.length !== 0)) return invalid();
+  return { ...target, actorId, currentEditionSha256, readiness, proposal, currentSource, currentFileState, currentFileContext,
     history, historyHasMore, historyNextBeforeSequence, confirmedEvent: row.confirmed_event == null ? null : parseEvent(row.confirmed_event) };
 }
 export function publicationReadinessLabel(readiness: PublicationReadiness): string {
@@ -198,7 +262,14 @@ export function publicationReadinessLabel(readiness: PublicationReadiness): stri
   return labels[readiness.state];
 }
 export function canAcceptPublicationReview(context: PublicationReviewContext): boolean {
-  return !!context.proposal?.isCurrent && !!context.proposal.supportedDossier && !context.readiness.blockers.length && context.currentFileState === "no_file_reference_detected";
+  if (!context.proposal?.isCurrent || !context.proposal.supportedDossier || context.readiness.blockers.length) return false;
+  if (context.currentFileState === "no_file_reference_detected") return context.currentSource.fileBindings.length === 0;
+  const proof = context.currentFileContext;
+  return context.currentFileState === "sealed_current" && proof?.state === "sealed_current"
+    && proof.actorId === context.actorId && proof.marketplaceId === context.marketplaceId && proof.courseId === context.courseId
+    && proof.proposalId === context.proposal.id && proof.proposalEditionSha256 === context.currentEditionSha256
+    && proof.currentEditionSha256 === context.currentEditionSha256 && proof.referenceCount > 0
+    && proof.references.length === proof.referenceCount && proof.references.every(ref => ref.state === "bytes_sealed" && !!ref.receipt);
 }
 export function canPublishPublication(context: PublicationReviewContext): boolean {
   return canAcceptPublicationReview(context) && context.readiness.state === "eligible" && !!context.readiness.reviewId;
@@ -245,6 +316,7 @@ export function createPublicationGateway(api: PublicationApiPort) {
     actorId = uuid(actorId); options = { ...options };
     const result = parsePublicationContext(await invoke(() => api.context({ p_marketplace_id: target.marketplaceId, p_proposal_id: options.proposalId ?? null,
       p_expected_edition_sha256: options.expectedEdition ?? null, p_history_before_sequence: options.beforeSequence ?? null, p_confirm_event_id: options.confirmEventId ?? null })), target, actorId);
+    if (result.currentFileContext && (!options.proposalId || !options.expectedEdition)) return invalid();
     if (options.proposalId && result.proposal?.id !== options.proposalId) return invalid();
     if (options.expectedEdition && result.currentEditionSha256 !== options.expectedEdition) throw new PublicationError("stale");
     if (options.confirmEventId && result.confirmedEvent?.id !== options.confirmEventId) return invalid();
