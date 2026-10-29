@@ -1,0 +1,64 @@
+name: Learning progress reset frontend
+
+on:
+  push:
+    branches: [codex/learning-progress-reset-20261029]
+  pull_request:
+    paths:
+      - src/**
+      - .github/workflows/learning-progress-reset-frontend.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - name: Check out exact reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - name: Install locked registry dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Record source and runtime
+        run: |
+          mkdir -p outputs/learning-progress-reset-frontend
+          git rev-parse HEAD > outputs/learning-progress-reset-frontend/head.txt
+          node --version > outputs/learning-progress-reset-frontend/node.txt
+          git ls-files src/hooks/course-learning src/hooks/useStudentDashboard.ts src/hooks/useStudentDashboardSnapshot.ts src/hooks/useCourseDetails.ts src/hooks/useVideoProgress.ts src/components/course-learning/HomeworkSubmission.tsx src/pages/CourseLearning.tsx src/lib/learningProgress.ts src/utils/offlineSync.ts src/utils/testAnswerQueue.ts src/integrations/supabase/types.ts .github/workflows/learning-progress-reset-frontend.yml | xargs sha256sum > outputs/learning-progress-reset-frontend/source-manifest.sha256
+      - name: Type check actual application
+        run: npm run typecheck 2>&1 | tee outputs/learning-progress-reset-frontend/typecheck.stdout.txt
+      - name: Course learning, history, access and offline regression tests
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          src/hooks/course-learning
+          src/components/course-learning/__tests__/HomeworkSubmission.test.tsx
+          src/utils/__tests__/testAnswerQueue.progressReset.test.ts
+          src/utils/__tests__/testAnswerQueue.attempts.test.ts
+          src/utils/__tests__/offlineSync.privacy.test.ts
+          src/utils/__tests__/offlineSync.sdk-header.test.ts
+          src/lib/__tests__/learningProgress.reset.test.ts
+          src/hooks/__tests__/useStudentDashboard
+          --maxWorkers=1 --reporter=json
+          --outputFile=outputs/learning-progress-reset-frontend/test-results.json
+          2>&1 | tee outputs/learning-progress-reset-frontend/tests.stdout.txt
+      - name: Build production application
+        run: npm run build 2>&1 | tee outputs/learning-progress-reset-frontend/build.stdout.txt
+      - name: Upload bounded frontend verification
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: learning-progress-reset-frontend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/learning-progress-reset-frontend/
+          if-no-files-found: error
+          retention-days: 14

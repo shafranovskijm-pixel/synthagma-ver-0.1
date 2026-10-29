@@ -1,3 +1,4 @@
+import { normalizeLearningProgressEpoch } from "@/lib/learningProgress";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/utils/retryFetch";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
@@ -606,7 +607,7 @@ export async function fetchOrganizationStudentEnrollments(
   const enrollmentIds = Array.from(new Set(enrollments.map(enrollment => enrollment.id)));
   const { data: accessRows, error: accessError } = await supabase
     .from("enrollments")
-    .select("id, access_days, expires_at")
+    .select("id, access_days, expires_at, learning_progress_epoch, learning_progress_reset_at")
     .in("id", enrollmentIds);
   if (accessError) throw accessError;
 
@@ -615,6 +616,8 @@ export async function fetchOrganizationStudentEnrollments(
       id: string;
       access_days: number | null;
       expires_at: string | null;
+      learning_progress_epoch: unknown;
+      learning_progress_reset_at: string | null;
     }>).map(row => [row.id, row]),
   );
 
@@ -630,6 +633,8 @@ export async function fetchOrganizationStudentEnrollments(
       ...enrollment,
       access_days: access.access_days,
       expires_at: access.expires_at,
+      learning_progress_epoch: normalizeLearningProgressEpoch(access.learning_progress_epoch),
+      learning_progress_reset_at: access.learning_progress_reset_at,
     };
   });
 }

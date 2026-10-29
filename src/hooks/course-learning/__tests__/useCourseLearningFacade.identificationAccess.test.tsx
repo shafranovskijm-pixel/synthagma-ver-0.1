@@ -27,7 +27,17 @@ class Query {
     :this.table==='lessons'?this.columns==='content'?{content:'Existing lesson'}:[{id:'lesson',course_id:'course',title:'Existing lesson',type:'text',module_id:null}]:[];return Promise.resolve({data,error:null});}
   single(){return this.response();}maybeSingle(){return this.response();}then(resolve:any,reject:any){return this.response().then(resolve,reject);}
 }
-beforeEach(()=>{vi.clearAllMocks();localStorage.clear();setOfflineAuthActor(null);setOfflineAuthActor('student');mocks.enrollment={id:'enrollment',user_id:'student',course_id:'course',status:'active',expires_at:null};mocks.from.mockImplementation(table=>new Query(table));});
+beforeEach(()=>{vi.clearAllMocks();localStorage.clear();setOfflineAuthActor(null);setOfflineAuthActor('student');mocks.enrollment={id:'enrollment',user_id:'student',course_id:'course',status:'active',expires_at:null};mocks.from.mockImplementation(table=>new Query(table));
+  mocks.rpc.mockImplementation(async(name:string)=>{
+    if(name!=='get_course_learning_snapshot')return{data:null,error:null};
+    // The authoritative RPC denies missing/foreign/inactive/expired assignments.
+    // Pending identity evidence never grants an alternative learning association.
+    const e=mocks.enrollment;
+    if(!e||e.user_id!=='student'||e.course_id!=='course'||!['active','completed'].includes(e.status)
+      ||(e.expires_at&&new Date(e.expires_at)<new Date()&&e.status!=='completed'))return{data:null,error:{code:'42501',message:'forbidden'}};
+    return{data:{enrollment:{...e,progress:0,learning_progress_epoch:'0'},lesson_progress:[],learning_progress_epoch:'0',learning_progress_reset_at:null},error:null};
+  });
+});
 afterEach(()=>{cleanup();setOfflineAuthActor(null);});
 describe('existing learning rights are independent from newly pending photo evidence',()=>{
   it('a current active enrollment still opens with pending identity and no selfie approval/grant query',async()=>{const h=renderHook(()=>useCourseLearning());await waitFor(()=>expect(h.result.current.enrollmentId).toBe('enrollment'));expect(h.result.current.course?.title).toBe('Existing course');expect(mocks.navigate).not.toHaveBeenCalled();expect(mocks.from.mock.calls.some(call=>call[0]==='video_identifications')).toBe(false);});

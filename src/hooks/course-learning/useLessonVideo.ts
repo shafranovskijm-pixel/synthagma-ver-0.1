@@ -1,27 +1,22 @@
 import { useState, useEffect } from "react";
-import { useVideoProgress } from "@/hooks/useVideoProgress";
+import { useVideoProgress, type VideoProgressAuthority } from "@/hooks/useVideoProgress";
 import type { Lesson } from "./types";
 
-interface UseLessonVideoParams {
+interface UseLessonVideoParams extends VideoProgressAuthority {
   userId: string | undefined;
   currentLesson: Lesson | undefined;
 }
 
-export function useLessonVideo({ userId, currentLesson }: UseLessonVideoParams) {
+export function useLessonVideo({ userId, currentLesson, ...authority }: UseLessonVideoParams) {
   const [videoWatchProgress, setVideoWatchProgress] = useState(0);
 
   const videoLessonId = currentLesson?.type === 'video' ? currentLesson.id : undefined;
-  const { savedPosition, savedDuration, isLoading: isVideoProgressLoading, savePosition: saveVideoPosition } = useVideoProgress(userId, videoLessonId);
+  const { savedPosition, savedDuration, isLoading: isVideoProgressLoading, savePosition: saveVideoPosition } = useVideoProgress(userId, videoLessonId, authority);
 
-  // Restore video progress
+  // A new server run may move progress down to zero.
   useEffect(() => {
-    if (savedPosition > 0 && savedDuration > 0 && currentLesson?.type === 'video') {
-      const restoredProgress = (savedPosition / savedDuration) * 100;
-      if (restoredProgress > videoWatchProgress) {
-        setVideoWatchProgress(restoredProgress);
-      }
-    }
-  }, [savedPosition, savedDuration, currentLesson?.id]);
+    setVideoWatchProgress(savedDuration > 0 && currentLesson?.type === "video" ? (savedPosition / savedDuration) * 100 : 0);
+  }, [savedPosition, savedDuration, currentLesson?.id, authority.learningRun?.epoch]);
 
   return {
     videoWatchProgress, setVideoWatchProgress,

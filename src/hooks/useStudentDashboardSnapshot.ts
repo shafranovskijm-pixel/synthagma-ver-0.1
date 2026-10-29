@@ -4,6 +4,8 @@ import { captureOfflineActor, isOfflineActorCurrent, isOfflineAccessDenied } fro
 
 export interface StudentSnapshotEnrollment {
   id: string;
+  learning_progress_epoch: string;
+  learning_progress_reset_at: string | null;
   course_id: string;
   progress: number | null;
   status: string | null;
@@ -52,7 +54,8 @@ export function useStudentDashboardSnapshot(userId: string | null | undefined, a
     enabled: !!userId && !!actorId && revision !== null,
     staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
     retry: (failureCount, error) => !isOfflineAccessDenied(error) && failureCount < 3,
     queryFn: async () => {
       if (!userId || !actorId || !isOfflineActorCurrent(actorId, revision)) return null;

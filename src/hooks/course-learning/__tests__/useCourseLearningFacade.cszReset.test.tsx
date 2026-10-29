@@ -80,7 +80,7 @@ class SyntheticQuery implements PromiseLike<QueryResult> {
         { lesson_id: 'lesson-a', completed: true }, { lesson_id: 'lesson-b', completed: true },
       ], error: null };
       case 'lesson_attachments': return { data: [], error: null };
-      case 'course_modules': return { data: [], error: null };
+      case 'course_modules': case 'course_documents': return { data: [], error: null };
       default: throw new Error(`Unexpected synthetic read: ${this.request.table}`);
     }
   }
@@ -94,6 +94,12 @@ class SyntheticQuery implements PromiseLike<QueryResult> {
   }
 }
 
+const learningSnapshot = () => ({ data: {
+  enrollment: { id: 'enrollment-a', user_id: 'student-a', course_id: mocks.courseId, status: 'completed', progress: 100, expires_at: '2020-01-01T00:00:00Z', learning_progress_epoch: '0' },
+  lesson_progress: [{ lesson_id: 'lesson-a', completed: true }, { lesson_id: 'lesson-b', completed: true }],
+  learning_progress_epoch: '0', learning_progress_reset_at: null,
+}, error: null });
+
 beforeEach(() => {
   setOfflineAuthActor(null); setOfflineAuthActor('student-a');
   vi.clearAllMocks();
@@ -102,7 +108,7 @@ beforeEach(() => {
   mocks.courseId = CSZ_COURSE_ID;
   mocks.mutations.length = 0;
   mocks.from.mockImplementation((table: string) => new SyntheticQuery(table));
-  mocks.rpc.mockResolvedValue({ data: null, error: null });
+  mocks.rpc.mockImplementation(async name => name === 'get_course_learning_snapshot' ? learningSnapshot() : { data: null, error: null });
 });
 afterEach(() => { cleanup(); localStorage.clear(); });
 
@@ -141,7 +147,7 @@ describe('useCourseLearningFacade CSZ reset boundary', () => {
     });
     await act(async () => { await result.current.retryCourseCompletion(); });
     expect(mocks.rpc).toHaveBeenCalledWith('get_postpaid_access_profile', { p_organization_id: 'org-a' });
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'complete_own_course_enrollment')).toBe(active);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toBe(active);
     expect(mocks.rpc.mock.calls.some(([name]) => name === 'count_org_completions_this_month')).toBe(!active);
   });
 
@@ -151,53 +157,38 @@ describe('useCourseLearningFacade CSZ reset boundary', () => {
     clearLoadEvidence();
     mocks.rpc.mockResolvedValue({ data: null, error: { message: 'denied' } });
     await act(async () => { await result.current.retryCourseCompletion(); });
-    expect(mocks.rpc.mock.calls.some(([name]) => name === 'complete_own_course_enrollment')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toBe(false);
     expect(mocks.toast.error).toHaveBeenCalledWith('Не удалось проверить условия завершения курса. Повторите попытку.');
   });
 
-  it.each([CSZ_COURSE_ID, CSZ_34_COURSE_ID])('blocks CSZ learner reset for %s before any from/RPC/DML and preserves loaded state', async courseId => {
+  it.each([CSZ_COURSE_ID, CSZ_34_COURSE_ID])('keeps learner reset organization-owned and preserves CSZ history for %s', async courseId => {
     mocks.courseId = courseId;
-    const { result } = renderHook(() => useCourseLearning());
-    await ready(result);
-    const progressBefore = result.current.lessonProgress;
+    const { result } = renderHook(() => useCourseLearning()); await ready(result);
+    const progressBefore = structuredClone(result.current.lessonProgress);
     clearLoadEvidence();
     await act(async () => { await result.current.resetCourseProgress(); });
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalled();
-    expect(mocks.mutations).toEqual([]);
-    expect(mocks.setVideoWatchProgress).not.toHaveBeenCalled();
-    expect(result.current.lessonProgress).toBe(progressBefore);
+    expect(mocks.rpc).toHaveBeenCalledWith('get_course_learning_snapshot', { p_course_id: courseId });
+    expect(mocks.mutations.filter(row => row.table !== 'course_access_log')).toEqual([]);
+    expect(mocks.from.mock.calls.some(([table]) => table === 'test_attempts')).toBe(false);
+    expect(result.current.lessonProgress).toEqual(progressBefore);
     expect(result.current.completedCount).toBe(2);
-    expect(mocks.toast.info).toHaveBeenCalledExactlyOnceWith('Сброс этого курса выполняет администратор');
+    expect(mocks.toast.info).toHaveBeenCalledExactlyOnceWith('Сброс учебного прогресса выполняет ваша организация. Обновляем текущее состояние.');
     expect(mocks.toast.success).not.toHaveBeenCalled();
   });
 
-  it('preserves the existing reset sequence for a different ID even with the same course title', async () => {
+  it('also preserves historical attempts for a different ID with the same course title', async () => {
     mocks.courseId = OTHER_COURSE_ID;
-    const { result } = renderHook(() => useCourseLearning());
-    await ready(result);
+    const { result } = renderHook(() => useCourseLearning()); await ready(result);
     clearLoadEvidence();
     await act(async () => { await result.current.resetCourseProgress(); });
-    expect(mocks.from.mock.calls).toEqual([['lesson_progress'], ['test_attempts'], ['enrollments']]);
-    expect(mocks.mutations).toEqual([
-      { table: 'lesson_progress', action: 'delete', filters: [
-        { operator: 'eq', column: 'user_id', value: 'student-a' },
-        { operator: 'in', column: 'lesson_id', value: ['lesson-a', 'lesson-b'] },
-      ] },
-      { table: 'test_attempts', action: 'delete', filters: [
-        { operator: 'eq', column: 'user_id', value: 'student-a' },
-        { operator: 'in', column: 'lesson_id', value: ['lesson-a', 'lesson-b'] },
-      ] },
-      { table: 'enrollments', action: 'update', payload: { progress: 0, status: 'active', completed_at: null }, filters: [
-        { operator: 'eq', column: 'user_id', value: 'student-a' },
-        { operator: 'eq', column: 'course_id', value: OTHER_COURSE_ID },
-      ] },
-    ]);
-    expect(mocks.rpc).not.toHaveBeenCalled();
-    expect(result.current.completedCount).toBe(0);
-    expect(mocks.setVideoWatchProgress).toHaveBeenCalledExactlyOnceWith(0);
-    expect(mocks.toast.success).toHaveBeenCalledExactlyOnceWith('Прогресс курса сброшен. Начните прохождение заново!');
-    expect(mocks.toast.info).not.toHaveBeenCalled();
+    expect(mocks.mutations.filter(row => row.table !== 'course_access_log')).toEqual([]);
+    expect(mocks.from.mock.calls.some(([table]) => table === 'test_attempts')).toBe(false);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'reset_course_learning_progress')).toBe(false);
+    expect(mocks.rpc).toHaveBeenCalledWith('get_course_learning_snapshot', { p_course_id: OTHER_COURSE_ID });
+    expect(result.current.completedCount).toBe(2);
+    expect(mocks.setVideoWatchProgress).not.toHaveBeenCalled();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.info).toHaveBeenCalledExactlyOnceWith('Сброс учебного прогресса выполняет ваша организация. Обновляем текущее состояние.');
   });
 
   it.each([CSZ_COURSE_ID, CSZ_34_COURSE_ID, OTHER_COURSE_ID])('keeps admin preview read-only for %s', async courseId => {
@@ -217,18 +208,15 @@ describe('useCourseLearningFacade CSZ reset boundary', () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
   });
 
-  it.each([CSZ_COURSE_ID, CSZ_34_COURSE_ID])('applies CSZ reset guard after the route changes from another course to %s', async courseId => {
+  it.each([CSZ_COURSE_ID, CSZ_34_COURSE_ID])('preserves organization-owned reset after changing route to %s', async courseId => {
     mocks.courseId = OTHER_COURSE_ID;
-    const { result, rerender } = renderHook(() => useCourseLearning());
-    await ready(result);
-    mocks.courseId = courseId;
-    rerender();
-    await ready(result);
+    const { result, rerender } = renderHook(() => useCourseLearning()); await ready(result);
+    mocks.courseId = courseId; rerender(); await ready(result);
     clearLoadEvidence();
     await act(async () => { await result.current.resetCourseProgress(); });
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalled();
-    expect(mocks.mutations).toEqual([]);
-    expect(mocks.toast.info).toHaveBeenCalledExactlyOnceWith('Сброс этого курса выполняет администратор');
-  });
-});
+    expect(mocks.rpc).toHaveBeenCalledWith('get_course_learning_snapshot', { p_course_id: courseId });
+    expect(mocks.mutations.filter(row => row.table !== 'course_access_log')).toEqual([]);
+    expect(mocks.from.mock.calls.some(([table]) => table === 'test_attempts')).toBe(false);
+    expect(result.current.completedCount).toBe(2);
+    expect(mocks.toast.info).toHaveBeenCalledExactlyOnceWith('Сброс учебного прогресса выполняет ваша организация. Обновляем текущее состояние.');
+  });});

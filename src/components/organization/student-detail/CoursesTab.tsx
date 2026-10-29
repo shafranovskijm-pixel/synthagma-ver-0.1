@@ -1,3 +1,4 @@
+import { isLearningProgressEpoch, isLearningProgressReset } from "@/lib/learningProgress";
 import { BookOpen, FileSpreadsheet, CheckCircle, CalendarIcon, Save, Users, Clock, Timer, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import { AddStudentsToGroupsDialog } from "@/components/organization/groups/AddS
 
 interface CoursesTabProps {
   enrollments: {
+    learning_progress_epoch?: string | null;
+    learning_progress_reset_at?: string | null;
     id: string;
     course_id: string;
     course_title: string;
@@ -107,18 +110,26 @@ export function CoursesTab({ enrollments: allEnrollments, h, organizationId, stu
   };
 
   const handleManualComplete = async (enrollmentId: string) => {
+    const observed = enrollments.find(row => row.id === enrollmentId);
+    if (!observed || !isLearningProgressEpoch(observed.learning_progress_epoch)) {
+      toast.error('Обновите данные ученика, чтобы подтвердить текущее прохождение.'); h.onStudentUpdated?.(); return;
+    }
     setCompletingId(enrollmentId);
     try {
-      const { error } = await supabase
-        .rpc("manual_complete_course" as any, {
+      const { data, error } = await supabase
+        .rpc("manual_complete_course_at_epoch" as any, {
           p_enrollment_id: enrollmentId,
           p_organization_id: organizationId,
+          p_expected_epoch: observed.learning_progress_epoch,
         });
       if (error) throw error;
+      const confirmed = data as { enrollmentId?: string; learning_progress_epoch?: string } | null;
+      if (confirmed?.enrollmentId !== enrollmentId || confirmed.learning_progress_epoch !== observed.learning_progress_epoch) throw new Error('Зачёт не подтверждён сервером');
       toast.success("Курс и тесты зачтены организацией");
       h.onStudentUpdated?.();
     } catch (e: any) {
-      toast.error("Ошибка: " + e.message);
+      if (isLearningProgressReset(e)) { toast.error("Учебный прогресс изменён. Обновите данные перед зачётом."); h.onStudentUpdated?.(); }
+      else toast.error("Ошибка: " + e.message);
     } finally {
       setCompletingId(null);
     }

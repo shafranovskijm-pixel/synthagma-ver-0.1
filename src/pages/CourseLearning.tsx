@@ -69,8 +69,22 @@ const CourseLearning = () => {
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest, retryCourseCompletion,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
-    isOfflineMode, offlineCachedAt, isAdminView, courseDocuments = [], materialsError = false, courseFileDeliveryMode, fileEffectiveUserId, fileViewGeneration, fileOrganizationId } = useCourseLearning();
+    isOfflineMode, offlineCachedAt, isAdminView, learningRun, onLearningProgressReset, courseDocuments = [], materialsError = false, courseFileDeliveryMode, fileEffectiveUserId, fileViewGeneration, fileOrganizationId } = useCourseLearning();
 
+  // Async child callbacks retain the view that created them. A reset, access
+  // transition or lesson switch must not relabel that work as the next run.
+  const learningChildKey = JSON.stringify([user?.id, courseId, currentLesson?.id,
+    learningRun?.enrollmentId, learningRun?.epoch, isOfflineMode, isAdminView]);
+  const learningChildMounted = useRef(true);
+  useEffect(() => { learningChildMounted.current = true; return () => { learningChildMounted.current = false; }; }, []);
+  const learningChildRef = useRef({ key: learningChildKey });
+  if (learningChildRef.current.key !== learningChildKey) learningChildRef.current = { key: learningChildKey };
+  const learningChild = learningChildRef.current;
+  const childIsCurrent = () => learningChildMounted.current && learningChildRef.current === learningChild;
+  const completeCurrentChild = (autoAdvance = true) => {
+    if (!childIsCurrent() || isOfflineMode || (!learningRun && !isAdminView)) return;
+    void markLessonComplete(autoAdvance);
+  };
   const homeworkContext = resolveHomeworkContext(courseId, course, currentLesson, user?.id, isAdminView);
 
   const currentFileOrganizationId = fileOrganizationId ?? course?.organization_id ?? null;
@@ -155,13 +169,13 @@ const CourseLearning = () => {
   }, [isMobile, contentRef, currentLesson?.id]);
 
   // Reset native-tracking flag whenever the lesson changes; VideoPlayerInline re-reports
-  useEffect(() => { setHasNativeVideoTracking(false); }, [currentLesson?.id]);
+  useEffect(() => { setHasNativeVideoTracking(false); }, [currentLesson?.id, learningRun?.enrollmentId, learningRun?.epoch]);
 
   useEffect(() => {
-    if (legacyEmbeddedMediaAllowed && currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
-      markLessonComplete(false);
+    if (!isOfflineMode && learningRun?.resetAt === null && legacyEmbeddedMediaAllowed && currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
+      completeCurrentChild(false);
     }
-  }, [currentLesson?.id, legacyEmbeddedMediaAllowed]);
+  }, [currentLesson?.id, legacyEmbeddedMediaAllowed, isOfflineMode, learningRun?.enrollmentId, learningRun?.epoch, learningChild]);
   
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile && !isTestActive && !libraryOpen ? handleSwipeLeft : undefined,
@@ -295,7 +309,7 @@ const CourseLearning = () => {
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg relative">
                   {!legacyEmbeddedMediaAllowed ? <CourseFileHeldNotice /> : isVideoProgressLoading ? <div className="flex items-center justify-center"><SigmaSpinner size="lg" /></div> : currentLesson.content ? (
-                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} onPlayerTypeDetected={(t) => setHasNativeVideoTracking(t === 'native')} />
+                    <VideoPlayerInline key={`${currentLesson.id}-${learningRun?.enrollmentId}-${learningRun?.epoch}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={(position, duration) => { if (childIsCurrent() && learningRun && !isOfflineMode) saveVideoPosition(position, duration); }} onProgressChange={progress => { if (childIsCurrent()) setVideoWatchProgress(progress); }} onFinishLesson={() => completeCurrentChild()} onVideoComplete={async () => { if (childIsCurrent() && !isLessonCompleted(currentLesson.id)) completeCurrentChild(); }} onPlayerTypeDetected={(t) => { if (childIsCurrent()) setHasNativeVideoTracking(t === 'native'); }} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                   {(course as any)?.landing_content?.video_watermark && user?.email && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
@@ -368,7 +382,7 @@ const CourseLearning = () => {
                     {canRenderPlatformHomeworkHtml(homeworkTaskScope, homeworkTaskProof, currentLesson.content ?? null) && <HomeworkTaskDescription content={currentLesson.content ?? null} scope={homeworkTaskScope} proof={homeworkTaskProof} role="document" aria-label="Условия задания" className="text-sm whitespace-pre-wrap" />}
                   </>
                 ) : homeworkContext ? (
-                  <HomeworkSubmission {...homeworkContext} taskScope={homeworkTaskScope} taskProof={homeworkTaskProof} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => markLessonComplete(false)} />
+                  <HomeworkSubmission {...homeworkContext} learningRun={learningRun} onLearningProgressReset={onLearningProgressReset} readOnly={!learningRun || isOfflineMode} taskScope={homeworkTaskScope} taskProof={homeworkTaskProof} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => completeCurrentChild(false)} />
                 ) : (
                   <p role="alert">Контекст курса и урока ещё не подтверждён. Отправка задания недоступна.</p>
                 )}
@@ -379,7 +393,7 @@ const CourseLearning = () => {
             {currentLesson?.type === 'ai_avatar' && (
               !legacyEmbeddedMediaAllowed ? <CourseFileHeldNotice /> : Capacitor.isNativePlatform()
                 ? <NativeWebMaterial label="Занятие с ИИ-преподавателем" />
-                : <LessonAIAvatar lesson={currentLesson as any} onComplete={() => markLessonComplete(false)} isMobile={!!isMobile} />
+                : <LessonAIAvatar key={`${currentLesson.id}-${learningRun?.enrollmentId}-${learningRun?.epoch}`} lesson={currentLesson as any} onComplete={() => completeCurrentChild(false)} isMobile={!!isMobile} />
             )}
             {currentLesson?.type === 'test' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">

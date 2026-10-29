@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { HOMEWORK_TEXT_LIMIT, homeworkContextKey, isReportForContext, type PreparedHomeworkReport } from "@/lib/homeworkReport";
 import { HomeworkTaskDescription, type HomeworkTaskScope, type VerifiedHomeworkTaskProof } from "./HomeworkTaskDescription";
+import { isLearningProgressEpoch, normalizeLearningProgressEpoch } from "@/lib/learningProgress";
 
 interface HomeworkSubmissionProps {
   organizationId: string;
@@ -24,6 +25,8 @@ interface HomeworkSubmissionProps {
   readOnly?: boolean;
   allowAttachments?: boolean;
   preparedReport?: PreparedHomeworkReport;
+  learningRun?: { enrollmentId: string; epoch: string; resetAt: string | null } | null;
+  onLearningProgressReset?: (error: unknown) => Promise<boolean>;
 }
 
 interface Submission {
@@ -39,6 +42,7 @@ interface Submission {
   reviewer_comment: string | null;
   submitted_at: string;
   reviewed_at: string | null;
+  learning_progress_epoch: string;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
@@ -49,10 +53,13 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 
 export function HomeworkSubmission(props: HomeworkSubmissionProps) {
   // Remount before rendering another context: no previous answer, status or late callback is reused.
-  return <ScopedHomeworkSubmission key={`${homeworkContextKey(props)}:${!!props.readOnly}`} {...props} />;
+  const run = props.learningRun;
+  const runReady = !!run?.enrollmentId && isLearningProgressEpoch(run.epoch)
+    && (run.epoch === '0' || (!!run.resetAt && Number.isFinite(Date.parse(run.resetAt))));
+  return <ScopedHomeworkSubmission key={JSON.stringify([homeworkContextKey(props), run?.enrollmentId, run?.epoch, run?.resetAt, !!props.readOnly, runReady])} {...props} readOnly={!!props.readOnly || !runReady} />;
 }
 
-function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, taskDescription, taskScope, taskProof, onComplete, readOnly = false, allowAttachments = true, preparedReport }: HomeworkSubmissionProps) {
+function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, taskDescription, taskScope, taskProof, onComplete, readOnly = false, allowAttachments = true, preparedReport, learningRun, onLearningProgressReset }: HomeworkSubmissionProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<{ url: string; name: string; type: string }[]>([]);
@@ -75,16 +82,22 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
     try {
       if (!organizationId || !courseId || !lessonId || !userId) throw new Error('Missing context');
       const { data, error } = await supabase
-        .from("homework_submissions")
-        .select("id, organization_id, course_id, lesson_id, student_id, content, attachments, status, score, reviewer_comment, submitted_at, reviewed_at")
-        .eq("organization_id", organizationId)
-        .eq("course_id", courseId)
-        .eq("lesson_id", lessonId)
-        .eq("student_id", userId)
-        .order("submitted_at", { ascending: false });
+        .rpc("get_own_homework_history", { p_lesson_id: lessonId });
       if (!alive.current || sequence !== loadSequence.current) return;
-      if (error || !Array.isArray(data) || data.some(row => row.organization_id !== organizationId || row.course_id !== courseId || row.lesson_id !== lessonId || row.student_id !== userId)) throw new Error('History not confirmed');
-      setSubmissions(data as Submission[]);
+      if (error) {
+        if (await onLearningProgressReset?.(error)) return;
+        throw error;
+      }
+      const result = data as unknown as { learning_progress_epoch?: unknown; submissions?: unknown } | null;
+      if (!result || !isLearningProgressEpoch(result.learning_progress_epoch)) throw new Error('History not confirmed');
+      if (learningRun && result.learning_progress_epoch !== learningRun.epoch) {
+        await onLearningProgressReset?.(new Error('LEARNING_PROGRESS_RESET'));
+        throw new Error('Learning run changed');
+      }
+      if (!alive.current || sequence !== loadSequence.current) return;
+      if (!Array.isArray(result.submissions) || result.submissions.some(row => !row || !isLearningProgressEpoch(row.learning_progress_epoch)
+        || row.organization_id !== organizationId || row.course_id !== courseId || row.lesson_id !== lessonId || row.student_id !== userId)) throw new Error('History not confirmed');
+      setSubmissions(result.submissions as Submission[]);
     } catch {
       if (alive.current && sequence === loadSequence.current) {
         setSubmissions([]);
@@ -93,7 +106,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
     } finally {
       if (alive.current && sequence === loadSequence.current) setLoading(false);
     }
-  }, [organizationId, courseId, lessonId, userId]);
+  }, [organizationId, courseId, lessonId, userId, learningRun?.epoch, onLearningProgressReset]);
 
   useEffect(() => {
     alive.current = true;
@@ -101,7 +114,12 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
     return () => { alive.current = false; };
   }, [loadSubmissions]);
 
-  const latest = submissions[0];
+  // Historical answers and reviews stay visible, but cannot complete a new run.
+  // The server-owned submission generation is decisive: grading an old answer
+  // after reset does not move it into the current run.
+  const currentSubmissions = learningRun ? submissions.filter(sub => sub.learning_progress_epoch === learningRun.epoch) : [];
+  const latest = currentSubmissions[0];
+  const history = submissions.filter(sub => sub.id !== latest?.id);
   const canSubmit = !readOnly && !loading && !loadError && (!latest || latest.status === "revision" || latest.status === "rejected");
 
   // Auto-complete lesson when approved
@@ -131,7 +149,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
   };
 
   const handleSubmit = async () => {
-    if (submitting.current || !canSubmit || uploading || content.length > HOMEWORK_TEXT_LIMIT || (!content.trim() && (!allowAttachments || attachments.length === 0))) return;
+    if (!learningRun || submitting.current || !canSubmit || uploading || content.length > HOMEWORK_TEXT_LIMIT || (!content.trim() && (!allowAttachments || attachments.length === 0))) return;
     submitting.current = true;
     setSending(true);
     try {
@@ -147,11 +165,18 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
       student_id: userId,
       course_id: courseId,
       organization_id: organizationId,
+      learning_progress_epoch: learningRun.epoch,
       content: content.trim(),
       attachments: allowAttachments ? attachments : [],
-      status: "pending" }).select("id, organization_id, course_id, lesson_id, student_id, status").single();
+      status: "pending" }).select("id, organization_id, course_id, lesson_id, student_id, status, learning_progress_epoch").single();
       if (!alive.current) return;
-      if (error || !saved?.id || saved.organization_id !== organizationId || saved.course_id !== courseId || saved.lesson_id !== lessonId || saved.student_id !== userId || saved.status !== 'pending') throw new Error('Save not confirmed');
+      if (error) {
+        if (await onLearningProgressReset?.(error)) return;
+        throw error;
+      }
+      if (!alive.current) return;
+      if (!saved?.id || saved.organization_id !== organizationId || saved.course_id !== courseId || saved.lesson_id !== lessonId || saved.student_id !== userId || saved.status !== 'pending'
+        || normalizeLearningProgressEpoch(saved.learning_progress_epoch) !== learningRun.epoch) throw new Error('Save not confirmed');
       toast.success("Ответ сохранён и ждёт проверки преподавателя. Это ещё не зачёт.");
       setContent("");
       setAttachments([]);
@@ -279,13 +304,14 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
       )}
 
       {/* History */}
-      {submissions.length > 1 && (
+      {history.length > 0 && (
         <details className="group">
           <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-            Предыдущие ответы ({submissions.length - 1})
+            Предыдущие ответы ({history.length})
           </summary>
           <div className="mt-3 space-y-3">
-            {submissions.slice(1).map(sub => (
+            {learningRun?.resetAt && <p className="text-sm text-muted-foreground">Ответы до сброса сохранены в истории и не засчитываются в текущее прохождение.</p>}
+            {history.map(sub => (
               <div key={sub.id} className="border border-border rounded-xl p-4 text-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <Badge variant="outline" className={statusConfig[sub.status]?.color}>
@@ -294,8 +320,10 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
                   <span className="text-xs text-muted-foreground">
                     {new Date(sub.submitted_at).toLocaleDateString("ru-RU")}
                   </span>
+                  {sub.score != null && <Badge variant="outline">{sub.score} баллов</Badge>}
                 </div>
                 {sub.content && <p className="text-muted-foreground line-clamp-2">{sub.content}</p>}
+                {sub.reviewer_comment && <p className="mt-2"><span className="font-medium">Комментарий преподавателя: </span>{sub.reviewer_comment}</p>}
               </div>
             ))}
           </div>

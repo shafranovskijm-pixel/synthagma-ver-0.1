@@ -123,6 +123,8 @@ export interface StudentConsent {
 }
 
 export interface StudentEnrollment {
+  learning_progress_epoch?: string | null;
+  learning_progress_reset_at?: string | null;
   id: string;
   course_id: string;
   course_title: string;

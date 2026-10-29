@@ -54,6 +54,12 @@ beforeEach(() => {
   mocks.user = { id: 'a' }; mocks.authLoading = false; mocks.type = 'text'; mocks.content = 'Legacy lesson text';
   mocks.profileReply = null;
   mocks.from.mockImplementation(table => new Query(table));
+  mocks.rpc.mockImplementation(async (name: string) => {
+    if (name !== 'get_course_learning_snapshot') return { data: null, error: null };
+    return { data: { enrollment: { id: 'enrollment', user_id: mocks.user.id, course_id: 'course', status: 'active',
+      progress: 0, expires_at: null, learning_progress_epoch: '0' }, lesson_progress: [],
+      learning_progress_epoch: '0', learning_progress_reset_at: null }, error: null };
+  });
 });
 afterEach(() => { cleanup(); setOfflineAuthActor(null); });
 const lastInput = (fn: typeof mocks.tts): { contentBlocks: unknown[] } => fn.mock.calls[fn.mock.calls.length - 1][0];

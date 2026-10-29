@@ -1,3 +1,4 @@
+import { acceptDashboardProgressEpochs, isDashboardCachedProgressCurrent, normalizeLearningProgressEpoch } from "@/lib/learningProgress";
 import { captureIdentificationScope, readIdentificationStates } from '@/lib/identification/client';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +19,8 @@ import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 
 export interface StudentCourse {
   id: string;
+  learningEnrollmentId?: string;
+  learningProgressEpoch?: string | null;
   title: string;
   description: string | null;
   duration: string | null;
@@ -171,6 +174,8 @@ export function useStudentDashboard() {
   const identityKey = JSON.stringify([user?.id, effectiveUserId, mode, !!authLoading, captureOfflineActor(user?.id), !!snapshotAccessDenied, !!snapshotUnconfirmed]);
   const identityRef = useRef({ key: identityKey, generation: 0 });
   if (identityRef.current.key !== identityKey) identityRef.current = { key: identityKey, generation: identityRef.current.generation + 1 };
+  const progressEpochsRef = useRef({ identityKey, values: new Map<string, string>() });
+  if (progressEpochsRef.current.identityKey !== identityKey) progressEpochsRef.current = { identityKey, values: new Map() };
   const requestRef = useRef(0);
   const loadControllerRef = useRef<AbortController|null>(null);
   const [loadedGeneration, setLoadedGeneration] = useState(-1);
@@ -190,6 +195,11 @@ export function useStudentDashboard() {
   // обновит каталог и прочие детали.
   useEffect(() => {
     if (!snapshot || authLoading || !user || captureOfflineActor(user.id) === null || snapshot.profile?.user_id !== effectiveUserId) return;
+    const epochs = acceptDashboardProgressEpochs(snapshot.enrollments, progressEpochsRef.current.values);
+    if (!epochs) return;
+    const resetObserved = snapshot.enrollments.some(row => progressEpochsRef.current.values.has(row.id) && progressEpochsRef.current.values.get(row.id) !== row.learning_progress_epoch);
+    if (resetObserved && user && effectiveUserId) forgetOfflineScope(user.id, effectiveUserId, mode, "dashboard");
+    progressEpochsRef.current.values = epochs;
     if (snapshot.profile) {
       setProfile(prev => ({
         full_name: snapshot.profile.full_name ?? prev?.full_name ?? null,
@@ -226,7 +236,7 @@ export function useStudentDashboard() {
     if (snapshot.enrollments && snapshot.enrollments.length >= 0) {
       const visibleEnrollments = snapshot.enrollments.filter(e => e.status !== "cancelled");
       const mapped: StudentCourse[] = visibleEnrollments.map((e) => ({
-        id: e.course_id,
+        id: e.course_id, learningEnrollmentId: e.id, learningProgressEpoch: e.learning_progress_epoch,
         title: e.title,
         description: e.description,
         duration: e.duration,
@@ -342,7 +352,7 @@ export function useStudentDashboard() {
       const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
         boundedQuery(supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid)).maybeSingle(),
         boundedQuery(supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1)).maybeSingle(),
-        boundedQuery(supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid).or("status.is.null,status.neq.cancelled")),
+        boundedQuery(supabase.from("enrollments").select("id, progress, status, time_spent, course_id, learning_progress_epoch, learning_progress_reset_at, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid).or("status.is.null,status.neq.cancelled")),
       ]);
       if (!current()) return;
       if (profileRes.error) throw profileRes.error;
@@ -398,6 +408,14 @@ export function useStudentDashboard() {
       let cachedDocumentsProgress: DocumentsProgress = { completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES };
 
       const enrollments = enrollmentsRes.data?.filter(e => e.status !== "cancelled");
+      const progressRows = (enrollments ?? []).map(row => ({ id: row.id,
+        learning_progress_epoch: typeof row.learning_progress_epoch === "number" && Number.isSafeInteger(row.learning_progress_epoch) && row.learning_progress_epoch >= 0
+          ? String(row.learning_progress_epoch) : row.learning_progress_epoch }));
+      const acceptProgress = () => {
+        const epochs = acceptDashboardProgressEpochs(progressRows, progressEpochsRef.current.values);
+        if (!epochs) return false;
+        progressEpochsRef.current.values = epochs; return true;
+      };
       if (enrollments) {
         // Collect all course IDs first for batch queries (eliminates N+1 problem)
         const validEnrollments = enrollments.filter(e => e.courses);
@@ -432,7 +450,7 @@ export function useStudentDashboard() {
           const completedLessons = courseLessonIds.filter(id => completedLessonIds.has(id)).length;
           cachedCompletedLessonsTotal += completedLessons;
           cachedCoursesData.push({
-            id: course.id, title: course.title, description: course.description, duration: course.duration,
+            id: course.id, learningEnrollmentId: enrollment.id, learningProgressEpoch: normalizeLearningProgressEpoch(enrollment.learning_progress_epoch), title: course.title, description: course.description, duration: course.duration,
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false,
@@ -457,7 +475,7 @@ export function useStudentDashboard() {
           const { enrollment, shell } = result.value;
           cachedTotalTime += enrollment.time_spent || 0;
           cachedCoursesData.push({
-            id: shell.courseId,
+            id: shell.courseId, learningEnrollmentId: enrollment.id, learningProgressEpoch: normalizeLearningProgressEpoch(enrollment.learning_progress_epoch),
             title: shell.title,
             description: null,
             duration: null,
@@ -469,6 +487,7 @@ export function useStudentDashboard() {
             cover_image_url: null,
           });
         }
+        if (!current() || !acceptProgress()) return;
         setCourses(cachedCoursesData);
         setTotalTimeSpent(cachedTotalTime);
         setTotalCompletedLessons(cachedCompletedLessonsTotal);
@@ -552,7 +571,7 @@ export function useStudentDashboard() {
       }
 
       // Cache dashboard data for offline fallback using local variables
-      if (uid && effectiveOrgId && current()) {
+      if (uid && effectiveOrgId && current() && acceptProgress()) {
         const scope = rememberOfflineScope({ actorId, effectiveUserId: uid, mode, organizationId: effectiveOrgId }, 'dashboard', revision);
         if (scope) cacheDashboardData(scope, {
           courses: cachedCoursesData,
@@ -577,7 +596,7 @@ export function useStudentDashboard() {
         const scope = mayUseOfflineFallback(error) ? getOfflineScope(actorId, uid, mode, 'dashboard') : null;
         const cached = scope ? await getCachedDashboardData(scope) : null;
         if (!current()) return;
-        if (cached && isOfflineScopeCurrent(scope)) {
+        if (cached && isOfflineScopeCurrent(scope) && isDashboardCachedProgressCurrent(cached.courses ?? [], progressEpochsRef.current.values)) {
           setCourses(cached.courses || []);
           setCatalogCourses([]); setCategories([]);
           setProfile(cached.profile ?? null);
@@ -631,6 +650,20 @@ export function useStudentDashboard() {
     const loaded = await loadData(); if (current() && loaded) toast.success("Данные обновлены");
   }, [identityKey]);
   const { ref: pullToRefreshRef, pullDistance, isRefreshing, canRefresh } = usePullToRefresh<HTMLElement>({ onRefresh: handleRefresh, threshold: 80, maxPull: 120 });
+
+  useEffect(() => {
+    if (!user || authLoading) return;
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      // Cancel any older heavy load before asking either authoritative source.
+      requestRef.current++; loadControllerRef.current?.abort();
+      void refreshSnapshot?.(); void loadData();
+    };
+    window.addEventListener("focus", refresh); window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh); };
+  }, [identityKey]);
 
   const totalProgress = courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length) : 0;
   const nameParts = profile?.full_name?.split(" ") || [];

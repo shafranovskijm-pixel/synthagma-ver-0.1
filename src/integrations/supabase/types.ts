@@ -5336,6 +5336,8 @@ export type Database = {
           document_facts_revision: number
           expires_at: string | null
           id: string
+          learning_progress_epoch: number
+          learning_progress_reset_at: string | null
           progress: number
           started_at: string
           status: string
@@ -5349,6 +5351,8 @@ export type Database = {
           document_facts_revision?: number
           expires_at?: string | null
           id?: string
+          learning_progress_epoch?: number
+          learning_progress_reset_at?: string | null
           progress?: number
           started_at?: string
           status?: string
@@ -5362,6 +5366,8 @@ export type Database = {
           document_facts_revision?: number
           expires_at?: string | null
           id?: string
+          learning_progress_epoch?: number
+          learning_progress_reset_at?: string | null
           progress?: number
           started_at?: string
           status?: string
@@ -6101,6 +6107,7 @@ export type Database = {
       }
       homework_submissions: {
         Row: {
+          learning_progress_epoch: number
           attachments: Json | null
           content: string | null
           course_id: string
@@ -6117,6 +6124,7 @@ export type Database = {
           submitted_at: string
         }
         Insert: {
+          learning_progress_epoch?: number | string
           attachments?: Json | null
           content?: string | null
           course_id: string
@@ -6133,6 +6141,7 @@ export type Database = {
           submitted_at?: string
         }
         Update: {
+          learning_progress_epoch?: number
           attachments?: Json | null
           content?: string | null
           course_id?: string
@@ -23203,6 +23212,36 @@ export type Database = {
       }
     }
     Functions: {
+      get_own_homework_history: { Args: { p_lesson_id: string }; Returns: Json }
+      get_course_learning_snapshot: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      save_own_lesson_progress: {
+        Args: { p_enrollment_id: string; p_lesson_id: string; p_expected_epoch: string; p_completed?: boolean | null; p_video_position?: number | null; p_video_duration?: number | null; p_seconds?: number | null }
+        Returns: Json
+      }
+      complete_own_course_enrollment_at_epoch: {
+        Args: { p_enrollment_id: string; p_expected_epoch: string }
+        Returns: Json
+      }
+      manual_complete_course_at_epoch: {
+        Args: { p_enrollment_id: string; p_organization_id: string; p_expected_epoch: string }
+        Returns: Json
+      }
+      get_student_test_state_at_epoch: {
+        Args: { p_lesson_id: string; p_expected_epoch: string }
+        Returns: Json
+      }
+      start_test_attempt_at_epoch: {
+        Args: { p_lesson_id: string; p_request_id: string; p_expected_epoch: string }
+        Returns: Json
+      }
+      submit_test_attempt_at_epoch: {
+        Args: { p_attempt_id: string; p_answers: Json; p_expected_epoch: string }
+        Returns: Json
+      }
+
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string

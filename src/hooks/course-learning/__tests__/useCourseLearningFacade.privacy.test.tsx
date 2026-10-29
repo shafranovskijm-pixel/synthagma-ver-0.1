@@ -45,6 +45,13 @@ class Query {
 beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear(); setOfflineAuthActor(null); setOfflineAuthActor('a'); mocks.user = { id: 'a' }; mocks.authLoading = false;
   mocks.courseResponses = []; mocks.fail = false; mocks.status = 'active'; mocks.from.mockImplementation(table => new Query(table));
+  mocks.rpc.mockImplementation(async (name: string) => {
+    if (mocks.fail) throw new TypeError('Failed to fetch');
+    if (name !== 'get_course_learning_snapshot') return { data: null, error: null };
+    return { data: { enrollment: { id: 'enrollment', user_id: mocks.user?.id, course_id: 'course', status: mocks.status,
+      progress: 0, expires_at: null, learning_progress_epoch: '0' }, lesson_progress: [],
+      learning_progress_epoch: '0', learning_progress_reset_at: null }, error: null };
+  });
   vi.stubGlobal('indexedDB', offlineMemoryStorage().factory);
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); setOfflineAuthActor(null); });

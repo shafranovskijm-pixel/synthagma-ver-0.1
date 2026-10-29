@@ -72,7 +72,7 @@ vi.mock('@/components/student/AchievementsPanel',()=>({AchievementsPanel:()=>nul
 const cacheRows=()=>storage.rows('sigma-course-cache','dashboard_scoped_v2');
 const onlinePage=async()=>{
   const course={id:'known-course',title:'ONLINE PRIVATE A',is_published:true};
-  mocks.enrollments=[{id:'enrollment',course_id:course.id,status:'active',courses:course,time_spent:60}];
+  mocks.enrollments=[{id:'enrollment',course_id:course.id,status:'active',courses:course,time_spent:60,learning_progress_epoch:0,learning_progress_reset_at:null}];
   mocks.catalog=[course,{id:'public-catalog',title:'Public offer',is_published:true}];
   const view=render(<StudentDashboard/>,{wrapper});
   await waitFor(()=>expect(screen.getByText('ONLINE PRIVATE A')).toBeInTheDocument());

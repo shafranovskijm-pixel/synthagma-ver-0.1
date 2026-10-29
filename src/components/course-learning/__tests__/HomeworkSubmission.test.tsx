@@ -9,6 +9,8 @@ import { HOMEWORK_TEXT_LIMIT, isReportForContext, resolveHomeworkContext } from 
 const mocks = vi.hoisted(() => ({
   history: [] as any[], course: [] as any[], lesson: [] as any[], saved: [] as any[],
   historyFilters: [] as Record<string, string>[], lessonFilters: [] as Record<string, string>[], inserts: [] as any[],
+  historyEpoch: '0', historyRequests: [] as { name: string; args: unknown }[],
+  aiCallbacks: [] as (() => void)[], videoViews: [] as any[],
   success: vi.fn(), error: vi.fn(), upload: vi.fn(),
 }));
 const pageScenario = vi.hoisted(() => ({ state: {} as Record<string, unknown> }));
@@ -16,14 +18,35 @@ vi.mock('@/hooks/useCourseLearning', () => ({
   useCourseLearning: () => pageScenario.state,
   getOptionText: (value: unknown) => String(value),
 }));
+// Keep the real task-proof hook: these ordinary text fixtures have no verified
+// platform HTML proof. Supply its authenticated actor without an app provider.
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({
+  user: { id: 'student-a' }, session: { user: { id: 'student-a' }, access_token: 'synthetic-test-session' },
+  loading: false, authError: null,
+}) }));
 vi.mock('@/components/course-learning/CourseSidebar', () => ({ CourseSidebarContent: () => null }));
 vi.mock('@/components/course-learning/AiChatPanel', () => ({ AiChatPanel: () => null }));
+vi.mock('@/components/course-learning/LessonAIAvatar', () => ({ LessonAIAvatar: (props: { onComplete: () => void }) => {
+  mocks.aiCallbacks.push(props.onComplete); return <div>Синтетический ИИ-урок</div>;
+} }));
+vi.mock('@/components/course-learning/VideoPlayerInline', () => ({ VideoPlayerInline: (props: any) => {
+  mocks.videoViews.push(props); return <div>Синтетический видеоплеер</div>;
+} }));
 vi.mock('@/components/student/TTSSettingsDialog', () => ({
   TTSSettingsDialog: () => null, SALUTE_VOICES: [], saveTTSSettings: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error } }));
 vi.mock('@/utils/courseBuilderHelpers', () => ({ uploadToStorage: mocks.upload }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
+  rpc: (name: string, args: unknown) => {
+    if (name !== 'get_own_homework_history') return Promise.resolve({ data: null, error: null });
+    mocks.historyRequests.push({ name, args });
+    const epoch = mocks.historyEpoch;
+    return Promise.resolve(mocks.history.shift() ?? { data: [], error: null }).then(result => ({ ...result,
+      data: Array.isArray(result.data) ? { learning_progress_epoch: epoch,
+        learning_progress_reset_at: epoch === '0' ? null : '2026-10-29T10:00:00Z', submissions: result.data } : result.data,
+    }));
+  },
   from: (table: string) => {
     const filters: Record<string, string> = {};
     let inserted = false;
@@ -48,12 +71,15 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
 } }));
 
 const context = { organizationId: 'org-a', courseId: 'course-a', lessonId: 'lesson-a', userId: 'student-a' };
-const props = { ...context, taskDescription: 'Учебное задание', isMobile: false, onComplete: vi.fn(), allowAttachments: false };
+const legacyRun = { enrollmentId: 'enrollment-a', epoch: '0', resetAt: null };
+const resetRun = { enrollmentId: 'enrollment-a', epoch: '1', resetAt: '2026-10-29T10:00:00Z' };
+const props = { ...context, taskDescription: 'Учебное задание', isMobile: false, onComplete: vi.fn(), allowAttachments: false, learningRun: legacyRun };
 const report = { ...context, revision: 1, text: 'Мой условный учебный отчёт' };
 const row = (status = 'pending') => ({
   id: 'submission-a', organization_id: context.organizationId, course_id: context.courseId,
   lesson_id: context.lessonId, student_id: context.userId, status, content: 'Ответ', attachments: [],
   score: null, reviewer_comment: null, submitted_at: '2026-09-08T00:00:00Z', reviewed_at: null,
+  learning_progress_epoch: '0',
 });
 function deferred() {
   let resolve!: (value: any) => void;
@@ -67,14 +93,116 @@ afterEach(cleanup);
 beforeEach(() => {
   mocks.history.length = 0; mocks.course.length = 0; mocks.lesson.length = 0; mocks.saved.length = 0;
   mocks.historyFilters.length = 0; mocks.lessonFilters.length = 0; mocks.inserts.length = 0;
+  mocks.historyRequests.length = 0; mocks.historyEpoch = '0';
+  mocks.aiCallbacks.length = 0; mocks.videoViews.length = 0;
   vi.clearAllMocks();
 });
 
 describe('HomeworkSubmission: real component with isolated database doubles', () => {
-  it('reads history with all four context filters', async () => {
+  it('keeps an old approved answer in history without completing or blocking a new run', async () => {
+    mocks.historyEpoch = '1';
+    mocks.history.push({ data: [row('approved')], error: null });
+    render(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await screen.findByLabelText('Ответ на практическое задание');
+    expect(props.onComplete).not.toHaveBeenCalled();
+    expect(screen.getByText('Предыдущие ответы (1)')).toBeInTheDocument();
+    expect(screen.getByText('Выполнено')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Отправить$/ })).toBeInTheDocument();
+  });
+
+  it('does not treat a pre-reset answer reviewed after reset as current evidence', async () => {
+    mocks.historyEpoch = '1';
+    mocks.history.push({ data: [{ ...row('approved'), reviewed_at: '2026-10-29T11:00:00Z' }], error: null });
+    render(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await screen.findByLabelText('Ответ на практическое задание');
+    expect(props.onComplete).not.toHaveBeenCalled();
+    expect(screen.getByText('Предыдущие ответы (1)')).toBeInTheDocument();
+  });
+
+  it('does not promote an old-generation answer even if its timestamp is in the future', async () => {
+    mocks.historyEpoch = '1';
+    mocks.history.push({ data: [{ ...row('approved'), submitted_at: '2030-01-01T00:00:00Z' }], error: null });
+    render(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await screen.findByLabelText('Ответ на практическое задание');
+    expect(props.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('captures the current generation in a new distinct submission and preserves the old approval', async () => {
+    mocks.historyEpoch = '1';
+    const old = { ...row('approved'), reviewer_comment: 'Старая проверка', score: 80 };
+    const current = { ...row(), id: 'new-answer', submitted_at: '2026-10-29T10:01:00Z', learning_progress_epoch: '1' };
+    mocks.history.push({ data: [old], error: null }, { data: [current, old], error: null });
+    mocks.saved.push({ data: current, error: null });
+    render(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await answer('Новый ответ после сброса');
+    fireEvent.click(screen.getByRole('button', { name: /^Отправить$/ }));
+    await screen.findByText('Ждёт проверки');
+    expect(mocks.inserts[0]).toMatchObject({ learning_progress_epoch: '1', content: 'Новый ответ после сброса', status: 'pending' });
+    expect(screen.getByText('Старая проверка')).toBeInTheDocument();
+    expect(screen.getByText('80 баллов')).toBeInTheDocument();
+    expect(props.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('invalidates a stale run when the authoritative history reports another generation', async () => {
+    const refresh = vi.fn().mockResolvedValue(false);
+    render(<HomeworkSubmission {...props} learningRun={resetRun} onLearningProgressReset={refresh} />);
+    await screen.findByRole('alert');
+    expect(refresh).toHaveBeenCalledWith(expect.objectContaining({ message: 'LEARNING_PROGRESS_RESET' }));
+    expect(screen.queryByRole('button', { name: /^Отправить$/ })).toBeNull();
+    expect(props.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('completes a post-reset approved answer while retaining older answers', async () => {
+    mocks.historyEpoch = '1';
+    mocks.history.push({ data: [
+      { ...row('approved'), id: 'current-answer', submitted_at: '2026-10-29T10:01:00Z', learning_progress_epoch: '1' },
+      row('approved'),
+    ], error: null });
+    render(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await waitFor(() => expect(props.onComplete).toHaveBeenCalledOnce());
+    expect(screen.getByText('Предыдущие ответы (1)')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Отправить$/ })).toBeNull();
+  });
+
+  it('ignores a late approved history from the previous epoch of the same enrollment', async () => {
+    const old = deferred(); mocks.history.push(old.promise);
+    const view = render(<HomeworkSubmission {...props} />);
+    mocks.historyEpoch = '1';
+    view.rerender(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await screen.findByLabelText('Ответ на практическое задание');
+    await act(async () => old.resolve({ data: [row('approved')], error: null }));
+    expect(props.onComplete).not.toHaveBeenCalled();
+    expect(screen.queryByText('Выполнено')).toBeNull();
+  });
+
+  it('does not send an old form after its pre-insert check finishes in a new generation', async () => {
+    const gate = deferred(); mocks.course.push(gate.promise);
+    const view = render(<HomeworkSubmission {...props} />);
+    await answer('Старый ответ до сброса');
+    fireEvent.click(screen.getByRole('button', { name: /^Отправить$/ }));
+    mocks.historyEpoch = '1';
+    view.rerender(<HomeworkSubmission {...props} learningRun={resetRun} />);
+    await screen.findByLabelText('Ответ на практическое задание');
+    await act(async () => gate.resolve({ data: { organization_id: 'org-a' }, error: null }));
+    expect(mocks.inserts).toHaveLength(0);
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Ответ на практическое задание')).toHaveValue('');
+  });
+
+  it.each([null, { ...resetRun, resetAt: null }])('fails closed without an authoritative run cutoff: %s', async learningRun => {
+    mocks.historyEpoch = learningRun?.epoch ?? '0';
+    mocks.history.push({ data: [row('approved')], error: null });
+    render(<HomeworkSubmission {...props} learningRun={learningRun} />);
+    await screen.findByText('Режим просмотра: отправка, загрузка файлов и завершение урока недоступны.');
+    expect(props.onComplete).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /^Отправить$/ })).toBeNull();
+    expect(mocks.inserts).toHaveLength(0);
+  });
+
+  it('reads own history through the permissioned lesson RPC', async () => {
     render(<HomeworkSubmission {...props} />);
     await screen.findByLabelText('Ответ на практическое задание');
-    expect(mocks.historyFilters).toEqual([{ organization_id: 'org-a', course_id: 'course-a', lesson_id: 'lesson-a', student_id: 'student-a' }]);
+    expect(mocks.historyRequests).toEqual([{ name: 'get_own_homework_history', args: { p_lesson_id: 'lesson-a' } }]);
   });
 
   it.each(['userId', 'lessonId', 'courseId', 'organizationId'] as const)('resets draft on %s change', async key => {
@@ -353,7 +481,7 @@ describe('CourseLearning text-homework integration and existing test controls', 
       course: { id: courseId, organization_id: context.organizationId, title: 'Тестовый курс', landing_content: null },
       lessons: [lesson], currentLesson: lesson, currentLessonIndex: 0,
       lessonProgress: [], lessonAttachments: [], loading: false, sidebarOpen: false,
-      completedCount: 0, progressPercent: 0, isOfflineMode: false, isAdminView: false,
+      completedCount: 0, progressPercent: 0, isOfflineMode: false, isAdminView: false, learningRun: legacyRun,
       isLessonAccessible: () => true, isLessonCompleted: () => false,
       markLessonComplete: vi.fn(), goToNextLesson: vi.fn(), goToPrevLesson: vi.fn(),
       testQuestions: [], answers: {}, testScore: null, testPassingScore: 80,
@@ -370,6 +498,51 @@ describe('CourseLearning text-homework integration and existing test controls', 
       <Routes><Route path="/learn/:courseId" element={<CourseLearning />} /></Routes>
     </MemoryRouter>,
   );
+
+  const rerenderPage = (view: ReturnType<typeof render>, courseId = context.courseId) => view.rerender(
+    <MemoryRouter initialEntries={[`/learn/${courseId}`]}>
+      <Routes><Route path="/learn/:courseId" element={<CourseLearning />} /></Routes>
+    </MemoryRouter>,
+  );
+
+  it('does not complete from an old AI child after reset or an interrupted run association', () => {
+    preparePage();
+    const lesson = { id: 'ai-lesson', course_id: context.courseId, type: 'ai_avatar', title: 'ИИ-урок', content: '' };
+    pageScenario.state.currentLesson = lesson; pageScenario.state.lessons = [lesson];
+    pageScenario.state.courseFileDeliveryMode = { state: 'legacy', context: { mode: 'legacy' } };
+    const view = renderPage(); const old = mocks.aiCallbacks[mocks.aiCallbacks.length - 1]!;
+    pageScenario.state.learningRun = resetRun; rerenderPage(view);
+    const current = mocks.aiCallbacks[mocks.aiCallbacks.length - 1]!;
+    act(() => old());
+    expect(pageScenario.state.markLessonComplete).not.toHaveBeenCalled();
+    act(() => current());
+    expect(pageScenario.state.markLessonComplete).toHaveBeenCalledExactlyOnceWith(false);
+    pageScenario.state.learningRun = null; rerenderPage(view);
+    pageScenario.state.learningRun = resetRun; rerenderPage(view);
+    act(() => current());
+    expect(pageScenario.state.markLessonComplete).toHaveBeenCalledTimes(1);
+    act(() => mocks.aiCallbacks[mocks.aiCallbacks.length - 1]!());
+    expect(pageScenario.state.markLessonComplete).toHaveBeenCalledTimes(2);
+    const beforeUnmount = mocks.aiCallbacks[mocks.aiCallbacks.length - 1]!;
+    view.unmount(); act(() => beforeUnmount());
+    expect(pageScenario.state.markLessonComplete).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores old video completion, position and progress callbacks after a new run is shown', () => {
+    preparePage();
+    const lesson = { id: 'video-lesson', course_id: context.courseId, type: 'video', title: 'Видео', content: 'https://example.invalid/video' };
+    pageScenario.state.currentLesson = lesson; pageScenario.state.lessons = [lesson];
+    pageScenario.state.courseFileDeliveryMode = { state: 'legacy', context: { mode: 'legacy' } };
+    pageScenario.state.saveVideoPosition = vi.fn(); pageScenario.state.setVideoWatchProgress = vi.fn();
+    const view = renderPage(); const old = mocks.videoViews[mocks.videoViews.length - 1]!;
+    pageScenario.state.learningRun = resetRun; rerenderPage(view);
+    act(() => { old.onFinishLesson(); void old.onVideoComplete(); old.onSavePosition(80, 100); old.onProgressChange(80); });
+    expect(pageScenario.state.markLessonComplete).not.toHaveBeenCalled();
+    expect(pageScenario.state.saveVideoPosition).not.toHaveBeenCalled();
+    expect(pageScenario.state.setVideoWatchProgress).not.toHaveBeenCalled();
+    act(() => mocks.videoViews[mocks.videoViews.length - 1]!.onFinishLesson());
+    expect(pageScenario.state.markLessonComplete).toHaveBeenCalledOnce();
+  });
 
   it('keeps attachments and explicit pending submission available in another course', async () => {
     preparePage();
@@ -394,7 +567,7 @@ describe('CourseLearning text-homework integration and existing test controls', 
     renderPage(cszCourseId);
     expect(await screen.findByLabelText('Ответ на практическое задание')).toBeInTheDocument();
     expect(screen.queryByText('Прикрепить файл')).toBeNull();
-    expect(mocks.historyFilters[0]).toMatchObject({ course_id: cszCourseId, organization_id: context.organizationId });
+    expect(mocks.historyRequests[0]).toEqual({ name: 'get_own_homework_history', args: { p_lesson_id: context.lessonId } });
     expect(mocks.upload).not.toHaveBeenCalled();
   });
 

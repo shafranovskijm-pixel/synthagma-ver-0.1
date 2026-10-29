@@ -1,3 +1,4 @@
+import { isLearningProgressEpoch, normalizeLearningProgressEpoch } from "@/lib/learningProgress";
 import { deleteUnusedCourses } from "@/api/courseDeletion";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -494,17 +495,36 @@ export function useCourseDetails(
   const handleResetProgress = async (student: CourseStudentPageRow) => {
     if (!course || !student.enrollment_id) return;
     setIsResetting(true);
+    let resetAcknowledged = false;
     try {
       const { data, error } = await supabase.rpc("reset_course_learning_progress" as any, {
         p_enrollment_id: student.enrollment_id, p_organization_id: organizationId,
       });
       if (error) throw error;
-      const reset = data as { enrollmentId?: string; reset?: boolean } | null;
-      if (reset?.reset !== true || reset.enrollmentId !== student.enrollment_id) throw new Error("Сброс не подтверждён сервером");
+      const reset = data as { enrollmentId?: string; reset?: boolean; learning_progress_epoch?: string } | null;
+      if (reset?.reset !== true || reset.enrollmentId !== student.enrollment_id || !isLearningProgressEpoch(reset.learning_progress_epoch)) throw new Error("Сброс не подтверждён сервером");
+      resetAcknowledged = true;
+      const { data: actual, error: refreshError } = await supabase.from("enrollments")
+        .select("id,course_id,user_id,progress,learning_progress_epoch").eq("id", student.enrollment_id).maybeSingle();
+      if (refreshError || actual?.id !== student.enrollment_id || actual.course_id !== course.id || actual.user_id !== student.user_id
+        || normalizeLearningProgressEpoch(actual.learning_progress_epoch) !== reset.learning_progress_epoch || actual.progress !== 0) {
+        throw new Error("Актуальное состояние после сброса не подтверждено");
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["course-students-page", course.id] }, { throwOnError: true }),
+        queryClient.invalidateQueries({ queryKey: ["course-students-stats", course.id] }, { throwOnError: true }),
+        queryClient.invalidateQueries({ queryKey: ["available-students-for-course", course.id] }, { throwOnError: true }),
+        queryClient.invalidateQueries({ queryKey: ["student-dashboard-snapshot"] }),
+      ]);
+      onRefreshStudents?.();
       toast.success(`Учебный прогресс ученика "${student.name}" сброшен. История тестов и использованные попытки сохранены.`);
       setResetConfirmStudent(null);
-      invalidateStudents();
-    } catch (error) { console.error("Error resetting:", error); toast.error("Ошибка сброса прогресса"); }
+    } catch (error) {
+      console.error("Error resetting:", error);
+      toast.error(resetAcknowledged
+        ? "Сброс принят сервером, но актуальный результат ещё не подтверждён. Обновите список перед повторным действием."
+        : "Сброс не подтверждён сервером. Прогресс не изменён в интерфейсе.");
+    }
     finally { setIsResetting(false); }
   };
 
