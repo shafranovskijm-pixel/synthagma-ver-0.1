@@ -40,9 +40,9 @@ describe("stable file preview consumer", () => {
     mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: null } };
     const view = render(<FilePreviewDialog {...props} />); noRaw(view.container); expect(mocks.read.mock.calls.every(call => call[1] === false)).toBe(true);
   });
-  it("renders only the matching verified memory lease through the canvas port", () => {
+  it("renders only the matching verified memory lease through the canvas port", async () => {
     mocks.refMode = "frozen"; mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: marker } };
-    const view = render(<FilePreviewDialog {...props} allowDownload={false} />); expect(screen.getByTestId("verified-pdf-canvas")).toBeTruthy(); expect(mocks.canvas).toHaveBeenCalledWith(mocks.preview, reference.name); expect(view.container.querySelector("iframe,object,embed")).toBeNull(); expect(screen.queryByRole("button", { name: "Скачать" })).toBeNull(); noRaw(view.container);
+    const view = render(<FilePreviewDialog {...props} allowDownload={false} />); await screen.findByTestId("verified-pdf-canvas"); expect(mocks.canvas).toHaveBeenCalledWith(mocks.preview, reference.name); expect(view.container.querySelector("iframe,object,embed")).toBeNull(); expect(screen.queryByRole("button", { name: "Скачать" })).toBeNull(); noRaw(view.container);
   });
   it("revokes a mismatched cohort lease without opening a raw fallback", () => {
     mocks.refMode = "frozen"; mocks.preview.binding.publication_id = id(90); mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: marker } };
@@ -62,5 +62,47 @@ describe("stable file preview consumer", () => {
     const view = render(<FilePreviewDialog {...props} />); await waitFor(() => expect(screen.getByRole("button", { name: "Скачать" })).toBeTruthy()); const old = mocks.handlers.at(-1)!;
     view.rerender(<FilePreviewDialog {...props} reference={{ ...reference, referenceId: id(5) }} />); view.rerender(<FilePreviewDialog {...props} />);
     act(() => old()); expect(mocks.refresh).not.toHaveBeenCalled(); view.unmount(); act(() => old()); expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+  it("loads the renderer module only after legacy, held and image views reach a matching frozen PDF", async () => {
+    // A fresh component module and fresh mock registration isolate React.lazy and
+    // the mock factory cache from earlier tests; this case never depends on order.
+    vi.resetModules();
+    const factory = vi.fn();
+    vi.doUnmock("../VerifiedPdfCanvas");
+    vi.doMock("../VerifiedPdfCanvas", () => {
+      factory();
+      return { VerifiedPdfCanvas: ({ lease, title }: { lease: unknown; title: string }) => {
+        mocks.canvas(lease, title); return <div role="img" aria-label={title} data-testid="verified-pdf-canvas" />;
+      } };
+    });
+    let view: ReturnType<typeof render> | null = null;
+    try {
+      const { FilePreviewDialog: FreshFilePreviewDialog } = await import("../FilePreviewDialog");
+      view = render(<FreshFilePreviewDialog {...props} />);
+      await waitFor(() => expect(screen.getByTitle(reference.name).getAttribute("src")).toBe(reference.legacyUrl));
+      expect(factory).not.toHaveBeenCalled();
+      mocks.refMode = "frozen";
+      mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: null } };
+      view.rerender(<FreshFilePreviewDialog {...props} reference={{ ...reference, versionKey: "held" }} />);
+      expect(screen.getByRole("status")).toHaveTextContent("Точная редакция файла недоступна");
+      expect(factory).not.toHaveBeenCalled();
+      mocks.mode = { state: "frozen_required", context: { ...context, mode: "frozen_required", state: "held", cohort: marker } };
+      mocks.preview = { ...lease("blob:verified-image"), previewKind: "image", mime: "image/png" };
+      view.rerender(<FreshFilePreviewDialog {...props} reference={{ ...reference, versionKey: "image" }} />);
+      expect(screen.getByRole("img", { name: reference.name }).getAttribute("src")).toBe("blob:verified-image");
+      expect(factory).not.toHaveBeenCalled();
+      mocks.preview = lease("blob:verified-preview");
+      view.rerender(<FreshFilePreviewDialog {...props} reference={{ ...reference, versionKey: "pdf" }} allowDownload={false} />);
+      await screen.findByTestId("verified-pdf-canvas");
+      expect(factory).toHaveBeenCalledOnce();
+      expect(mocks.canvas).toHaveBeenCalledWith(mocks.preview, reference.name);
+      expect(view.container.querySelector("iframe,object,embed")).toBeNull();
+    } finally {
+      view?.unmount();
+      vi.doUnmock("../VerifiedPdfCanvas");
+      vi.doMock("../VerifiedPdfCanvas", () => ({ VerifiedPdfCanvas: ({ lease, title }: { lease: unknown; title: string }) => {
+        mocks.canvas(lease, title); return <div role="img" aria-label={title} data-testid="verified-pdf-canvas" />;
+      } }));
+    }
   });
 });

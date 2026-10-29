@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, FileText } from "lucide-react";
@@ -8,10 +8,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { PLATFORM_REVIEW_ORG_ID } from "@/lib/platformCoursePublication";
 import { useCourseExactFileDelivery } from "@/hooks/useCourseExactFileDelivery";
 import { useCourseFileDeliveryMode } from "@/hooks/useCourseFileDeliveryMode";
-import { VerifiedPdfCanvas } from "./VerifiedPdfCanvas";
 import { isOpaqueCourseFileLocator, type CourseFilePreviewReference, type CourseFileModeContext } from "@/lib/courseFileConsumer";
 import type { CourseFileAccessMode, CourseFilePurpose, LegacyCourseFileDelivery } from "@/lib/courseExactFileDelivery";
 import { captureOfflineAuthRevision, captureOfflineContext, subscribeOfflineAuthRevision } from "@/utils/courseCache";
+
+// The verified PDF engine is loaded only when a matching frozen PDF is rendered.
+const VerifiedPdfCanvas = lazy(() => import("./VerifiedPdfCanvas").then(module => ({ default: module.VerifiedPdfCanvas })));
 
 export interface FilePreviewDialogProps {
   readonly open: boolean; readonly onOpenChange: (open: boolean) => void;
@@ -107,7 +109,7 @@ function BoundFilePreviewDialog(props: FilePreviewDialogProps & { actorId: strin
       </DialogHeader>
       <div className="flex-1 relative overflow-hidden bg-muted/30">
         {loading ? <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/80"><div className="flex flex-col items-center gap-3"><SigmaSpinner size="lg" /><p className="text-sm text-muted-foreground">Загрузка предпросмотра…</p></div></div>
-          : fileLease?.previewKind === "pdf" ? <VerifiedPdfCanvas lease={fileLease} title={r.name} />
+          : fileLease?.previewKind === "pdf" ? <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center z-10 bg-background/80"><div className="flex flex-col items-center gap-3"><SigmaSpinner size="lg" /><p className="text-sm text-muted-foreground">Загрузка предпросмотра…</p></div></div>}><VerifiedPdfCanvas lease={fileLease} title={r.name} /></Suspense>
           : fileLease?.previewKind === "image" ? <img src={fileLease.url} alt={r.name} className="w-full h-full object-contain" />
           : <div className="flex flex-col items-center justify-center h-full gap-4 p-8"><FileText className="w-16 h-16 text-muted-foreground/40" /><p role="status" className="text-muted-foreground text-center">{fileLease ? "Для этого формата нет безопасного предпросмотра. Файл можно скачать, если это разрешено учебным центром." : "Точная редакция файла недоступна. Обновите страницу или обратитесь в учебный центр."}</p>{props.sourceReviewAvailable && mode.view.state === "frozen_required" && cohort === null && <div className="space-y-2 text-center"><p className="text-sm text-muted-foreground">Для исходного курса выберите сохранённое досье и нужный файл в проверке каталога.</p><a className="text-sm text-primary underline underline-offset-4" href="/admin?tab=marketplace">Открыть проверку каталога</a></div>}</div>}
       </div>
