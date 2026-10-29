@@ -1,0 +1,281 @@
+name: Homework notification ordinary authorization R4 offline CI only
+on:
+  push:
+    branches: [codex/homework-notify-auth-ci-r3-20261029]
+permissions:
+  contents: read
+concurrency:
+  group: homework-notify-auth-ci
+  cancel-in-progress: false
+jobs:
+  notify-auth:
+    if: github.repository == 'shafranovskijm-pixel/synthagma-ver-0.1' && github.ref == 'refs/heads/codex/homework-notify-auth-ci-r3-20261029'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      NPM_CONFIG_AUDIT: 'false'
+      NPM_CONFIG_FUND: 'false'
+    steps:
+      - name: Checkout exact reviewed CI commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Node22 x64 only
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.13.0'
+          architecture: x64
+          check-latest: false
+      - name: Materialize reviewed CI-only notify harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .codex-temp/notify-auth-ci/artifacts
+          cat > .codex-temp/notify-auth-ci/inputs.json <<'NOTIFY_CI_INPUTS_JSON_END'
+          {
+            "baseCommit": "71a3294610d895a185b2e5c715c87956685ce4ed",
+            "baseTree": "9e57c89aece58defb160dc18c176fd4cb553cd4a",
+            "branch": "codex/homework-notify-auth-ci-r3-20261029",
+            "workflowPath": ".github/workflows/prog008-homework-notify-auth-ci.yml",
+            "sourceFreezeSHA256": "b3863b17518b8b0c9790b21474d2d52f86a944ece9ab4a8a96e07e084db54d07",
+            "exactSuites": [
+              "src/security/__tests__/homeworkNotificationAuthorization.test.ts",
+              "src/security/__tests__/homeworkNotificationEntry.test.ts"
+            ],
+            "expectedTests": 30,
+            "nodeVersion": "22.13.0",
+            "npmVersion": "10.9.2",
+            "neverMergeWorkflow": true,
+            "productionAcceptance": false,
+            "source4": [
+              {
+                "path": "supabase/functions/notify-homework-graded/index.ts",
+                "bytes": 8436,
+                "sha256": "1cbce74ed9ca9d1b86dd36e3f7f505dea318da2b436ebc269f434d02f34c5426",
+                "before": {
+                  "bytes": 6298,
+                  "sha256": "8cf8fa1c2a42d750986071979eabddeb364cc825557f1ee509bea2564e74ed63",
+                  "gitBlobSHA1": "376ddb4e35562a5fc0d33e124ed02c5f5cc28a5b"
+                }
+              },
+              {
+                "path": "supabase/functions/notify-homework-graded/handler.ts",
+                "bytes": 7065,
+                "sha256": "2d10ae14ab28021f02d9e8fe7d919b6f794036b0f4b2e8c365045f9f3769b394",
+                "before": null
+              },
+              {
+                "path": "src/security/__tests__/homeworkNotificationAuthorization.test.ts",
+                "bytes": 9032,
+                "sha256": "ae60f0105d4ebabc2717d86e4831e44e18bb17685e72296cb73e4834c430c0c0",
+                "before": null
+              },
+              {
+                "path": "src/security/__tests__/homeworkNotificationEntry.test.ts",
+                "bytes": 8993,
+                "sha256": "05cdc2430072b2c7383c669d54fdceacb7f5960b99c95e801bbfe37dcb404bba",
+                "before": null
+              }
+            ]
+          }
+          NOTIFY_CI_INPUTS_JSON_END
+          cat > .codex-temp/notify-auth-ci/preflight.mjs <<'NOTIFY_CI_PREFLIGHT_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const here=path.dirname(new URL(import.meta.url).pathname), root=fs.realpathSync(process.cwd());
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+          if(process.platform!=='linux'||process.arch!=='x64'||process.versions.node!==inputs.nodeVersion)throw new Error('EXACT_NODE22_LINUX_X64_REQUIRED');
+          if(git('rev-parse','HEAD^')!==inputs.baseCommit)throw new Error('ONE_FRESH_MAIN194_PARENT_REQUIRED');
+          const changed=git('diff','--name-only','--no-renames',inputs.baseCommit,'HEAD').split('\n').filter(Boolean).sort();
+          const expected=[...inputs.source4.map(p=>p.path),inputs.workflowPath].sort();
+          if(JSON.stringify(changed)!==JSON.stringify(expected))throw new Error('EXACT_FOUR_NOTIFY_PATHS_PLUS_ONE_CI_WORKFLOW_REQUIRED');
+          for(const p of inputs.source4){const b=fs.readFileSync(path.join(root,p.path));if(b.length!==p.bytes||sha(b)!==p.sha256)throw new Error('APPROVED_SOURCE_DRIFT:'+p.path);}
+          if(process.env.GITHUB_REF!=='refs/heads/'+inputs.branch)throw new Error('EXACT_FIXED_CI_BRANCH_REQUIRED');
+          for(const p of inputs.source4){const entry=git('ls-tree','--name-only',inputs.baseCommit,'--',p.path);if(p.before){if(entry!==p.path)throw new Error('EXACT_MAIN194_PREIMAGE_REQUIRED:'+p.path);const before=execFileSync('git',['show',inputs.baseCommit+':'+p.path],{cwd:root});if(before.length!==p.before.bytes||sha(before)!==p.before.sha256)throw new Error('EXACT_MAIN194_PREIMAGE_REQUIRED:'+p.path);}else if(entry!=='')throw new Error('NEW_SOURCE_PATH_MUST_BE_ABSENT:'+p.path);}
+          if(git('ls-tree','--name-only',inputs.baseCommit,'--',inputs.workflowPath)!=='')throw new Error('CI_WORKFLOW_MUST_BE_NEW');
+          const lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
+          for(const p of Object.values(lock.packages))if(p.resolved&&!p.resolved.startsWith('https://registry.npmjs.org/'))throw new Error('PUBLIC_NPM_REGISTRY_ONLY');
+          const npm=execFileSync('npm',['--version'],{encoding:'utf8'}).trim();
+          if(npm!==inputs.npmVersion)throw new Error('EXACT_NPM10_9_2_REQUIRED');
+          fs.writeFileSync(path.join(here,'artifacts/source-preflight.json'),JSON.stringify({status:'PASS_SOURCE_ONLY_PREFLIGHT',head:git('rev-parse','HEAD'),base:inputs.baseCommit,changedPaths:changed,sourceFreezeSHA256:inputs.sourceFreezeSHA256,node:process.versions.node,npm,arch:process.arch,workflowSHA256:sha(fs.readFileSync(path.join(root,inputs.workflowPath))),envContentsRead:false,productionAccepted:false},null,2)+'\n');
+          NOTIFY_CI_PREFLIGHT_MJS_END
+          cat > .codex-temp/notify-auth-ci/block-network.cjs <<'NOTIFY_CI_BLOCK_NETWORK_CJS_END'
+          /* Isolated UI harness only. No app/source imports. Installed by explicit --require. */
+          'use strict';
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { fileURLToPath } = require('node:url');
+          const { syncBuiltinESMExports } = require('node:module');
+          const deny = () => { throw new Error('UI_HARNESS_NETWORK_DISABLED'); };
+          for (const [name, methods] of [
+            ['node:http', ['request', 'get']], ['node:https', ['request', 'get']],
+            ['node:net', ['connect', 'createConnection']], ['node:tls', ['connect']],
+            ['node:dgram', ['createSocket']],
+            ['node:dns', ['lookup', 'resolve', 'resolve4', 'resolve6', 'reverse']],
+            ['node:dns/promises', ['lookup', 'resolve', 'resolve4', 'resolve6', 'reverse']],
+          ]) {
+            const mod = require(name);
+            for (const key of methods) if (typeof mod[key] === 'function') mod[key] = deny;
+          }
+          require('node:net').Socket.prototype.connect = deny;
+          require('node:net').Server.prototype.listen = deny;
+          globalThis.fetch = deny;
+          globalThis.WebSocket = class { constructor() { deny(); } };
+          function checkFile(value) {
+            if (typeof value === 'number' || value == null) return;
+            const name = value instanceof URL ? fileURLToPath(value) : String(value);
+            if (/^\.env(?:\.|$)/.test(path.basename(name))) throw new Error('UI_HARNESS_ENV_FILE_READ_DISABLED');
+          }
+          for (const key of ['readFileSync', 'openSync', 'readFile', 'open', 'createReadStream']) {
+            const original = fs[key];
+            fs[key] = function (file, ...args) { checkFile(file); return original.call(this, file, ...args); };
+          }
+          for (const key of ['readFile', 'open']) {
+            const original = fs.promises[key];
+            fs.promises[key] = function (file, ...args) { checkFile(file); return original.call(this, file, ...args); };
+          }
+          syncBuiltinESMExports();
+          globalThis.__UI_NETWORK_GUARD_INSTALLED__ = true;
+          NOTIFY_CI_BLOCK_NETWORK_CJS_END
+          cat > .codex-temp/notify-auth-ci/network-setup.ts <<'NOTIFY_CI_NETWORK_SETUP_TS_END'
+          // Harness-only setup, before the byte-exact stock setup. No application imports.
+          const deny = () => { throw new Error("UI_HARNESS_NETWORK_DISABLED"); };
+          Object.defineProperty(globalThis, "fetch", { value: deny, writable: true, configurable: true });
+          for (const key of ["XMLHttpRequest", "WebSocket", "EventSource"] as const) {
+            Object.defineProperty(globalThis, key, { value: class { constructor() { deny(); } }, writable: true, configurable: true });
+          }
+          if (typeof window !== "undefined") {
+            if (window !== globalThis) {
+              Object.defineProperty(window, "fetch", { value: deny, writable: true, configurable: true });
+              for (const key of ["XMLHttpRequest", "WebSocket", "EventSource"] as const) {
+                Object.defineProperty(window, key, { value: class { constructor() { deny(); } }, writable: true, configurable: true });
+              }
+            }
+            Object.defineProperty(window.navigator, "sendBeacon", { value: deny, configurable: true });
+          }
+          NOTIFY_CI_NETWORK_SETUP_TS_END
+          cat > .codex-temp/notify-auth-ci/snapshot-source.mjs <<'NOTIFY_CI_SNAPSHOT_SOURCE_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const root=fs.realpathSync(process.cwd()), here=path.dirname(new URL(import.meta.url).pathname);
+          const mode=process.argv[2];if(!['before','after'].includes(mode))throw new Error('FINITE_SNAPSHOT_MODE_REQUIRED');
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          function walk(relative){const results=[];for(const entry of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){const file=relative+'/'+entry.name;if(entry.isSymbolicLink())throw new Error('SRC_SYMLINK_FORBIDDEN');if(entry.isDirectory())results.push(...walk(file));else if(entry.isFile())results.push(file);else throw new Error('SRC_NONREGULAR_FORBIDDEN');}return results;}
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          const protectedPaths=[...new Set([...walk('src'),...inputs.source4.map(p=>p.path),...['package.json','package-lock.json','vite.config.ts','tsconfig.json','tsconfig.app.json','tsconfig.node.json','.node-version','.nvmrc','netlify.toml']])].sort();
+          const records=protectedPaths.map(p=>{const b=fs.readFileSync(path.join(root,p));return{path:p,bytes:b.length,sha256:sha(b)};});
+          const file=path.join(here,'artifacts/protected-source-before.json');
+          if(mode==='before')fs.writeFileSync(file,JSON.stringify(records,null,2)+'\n');
+          else{const before=JSON.parse(fs.readFileSync(file,'utf8'));const exact=JSON.stringify(before)===JSON.stringify(records);fs.writeFileSync(path.join(here,'artifacts/protected-source-after.json'),JSON.stringify({exact,files:records.length,records,envContentsRead:false},null,2)+'\n');if(!exact)throw new Error('BUILD_OR_INSTALL_CHANGED_PROTECTED_SOURCE');}
+          NOTIFY_CI_SNAPSHOT_SOURCE_MJS_END
+          cat > .codex-temp/notify-auth-ci/run-stage.mjs <<'NOTIFY_CI_RUN_STAGE_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {spawn} from 'node:child_process';
+          const root=fs.realpathSync(process.cwd()), here=path.dirname(new URL(import.meta.url).pathname), label=process.argv[2];
+          const guarded=['--max-old-space-size=4096','--require',path.join(here,'block-network.cjs')];
+          const stages={
+           'npm-ci':{exe:'npm',args:['ci','--ignore-scripts','--legacy-peer-deps','--no-audit','--no-fund','--registry=https://registry.npmjs.org'],timeout:600000},
+           'stock-tsc':{exe:process.execPath,args:[...guarded,path.join(root,'node_modules/typescript/bin/tsc'),'-p','tsconfig.app.json','--noEmit'],timeout:300000},
+           'notify-suites':{exe:process.execPath,args:[...guarded,path.join(here,'run-tests.mjs')],timeout:180000},
+          };
+          const stage=stages[label];if(!stage)throw new Error('FINITE_STAGE_REQUIRED');
+          const dir=path.join(here,'artifacts'), stdout=fs.openSync(path.join(dir,label+'.stdout.log'),'wx'),stderr=fs.openSync(path.join(dir,label+'.stderr.log'),'wx');
+          const started=Date.now();let timedOut=false,spawnError=null,finished=false;
+          fs.writeFileSync(path.join(dir,label+'.started.json'),JSON.stringify({label,args:stage.args,startedAtUtc:new Date().toISOString(),timeoutMs:stage.timeout,shell:false,networkAllowed:label==='npm-ci'?'public npm dependencies only':false},null,2)+'\n');
+          const child=spawn(stage.exe,stage.args,{cwd:root,shell:false,detached:true,stdio:['ignore','pipe','pipe']});
+          child.stdout.on('data',b=>{fs.writeSync(stdout,b);process.stdout.write(b);});child.stderr.on('data',b=>{fs.writeSync(stderr,b);process.stderr.write(b);});
+          const timer=setTimeout(()=>{timedOut=true;try{process.kill(-child.pid,'SIGTERM');}catch{}setTimeout(()=>{if(!finished)try{process.kill(-child.pid,'SIGKILL');}catch{}},2000).unref();},stage.timeout);
+          child.on('error',e=>{spawnError={name:e.name,code:e.code??null,message:e.message};});
+          child.on('close',(code,signal)=>{finished=true;clearTimeout(timer);fs.closeSync(stdout);fs.closeSync(stderr);const ok=!timedOut&&!spawnError&&signal===null&&code===0;fs.writeFileSync(path.join(dir,label+'.process.json'),JSON.stringify({label,pid:child.pid??null,elapsedMs:Date.now()-started,exitCode:code,signal,timedOut,spawnError,naturalExit:!timedOut&&!spawnError&&signal===null,success:ok},null,2)+'\n');if(!ok)process.exitCode=1;});
+          NOTIFY_CI_RUN_STAGE_MJS_END
+          cat > .codex-temp/notify-auth-ci/run-tests.mjs <<'NOTIFY_CI_RUN_TESTS_MJS_END'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {pathToFileURL} from 'node:url';
+          import {createRequire} from 'node:module';
+          const here=path.dirname(new URL(import.meta.url).pathname),root=fs.realpathSync(process.cwd()),deps=path.join(root,'node_modules');
+          if(globalThis.__UI_NETWORK_GUARD_INSTALLED__!==true)throw new Error('EXPLICIT_NETWORK_PRELOAD_REQUIRED');
+          const inputs=JSON.parse(fs.readFileSync(path.join(here,'inputs.json'),'utf8'));
+          for(const key of Object.keys(process.env))if(/^(?:VITE_|SUPABASE_|LOVABLE_|DATABASE_URL$|NODE_OPTIONS$)/.test(key))delete process.env[key];
+          process.env.NODE_ENV='test';process.env.VITEST='true';process.env.TEST='true';
+          const ts=(await import(pathToFileURL(path.join(deps,'typescript/lib/typescript.js')).href)).default;
+          const {startVitest}=await import(pathToFileURL(path.join(deps,'vitest/dist/node.js')).href);
+          const requireRoot=createRequire(path.join(root,'package.json'));
+          const installer={isPackageExists(name){try{requireRoot.resolve(name);return true;}catch{return false;}},async ensureInstalled(name){if(!this.isPackageExists(name))throw new Error('INSTALL_DURING_TEST_FORBIDDEN:'+name);return true;}};
+          const tsPlugin = {
+            name: 'ui-harness-typescript-js-only', enforce: 'pre',
+            resolveId(id) {
+              if (id === '@notify-test/serve') return '\0notify-std-serve';
+              if (id === '@notify-test/sdk') return '\0notify-supabase-port';
+              if (/^https?:\/\//i.test(id)) throw new Error('REMOTE_MODULE_FORBIDDEN');
+            },
+            load(id) {
+              if (id === '\0notify-std-serve') return 'throw new Error("UNMOCKED_REMOTE_SERVE_FORBIDDEN"); export const serve = undefined;';
+              if (id === '\0notify-supabase-port') return 'throw new Error("UNMOCKED_REMOTE_SDK_FORBIDDEN"); export const createClient = undefined;';
+              const guardedId = id.replaceAll('\\', '/').split('?')[0];
+              if (guardedId.endsWith('/supabase/functions/_shared/notification-prefs.ts')) return 'throw new Error("UNMOCKED_NOTIFICATION_HELPER_FORBIDDEN"); export const notifyStudent = undefined; export const isPrefEnabled = undefined;';
+              if (guardedId.endsWith('/supabase/functions/_shared/smtp-sender.ts')) return 'throw new Error("UNMOCKED_SMTP_HELPER_FORBIDDEN"); export const sendPlatformEmail = undefined;';
+              if (id.replaceAll('\\', '/').split('?')[0].endsWith('/src/integrations/supabase/client.ts'))
+                return 'throw new Error("UNMOCKED_REAL_SUPABASE_CLIENT_FORBIDDEN"); export const supabase = undefined;';
+            },
+            transform(code, id) {
+              const file = id.split('?')[0];
+              if (!/\.[cm]?tsx?$/.test(file) || file.replaceAll('\\', '/').includes('/node_modules/')) return null;
+              if (file.replaceAll('\\', '/').endsWith('/supabase/functions/notify-homework-graded/index.ts')
+                || file.replaceAll('\\', '/').endsWith('/src/security/__tests__/homeworkNotificationEntry.test.ts')) {
+                // Test-only exact two remote import ports; Node cannot import https modules.
+                // Executable entry logic is unchanged and all other remote imports remain denied.
+                code = code.replaceAll('https://deno.land/std@0.168.0/http/server.ts', '@notify-test/serve')
+                  .replaceAll('https://esm.sh/@supabase/supabase-js@2', '@notify-test/sdk');
+              }
+              const result = ts.transpileModule(code, { fileName: file, reportDiagnostics: true, compilerOptions: {
+                target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX,
+                esModuleInterop: true, isolatedModules: true, sourceMap: true, inlineSources: true,
+              } });
+              const errors = (result.diagnostics ?? []).filter(d => d.category === ts.DiagnosticCategory.Error);
+              if (errors.length) throw new Error('TRANSPILE_SYNTAX_ERROR: ' + ts.formatDiagnosticsWithColorAndContext(errors, {
+                getCanonicalFileName: p => p, getCurrentDirectory: () => root, getNewLine: () => '\n',
+              }));
+              return { code: result.outputText, map: result.sourceMapText ? JSON.parse(result.sourceMapText) : null };
+            },
+          };
+          const output=path.join(here,'artifacts/vitest-results.json');let context,failure=null,closeError=null,reported=null;
+          try{context=await startVitest('test',[],{root,config:false,run:true,watch:false,ui:false,api:false,open:false,environment:'node',globals:true,include:inputs.exactSuites,setupFiles:[path.join(here,'network-setup.ts')],pool:'threads',maxWorkers:1,fileParallelism:false,isolate:true,execArgv:['--require',path.join(here,'block-network.cjs')],deps:{optimizer:{client:{enabled:false},ssr:{enabled:false}}},coverage:{enabled:false},typecheck:{enabled:false},testTimeout:15000,hookTimeout:15000,teardownTimeout:5000,reporters:['default','json'],outputFile:{json:output}},{configFile:false,envFile:false,esbuild:false,plugins:[tsPlugin],clearScreen:false,root,cacheDir:path.join(here,'vite-cache'),resolve:{alias:{'@':path.join(root,'src')}},optimizeDeps:{noDiscovery:true,include:[]},server:{host:'127.0.0.1',middlewareMode:true,hmr:false,ws:false,watch:null,fs:{strict:true,allow:[here,root,deps]}}},{packageInstaller:installer});reported=JSON.parse(fs.readFileSync(output,'utf8'));}catch(e){failure={name:e?.name??null,message:String(e?.message??e),stack:e?.stack??null};}finally{if(context)try{await context.close();}catch(e){closeError={name:e?.name??null,message:String(e?.message??e)};}}
+          const expected=inputs.exactSuites.map(p=>path.resolve(root,p)).sort();const actual=(reported?.testResults??[]).map(p=>path.resolve(p.name)).sort();
+          const cases=(reported?.testResults??[]).flatMap(p=>p.assertionResults??[]);
+          const exactSuites=JSON.stringify(expected)===JSON.stringify(actual)&&actual.length===2;
+          const allCasesPassed=cases.length>0&&cases.every(p=>p.status==='passed')&&(reported?.testResults??[]).every(p=>(p.assertionResults??[]).length>0);
+          const passed=!failure&&!closeError&&(process.exitCode??0)===0&&exactSuites&&allCasesPassed&&reported?.success===true&&cases.length===inputs.expectedTests&&reported.numTotalTests===cases.length&&reported.numFailedTests===0&&reported.numFailedTestSuites===0&&(reported.numPendingTests??0)===0&&(reported.numTodoTests??0)===0;
+          fs.writeFileSync(path.join(here,'artifacts/offline-suite-result.json'),JSON.stringify({status:passed?'PASS_EXACT_TWO_NOTIFY_AUTH23_ENTRY7_OFFLINE_MOCKED_SUITES':'FAIL_OR_INCOMPLETE_TWO_NOTIFY_OFFLINE_SUITES',exactSuites,allCasesPassed,totalCases:cases.length,reportedSuccess:reported?.success??null,failure,closeError,exitAfterClose:process.exitCode??0,realAuthSQLHTTPOrSMTP:false,actualNotificationDelivered:false,productionAccepted:false,fullGoalAccepted:false},null,2)+'\n');
+          if(!passed)process.exitCode=1;
+          NOTIFY_CI_RUN_TESTS_MJS_END
+      - name: Exact four R4 paths and main194 parent preflight
+        run: node --require .codex-temp/notify-auth-ci/block-network.cjs .codex-temp/notify-auth-ci/preflight.mjs
+      - name: Snapshot protected source without reading env
+        run: node --require .codex-temp/notify-auth-ci/block-network.cjs .codex-temp/notify-auth-ci/snapshot-source.mjs before
+      - name: Official public npm frozen install with scripts ignored
+        run: node .codex-temp/notify-auth-ci/run-stage.mjs npm-ci
+      - name: Full stock TypeScript without app config changes
+        run: node .codex-temp/notify-auth-ci/run-stage.mjs stock-tsc
+      - name: Exact ordinary authorization23 and actual mocked entry7 cases
+        run: node .codex-temp/notify-auth-ci/run-stage.mjs notify-suites
+      - name: Verify all protected source and lock bytes after stages
+        if: always()
+        run: node --require .codex-temp/notify-auth-ci/block-network.cjs .codex-temp/notify-auth-ci/snapshot-source.mjs after
+      - name: Retain only finite logs and receipts, no env or source contents
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: homework-notify-auth-r4-offline-ci
+          path: .codex-temp/notify-auth-ci/artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
