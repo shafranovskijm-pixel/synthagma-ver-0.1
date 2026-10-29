@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_REVIEWED_FOUR_PRIVATE_FOUNDATION_COMPONENTS_NOT_RUN",
+  "database": "sintagma_pfd_foundation_lab_20261029",
+  "expectedGroups": [
+    "PFD01",
+    "PFD02",
+    "PFD03",
+    "PFD04"
+  ],
+  "expectedNativeSessionCount": 3,
+  "bootstrapOrder": [
+    "inputs/copy24-modeled-bootstrap.sql",
+    "inputs/copy24-modeled-actors-and-retained-fixtures.sql",
+    "inputs/copy-pcr-core.candidate.sql",
+    "inputs/copy-file-r4.candidate.sql",
+    "inputs/copy-file-delivery.candidate.sql",
+    "inputs/current-capture6.modeled.candidate.sql",
+    "inputs/current-authority12.modeled-schema-extension.sql",
+    "inputs/current-authority12.modeled.candidate.sql"
+  ],
+  "foundationAuthority": {
+    "freeze": "1e8d5c8bf40e97384930247408aa487ec3decf9ad686959172c0ef63e7917199",
+    "forwardSHA256": "8151712c7e096f4a7fb124e7bbcba652f3dd0e4325563692582b59c7ad3d9b17",
+    "inverseSHA256": "adfb728b5d3b024eb78982312548420d4567308032e33bf1a8b68b8fd12e0fa8"
+  },
+  "modelGuardProjection": {
+    "cloudStamp": "5d8e867d99288c8e1372c1f7e49c4ca07341ce2fb197b5aa2ff593529095aee6",
+    "actualModelStampReadBeforeInstall": true,
+    "forwardExpectedLiteralReplacements": 1,
+    "inverseExpectedLiteralReplacements": 2,
+    "wholeReverseRequired": true,
+    "stampFunctionChanged": false,
+    "cloudStampAcceptance": false
+  },
+  "scope": {
+    "privateOwnerModeledComponentsOnly": true,
+    "publicRPCs": 0,
+    "capabilityOverride": false,
+    "filesOrBytesAcceptance": false,
+    "oldCaseBodiesExecuted": 0,
+    "newPolicyRowsExpected": 0,
+    "sourceMaterialBeforeAfterMustMatch": true,
+    "oldModelRowsAndRolesMustMatch": true
+  },
+  "files": [
+    {
+      "path": "inputs/copy24-modeled-bootstrap.sql",
+      "bytes": 134154,
+      "sha256": "c300c4fb1fb200d80aa6cc4a7b21f79e6a0c315dfed7f9a21cdd68af88e5be1e"
+    },
+    {
+      "path": "inputs/copy24-modeled-actors-and-retained-fixtures.sql",
+      "bytes": 4011,
+      "sha256": "734b764d14e0fe128f9777e0682d4e1b7fe6172e2ee6e5b6e31b909885c9af8b"
+    },
+    {
+      "path": "inputs/copy-pcr-core.candidate.sql",
+      "bytes": 55756,
+      "sha256": "3df99badb3d5a271a51d20b7e832cf20e6da425f75fed3d447bcb3b2b4543426"
+    },
+    {
+      "path": "inputs/copy-file-r4.candidate.sql",
+      "bytes": 50326,
+      "sha256": "6de784c9d435152c355eccb6573620a321b756b17b8e1bbd39ac709d71c089d8"
+    },
+    {
+      "path": "inputs/copy-file-delivery.candidate.sql",
+      "bytes": 64558,
+      "sha256": "af3754f5dcc025d77bf9f7d8bf7090507214f5e6a52c59c740c4f010afe73bb7"
+    },
+    {
+      "path": "inputs/current-capture6.modeled.candidate.sql",
+      "bytes": 13527,
+      "sha256": "3cdaa03baa4272b103d2d7c6aab5313dcf798740e78ccad9d7b1711d934f6c8f"
+    },
+    {
+      "path": "inputs/current-authority12.modeled-schema-extension.sql",
+      "bytes": 19879,
+      "sha256": "39977da4364fb5db1e73abb1a048f7647fbdd8fabc38ce8d09cfdcd74fab57a6"
+    },
+    {
+      "path": "inputs/current-authority12.modeled.candidate.sql",
+      "bytes": 52769,
+      "sha256": "032751c264542cb935af001bb27fa4a5ad47c287e49d714771c8e88f8aba7b9a"
+    },
+    {
+      "path": "inputs/concurrency_cases.py",
+      "bytes": 24197,
+      "sha256": "802e828549a7bf116d1f2c6deda47cf31a2bc80e11096c68935773a9cd936d3c"
+    },
+    {
+      "path": "inputs/copy24_cases.py",
+      "bytes": 49297,
+      "sha256": "80410b6776fe46b5b2b107b7e681e024438bd1666782d9c588644de6e37a6470"
+    },
+    {
+      "path": "inputs/foundation.product-source.sql",
+      "bytes": 29826,
+      "sha256": "8151712c7e096f4a7fb124e7bbcba652f3dd0e4325563692582b59c7ad3d9b17"
+    },
+    {
+      "path": "inputs/foundation.empty-inverse.product-source.sql",
+      "bytes": 4419,
+      "sha256": "adfb728b5d3b024eb78982312548420d4567308032e33bf1a8b68b8fd12e0fa8"
+    },
+    {
+      "path": "fixtures/private_foundation_fixtures.py",
+      "bytes": 4695,
+      "sha256": "ed4e8e22de0c252b9f415f06f308726e728b3fcf8e24945b56d86db1f6748043"
+    },
+    {
+      "path": "cases/private_foundation_cases.py",
+      "bytes": 17705,
+      "sha256": "94b0a4079d0245f5921e62c72433ece72ec705dfc5220694649527c724a8d216"
+    },
+    {
+      "path": "stage/run_private_foundation_stage.py",
+      "bytes": 20701,
+      "sha256": "b58b0eedfd61f7e71d35a47abfb8ff6af087dd261d9d445f7a94163860777bbb"
+    }
+  ],
+  "actualWithdrawalPredicates": {
+    "canAccessLearnerBodySha256": "ad3733450126783de3c50eb7988a6e49fd311c795eb961028508d3018b650f86",
+    "ucWithdrawBodySha256": "51d86c8fe394fff258b78347eea25d75cf460c2f9e0e38a4f2f0a60c5891fba1",
+    "sourceActualMetadataMatched": true
+  }
+}
