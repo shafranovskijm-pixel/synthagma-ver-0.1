@@ -1,0 +1,74 @@
+name: PROG012 current-file review metadata guarded CI only
+on:
+  push:
+    branches: [codex/prog012-current-file-review-context-ci-r1-20261029]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  current-file-review:
+    if: github.repository == 'shafranovskijm-pixel/synthagma-ver-0.1' && github.ref == 'refs/heads/codex/prog012-current-file-review-context-ci-r1-20261029'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      NPM_CONFIG_AUDIT: 'false'
+      NPM_CONFIG_FUND: 'false'
+    services:
+      postgres:
+        image: postgres:17.11@sha256:0b81cec82228160abfa753aeaad0609b709eb26eeb950f2e404ad2326e1cc370
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: '--auth-local=trust --auth-host=trust'
+        # Job-private service only: no published ports or host bind mounts.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout exact reviewed CI head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Only new native metadata2 with full product migration and replay refusal
+        env:
+          CFM_SERVICE_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          python3 scripts/qa/prog012-current-file-context/run_ci_current_file_review_context.py \
+            --container-id "$CFM_SERVICE_CONTAINER" \
+            --expected-manifest-sha256 '8d56c1e9bef8607b51959a9061b72dea73fb3158c0531da060101d0cec5c2f74' \
+            --expected-ci-inputs-sha256 '7a282893ba52f9d88203a0c966bc2020501f3f5d16a344fb53683a31ceb4a4a4' \
+            --ci-source-reviewed-only
+      - name: Node22 x64 only
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.13.0'
+          architecture: x64
+          check-latest: false
+      - name: Clean current main196 preflight and protected source before
+        id: node_guard
+        run: |
+          node --require ./scripts/qa/prog012-current-file-context/harness/block-network.cjs scripts/qa/prog012-current-file-context/harness/preflight.mjs '7a282893ba52f9d88203a0c966bc2020501f3f5d16a344fb53683a31ceb4a4a4'
+          node --require ./scripts/qa/prog012-current-file-context/harness/block-network.cjs scripts/qa/prog012-current-file-context/harness/snapshot-source.mjs before
+      - name: Official pinned-lock dependency installation without scripts
+        run: node scripts/qa/prog012-current-file-context/harness/run-stage.mjs npm-ci
+      - name: Full stock TypeScript
+        run: node scripts/qa/prog012-current-file-context/harness/run-stage.mjs stock-tsc
+      - name: Only existing43 and new28 current-context parser instances offline
+        run: node scripts/qa/prog012-current-file-context/harness/run-stage.mjs context-suites
+      - name: Exact source preservation readback
+        if: always() && steps.node_guard.outcome == 'success'
+        run: node --require ./scripts/qa/prog012-current-file-context/harness/block-network.cjs scripts/qa/prog012-current-file-context/harness/snapshot-source.mjs after
+      - name: Preserve exact raw native and Node receipts even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prog012-current-file-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/prog012-current-file-context-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 7
