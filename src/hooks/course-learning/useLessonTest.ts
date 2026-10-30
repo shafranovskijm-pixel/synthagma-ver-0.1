@@ -39,6 +39,9 @@ interface ActiveAttempt extends Limits {
   showAnswers: boolean;
 }
 interface TestState extends Limits {
+  currentCompleted?: boolean;
+  historyOnlyResultAvailable?: boolean;
+  historicalManualCreditAvailable?: boolean;
   photoRequired?: boolean;
   hasAttempt: boolean;
   passed?: boolean | null;
@@ -97,6 +100,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
   const [testManualCredit, setTestManualCredit] = useState<TestState['manualCredit']>(null);
   const [testPhotoRequired, setTestPhotoRequired] = useState(false);
   const [testPhotoChallenge, setTestPhotoChallenge] = useState<FinalTestPhotoChallenge | null>(null);
+  const [testHistoryOnly, setTestHistoryOnly] = useState(false);
   const photoChallengeRef = useRef<FinalTestPhotoChallenge | null>(null);
   photoChallengeRef.current = testPhotoChallenge;
   const preview = isAdminViewActive();
@@ -105,6 +109,8 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
   const progressCurrent = () => isLearningProgressEpoch(learningEpoch) && authority.current.learningEpoch === learningEpoch && (authority.current.isProgressCurrent?.() ?? true);
   const scope = user?.id + ':' + currentLesson?.id + ':' + enrollmentId + ':' + (learningEpoch ?? (preview ? 'preview' : 'unconfirmed'));
   const scopeRef = useRef(scope); scopeRef.current = scope;
+  const historicalManualScope = useRef({ scope, blocked: false });
+  if (historicalManualScope.current.scope !== scope) historicalManualScope.current = { scope, blocked: false };
   const requestRef = useRef(0);
   const activeScopeRef = useRef<string | null>(null);
   const busyRef = useRef(false);
@@ -118,7 +124,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
   };
 
   const applyActive = (active: ActiveAttempt) => {
-    activeScopeRef.current = scope; setTestLegacy(false);
+    activeScopeRef.current = scope; setTestLegacy(false); setTestHistoryOnly(false);
     setTestAttemptId(active.attemptId); setTestStartedAt(active.startedAt);
     setTestQuestions(active.questions || []); setTestSubmitted(false); setTestScore(null);
     setTestPassingScore(active.passingScore); setTestShowAnswers(active.showAnswers);
@@ -133,23 +139,34 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
       const data = await rpc<TestState>(preview ? 'get_student_test_state' : 'get_student_test_state_at_epoch', { p_lesson_id: lessonId, ...(!preview ? { p_expected_epoch: learningEpoch } : {}) });
       if (scopeRef.current !== expectedScope || request !== requestRef.current || (!preview && !progressCurrent())) return;
       setLimits(data); setTestPassingScore(data.passingScore ?? 60); setTestShowAnswers(data.showAnswers === true);
-      setTestManualCredit(data.manualCredit ?? null); setTestLegacy(data.attempt?.legacy === true && !data.manualCredit);
+      // Reading a retained result must never restore a cleared lesson. Only the
+      // atomic server progress row (or an already-confirmed snapshot) grants
+      // current completion. Epoch zero has no reliable legacy reset boundary.
+      const currentCompleted = typeof data.currentCompleted === 'boolean' ? data.currentCompleted
+        : lessonProgress.some(row => row.lesson_id === lessonId && row.completed);
+      const historyOnly = !currentCompleted && (data.historyOnlyResultAvailable === true
+        || data.historicalManualCreditAvailable === true || !!data.manualCredit
+        || !!data.hasAttempt && data.passed !== false);
+      const historicalManual = !currentCompleted && (data.historicalManualCreditAvailable === true || !!data.manualCredit);
+      historicalManualScope.current.blocked = historicalManual;
+      if (historicalManual) setTestQuestionsError('Сохранён прежний зачёт организации. Для нового прохождения попросите организацию сбросить прогресс курса.');
+      setTestHistoryOnly(historyOnly);
+      setTestManualCredit(currentCompleted ? data.manualCredit ?? null : null);
+      setTestLegacy(data.attempt?.legacy === true && !data.manualCredit);
       setTestPhotoRequired(data.photoRequired === true);
       setTestExplanations(data.explanations || {});
-      if (data.manualCredit) {
+      if (data.manualCredit && currentCompleted) {
         setTestSubmitted(true); setTestScore(null); setTestQuestions([]); setTestAttemptId(null);
-        setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
       } else if (data.activeAttempt) {
         clearStartRequest(); setTestPhotoChallenge(null);
         applyActive(data.activeAttempt);
-      } else if (data.hasAttempt && data.attempt) {
+      } else if (data.hasAttempt && data.attempt && !historyOnly) {
         const attempt = data.attempt;
         setTestAttemptId(null); setTestSubmitted(true); setTestScore({ score: attempt.score, max: attempt.max_score });
         setAnswers(attempt.answers || {});
         if (attempt.passing_score != null) setTestPassingScore(attempt.passing_score);
         setTestQuestions((attempt.questions || attempt.question_snapshot || []).map(q => withAnswerKey(q, data.correctAnswers)));
-      } else { setTestSubmitted(false); setTestQuestions([]); setTestScore(null); setTestAttemptId(null); }
-      if (data.passed === true && !data.manualCredit) setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
+      } else { setTestSubmitted(false); setTestQuestions([]); setTestScore(null); setTestAttemptId(null); setAnswers({}); }
       return data;
     } catch (error) {
       if (scopeRef.current === expectedScope && request === requestRef.current) {
@@ -165,7 +182,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
     startOperationRef.current++;
     requestRef.current++; activeScopeRef.current = null; startRequestRef.current = null; busyRef.current = false;
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({}); setLimits(emptyLimits);
-    setTestManualCredit(null); setTestLegacy(false); setTestAttemptId(null); setTestStartedAt(null); setTestExplanations({}); setTestSubmitting(false);
+    setTestManualCredit(null); setTestHistoryOnly(false); setTestLegacy(false); setTestAttemptId(null); setTestStartedAt(null); setTestExplanations({}); setTestSubmitting(false);
     setTestPhotoRequired(false); setTestPhotoChallenge(null);
     setTestQuestionsError(null); setTestQuestionsLoading(!!lessonId && (preview || isLearningProgressEpoch(learningEpoch)));
     if (lessonId) void refreshTestState();
@@ -179,7 +196,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
       if (busyRef.current) return;
       const expectedScope = scope;
       const data = await refreshTestState();
-      if (scopeRef.current !== expectedScope || !data?.passed || data.manualCredit || !data.attempt) return;
+      if (scopeRef.current !== expectedScope || !data?.passed || !data.currentCompleted || data.manualCredit || !data.attempt) return;
       if (lessons.every(l => l.id === lessonId || lessonProgress.some(p => p.lesson_id === l.id && p.completed))) {
         await handleCourseCompletion({ score: data.attempt.score, max: data.attempt.max_score });
       }
@@ -195,7 +212,8 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
   }, [answers, testAttemptId, testSubmitted, user?.id]);
 
   const startTest = async () => {
-    if (scopeRef.current !== scope || !lessonId || !user || busyRef.current || testManualCredit || !progressCurrent()) return;
+    if (scopeRef.current !== scope || historicalManualScope.current.scope !== scope || historicalManualScope.current.blocked
+      || !lessonId || !user || busyRef.current || testManualCredit || !progressCurrent()) return;
     if (isAdminViewActive()) { toast.info('Начало теста недоступно в режиме просмотра администратора'); return; }
     const expectedScope = scope;
     const operation = ++startOperationRef.current;
@@ -253,7 +271,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
       if (scopeRef.current !== expectedScope || !progressCurrent()) return;
       setLimits(result); if (result.showAnswers !== undefined) setTestShowAnswers(result.showAnswers); setTestPassingScore(result.passingScore); setTestExplanations(result.explanations || {});
       setTestQuestions(prev => prev.map(q => withAnswerKey(q, result.correctAnswers)));
-      setTestSubmitted(true); setTestAttemptId(null); setTestScore({ score: result.score, max: result.maxScore });
+      setTestSubmitted(true); setTestHistoryOnly(false); setTestAttemptId(null); setTestScore({ score: result.score, max: result.maxScore });
       try { sessionStorage.removeItem('test-draft:' + user.id + ':' + attemptId); } catch { /* optional cache */ }
       await saveLessonTime();
       if (scopeRef.current !== expectedScope || !progressCurrent()) return;
@@ -281,7 +299,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, en
     testMaxAttempts: limits.maxAttempts, testAttemptsUsed: limits.attemptsUsed,
     testMaxAttemptsPerDay: limits.maxAttemptsPerDay, testAttemptsUsedToday: limits.attemptsUsedToday, testResetAt: limits.resetAt,
     testQuestionsLoading, testQuestionsError, testLegacy, testSubmitting, testAttemptId, testStartedAt, testShowAnswers, testManualCredit, testLimitReached,
-    testPhotoRequired, testPhotoChallenge, closeTestPhoto, completeTestPhoto,
+    testPhotoRequired, testPhotoChallenge, closeTestPhoto, completeTestPhoto, testHistoryOnly,
     submitTest, retryTest: startTest, startTest, refreshTestState,
   };
 }

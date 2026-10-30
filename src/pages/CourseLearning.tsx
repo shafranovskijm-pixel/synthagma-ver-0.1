@@ -46,6 +46,7 @@ import { resolveCourseElectronicLibraryView } from "@/lib/courseLibrary";
 import { getTestAnswerKeyNotice, getTestAnswerKeyState } from "@/utils/testAnswerKey";
 import { usePostpaidLessonActivity } from "@/hooks/usePostpaidLessonActivity";
 import { usePlatformHomeworkTaskProof } from "@/hooks/usePlatformHomeworkTaskProof";
+import { TestAttemptHistory } from "@/components/course-learning/TestAttemptHistory";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -56,7 +57,7 @@ const CourseLearning = () => {
     course, lessons, currentLessonIndex, lessonProgress, loading,
     sidebarOpen, setSidebarOpen, isTransitioning,
     testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions, testMaxAttempts, testAttemptsUsed,
-    testQuestionsLoading, testQuestionsError, testLegacy, testSubmitting, testAttemptId, testShowAnswers, testManualCredit, testLimitReached,
+    testQuestionsLoading, testQuestionsError, testLegacy, testHistoryOnly, testSubmitting, testAttemptId, testShowAnswers, testManualCredit, testLimitReached,
     testMaxAttemptsPerDay, testAttemptsUsedToday, startTest, refreshTestState,
     testPhotoRequired, testPhotoChallenge, closeTestPhoto, completeTestPhoto,
     answers, setAnswers,
@@ -81,6 +82,11 @@ const CourseLearning = () => {
   if (learningChildRef.current.key !== learningChildKey) learningChildRef.current = { key: learningChildKey };
   const learningChild = learningChildRef.current;
   const childIsCurrent = () => learningChildMounted.current && learningChildRef.current === learningChild;
+  const historyKey = JSON.stringify([user?.id, courseId, learningRun?.enrollmentId, learningRun?.epoch, isOfflineMode, isAdminView]);
+  const historyScopeRef = useRef({ key: historyKey });
+  if (historyScopeRef.current.key !== historyKey) historyScopeRef.current = { key: historyKey };
+  const historyScope = historyScopeRef.current;
+  const historyIsCurrent = () => learningChildMounted.current && historyScopeRef.current === historyScope;
   const completeCurrentChild = (autoAdvance = true) => {
     if (!childIsCurrent() || isOfflineMode || (!learningRun && !isAdminView)) return;
     void markLessonComplete(autoAdvance);
@@ -264,9 +270,9 @@ const CourseLearning = () => {
             )}
             {!libraryOpen && (
               <>
-                <Button variant="outline" size="sm" disabled={currentLessonIndex === 0} onClick={goToPrevLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronLeft className="w-4 h-4" /></Button>
+                <Button variant="outline" size="sm" aria-label="Предыдущий урок" disabled={!isLessonAccessible(currentLessonIndex - 1)} onClick={goToPrevLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronLeft className="w-4 h-4" /></Button>
                 <div className={cn("bg-secondary rounded-lg text-sm", isMobile ? "px-2 py-1" : "px-3 py-1")}><span className="font-medium">{currentLessonIndex + 1}</span><span className="text-muted-foreground">/{lessons.length}</span></div>
-                <Button variant="outline" size="sm" disabled={currentLessonIndex === lessons.length - 1} onClick={goToNextLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronRight className="w-4 h-4" /></Button>
+                <Button variant="outline" size="sm" aria-label="Следующий урок" disabled={!isLessonAccessible(currentLessonIndex + 1)} onClick={goToNextLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronRight className="w-4 h-4" /></Button>
               </>
             )}
           </div>
@@ -287,6 +293,8 @@ const CourseLearning = () => {
           >
             {libraryOpen && courseId ? (
               <CourseLibraryReader courseId={courseId} organizationId={currentFileOrganizationId} effectiveUserId={fileEffectiveUserId ?? null} />
+            ) : !isLessonAccessible(currentLessonIndex) ? (
+              <p role="status" className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">Урок пока недоступен. Пройдите предыдущие уроки или дождитесь открытия доступа учебной организацией.</p>
             ) : (
               <>
             {/* Text lesson */}
@@ -402,6 +410,7 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestionsLoading ? 'загрузка состояния…' : !testAttemptId && !testSubmitted ? 'вопросы откроются после начала теста' : `${testQuestions.length} вопросов`} • Проходной балл: {testPassingScore}%</p></div>
                 </div>
                 {!testQuestionsLoading && <TestAttemptStatus maxAttempts={testMaxAttempts} attemptsUsed={testAttemptsUsed} maxAttemptsPerDay={testMaxAttemptsPerDay} attemptsUsedToday={testAttemptsUsedToday} active={!!testAttemptId} submitted={testSubmitted} busy={testSubmitting || testQuestionsLoading} blocked={testLimitReached} error={testQuestionsError} manualCredit={testManualCredit} photoRequired={testPhotoRequired} onStart={startTest} onRefresh={refreshTestState} />}
+                {testHistoryOnly && <p role="status" className="text-sm text-muted-foreground">Ранее сохранённый результат доступен в истории прохождений. Он не восстанавливает текущий прогресс.</p>}
                 {testPhotoRequired && !testAttemptId && !testManualCredit && <p className="text-sm text-muted-foreground">Перед каждой новой попыткой итогового теста требуется фото с камеры. Ранее сделанное фото не заменяет эту проверку.</p>}
                 {user && testPhotoChallenge && <VideoIdentification key={testPhotoChallenge.challengeId} userId={user.id} userName={user.user_metadata?.full_name || 'Слушатель'} finalTestPhoto={testPhotoChallenge} isOpen onOpenChange={open => { if (!open) closeTestPhoto(); }} onVerified={() => { void completeTestPhoto(testPhotoChallenge.challengeId); }} />}
                 {testQuestionsLoading && (
@@ -507,6 +516,9 @@ const CourseLearning = () => {
             )}
               </>
             )}
+            {!libraryOpen && !isAdminView && !isOfflineMode && user && courseId && learningRun && (
+              <TestAttemptHistory key={historyKey} userId={user.id} courseId={courseId} enrollmentId={learningRun.enrollmentId} learningEpoch={learningRun.epoch} isCurrent={historyIsCurrent} onProgressReset={onLearningProgressReset} />
+            )}
           </div>
         </ScrollArea>
 
@@ -516,9 +528,10 @@ const CourseLearning = () => {
             {lessons.map((l, i) => {
               const completed = isLessonCompleted(l.id);
               const current = i === currentLessonIndex;
+              const accessible = isLessonAccessible(i);
               return (
-                <button key={l.id} ref={el => { lessonButtonRefs.current[i] = el; }} onClick={() => goToLesson(i)} className={cn("flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all", current && "ring-2 ring-primary scale-110", completed ? "bg-sigma-green text-white" : current ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {completed ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+                <button key={l.id} ref={el => { lessonButtonRefs.current[i] = el; }} onClick={() => goToLesson(i)} disabled={!accessible} aria-label={`Урок ${i + 1}: ${l.title}${!accessible ? ' — заблокирован' : ''}`} aria-current={current ? "step" : undefined} className={cn("flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all", current && "ring-2 ring-primary scale-110", !accessible && "opacity-50 cursor-not-allowed", completed ? "bg-sigma-green text-white" : current ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                  {!accessible ? <Lock className="w-4 h-4" /> : completed ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                 </button>
               );
             })}
@@ -526,7 +539,7 @@ const CourseLearning = () => {
         )}
 
         {/* Footer */}
-        {!libraryOpen && <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
+        {!libraryOpen && isLessonAccessible(currentLessonIndex) && <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !!testAttemptId && !testSubmitted && <Button onClick={submitTest} disabled={testMediaHeld || testSubmitting || testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testSubmitting ? "Отправка…" : testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
@@ -535,7 +548,7 @@ const CourseLearning = () => {
               const gated = currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < VIDEO_FINISH_THRESHOLD;
               return (
                 <Button
-                  disabled={lessonMediaHeld}
+                  disabled={lessonMediaHeld || (!isAdminView && (!learningRun || isOfflineMode))}
                   onClick={() => {
                     if (lessonMediaHeld) return;
                     if (gated) {

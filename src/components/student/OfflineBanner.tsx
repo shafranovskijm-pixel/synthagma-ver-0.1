@@ -16,7 +16,7 @@ export const OfflineBanner = ({ cachedAt }: OfflineBannerProps) => {
       <span>
         Офлайн-режим: данные загружены из кеша
         {cachedAt && <span className="text-xs opacity-75 ml-1">({formatDate(cachedAt)})</span>}
-        . Прогресс будет синхронизирован при восстановлении связи.
+        . Актуальный прогресс не подтверждён. Для продолжения обучения подключитесь к Интернету.
       </span>
     </div>
   );

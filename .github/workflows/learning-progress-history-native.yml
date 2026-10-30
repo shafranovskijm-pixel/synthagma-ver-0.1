@@ -1,0 +1,67 @@
+name: Learning progress history native PostgreSQL 17
+
+on:
+  push:
+    branches: [codex/learning-progress-history-20261030]
+  pull_request:
+    paths:
+      - .github/workflows/learning-progress-history-native.yml
+      - supabase/migrations/20261030010000_learning_progress_history_separation.sql
+      - supabase/tests/learning_progress_history/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learning-progress-history-native-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: lpr_history_lab_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_history_lab_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lpr_history_lab_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: lpr_history_lab_ci
+      PGUSER: postgres
+      PGPASSWORD: synthetic_history_lab_only
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Install isolated test dependency from official PyPI
+        run: python -m pip install --disable-pip-version-check --index-url https://pypi.org/simple "psycopg[binary]==3.2.9"
+      - name: Run current-progress and retained-history regressions
+        run: >-
+          python supabase/tests/learning_progress_history/run-native-lab.py
+          --expected-migration-sha 1074d41035c05a89cebd654564fde8573ad7330738b57919f7c4379ece319c83
+      - name: Upload native proof and exact source manifest
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: learning-progress-history-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/learning-progress-history-native/
+          if-no-files-found: error
+          retention-days: 14

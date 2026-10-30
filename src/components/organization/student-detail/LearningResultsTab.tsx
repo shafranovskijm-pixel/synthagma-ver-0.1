@@ -50,7 +50,7 @@ export function LearningResultsTab({ organizationId, userId, observedAccessKey =
     <div className="flex items-start justify-between gap-3">
       <div>
         <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="w-5 h-5 text-primary" />Результаты обучения</h3>
-        <p className="text-sm text-muted-foreground mt-1">Все назначенные курсы, последние результаты тестов и очные зачёты в одной карточке.</p>
+        <p className="text-sm text-muted-foreground mt-1">Текущее прохождение каждого курса и очные зачёты. Прежние попытки сохраняются в истории тестирования.</p>
       </div>
       <Button variant="outline" onClick={() => setRevision(v => v + 1)} disabled={loading}><RefreshCw className="w-4 h-4 mr-2" />Обновить</Button>
     </div>
@@ -60,14 +60,20 @@ export function LearningResultsTab({ organizationId, userId, observedAccessKey =
           : rows.map(course => <article key={course.enrollment_id} className="rounded-xl border bg-card p-4 space-y-3">
             <div className="flex flex-wrap justify-between gap-2"><h4 className="font-semibold">{course.course_title}</h4><span className="text-sm">{course.manual_credited_at ? "Зачтено организацией" : course.status === "completed" ? "Курс завершён" : course.status === "active" ? "Обучается" : course.status === "cancelled" ? "Назначение отменено" : "Не завершён"}</span></div>
             <p className="text-sm text-muted-foreground">Прогресс: {course.progress}% · Время: {Math.floor(course.time_spent / 60)} мин{course.completed_at ? ` · Завершён: ${dateLabel(course.completed_at)}` : ""}</p>
+            {course.learning_progress_reset_at && <p className="text-xs text-muted-foreground">Новое прохождение после сброса {dateLabel(course.learning_progress_reset_at)}. Прежние результаты сохранены и не восстанавливают текущий прогресс.</p>}
             {course.tests.length === 0 ? <p className="text-sm text-muted-foreground">В курсе нет тестов.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
-              <thead><tr className="border-b text-left text-muted-foreground"><th className="py-2 pr-3">Тест</th><th className="pr-3">Результат</th><th className="pr-3">Статус</th><th className="pr-3">Попытки</th><th>Дата</th></tr></thead>
-              <tbody>{course.tests.map(test => <tr key={test.lesson_id} className="border-b last:border-0">
+              <thead><tr className="border-b text-left text-muted-foreground"><th className="py-2 pr-3">Тест</th><th className="pr-3">Результат</th><th className="pr-3">Статус</th><th className="pr-3">Попытки текущего прохождения</th><th>Дата</th></tr></thead>
+              <tbody>{course.tests.map(test => {
+                const currentAttempts = test.current_run_attempts_used ?? test.attempts_used;
+                const savedAttempts = test.historical_attempts_used ?? test.attempts_used;
+                const showResult = currentAttempts > 0 || !!test.manual_credited_at;
+                return <tr key={test.lesson_id} className="border-b last:border-0">
                 <td className="py-3 pr-3">{test.lesson_title}</td>
-                <td className="pr-3">{test.percent === null ? "—" : `${test.score}/${test.max_score} · ${test.percent}%`}<div className="text-xs text-muted-foreground">Проходной: {test.passing_score}%</div></td>
-                <td className="pr-3">{test.manual_credited_at ? "Зачтено организацией" : test.attempts_used === 0 ? "Не начат" : test.passed ? "Сдан" : "Не сдан"}</td>
-                <td className="pr-3">{test.attempts_used}</td><td>{dateLabel(test.manual_credited_at || test.completed_at)}</td>
-              </tr>)}</tbody>
+                <td className="pr-3">{!showResult || test.percent === null ? "—" : `${test.score}/${test.max_score} · ${test.percent}%`}<div className="text-xs text-muted-foreground">{test.passing_score === null ? "Проходной балл не сохранён" : `Проходной: ${test.passing_score}%`}</div></td>
+                <td className="pr-3">{test.manual_credited_at ? "Зачтено организацией" : currentAttempts === 0 ? "Не начат" : test.passed === true ? "Сдан" : test.passed === false ? "Не сдан" : "Итог не подтверждён"}</td>
+                <td className="pr-3">{currentAttempts}{savedAttempts > currentAttempts && <div className="text-xs text-muted-foreground">Сохранено попыток за всё время: {savedAttempts}</div>}</td><td>{showResult ? dateLabel(test.manual_credited_at || test.completed_at) : "—"}</td>
+              </tr>;
+              })}</tbody>
             </table></div>}
             <LearningOutcomeCard organizationId={organizationId} studentUserId={userId} courseId={course.course_id} enrollmentId={course.enrollment_id} observedAccessKey={observedAccessKey} />
           </article>)}

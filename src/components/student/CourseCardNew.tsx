@@ -111,7 +111,7 @@ export function CourseCardNew({
             <Button size="sm" className="w-full gap-1.5" variant={status === "completed" ? "outline" : "default"}>
               <Play className="w-3.5 h-3.5" />
               {status === "completed"
-                ? "Пройти заново"
+                ? "Открыть результаты"
                 : (progress ?? 0) === 0 || (completedLessons ?? 0) === 0
                   ? "Начать"
                   : "Продолжить"}

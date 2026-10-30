@@ -34,6 +34,35 @@ describe("student learning result card", () => {
     await act(async () => oldResolve([course("Старый ученик")]));
     expect(screen.queryByText("Старый ученик")).not.toBeInTheDocument();
   });
+  it("keeps retained attempts distinct from a new zero-progress run after a school reset", async () => {
+    load.mockResolvedValue([{ ...course('Сброшенный курс'), progress: 0, status: 'active', learning_progress_epoch: '2',
+      learning_progress_reset_at: '2026-10-30T01:00:00Z', tests: [
+        { lesson_id: 'test-old', lesson_title: 'Тест с сохранённой историей', score: 8, max_score: 10, percent: 80,
+          passing_score: 70, passed: true, attempts_used: 3, current_run_attempts_used: 0, historical_attempts_used: 3,
+          current_completed: false, manual_credited_at: null, completed_at: '2026-10-29T01:00:00Z' },
+      ] }]);
+    render(<LearningResultsTab organizationId="org" userId="s1" />);
+    expect(await screen.findByText('Сброшенный курс')).toBeInTheDocument();
+    expect(screen.getByText('Не начат')).toBeInTheDocument();
+    expect(screen.getByText('Сохранено попыток за всё время: 3')).toBeInTheDocument();
+    expect(screen.getByText(/Новое прохождение после сброса/)).toBeInTheDocument();
+    expect(screen.queryByText('8/10 · 80%')).not.toBeInTheDocument();
+    expect(screen.queryByText('Сдан')).not.toBeInTheDocument();
+  });
+  it("keeps an unknown stored outcome and threshold distinct from a failed test", async () => {
+    load.mockResolvedValue([{ ...course('Исторический результат'), tests: [
+      { lesson_id: 'unknown-result', lesson_title: 'Тест с неизвестным порогом', score: 5, max_score: 10, percent: 50,
+        passing_score: null, passed: null, attempts_used: 1, current_run_attempts_used: 1, historical_attempts_used: 1,
+        current_completed: true, manual_credited_at: null, completed_at: '2026-10-29T01:00:00Z' },
+    ] }]);
+    render(<LearningResultsTab organizationId="org" userId="s1" />);
+    expect(await screen.findByText('Тест с неизвестным порогом')).toBeInTheDocument();
+    expect(screen.getByText('5/10 · 50%')).toBeInTheDocument();
+    expect(screen.getByText('Итог не подтверждён')).toBeInTheDocument();
+    expect(screen.getByText('Проходной балл не сохранён')).toBeInTheDocument();
+    expect(screen.queryByText('Не сдан')).not.toBeInTheDocument();
+    expect(screen.queryByText('Проходной: %')).not.toBeInTheDocument();
+  });
   it("shows a retryable error rather than a false empty record", async () => {
     load.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([]);
     render(<LearningResultsTab organizationId="org" userId="s1" />);
