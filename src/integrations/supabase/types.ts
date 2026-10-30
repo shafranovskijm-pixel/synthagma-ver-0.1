@@ -23213,6 +23213,7 @@ export type Database = {
     }
     Functions: {
       get_own_homework_history: { Args: { p_lesson_id: string }; Returns: Json }
+      get_own_course_learning_history: { Args: { p_course_id: string; p_expected_epoch: string; p_cursor_ts?: string; p_cursor_kind?: string; p_cursor_id?: string }; Returns: Json }
       get_course_learning_snapshot: {
         Args: { p_course_id: string }
         Returns: Json

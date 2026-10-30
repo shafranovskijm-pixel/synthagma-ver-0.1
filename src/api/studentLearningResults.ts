@@ -6,9 +6,13 @@ export interface StudentLearningTest {
   score: number | null;
   max_score: number | null;
   percent: number | null;
-  passing_score: number;
+  passing_score: number | null;
   passed: boolean | null;
   attempts_used: number;
+  current_run_attempts_used?: number;
+  historical_attempts_used?: number;
+  last_historical_attempt_at?: string | null;
+  current_completed?: boolean;
   completed_at: string | null;
   manual_credited_at: string | null;
 }
@@ -21,6 +25,8 @@ export interface StudentLearningCourse {
   started_at: string | null;
   completed_at: string | null;
   time_spent: number;
+  learning_progress_epoch?: string;
+  learning_progress_reset_at?: string | null;
   manual_credited_at: string | null;
   tests: StudentLearningTest[];
 }

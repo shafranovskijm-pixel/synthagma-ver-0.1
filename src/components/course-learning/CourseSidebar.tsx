@@ -73,7 +73,7 @@ export function CourseSidebarContent({
             return (
               <button key={lesson.id} onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}
                 className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : isAccessible ? "hover:bg-muted" : "opacity-50 cursor-not-allowed")}>
-                {completed ? (
+                {completed && isAccessible ? (
                   <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5 text-sigma-green" /></div>
                 ) : !isAccessible ? (
                   <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"><Lock className="w-4 h-4 text-muted-foreground" /></div>
@@ -108,10 +108,10 @@ export function CourseSidebarContent({
         </div>
         {completedCount > 0 && (
           <AlertDialog>
-            <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="w-full text-muted-foreground"><RotateCcw className="w-4 h-4 mr-2" />Сбросить прогресс</Button></AlertDialogTrigger>
+            <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="w-full text-muted-foreground"><RotateCcw className="w-4 h-4 mr-2" />Как начать заново</Button></AlertDialogTrigger>
             <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Сбросить прогресс курса?</AlertDialogTitle><AlertDialogDescription>Все результаты тестов и отметки о прохождении уроков будут удалены.</AlertDialogDescription></AlertDialogHeader>
-              <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={resetCourseProgress}>Сбросить</AlertDialogAction></AlertDialogFooter>
+              <AlertDialogHeader><AlertDialogTitle>Новое прохождение курса</AlertDialogTitle><AlertDialogDescription>Чтобы начать курс с нуля, обратитесь в вашу учебную организацию. Она сбрасывает текущий прогресс; прежние попытки и результаты сохраняются в истории. Здесь можно обновить состояние курса, без сброса.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogFooter><AlertDialogCancel>Закрыть</AlertDialogCancel><AlertDialogAction onClick={resetCourseProgress}>Обновить состояние</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         )}

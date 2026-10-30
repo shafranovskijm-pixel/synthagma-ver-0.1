@@ -85,20 +85,26 @@ DECLARE
   v_used jsonb;
   v_show boolean;
   v_passing integer;
+  v_current_completed boolean;
+  v_manual_credit jsonb;
 BEGIN
   e:=public.lpr_lock_own_lesson(p_lesson_id,p_expected_epoch,p_legacy);
   PERFORM public._assert_test_learner_access(p_lesson_id);
   SELECT test_show_answers, test_passing_score INTO v_show, v_passing FROM public.lessons WHERE id = p_lesson_id;
+  SELECT EXISTS(SELECT 1 FROM public.lesson_progress lp WHERE lp.user_id=e.user_id AND lp.lesson_id=p_lesson_id AND lp.completed)INTO v_current_completed;
+  v_manual_credit:=public._test_manual_credit(p_lesson_id);
   v_state := public._test_attempt_limits(p_lesson_id, auth.uid()) || jsonb_build_object(
     'hasAttempt', false, 'activeAttempt', NULL, 'showAnswers', v_show,
-    'passingScore', v_passing, 'manualCredit', public._test_manual_credit(p_lesson_id),
+    'passingScore', v_passing, 'manualCredit', CASE WHEN v_current_completed THEN v_manual_credit ELSE NULL END,
+    'historicalManualCreditAvailable',v_manual_credit IS NOT NULL AND NOT v_current_completed,
+    'historyOnlyResultAvailable',v_manual_credit IS NOT NULL AND NOT v_current_completed,
     'photoRequired', public._final_test_photo_required(p_lesson_id),
-    'currentCompleted', EXISTS(SELECT 1 FROM public.lesson_progress lp WHERE lp.user_id=e.user_id AND lp.lesson_id=p_lesson_id AND lp.completed),
+    'currentCompleted', v_current_completed,
     'learning_progress_epoch',e.learning_progress_epoch::text,'learning_progress_reset_at',e.learning_progress_reset_at);
   SELECT id INTO v_active FROM public.test_attempt_sessions
     WHERE user_id = auth.uid() AND lesson_id = p_lesson_id AND status = 'in_progress'
       AND(e.learning_progress_reset_at IS NULL OR started_at>=e.learning_progress_reset_at);
-  IF v_active IS NOT NULL AND public._test_manual_credit(p_lesson_id) IS NULL THEN
+  IF v_active IS NOT NULL AND v_manual_credit IS NULL THEN
     v_state := v_state || jsonb_build_object('activeAttempt', public._test_session_payload(v_active));
   END IF;
   SELECT coalesce(jsonb_agg(DISTINCT q), '[]'::jsonb) INTO v_used
@@ -113,6 +119,11 @@ BEGIN
         WHERE ss.id=test_attempts.session_id AND ss.started_at>=e.learning_progress_reset_at))
       ORDER BY completed_at DESC, id DESC LIMIT 1;
   IF NOT FOUND THEN RETURN v_state; END IF;
+  -- Old clients must not promote retained/unknown grades into current LP.
+  -- Raw outcome, answers and immutable snapshots remain available only through history.
+  IF NOT v_current_completed AND a.passed IS DISTINCT FROM false THEN
+    RETURN v_state||jsonb_build_object('hasAttempt',false,'passed',NULL,'attempt',NULL,'historyOnlyResultAvailable',true);
+  END IF;
   IF a.session_id IS NOT NULL THEN
     v_feedback := public._test_grade_payload(a.session_id);
     SELECT public._test_public_questions(questions_snapshot, v_show AND show_answers)
@@ -165,8 +176,8 @@ BEGIN
  WHERE l.course_id=e.course_id;
  WITH attempt_metadata AS(
   SELECT a.id,a.lesson_id,l.title AS lesson_title,a.completed_at,a.score,a.max_score,
-   coalesce(a.passing_score,l.test_passing_score,60)AS passing_score,
-   coalesce(a.passed,CASE WHEN a.max_score>0 THEN round(a.score::numeric*100/a.max_score)>=coalesce(a.passing_score,l.test_passing_score,60)ELSE false END)AS passed,
+   coalesce(a.passing_score,s.passing_score)AS passing_score,
+   coalesce(a.passed,CASE WHEN a.max_score>0 AND coalesce(a.passing_score,s.passing_score)IS NOT NULL THEN round(a.score::numeric*100/a.max_score)>=coalesce(a.passing_score,s.passing_score)ELSE NULL END)AS passed,
    coalesce(s.started_at,a.started_at)AS started_at,coalesce(lp.completed,false)AS current_completed
   FROM public.test_attempts a JOIN public.lessons l ON l.id=a.lesson_id
   LEFT JOIN public.test_attempt_sessions s ON s.id=a.session_id AND s.user_id=a.user_id AND s.lesson_id=a.lesson_id
@@ -187,7 +198,7 @@ BEGIN
    'id',id,'lesson_id',lesson_id,'lesson_title',lesson_title,'started_at',started_at,'completed_at',completed_at,
    'score',score,'max_score',max_score,'passed',passed,'passing_score',passing_score,'run_epoch',run_epoch,
    'historical_boundary_known',historical_boundary_known,'is_current_run',is_current_run,
-   'is_counted_in_current_run',passed AND current_completed AND is_current_run)AS payload FROM classified
+   'is_counted_in_current_run',coalesce(passed,false) AND current_completed AND is_current_run)AS payload FROM classified
   UNION ALL
   SELECT 'reset',r.reset_at,r.id,jsonb_build_object('id',r.id,'previous_epoch',r.previous_epoch::text,
    'learning_progress_epoch',r.learning_progress_epoch::text,'reset_at',r.reset_at,
@@ -241,7 +252,10 @@ BEGIN
  WITH course_results AS(
   SELECT e.id AS enrollment_id,e.course_id,c.title AS course_title,
    coalesce(e.progress,0)AS progress,e.status,e.started_at,e.completed_at,
-   coalesce(e.time_spent,0)AS time_spent,mc.credited_at AS manual_credited_at,
+   coalesce(e.time_spent,0)AS time_spent,CASE WHEN mc.credited_at IS NOT NULL
+    AND EXISTS(SELECT 1 FROM public.lessons ml WHERE ml.course_id=e.course_id)
+    AND NOT EXISTS(SELECT 1 FROM public.lessons ml LEFT JOIN public.lesson_progress mp ON mp.lesson_id=ml.id AND mp.user_id=e.user_id
+     WHERE ml.course_id=e.course_id AND NOT coalesce(mp.completed,false))THEN mc.credited_at ELSE NULL END AS manual_credited_at,
    e.learning_progress_epoch::text AS learning_progress_epoch,e.learning_progress_reset_at,
    coalesce(t.tests,'[]'::jsonb)AS tests
   FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id AND c.organization_id=p_organization_id
@@ -250,11 +264,12 @@ BEGIN
    SELECT jsonb_agg(jsonb_build_object(
     'lesson_id',l.id,'lesson_title',l.title,'score',a.score,'max_score',a.max_score,
     'percent',CASE WHEN a.max_score>0 THEN round(a.score::numeric*100/a.max_score)::integer ELSE NULL END,
-    'passing_score',coalesce(a.passing_score,l.test_passing_score,70),
-    'passed',CASE WHEN mc.credited_at IS NOT NULL THEN true WHEN a.id IS NULL THEN NULL
-     WHEN NOT coalesce(lp.completed,false)AND coalesce(a.passed,CASE WHEN a.max_score>0 THEN round(a.score::numeric*100/a.max_score)>=coalesce(a.passing_score,l.test_passing_score,70)ELSE false END)THEN NULL
-     ELSE coalesce(a.passed,CASE WHEN a.max_score>0 THEN round(a.score::numeric*100/a.max_score)>=coalesce(a.passing_score,l.test_passing_score,70)ELSE false END)END,
-    'attempts_used',counts.total_count,'completed_at',a.completed_at,'manual_credited_at',mc.credited_at,
+    'passing_score',CASE WHEN a.id IS NULL THEN coalesce(l.test_passing_score,70)ELSE a.passing_score END,
+    'passed',CASE WHEN mc.credited_at IS NOT NULL AND coalesce(lp.completed,false)THEN true WHEN a.id IS NULL THEN NULL
+     WHEN NOT coalesce(lp.completed,false)AND coalesce(a.passed,CASE WHEN a.max_score>0 AND a.passing_score IS NOT NULL THEN round(a.score::numeric*100/a.max_score)>=a.passing_score ELSE NULL END)THEN NULL
+     ELSE coalesce(a.passed,CASE WHEN a.max_score>0 AND a.passing_score IS NOT NULL THEN round(a.score::numeric*100/a.max_score)>=a.passing_score ELSE NULL END)END,
+    'attempts_used',counts.total_count,'completed_at',a.completed_at,
+    'manual_credited_at',CASE WHEN coalesce(lp.completed,false)THEN mc.credited_at ELSE NULL END,
     'current_run_attempts_used',counts.current_count,
     'current_completed',coalesce(lp.completed,false),'historical_attempts_used',counts.total_count,
     'last_historical_attempt_at',counts.last_at
@@ -262,7 +277,7 @@ BEGIN
    FROM public.lessons l
    LEFT JOIN public.lesson_progress lp ON lp.user_id=p_user_id AND lp.lesson_id=l.id
    LEFT JOIN LATERAL(
-    SELECT ta.id,ta.score,ta.max_score,ta.passed,ta.passing_score,ta.completed_at
+    SELECT ta.id,ta.score,ta.max_score,ta.passed,coalesce(ta.passing_score,ss.passing_score)AS passing_score,ta.completed_at
     FROM public.test_attempts ta LEFT JOIN public.test_attempt_sessions ss ON ss.id=ta.session_id
      AND ss.user_id=ta.user_id AND ss.lesson_id=ta.lesson_id
     WHERE ta.user_id=p_user_id AND ta.lesson_id=l.id

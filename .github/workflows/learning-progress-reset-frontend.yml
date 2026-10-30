@@ -2,7 +2,7 @@ name: Learning progress reset frontend
 
 on:
   push:
-    branches: [codex/learning-progress-reset-20261029]
+    branches: [codex/learning-progress-reset-20261029, codex/learning-progress-history-20261030]
   pull_request:
     paths:
       - src/**
@@ -35,7 +35,7 @@ jobs:
           mkdir -p outputs/learning-progress-reset-frontend
           git rev-parse HEAD > outputs/learning-progress-reset-frontend/head.txt
           node --version > outputs/learning-progress-reset-frontend/node.txt
-          git ls-files src/hooks/course-learning src/hooks/useStudentDashboard.ts src/hooks/useStudentDashboardSnapshot.ts src/hooks/useCourseDetails.ts src/hooks/useVideoProgress.ts src/components/course-learning/HomeworkSubmission.tsx src/pages/CourseLearning.tsx src/lib/learningProgress.ts src/utils/offlineSync.ts src/utils/testAnswerQueue.ts src/integrations/supabase/types.ts .github/workflows/learning-progress-reset-frontend.yml | xargs sha256sum > outputs/learning-progress-reset-frontend/source-manifest.sha256
+          git ls-files src/hooks/course-learning src/hooks/useStudentDashboard.ts src/hooks/useStudentDashboardSnapshot.ts src/hooks/useCourseDetails.ts src/hooks/useVideoProgress.ts src/components/course-learning/HomeworkSubmission.tsx src/pages/CourseLearning.tsx src/lib/learningProgress.ts src/utils/offlineSync.ts src/utils/testAnswerQueue.ts src/integrations/supabase/types.ts src/lib/courseLearningHistory.ts src/components/course-learning/TestAttemptHistory.tsx src/components/course-learning/CourseSidebar.tsx src/components/student/CourseCardNew.tsx src/components/student/OfflineBanner.tsx src/components/organization/student-detail/LearningResultsTab.tsx src/api/studentLearningResults.ts .github/workflows/learning-progress-reset-frontend.yml | xargs sha256sum > outputs/learning-progress-reset-frontend/source-manifest.sha256
       - name: Type check actual application
         run: npm run typecheck 2>&1 | tee outputs/learning-progress-reset-frontend/typecheck.stdout.txt
       - name: Course learning, history, access and offline regression tests
@@ -49,6 +49,12 @@ jobs:
           src/utils/__tests__/offlineSync.sdk-header.test.ts
           src/lib/__tests__/learningProgress.reset.test.ts
           src/hooks/__tests__/useStudentDashboard
+          src/hooks/__tests__/useVideoProgress.runScope.test.tsx
+          src/pages/__tests__/CourseLearning.file-delivery.test.tsx
+          src/components/course-learning/__tests__/CourseSidebar.resetRules.test.tsx
+          src/components/course-learning/__tests__/TestAttemptHistory.test.tsx
+          src/lib/__tests__/courseLearningHistory.test.ts
+          src/components/organization/student-detail/__tests__/LearningResultsTab.test.tsx
           --maxWorkers=1 --reporter=json
           --outputFile=outputs/learning-progress-reset-frontend/test-results.json
           2>&1 | tee outputs/learning-progress-reset-frontend/tests.stdout.txt

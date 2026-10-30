@@ -9,7 +9,7 @@ const mock = vi.hoisted(() => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   pendingRead: null as Promise<unknown> | null, pendingWrite: null as Promise<unknown> | null,
   pendingFeedbackRead: null as Promise<unknown> | null, pendingFeedbackSend: null as Promise<unknown> | null, feedbackWrites: 0,
-  mode: { view: { state: "legacy" } }, cacheRead: vi.fn(), cachedCourse: null as unknown,
+  mode: { view: { state: "legacy" } }, cacheRead: vi.fn(), cachedCourse: null as unknown, locked: new Set<string>(),
 }));
 vi.mock("react-router-dom", () => ({ useParams: () => ({ courseId: "course" }), useNavigate: () => mock.navigate }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "student" }, loading: false }) }));
@@ -46,7 +46,7 @@ class Query {
     if (this.table === "courses") return { data: { id: "course", organization_id: "org", title: "QA", sequential_lessons: true }, error: null };
     if (this.table === "profiles") return { data: { organization_id: "org" }, error: null };
     if (this.table === "lessons") return { data: this.columns === "content" ? { content: "QA" } : Array.from({ length: 10 }, (_, i) => ({
-      id: "lesson-" + i, course_id: "course", title: "Lesson " + i, type: "text", order_index: i, module_id: null,
+      id: "lesson-" + i, course_id: "course", title: "Lesson " + i, type: "text", order_index: i, module_id: null, is_locked: mock.locked.has("lesson-" + i),
     })), error: null };
     if (["course_modules", "lesson_attachments", "course_documents"].includes(this.table)) return { data: [], error: null };
     if (this.table === "course_access_log" || this.table === "org_student_messages") return { data: null, error: null };
@@ -62,7 +62,7 @@ class Query {
   }
 }
 beforeEach(() => {
-  vi.clearAllMocks(); mock.cachedCourse = null; mock.cacheRead.mockImplementation(async () => mock.cachedCourse); mock.epoch = "0"; mock.completed = new Set(Array.from({ length: 8 }, (_, i) => "lesson-" + i));
+  vi.clearAllMocks(); mock.locked.clear(); mock.cachedCourse = null; mock.cacheRead.mockImplementation(async () => mock.cachedCourse); mock.epoch = "0"; mock.completed = new Set(Array.from({ length: 8 }, (_, i) => "lesson-" + i));
   mock.pendingRead = null; mock.pendingWrite = null; mock.pendingFeedbackRead = null; mock.pendingFeedbackSend = null; mock.feedbackWrites = 0; setOfflineAuthActor(null); setOfflineAuthActor("student");
   mock.from.mockImplementation(table => new Query(table));
   mock.rpc.mockImplementation((name, args) => {
@@ -84,6 +84,59 @@ const resetSchool = () => { mock.epoch = "1"; mock.completed.clear(); };
 async function focus() { await act(async () => { window.dispatchEvent(new Event("focus")); }); }
 
 describe("school reset in the actual learner facade", () => {
+  it("keeps cached materials without presenting cached completions as current progress on network loss", async () => {
+    const { result } = renderHook(() => useCourseLearning());
+    await waitFor(() => expect(result.current.progressPercent).toBe(80));
+    await waitFor(() => expect(getOfflineScope("student", "student", "learner", "course")).not.toBeNull());
+    mock.cachedCourse = { course: { id: "course", organization_id: "org", title: "Saved course", sequential_lessons: true, _learningProgressEpoch: "0", _learningEnrollmentId: "enrollment" },
+      lessons: Array.from({ length: 10 }, (_, i) => ({ id: "lesson-" + i, title: "Saved " + i })),
+      lessonProgress: Array.from({ length: 8 }, (_, i) => ({ lesson_id: "lesson-" + i, completed: true })), lessonAttachments: {}, courseDocuments: [], cachedAt: Date.now() };
+    mock.rpc.mockRejectedValue(new Error("Failed to fetch"));
+    await focus();
+    await waitFor(() => expect(result.current.isOfflineMode).toBe(true));
+    expect(result.current.course?.title).toBe("Saved course"); expect(result.current.lessons).toHaveLength(10);
+    expect(result.current.learningRun).toBeNull(); expect(result.current.progressPercent).toBe(0); expect(result.current.completedCount).toBe(0);
+    expect(result.current.isLessonAccessible(1)).toBe(false);
+    const writes = mock.rpc.mock.calls.filter(([name]) => name === "save_own_lesson_progress").length;
+    await act(async () => { await result.current.markLessonComplete(false); });
+    expect(mock.rpc.mock.calls.filter(([name]) => name === "save_own_lesson_progress")).toHaveLength(writes);
+  });
+  it("checks previous navigation against the current sequence after progress changes within the same run", async () => {
+    const { result } = renderHook(() => useCourseLearning());
+    await waitFor(() => expect(result.current.progressPercent).toBe(80));
+    act(() => result.current.goToLesson(4));
+    await waitFor(() => expect(result.current.currentLessonIndex).toBe(4));
+    mock.completed.clear(); await focus();
+    await waitFor(() => expect(result.current.progressPercent).toBe(0));
+    expect(result.current.learningRun?.epoch).toBe("0");
+    act(() => result.current.goToPrevLesson());
+    await act(async () => { await new Promise(done => setTimeout(done, 350)); });
+    expect(result.current.currentLessonIndex).toBe(4);
+  });
+  it("does not commit a delayed direct transition after the same run loses a required preceding completion", async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useCourseLearning());
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(result.current.progressPercent).toBe(80);
+    act(() => result.current.goToLesson(8));
+    mock.completed.clear(); await focus();
+    expect(result.current.learningRun?.epoch).toBe("0"); expect(result.current.progressPercent).toBe(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    expect(result.current.currentLessonIndex).toBe(0); expect(result.current.isTransitioning).toBe(false);
+  });
+  it("rechecks a newly applied static lock at transition commit and blocks previous navigation too", async () => {
+    const { result } = renderHook(() => useCourseLearning());
+    await waitFor(() => expect(result.current.progressPercent).toBe(80));
+    act(() => result.current.goToLesson(4));
+    await waitFor(() => expect(result.current.currentLessonIndex).toBe(4));
+    act(() => result.current.goToPrevLesson());
+    mock.locked.add("lesson-3"); await focus();
+    await act(async () => { await new Promise(done => setTimeout(done, 350)); });
+    expect(result.current.currentLessonIndex).toBe(4); expect(result.current.isTransitioning).toBe(false);
+    act(() => result.current.goToPrevLesson());
+    await act(async () => { await new Promise(done => setTimeout(done, 350)); });
+    expect(result.current.currentLessonIndex).toBe(4);
+  });
   it("replaces the already-open 80 percent with the server zero on focus", async () => {
     const { result } = renderHook(() => useCourseLearning());
     await waitFor(() => expect(result.current.progressPercent).toBe(80));

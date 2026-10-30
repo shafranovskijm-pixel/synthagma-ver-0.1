@@ -294,7 +294,8 @@ export function useCourseLearning() {
       }
 
       // Validate every lesson and complete the enrollment in one server-side
-      // transaction. The RPC also repairs progress for an already-passed test.
+      // transaction. Only authoritative current lesson progress can complete
+      // this run; viewing an earlier passed attempt never repairs completion.
       const { data: updatedEnrollment, error: enrollmentUpdateErr } = await supabase.rpc(
         'complete_own_course_enrollment_at_epoch' as never,
         { p_enrollment_id: enrollmentId, p_expected_epoch: captured.run.epoch } as never,
@@ -372,41 +373,45 @@ export function useCourseLearning() {
   const isLessonCompleted = (lessonId: string) => completionIndex.completedIds.has(lessonId);
 
   const isLessonAccessible = (index: number, completedIds?: ReadonlySet<string>): boolean => {
-    return isCourseLessonAccessible(lessons, index, course?.sequential_lessons, completionIndex, completedIds);
+    return Number.isInteger(index) && index >= 0 && index < lessons.length
+      && isCourseLessonAccessible(lessons, index, course?.sequential_lessons, completionIndex, completedIds);
   };
 
+  const navigationView = useRef({ identityKey, lessons, sequential: course?.sequential_lessons, completionIndex, privateVisible });
+  navigationView.current = { identityKey, lessons, sequential: course?.sequential_lessons, completionIndex, privateVisible };
+  const navigationOperation = useRef(0);
+  const navigationMounted = useRef(true);
+  useEffect(() => { navigationMounted.current = true; return () => { navigationMounted.current = false; navigationOperation.current++; }; }, []);
   const captureNavigation = () => {
     const authority = progressAuthorityRef.current, current = authority.fence.captureRevision();
-    return () => authority === progressAuthorityRef.current && current();
+    return () => navigationMounted.current && authority === progressAuthorityRef.current && current();
   };
-  const goToNextLesson = () => {
-    const nextIndex = currentLessonIndex + 1;
-    if (nextIndex < lessons.length) {
-      // markLessonProgress commits this set after both writes, before React
-      // renders lessonProgress. Auto-advance must use that confirmed state.
-      if (!isLessonAccessible(nextIndex, completedIdsRef.current)) { toast.error('Сначала завершите текущий урок'); return; }
-      setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
-      const current = captureNavigation();
-      setTimeout(() => { if (current()) { setCurrentLessonIndex(nextIndex); setIsTransitioning(false); } }, 300);
-    }
+  const goToLesson = (index: number, blockedMessage = 'Этот урок пока недоступен. Пройдите предыдущие уроки.') => {
+    const targetId = lessons[index]?.id, sourceId = lessons[currentLessonIndex]?.id;
+    if (!targetId || index === currentLessonIndex) return;
+    const current = captureNavigation();
+    const accessibleNow = () => {
+      const view = navigationView.current;
+      return current() && view.identityKey === identityKey && view.privateVisible
+        && view.lessons[index]?.id === targetId && view.lessons[currentLessonIndex]?.id === sourceId
+        // A just-confirmed save updates this set before React renders. Never
+        // freeze the old completion set into the delayed navigation callback.
+        && isCourseLessonAccessible(view.lessons, index, view.sequential, view.completionIndex, completedIdsRef.current);
+    };
+    if (!accessibleNow()) { toast.error(blockedMessage); return; }
+    const operation = ++navigationOperation.current;
+    setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
+    setTimeout(() => {
+      if (!current() || operation !== navigationOperation.current) return;
+      // Progress, locks or schedules may change during the transition, even
+      // within the same run. Previous/swipe/direct/next share this final gate.
+      if (accessibleNow()) setCurrentLessonIndex(index);
+      else toast.error(blockedMessage);
+      setIsTransitioning(false);
+    }, 300);
   };
-
-  const goToPrevLesson = () => {
-    if (currentLessonIndex > 0) {
-      setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
-      const current = captureNavigation();
-      setTimeout(() => { if (current()) { setCurrentLessonIndex(prev => prev - 1); setIsTransitioning(false); } }, 300);
-    }
-  };
-
-  const goToLesson = (index: number) => {
-    if (index !== currentLessonIndex) {
-      if (!isLessonAccessible(index)) { toast.error('Этот урок пока недоступен. Пройдите предыдущие уроки.'); return; }
-      setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
-      const current = captureNavigation();
-      setTimeout(() => { if (current()) { setCurrentLessonIndex(index); setIsTransitioning(false); } }, 300);
-    }
-  };
+  const goToNextLesson = () => goToLesson(currentLessonIndex + 1, 'Сначала завершите текущий урок');
+  const goToPrevLesson = () => goToLesson(currentLessonIndex - 1);
 
   const markLessonComplete = async (autoAdvance = true) => {
     if (!currentLesson || !user) return;
@@ -749,10 +754,15 @@ export function useCourseLearning() {
           cached.lessons.every((lesson: Lesson) => !lesson.module_id)
         );
         if (cached && hasKnownOrder) {
-          setCourse(cached.course); setLessons(cached.lessons); setLessonProgress(cached.lessonProgress); setLessonAttachments(cached.lessonAttachments); setCourseDocuments(cached.courseDocuments ?? []); setMaterialsError(false);
+          // Cached materials are useful offline; their old completion flags
+          // cannot confirm the current run after a reset on another device.
+          // Never adopt the cached epoch or use cached passes to unlock lessons.
+          setCourse(cached.course); setLessons(cached.lessons); setLessonProgress([]); completedIdsRef.current = new Set();
+          setCurrentLessonIndex(0); setIsTransitioning(false);
+          setLessonAttachments(cached.lessonAttachments); setCourseDocuments(cached.courseDocuments ?? []); setMaterialsError(false);
           setIsOfflineMode(true); setOfflineCachedAt(cached.cachedAt);
           setEnrollmentId(null); setLoadedGeneration(generation);
-          toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
+          toast.info('Загружены сохранённые материалы курса', { description: 'Актуальный прогресс не подтверждён. Подключитесь к Интернету для продолжения обучения.' });
         } else if (cached) {
           setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setCourseDocuments([]); setMaterialsError(false); setEnrollmentId(null);
           toast.error('Подключитесь к Интернету, чтобы обновить порядок модулей курса');

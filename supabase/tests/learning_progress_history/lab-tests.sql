@@ -3,6 +3,7 @@ BEGIN;
 SET LOCAL TimeZone='UTC';
 CREATE FUNCTION pg_temp.assert(ok boolean,label text)RETURNS void LANGUAGE plpgsql AS $t$
 BEGIN IF ok IS NOT TRUE THEN RAISE EXCEPTION 'FAIL: %',label;END IF;RAISE NOTICE 'PASS: %',label;END;$t$;
+SELECT pg_temp.assert((SELECT attnotnull FROM pg_attribute WHERE attrelid='public.test_attempts'::regclass AND attname='completed_at'),'history cursor date mirrors actual NOT NULL completion contract');
 CREATE FUNCTION pg_temp.expect_error(command text,wanted_state text,wanted_message text,label text)RETURNS void LANGUAGE plpgsql AS $t$
 DECLARE actual_state text:='00000';actual_message text:='';BEGIN
  BEGIN EXECUTE command;EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS actual_state=RETURNED_SQLSTATE,actual_message=MESSAGE_TEXT;END;
@@ -21,13 +22,17 @@ INSERT INTO public.courses(id,organization_id,title)VALUES('31000000-0000-0000-0
 INSERT INTO public.enrollments(id,user_id,course_id)VALUES
  ('41000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001','31000000-0000-0000-0000-000000000001'),
  ('41000000-0000-0000-0000-000000000002','21000000-0000-0000-0000-000000000004','31000000-0000-0000-0000-000000000001');
+-- All ten lessons must exist before LP is seeded: monotone progress must not
+-- observe a temporary one-lesson denominator and legitimately reach100.
+INSERT INTO public.lessons(id,course_id,title,type,order_index,test_max_attempts,test_max_attempts_per_day)
+ SELECT ('51000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,
+  '31000000-0000-0000-0000-000000000001','Synthetic Lesson '||n,
+  CASE WHEN n<=5 THEN 'text'ELSE 'test'END,n,20,20 FROM generate_series(1,10)n;
 DO $fixture$
 DECLARE n integer;lid uuid;qid uuid;sid uuid;rid uuid;
 BEGIN
  FOR n IN 1..10 LOOP
   lid:=('51000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid;
-  INSERT INTO public.lessons(id,course_id,title,type,order_index,test_max_attempts,test_max_attempts_per_day)
-   VALUES(lid,'31000000-0000-0000-0000-000000000001','Synthetic Lesson '||n,CASE WHEN n<=5 THEN 'text'ELSE 'test'END,n,20,20);
   IF n<=5 THEN
    INSERT INTO public.lesson_progress(user_id,lesson_id,completed,completed_at)
     VALUES('21000000-0000-0000-0000-000000000001',lid,true,clock_timestamp()-interval'1 hour');
@@ -54,7 +59,9 @@ CREATE TEMP TABLE before_rows AS SELECT
 SELECT set_config('test.actor','21000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert(get_course_learning_snapshot('31000000-0000-0000-0000-000000000001')->'enrollment'->>'progress'='50','legacy five current text lessons produce authoritative50');
-SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->>'passed'='true','historical passed grade remains readable');
+SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->>'passed'IS NULL,'historical passed grade cannot masquerade as current pass');
+SELECT pg_temp.assert(get_student_test_state('51000000-0000-0000-0000-000000000006')->>'hasAttempt'='false','legacy client alias cannot promote missingLP from old grade');
+SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->>'historyOnlyResultAvailable'='true','retained grade availability remains explicit without current pass');
 SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->>'currentCompleted'='false','historical passed grade is not current lesson completion');
 SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->>'attemptsUsed'='1','legacy quota still counts old attempt without refund');
 SELECT pg_temp.expect_error($q$SELECT complete_own_course_enrollment_at_epoch('41000000-0000-0000-0000-000000000001','0')$q$,'P0001','course_incomplete:5/10','legacy completion cannot silently recover old tests');
@@ -70,10 +77,32 @@ SELECT pg_temp.assert((SELECT md5(jsonb_agg(to_jsonb(a)ORDER BY id)::text)FROM p
 SELECT pg_temp.assert((SELECT md5(jsonb_agg(to_jsonb(s)ORDER BY id)::text)FROM public.test_attempt_sessions s)=(SELECT sessions FROM before_rows),'history and failed completion preserve exact session snapshots');
 SELECT pg_temp.assert((SELECT md5(jsonb_agg(to_jsonb(p)ORDER BY id)::text)FROM public.lesson_progress p)=(SELECT progress FROM before_rows),'history cannot recreate currentLP');
 SELECT pg_temp.assert((SELECT md5(jsonb_agg(to_jsonb(e)ORDER BY id)::text)FROM public.enrollments e)=(SELECT enrollments FROM before_rows),'history cannot rewrite enrollment or its epoch');
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE legacy_active AS SELECT start_test_attempt_at_epoch('51000000-0000-0000-0000-000000000006','85000000-0000-0000-0000-000000000006','0')payload;
+SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->'activeAttempt'->>'attemptId'=(SELECT payload->>'attemptId'FROM legacy_active),'history-only old grade does not hide a genuine active attempt');
+RESET ROLE;
 SELECT set_config('test.actor','21000000-0000-0000-0000-000000000002',true);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert((SELECT count(*)FROM jsonb_array_elements(get_student_learning_results('11000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001')->'courses'->0->'tests')x WHERE x->>'passed'IS NOT NULL)=0,'teacher current summary excludes all uncredited historical tests');
 SELECT pg_temp.assert((SELECT sum((x->>'historical_attempts_used')::integer)FROM jsonb_array_elements(get_student_learning_results('11000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001')->'courses'->0->'tests')x)=5,'teacher summary keeps historical attempt counts separately');
+-- Retained legacy active credit must not manufacture a current test/course mark.
+RESET ROLE;
+SAVEPOINT legacy_credit_without_lp;
+INSERT INTO public.course_manual_credits(id,enrollment_id,credited_by,credited_at)
+ VALUES('a1000000-0000-0000-0000-000000000002','41000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000002',clock_timestamp()-interval'5 days');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert(get_student_learning_results('11000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001')->'courses'->0->>'manual_credited_at'IS NULL,'legacy manual credit without full currentLP is history only');
+SELECT pg_temp.assert((SELECT count(*)FROM jsonb_array_elements(get_student_learning_results('11000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001')->'courses'->0->'tests')x WHERE x->>'passed'='true')=0,'legacy active manual credit cannot pass missing current tests');
+SELECT pg_temp.assert((SELECT count(*)FROM jsonb_array_elements(get_student_learning_results('11000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001')->'courses'->0->'tests')x WHERE x->>'manual_credited_at'IS NOT NULL)=0,'legacy credit cannot supply current test credit dates withoutLP');
+SELECT set_config('test.actor','21000000-0000-0000-0000-000000000001',true);
+SELECT pg_temp.assert(get_own_course_learning_history('31000000-0000-0000-0000-000000000001','0')->'counts'->>'manual_credits_total'='1','legacy uncounted manual credit remains available in safe history');
+SELECT pg_temp.assert(get_student_test_state('51000000-0000-0000-0000-000000000006')->'manualCredit'='null'::jsonb,'legacy reader alias does not expose uncredited manual mark as current');
+SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->>'historicalManualCreditAvailable'='true','legacy manual history availability remains explicit');
+SELECT pg_temp.assert(get_student_test_state_at_epoch('51000000-0000-0000-0000-000000000006','0')->'activeAttempt'='null'::jsonb,'raw active institutional credit retains original hold on pending attempt until organization reset');
+SELECT pg_temp.expect_error($q$SELECT start_test_attempt_at_epoch('51000000-0000-0000-0000-000000000007','85000000-0000-0000-0000-000000000007','0')$q$,'P0001','Course already credited by the organization','uncredited legacy institutional credit still requires explicit organization reset before new start');
+ROLLBACK TO SAVEPOINT legacy_credit_without_lp;
+SET LOCAL ROLE authenticated;
+
 SELECT pg_temp.expect_error($q$SELECT get_own_course_learning_history('31000000-0000-0000-0000-000000000001','0')$q$,'P0002','enrollment_not_found','staff cannot use own history RPC to read a learner');
 SELECT set_config('test.actor','21000000-0000-0000-0000-000000000003',true);
 SELECT pg_temp.expect_error($q$SELECT get_student_learning_results('11000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001')$q$,'42501','student_results_forbidden','wrong tenant cannot read staff summary');
@@ -156,6 +185,17 @@ SELECT pg_temp.expect_error($q$SELECT get_own_course_learning_history('31000000-
 SELECT pg_temp.expect_error($q$SELECT get_own_course_learning_history('31000000-0000-0000-0000-000000000001','1','2026-01-01T00:00:00Z','attempt','91000000-0000-0000-0000-000000000099')$q$,'22023','history_cursor_not_available','foreign learner cursor rejected without data exposure');
 SELECT pg_temp.expect_error($q$SELECT get_own_course_learning_history('31000000-0000-0000-0000-000000000001','1','2025-01-01T00:00:00Z','manual_credit','a1000000-0000-0000-0000-000000000001')$q$,'22023','history_cursor_not_available','own record with fabricated cursor timestamp rejected');
 SELECT pg_temp.expect_error($q$SELECT get_own_course_learning_history('31000000-0000-0000-0000-000000000001','1','2026-01-01T00:00:00Z','manual_credit','a1000000-0000-0000-0000-000000000099')$q$,'22023','history_cursor_not_available','unknown cursor rejected with same error as foreign');
+-- Unknown historical outcome/threshold cannot be regraded using mutable lesson settings.
+RESET ROLE;
+INSERT INTO public.test_attempts(id,user_id,lesson_id,completed_at,score,max_score,answers,passed,passing_score)
+ VALUES('91000000-0000-0000-0000-000000000100','21000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000006',clock_timestamp(),1,2,'{}',NULL,NULL);
+UPDATE public.lessons SET test_passing_score=1 WHERE id='51000000-0000-0000-0000-000000000006';
+SELECT set_config('test.actor','21000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert((SELECT x->>'passed'FROM jsonb_array_elements(get_own_course_learning_history('31000000-0000-0000-0000-000000000001','1')->'attempts')x WHERE x->>'id'='91000000-0000-0000-0000-000000000100')IS NULL,'unknown legacy outcome remains unknown after current threshold changed');
+SELECT pg_temp.assert((SELECT x->>'passing_score'FROM jsonb_array_elements(get_own_course_learning_history('31000000-0000-0000-0000-000000000001','1')->'attempts')x WHERE x->>'id'='91000000-0000-0000-0000-000000000100')IS NULL,'unknown historical threshold is not copied from current lesson');
+SELECT pg_temp.assert((SELECT x->>'is_counted_in_current_run'FROM jsonb_array_elements(get_own_course_learning_history('31000000-0000-0000-0000-000000000001','1')->'attempts')x WHERE x->>'id'='91000000-0000-0000-0000-000000000100')='false','unknown legacy grade cannot count as new progress');
+
 SELECT pg_temp.assert(NOT has_function_privilege('anon','public.get_own_course_learning_history(uuid,text,timestamptz,text,uuid)','EXECUTE'),'anonymous history execution revoked');
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.lpr_get_student_test_state(uuid,text,boolean)','EXECUTE'),'private state helper still inaccessible');
 SELECT pg_temp.assert(NOT has_table_privilege('authenticated','public.course_learning_progress_resets','SELECT'),'raw reset snapshots remain private');

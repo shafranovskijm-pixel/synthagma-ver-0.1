@@ -182,7 +182,7 @@ describe('useLessonTest server attempt lifecycle', () => {
   });
 
   it('preserves null feedback on refresh instead of falling back to a different question key', async () => {
-    mocks.rpc.mockResolvedValue(response({ ...idle(), hasAttempt: true, showAnswers: true,
+    mocks.rpc.mockResolvedValue(response({ ...idle(), hasAttempt: true, passed: false, showAnswers: true,
       correctAnswers: { 'question-a': null },
       attempt: { score: 0, max_score: 1, answers: { 'question-a': 0 }, questions: [question('question-a')] } }));
     const { result } = harness();
@@ -192,7 +192,7 @@ describe('useLessonTest server attempt lifecycle', () => {
 
   it('keeps hidden answer keys absent when completed feedback is restricted', async () => {
     const { correct_answer: _key, ...hiddenQuestion } = question('question-a');
-    mocks.rpc.mockResolvedValue(response({ ...idle(), hasAttempt: true, correctAnswers: {},
+    mocks.rpc.mockResolvedValue(response({ ...idle(), hasAttempt: true, passed: false, correctAnswers: {},
       attempt: { score: 0, max_score: 1, answers: { 'question-a': 0 }, questions: [hiddenQuestion] } }));
     const { result } = harness();
     await ready(result);
@@ -289,16 +289,14 @@ describe('useLessonTest server attempt lifecycle', () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
-  it('marks manual credit completed without manufacturing a test score or submitting answers', async () => {
-    mocks.rpc.mockResolvedValue(response({ ...idle(), manualCredit: { creditedAt: '2026-09-07T01:00:00Z', creditedBy: 'Teacher' } }));
+  it('shows a server-confirmed manual credit without writing progress or manufacturing a score', async () => {
+    mocks.rpc.mockResolvedValue(response({ ...idle(), currentCompleted: true, manualCredit: { creditedAt: '2026-09-07T01:00:00Z', creditedBy: 'Teacher' } }));
     const { result, params } = harness();
     await ready(result);
     expect(result.current.testSubmitted).toBe(true);
     expect(result.current.testScore).toBeNull();
     expect(result.current.testQuestions).toEqual([]);
-    const update = vi.mocked(params.setLessonProgress).mock.calls[0][0];
-    if (typeof update !== 'function') throw new Error('Expected a progress state updater');
-    expect(update([])).toEqual([{ lesson_id: 'lesson-a', completed: true }]);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
     await act(async () => { await result.current.startTest(); await result.current.submitTest(); });
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
     expect(params.handleCourseCompletion).not.toHaveBeenCalled();
@@ -381,18 +379,14 @@ describe('useLessonTest server attempt lifecycle', () => {
     await ready(result);
     expect(params.handleCourseCompletion).not.toHaveBeenCalled();
     mocks.rpc.mockResolvedValueOnce(response({
-      ...idle(), hasAttempt: true, passed: true,
+      ...idle(), hasAttempt: true, passed: true, currentCompleted: true,
       attempt: { score: 2, max_score: 3, passing_score: 60, answers: { 'question-a': 0 }, questions: [question('question-a')] },
     }));
     act(() => window.dispatchEvent(new Event('test-submission-synced')));
     await waitFor(() => expect(params.handleCourseCompletion).toHaveBeenCalledExactlyOnceWith({ score: 2, max: 3 }));
     expect(result.current.testScore).toEqual({ score: 2, max: 3 });
     expect(result.current.testSubmitted).toBe(true);
-    const update = vi.mocked(params.setLessonProgress).mock.calls[0][0];
-    if (typeof update !== 'function') throw new Error('Expected a progress state updater');
-    expect(update(params.lessonProgress)).toEqual([
-      { lesson_id: 'lesson-prior', completed: true }, { lesson_id: 'lesson-a', completed: true },
-    ]);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
   });
 
   it.each(['failed-result', 'unavailable-state'])('does not complete a course on queued sync with %s', async scenario => {
@@ -429,5 +423,95 @@ describe('useLessonTest server attempt lifecycle', () => {
     expect(result.current.testScore).toBeNull();
     expect(params.handleCourseCompletion).not.toHaveBeenCalled();
     expect(params.setLessonProgress).not.toHaveBeenCalled();
+  });
+});
+
+describe('reading history cannot restore current progress', () => {
+  const oldPass = () => ({ ...idle(), hasAttempt: true, passed: true, currentCompleted: false,
+    attempt: { score: 10, max_score: 10, passing_score: 60, answers: { 'question-a': 0 }, questions: [question('question-a')] } });
+  it('keeps a legacy saved pass separate from an empty authoritative progress snapshot', async () => {
+    mocks.rpc.mockResolvedValue(response(oldPass()));
+    const { result, params } = harness(); await ready(result);
+    expect(result.current.testHistoryOnly).toBe(true);
+    expect(result.current.testSubmitted).toBe(false);
+    expect(result.current.testScore).toBeNull();
+    expect(result.current.testQuestions).toEqual([]);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+    expect(params.handleCourseCompletion).not.toHaveBeenCalled();
+    await act(async () => { await result.current.refreshTestState(); });
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+  });
+  it('shows a current passed result only after the server confirms its progress row, with no GET write', async () => {
+    mocks.rpc.mockResolvedValue(response({ ...oldPass(), currentCompleted: true }));
+    const { result, params } = harness(); await ready(result);
+    expect(result.current.testSubmitted).toBe(true);
+    expect(result.current.testScore).toEqual({ score: 10, max: 10 });
+    expect(result.current.testHistoryOnly).toBe(false);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+  });
+  it('does not let a queued-sync event turn a retained pass into completion', async () => {
+    mocks.rpc.mockResolvedValue(response(oldPass()));
+    const { result, params } = harness(); await ready(result);
+    act(() => window.dispatchEvent(new Event('test-submission-synced')));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(2)); await ready(result);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+    expect(params.handleCourseCompletion).not.toHaveBeenCalled();
+    expect(result.current.testScore).toBeNull();
+  });
+  it('does not restore missing progress from an inconsistent retained manual credit', async () => {
+    mocks.rpc.mockResolvedValue(response({ ...idle(), currentCompleted: false,
+      manualCredit: { creditedAt: '2026-09-07T01:00:00Z', creditedBy: 'Teacher' } }));
+    const { result, params } = harness(); await ready(result);
+    expect(result.current.testManualCredit).toBeNull();
+    expect(result.current.testHistoryOnly).toBe(true);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+  });
+  it.each(['historyOnlyResultAvailable', 'historicalManualCreditAvailable'] as const)('keeps a masked server %s result in history without restoring a passed screen or progress', async flag => {
+    mocks.rpc.mockResolvedValue(response({ ...idle(), currentCompleted: false, hasAttempt: false,
+      passed: null, attempt: null, manualCredit: null, attemptsUsed: 3, [flag]: true }));
+    const { result, params } = harness(); await ready(result);
+    expect(result.current.testHistoryOnly).toBe(true);
+    expect(result.current.testSubmitted).toBe(false);
+    expect(result.current.testScore).toBeNull();
+    expect(result.current.testManualCredit).toBeNull();
+    expect(result.current.testQuestions).toEqual([]);
+    expect(result.current.testAttemptsUsed).toBe(3);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+    expect(params.handleCourseCompletion).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('get_student_test_state_at_epoch', { p_lesson_id: 'lesson-a', p_expected_epoch: '0' });
+  });
+  it('retains fresh failed feedback when the server does not mark the result as history-only', async () => {
+    mocks.rpc.mockResolvedValue(response({ ...idle(), currentCompleted: false, hasAttempt: true,
+      historyOnlyResultAvailable: false, historicalManualCreditAvailable: false, passed: false,
+      attempt: { score: 2, max_score: 10, passing_score: 60, answers: { 'question-a': 1 }, questions: [question('question-a')] } }));
+    const { result, params } = harness(); await ready(result);
+    expect(result.current.testSubmitted).toBe(true);
+    expect(result.current.testScore).toEqual({ score: 2, max: 10 });
+    expect(result.current.testHistoryOnly).toBe(false);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+    expect(params.handleCourseCompletion).not.toHaveBeenCalled();
+  });
+  it('blocks an old or current start callback for a retained organization credit until a genuine new run is confirmed', async () => {
+    const savedState = deferred<ReturnType<typeof response>>();
+    mocks.rpc.mockReturnValueOnce(savedState.promise);
+    const { result, params, rerender } = harness();
+    const oldStart = result.current.startTest;
+    await act(async () => { savedState.resolve(response({ ...idle(), currentCompleted: false, hasAttempt: false,
+      passed: null, attempt: null, manualCredit: null, historicalManualCreditAvailable: true, attemptsUsed: 3 })); });
+    await ready(result);
+    expect(result.current.testQuestionsError).toBe('Сохранён прежний зачёт организации. Для нового прохождения попросите организацию сбросить прогресс курса.');
+    await act(async () => { await oldStart(); await result.current.startTest(); });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(params.setLessonProgress).not.toHaveBeenCalled();
+    mocks.rpc.mockImplementation(name => Promise.resolve({ data: {
+      ...(name === 'start_test_attempt_at_epoch' ? active('new-run-attempt') : idle()),
+      currentCompleted: false, historicalManualCreditAvailable: false, learning_progress_epoch: '1', learning_progress_reset_at: '2026-10-30T01:00:00Z',
+    }, error: null }));
+    rerender({ ...params, learningEpoch: '1' }); await ready(result);
+    expect(result.current.testQuestionsError).toBeNull();
+    await act(async () => { await result.current.startTest(); });
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'start_test_attempt_at_epoch')).toHaveLength(1);
+    expect(result.current.testAttemptId).toBe('new-run-attempt');
+    expect(result.current.testHistoryOnly).toBe(false);
   });
 });

@@ -75,7 +75,7 @@ try:
    stage.update(status="PASS",statements=statements,assertions=len(labels)-before)
    print(json.dumps(stage),flush=True)
   proof["assertions"]=len(labels);proof["assertionLabels"]=labels
-  if len(labels)<48:raise RuntimeError("Missing reviewed history regression cases")
+  if len(labels)!=76:raise RuntimeError("Expected exactly76 reviewed history regression cases, got "+str(len(labels)))
   if conn.execute("SELECT count(*)FROM public.enrollments").fetchone()[0]!=0:
    raise RuntimeError("Fixture transaction was not rolled back")
  proof["status"]="PASS";save()
