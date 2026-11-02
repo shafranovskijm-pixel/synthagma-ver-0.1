@@ -11175,6 +11175,57 @@ export type Database = {
           },
         ]
       }
+      original_course_import_receipts: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string
+          lesson_count: number
+          module_count: number
+          organization_id: string
+          package_id: string
+          payload_sha256: string
+          question_count: number
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by: string
+          lesson_count: number
+          module_count: number
+          organization_id: string
+          package_id: string
+          payload_sha256: string
+          question_count: number
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          lesson_count?: number
+          module_count?: number
+          organization_id?: string
+          package_id?: string
+          payload_sha256?: string
+          question_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "original_course_import_receipts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "original_course_import_receipts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paid_umk_20260922_assets: {
         Row: {
           audience: string
@@ -25312,6 +25363,10 @@ export type Database = {
       }
       import_mailing_senders_batch: {
         Args: { p_organization_id: string; p_rows: Json }
+        Returns: Json
+      }
+      import_original_course_draft_v1: {
+        Args: { p_organization_id: string; p_payload: Json }
         Returns: Json
       }
       increment_lesson_time: {
