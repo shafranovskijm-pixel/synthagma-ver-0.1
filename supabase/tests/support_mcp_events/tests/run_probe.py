@@ -100,7 +100,11 @@ class ProbeTests(unittest.TestCase):
    db.execute("select set_config('support_events_lab.fail_net','1',false)")
    self.assertDbError('P0001',lambda:db.execute('select mcp_events_private.queue_runtime_probe()'))
   self.assertEqual(m.scalar('select count(*)from net.http_request_queue'),0)
-  self.assertDbError('P0001',lambda:m.execute(PROBE.read_text()))
+  # Full DDL contains %ROWTYPE and format('%s'): do not pass an empty parameter
+  # tuple through the scalar helper, which makes psycopg parse client placeholders.
+  def replay():
+   with m.connection()as db:db.execute(PROBE.read_text())
+  self.assertDbError('P0001',replay)
   self.assertEqual(self.vault,m.scalar('select md5(jsonb_agg(to_jsonb(v)order by v.id)::text)from vault.secrets v'))
   self.assertEqual(self.config,m.scalar('select md5(to_jsonb(c)::text)from mcp_events_private.runtime_config c'))
   with m.connection()as db:old=db.execute("select p.oid,md5(pg_get_functiondef(p.oid)||'|'||p.proowner::text||'|'||coalesce(p.proacl::text,'')||'|'||coalesce(p.proconfig::text,''))from pg_proc p where p.oid=any(%s::oid[])order by p.oid",([x[0]for x in self.old],)).fetchall()
