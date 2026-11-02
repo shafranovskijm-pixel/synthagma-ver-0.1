@@ -8,6 +8,7 @@ import { consumeLegacyLoginPrefill, sanitizeTrackingUrl, studentCredentialsText 
 const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
 const bootstrap = html.match(/<script id="sintagma-privacy-bootstrap">([\s\S]*?)<\/script>/)![1];
 const counter = html.match(/<!-- Yandex.Metrika counter[\s\S]*?<script[^>]*>([\s\S]*?)<\/script>/)![1];
+const integration = html.match(/<script>\s*(if \(!window\.__sintagmaPrivateEntry\)[\s\S]*?integration\.src[\s\S]*?)<\/script>/)![1];
 const cacheBootstrap = html.match(/<!-- Cache\/SW bootstrap[\s\S]*?<script>([\s\S]*?)<\/script>/)![1];
 const recovery = html.match(/<!-- SW recovery[\s\S]*?<script>([\s\S]*?)<\/script>/)![1];
 
@@ -15,6 +16,7 @@ function boot(href: string, referrer = "", historyFails = false) {
   const url = new URL(href);
   const appended: unknown[] = [];
   const inserted: unknown[] = [];
+  const integrations: unknown[] = [];
   const timers: Array<() => void> = [];
   const page: Record<string, any> = {
     URL, URLSearchParams, location: url,
@@ -26,13 +28,15 @@ function boot(href: string, referrer = "", historyFails = false) {
     document: {
       referrer, scripts: [], createElement: (tag: string) => ({ tag }),
       head: { appendChild: (element: unknown) => appended.push(element) },
+      body: { appendChild: (element: unknown) => integrations.push(element) },
       getElementsByTagName: () => [{ parentNode: { insertBefore: (element: unknown) => inserted.push(element) } }],
     },
   };
   page.window = page;
   runInNewContext(bootstrap, page);
   runInNewContext(counter, page);
-  return { page, url, appended, inserted, timers };
+  runInNewContext(integration, page);
+  return { page, url, appended, inserted, integrations, timers };
 }
 
 describe("credential privacy before analytics", () => {
@@ -53,7 +57,7 @@ describe("credential privacy before analytics", () => {
     expect(page.__consumeLegacyLoginPrefill).toBeUndefined();
     expect(bootstrap).not.toMatch(/localStorage|sessionStorage/);
   });
-  it("does not purge, reload or mark cache versions on a legacy credential entry, including after consume", () => {
+  it("does not purge, reload or mark cache versions on a legacy credential entry, including after consume", async () => {
     const { page, timers } = boot("https://example.test/login?u=synthetic-user&p=synthetic-secret&next=%2Fstudent");
     const stored = new Map([["app-version", "previous-build"], ["__asset_id", "previous-assets"]]);
     const storage = { getItem: vi.fn((key: string) => stored.get(key)), setItem: vi.fn(), removeItem: vi.fn() };
@@ -69,13 +73,17 @@ describe("credential privacy before analytics", () => {
     expect(timers).toHaveLength(1); // only the memory expiry, no recovery timer
     const main = readFileSync(resolve(process.cwd(), "src/main.tsx"), "utf8");
     const refreshStart = main.indexOf("(async () => {");
-    const refreshEnd = main.indexOf("})();", refreshStart);
-    const refresh = main.slice(refreshStart, refreshEnd + 5);
+    const refreshEnd = main.indexOf("})().catch", refreshStart);
+    expect(refreshStart).toBeGreaterThanOrEqual(0);
+    expect(refreshEnd).toBeGreaterThan(refreshStart);
+    const refresh = main.slice(refreshStart, refreshEnd + 4);
     expect(refresh).toContain("__sintagmaLegacyLoginEntry) return;");
     const productionRefresh = refresh.split("import.meta.env.PROD").join("true");
     const executable = transpileModule(productionRefresh, { compilerOptions: { target: ScriptTarget.ES2022 } }).outputText
       .replace(/\nexport \{\};?\s*$/, ""); // empty module marker is unnecessary in the VM harness
-    runInNewContext(executable, page);
+    page.privatePolicyReady = Promise.resolve();
+    page.privatePolicyRequired = true;
+    await runInNewContext(executable, page);
     expect(storage.getItem).not.toHaveBeenCalled();
   });
   it("uses a fresh document when moving from private login to organization registration", () => {
@@ -94,16 +102,68 @@ describe("credential privacy before analytics", () => {
     expect(page.__sintagmaTrackingUrl).toBe("https://example.test/auto-login");
     expect(inserted).toEqual([]);
   });
+  it("preserves password recovery code and token fragments while suppressing both integrations", () => {
+    const href = "https://example.test/reset-password?code=synthetic-reset-code#access_token=synthetic-access&refresh_token=synthetic-refresh&type=recovery";
+    const { page, url, appended, inserted, integrations } = boot(href);
+    expect(url.href).toBe(href);
+    expect(page.__sintagmaTrackingUrl).toBe("https://example.test/reset-password#type=recovery");
+    expect(appended).toContainEqual({ tag: "meta", name: "referrer", content: "no-referrer" });
+    expect(inserted).toEqual([]);
+    expect(integrations).toEqual([]);
+  });
+  it.each([
+    "/.lovable/oauth/consent?authorization_id=synthetic-one-time-id&utm_source=qa",
+    "/.lovable/oauth/consent/?authorization_id=synthetic-one-time-id&utm_source=qa",
+    "/.lovable/oauth/consent",
+  ])("keeps OAuth consent private before either integration loads: %s", (path) => {
+    const href = `https://example.test${path}`;
+    const { page, url, appended, inserted, integrations } = boot(href);
+    expect(url.href).toBe(href); // The OAuth SDK still receives the original request identifier.
+    expect(page.history.replaceState).not.toHaveBeenCalled();
+    expect(page.__sintagmaPrivateEntry).toBe(true);
+    expect(page.__sintagmaTrackingUrl).toBe(href.replace(/\?authorization_id=synthetic-one-time-id&/, "?"));
+    expect(page.__sintagmaTrackingUrl).not.toContain("synthetic-one-time-id");
+    expect(appended).toContainEqual({ tag: "meta", name: "referrer", content: "no-referrer" });
+    expect(inserted).toEqual([]);
+    expect(integrations).toEqual([]);
+    expect(page.ym).toBeUndefined();
+  });
+  it("removes OAuth identifiers from referrer copies and suppresses tracking on that entry", () => {
+    const referrer = "https://example.test/.lovable/oauth/consent?authorization_id=synthetic-one-time-id&next=%2Forganization";
+    const { page, appended, inserted, integrations } = boot("https://example.test/", referrer);
+    expect(page.__sintagmaTrackingReferrer).toBe("https://example.test/.lovable/oauth/consent?next=%2Forganization");
+    expect(sanitizeTrackingUrl(referrer)).toBe(page.__sintagmaTrackingReferrer);
+    expect(appended).toContainEqual({ tag: "meta", name: "referrer", content: "no-referrer" });
+    expect(inserted).toEqual([]);
+    expect(integrations).toEqual([]);
+  });
+  it("sanitizes every OAuth identifier copy without changing unrelated parameters", () => {
+    const href = "https://example.test/other?authorization_id=synthetic-first&AUTHORIZATION_ID=synthetic-second&utm_source=ya#authorization_id=synthetic-fragment&section=help";
+    const { page, url, inserted, integrations } = boot(href);
+    const expected = "https://example.test/other?utm_source=ya#section=help";
+    expect(url.href).toBe(href);
+    expect(page.__sintagmaTrackingUrl).toBe(expected);
+    expect(sanitizeTrackingUrl(href)).toBe(expected);
+    expect(inserted).toEqual([]);
+    expect(integrations).toEqual([]);
+  });
   it("suppresses third-party scripts for a sensitive referrer", () => {
     const { page, inserted } = boot("https://example.test/", "https://example.test/login?u=synthetic-user&p=synthetic-secret");
     expect(page.__sintagmaTrackingReferrer).toBe("https://example.test/login");
     expect(inserted).toEqual([]);
   });
   it("initializes ordinary acquisition tracking with UTM and yclid", () => {
-    const { page, inserted } = boot("https://example.test/?utm_source=ya&yclid=click-123", "https://yandex.ru/");
+    const { page, inserted, integrations } = boot("https://example.test/?utm_source=ya&yclid=click-123", "https://yandex.ru/");
     expect(inserted).toHaveLength(1);
     expect(page.ym.a).toHaveLength(1);
     expect(page.ym.a[0][2]).toMatchObject({ url: "https://example.test/?utm_source=ya&yclid=click-123", referrer: "https://yandex.ru/" });
+    expect(integrations).toHaveLength(1);
+  });
+  it("does not suppress a public route that only shares the consent path prefix", () => {
+    const { page, inserted, integrations } = boot("https://example.test/.lovable/oauth/consent-info?utm_source=ya");
+    expect(page.__sintagmaPrivateEntry).toBe(false);
+    expect(inserted).toHaveLength(1);
+    expect(integrations).toHaveLength(1);
   });
   it("consumes the prefill helper once", () => {
     const consume = vi.fn(() => { delete (window as any).__consumeLegacyLoginPrefill; return { login: "test", password: "synthetic" }; });

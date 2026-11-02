@@ -16,7 +16,7 @@ export function sanitizeTrackingUrl(raw: string): string {
   try {
     const url = new URL(raw, window.location.origin);
     url.username = ''; url.password = '';
-    const sensitive = /^(u|p|password|passwd|access_token|refresh_token|token|code)$/i;
+    const sensitive = /^(u|p|password|passwd|access_token|refresh_token|token|code|authorization_id)$/i;
     for (const key of Array.from(url.searchParams.keys())) {
       if (sensitive.test(key)) url.searchParams.delete(key);
     }
