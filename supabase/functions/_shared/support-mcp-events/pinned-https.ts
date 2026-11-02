@@ -169,7 +169,10 @@ export function createPinnedHttpsTransport(deps: TransportDependencies = {}): Pi
       // The only readiness bypass is a fixed, data-free HEAD; no callback or
       // request headers can be supplied by the caller. This never enables delivery.
       const result = await send({ url: PINNING_PROBE_URL, body: new Uint8Array(), headers: {}, responseLimitBytes: 0 }, true);
-      if (result.status < 200 || result.status >= 300) throw new CallbackTransportError('network_error', result.status);
+      // A completed, pinned TLS exchange proves transport compatibility even if
+      // the fixed documentation endpoint denies HEAD or is temporarily unwell.
+      // send() still rejects redirects/invalid status and all DNS/IP/TLS failures.
+      // Callback verification and delivery acknowledgments keep their 2xx rules.
       return { status: result.status };
     },
   };
