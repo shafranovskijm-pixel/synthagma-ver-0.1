@@ -23694,6 +23694,19 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_postpaid_statement_checked: {
+        Args: {
+          p_courses: number
+          p_expected_amount: number
+          p_expected_plan: string
+          p_expected_source_hash: string
+          p_learners: number
+          p_organization_id: string
+          p_review_note: string
+          p_statement_id: string
+        }
+        Returns: Json
+      }
       archive_package_context: {
         Args: { p_org: string; p_package: string; p_scope: Json }
         Returns: Json
@@ -25380,6 +25393,17 @@ export type Database = {
         Args: { p_statement_id: string }
         Returns: Json
       }
+      issue_postpaid_invoice_checked: {
+        Args: {
+          p_expected_amount: number
+          p_expected_plan: string
+          p_expected_review_hash: string
+          p_expected_source_hash: string
+          p_organization_id: string
+          p_statement_id: string
+        }
+        Returns: Json
+      }
       legacy_crm_access_allowed: {
         Args: { _org_id: string; _permission: string }
         Returns: boolean
@@ -26187,6 +26211,10 @@ export type Database = {
           p_group_id: string
           p_organization_id: string
         }
+        Returns: Json
+      }
+      preview_postpaid_statement_checked: {
+        Args: { p_organization_id: string; p_statement_id: string }
         Returns: Json
       }
       prog_test_question_key_valid: {
