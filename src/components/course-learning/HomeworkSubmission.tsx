@@ -1,3 +1,4 @@
+import type { HomeworkSubmissionClient } from "@/integrations/supabase/homeworkSubmissionTypes";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -160,7 +161,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
         .select("id, course_id").eq("id", lessonId).eq("course_id", courseId).single();
       if (!alive.current) return;
       if (lessonError || lessonData?.id !== lessonId || lessonData.course_id !== courseId) throw new Error('Lesson context not confirmed');
-      const { data: saved, error } = await supabase.from("homework_submissions").insert({
+      const { data: saved, error } = await (supabase as HomeworkSubmissionClient).from("homework_submissions").insert({
       lesson_id: lessonId,
       student_id: userId,
       course_id: courseId,
