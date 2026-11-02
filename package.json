@@ -17,7 +17,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "mcp:manifest": "lovable-mcp-extract-manifest"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
