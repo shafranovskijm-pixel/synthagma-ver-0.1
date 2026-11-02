@@ -1,6 +1,6 @@
 import { constantTimeTextEqual, createSecretCrypto, strictBase64 } from './crypto.ts';
 import { createDeliveryWorker, createRpcDeliveryStore, DeliveryWorkerError, type RpcClient } from './delivery.ts';
-import { CallbackTransportError, NativeHttpsTransportError, NATIVE_RUNTIME_PHASES, createPinnedHttpsTransport, DENO_NODE_HTTPS_PINNING_PROVEN, DENO_NATIVE_HTTPS_PINNING_PROVEN, type PinnedHttpsTransport } from './pinned-https.ts';
+import { CallbackTransportError, NativeHttpsTransportError, NATIVE_RUNTIME_PHASES, safeNativePinDiagnostics, createPinnedHttpsTransport, DENO_NODE_HTTPS_PINNING_PROVEN, DENO_NATIVE_HTTPS_PINNING_PROVEN, type PinnedHttpsTransport } from './pinned-https.ts';
 
 export type RuntimeConfig = { enabled: boolean; encryptionKey: { key_base64: string; kid?: string }; workerToken: string; workerUrl?: string };
 type EnvGetter = (name: string) => string | undefined;
@@ -114,8 +114,9 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
         const probe=await transport.probeRuntime();
         const implementation=probe.implementation??transport.implementation;
         const native=implementation==='deno-native-http1';
+        const pinDiagnostics=native?safeNativePinDiagnostics(probe.pinDiagnostics):undefined;
         return response(200,{probe:'pinning',observed:true,httpStatus:probe.status,deliveryEnabled:false,readinessMarker:DENO_NODE_HTTPS_PINNING_PROVEN,
-          ...(native?{implementation,nativeReadinessMarker:DENO_NATIVE_HTTPS_PINNING_PROVEN}:implementation==='node-https'?{implementation}:{})});
+          ...(native?{implementation,nativeReadinessMarker:DENO_NATIVE_HTTPS_PINNING_PROVEN}:implementation==='node-https'?{implementation}:{}),...(pinDiagnostics?{pinDiagnostics}:{})});
       }
       if(url.search)return response(400,{error:'invalid_request'});
       const envelope=controlEnvelope(request);
@@ -143,7 +144,8 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
         const implementation=transport.implementation;
         const implementationDiagnostic=authenticatedProbe&&(implementation==='deno-native-http1'||implementation==='node-https')?{implementation}:{};
         const nativeDiagnostic=authenticatedProbe&&error instanceof NativeHttpsTransportError&&NATIVE_RUNTIME_PHASES.includes(error.phase)?{implementation:'deno-native-http1',phase:error.phase}:{};
-        return response(503,{error:error.reason,...diagnostic,...implementationDiagnostic,...nativeDiagnostic});
+        const pinDiagnostics=authenticatedProbe&&error instanceof NativeHttpsTransportError?safeNativePinDiagnostics(error.pinDiagnostics):undefined;
+        return response(503,{error:error.reason,...diagnostic,...implementationDiagnostic,...nativeDiagnostic,...(pinDiagnostics?{pinDiagnostics}:{})});
       }
       if(error instanceof DeliveryWorkerError)return response(503,{error:error.code});
       return response(503,{error:'worker_failed'});
