@@ -135,6 +135,66 @@ REVOKE ALL ON FUNCTION mcp_events_private.require_service_identity(),mcp_events_
 REVOKE ALL ON FUNCTION public.sintagma_support_event_runtime_config(),public.sintagma_support_event_runtime_readiness(),public.sintagma_support_event_consume_wake_nonce(uuid,bigint) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sintagma_support_event_runtime_config(),public.sintagma_support_event_runtime_readiness(),public.sintagma_support_event_consume_wake_nonce(uuid,bigint) TO service_role;
 
+-- V2: the live project has named default EXECUTE grants beyond PUBLIC. Normalize
+-- only this exact new-object allowlist. Never ALTER ROLE/DEFAULT PRIVILEGES, or
+-- change ACLs on existing project functions, extension objects or client tables.
+DO $bounded_new_acl$
+DECLARE signatures text[]:=ARRAY[
+ 'public.sintagma_support_event_authorize()',
+ 'public.sintagma_support_event_identity(uuid,uuid,uuid,text,jsonb,text)',
+ 'public.sintagma_support_event_subscribe_verified(uuid,uuid,uuid,text,jsonb,text,jsonb,text,integer)',
+ 'public.sintagma_support_event_unsubscribe(uuid,uuid,uuid,text,jsonb,text)',
+ 'public.sintagma_support_event_claim(uuid,integer,integer)',
+ 'public.sintagma_support_event_prepare_delivery(uuid,uuid,bigint)',
+ 'public.sintagma_support_event_finish_delivery(uuid,uuid,bigint,text,integer)',
+ 'mcp_events_private.identity_allowed(uuid,uuid,uuid)',
+ 'mcp_events_private.normalize_arguments(text,jsonb)',
+ 'mcp_events_private.subscription_id(uuid,uuid,text,jsonb,text)',
+ 'mcp_events_private.validate_callback_url(text)',
+ 'mcp_events_private.enqueue_source()',
+ 'public.sintagma_support_event_runtime_config()',
+ 'public.sintagma_support_event_runtime_readiness()',
+ 'public.sintagma_support_event_consume_wake_nonce(uuid,bigint)',
+ 'mcp_events_private.require_service_identity()',
+ 'mcp_events_private.wake_worker()',
+ 'mcp_events_private.wake_after_jobs()',
+ 'mcp_events_private.cleanup_runtime()'];
+ tables text[]:=ARRAY['mcp_events_private.subscriptions','mcp_events_private.outbox','mcp_events_private.delivery_jobs','mcp_events_private.runtime_config','mcp_events_private.wake_nonces'];
+ signature text; relation_name text; object_oid oid; owner_id oid; a record; grantee_sql text;
+BEGIN
+ IF cardinality(signatures)<>19 OR cardinality(tables)<>5 THEN RAISE EXCEPTION 'support_event_new_acl_allowlist_invalid'; END IF;
+ FOREACH signature IN ARRAY signatures LOOP
+   object_oid:=to_regprocedure(signature);
+   SELECT proowner INTO owner_id FROM pg_proc WHERE oid=object_oid;
+   IF owner_id IS NULL OR pg_get_userbyid(owner_id)<>'postgres' THEN RAISE EXCEPTION 'support_event_new_function_owner_invalid'; END IF;
+   FOR a IN SELECT DISTINCT x.grantee FROM pg_proc p CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) x WHERE p.oid=object_oid AND x.grantee<>p.proowner LOOP
+     grantee_sql:=CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(a.grantee)) END;
+     EXECUTE format('REVOKE ALL PRIVILEGES ON FUNCTION %s FROM %s',signature,grantee_sql);
+   END LOOP;
+ END LOOP;
+ FOREACH relation_name IN ARRAY tables LOOP
+   object_oid:=to_regclass(relation_name);
+   SELECT relowner INTO owner_id FROM pg_class WHERE oid=object_oid;
+   IF owner_id IS NULL OR pg_get_userbyid(owner_id)<>'postgres' THEN RAISE EXCEPTION 'support_event_new_table_owner_invalid'; END IF;
+   FOR a IN SELECT DISTINCT x.grantee FROM pg_class c CROSS JOIN LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) x WHERE c.oid=object_oid AND x.grantee<>c.relowner LOOP
+     grantee_sql:=CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(a.grantee)) END;
+     EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE %s FROM %s',relation_name,grantee_sql);
+   END LOOP;
+ END LOOP;
+ SELECT nspowner INTO owner_id FROM pg_namespace WHERE nspname='mcp_events_private';
+ IF owner_id IS NULL OR pg_get_userbyid(owner_id)<>'postgres' THEN RAISE EXCEPTION 'support_event_new_schema_owner_invalid'; END IF;
+ FOR a IN SELECT DISTINCT x.grantee FROM pg_namespace n CROSS JOIN LATERAL aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) x WHERE n.nspname='mcp_events_private' AND x.grantee<>n.nspowner LOOP
+   grantee_sql:=CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(a.grantee)) END;
+   EXECUTE format('REVOKE ALL PRIVILEGES ON SCHEMA mcp_events_private FROM %s',grantee_sql);
+ END LOOP;
+ GRANT EXECUTE ON FUNCTION public.sintagma_support_event_authorize() TO authenticated;
+ GRANT EXECUTE ON FUNCTION public.sintagma_support_event_identity(uuid,uuid,uuid,text,jsonb,text),
+   public.sintagma_support_event_subscribe_verified(uuid,uuid,uuid,text,jsonb,text,jsonb,text,integer),
+   public.sintagma_support_event_unsubscribe(uuid,uuid,uuid,text,jsonb,text),public.sintagma_support_event_claim(uuid,integer,integer),
+   public.sintagma_support_event_prepare_delivery(uuid,uuid,bigint),public.sintagma_support_event_finish_delivery(uuid,uuid,bigint,text,integer),
+   public.sintagma_support_event_runtime_config(),public.sintagma_support_event_runtime_readiness(),public.sintagma_support_event_consume_wake_nonce(uuid,bigint) TO service_role;
+END; $bounded_new_acl$;
+
 -- Only fixed private function calls appear in cron commands. No token/key is
 -- embedded in pg_cron metadata or a SQL literal. Wake exits while disabled.
 DO $$
