@@ -1,8 +1,24 @@
 \set ON_ERROR_STOP on
 -- Disposable native database only; fixtures/auth model are defined by builder.
 SELECT public.api_test_ok(current_setting('server_version_num')::int>=170000,'native PostgreSQL17 or newer');
+-- Materialize the exact nine ordinary functions BEFORE calling
+-- pg_get_functiondef. A join/WHERE filter alone can be reordered by PostgreSQL,
+-- sending unrelated aggregate OIDs (for example array_agg) to that function.
+WITH native_functions AS MATERIALIZED (
+ SELECT p.oid,p.proacl FROM pg_proc p WHERE p.prokind='f' AND p.oid=ANY(ARRAY[
+  'public.postpaid_is_admin()'::regprocedure::oid,
+  'public.postpaid_require_admin()'::regprocedure::oid,
+  'public.postpaid_collect_snapshot(uuid,date)'::regprocedure::oid,
+  'public.postpaid_calculate(integer,integer,jsonb,integer,integer)'::regprocedure::oid,
+  'public.approve_postpaid_statement(uuid,text,integer,integer)'::regprocedure::oid,
+  'public.postpaid_authorize_invoice_write(uuid,text)'::regprocedure::oid,
+  'public.guard_postpaid_invoice()'::regprocedure::oid,
+  'public.issue_postpaid_invoice(uuid)'::regprocedure::oid,
+  'public.postpaid_statement_immutable_snapshot()'::regprocedure::oid
+ ])
+)
 SELECT public.api_test_ok(count(*)=9,'all nine unchanged native financial definitions and ACLs preserved')
- FROM public.api_test_preservation f JOIN pg_proc p ON 'function:'||p.oid::regprocedure::text=f.name
+ FROM public.api_test_preservation f JOIN native_functions p ON 'function:'||p.oid::regprocedure::text=f.name
  WHERE md5(pg_get_functiondef(p.oid)||p.proacl::text)=f.value;
 SELECT public.api_test_ok(count(*)=3,'exactly three checked functions admin execution ACL') FROM pg_proc p
  WHERE p.pronamespace='public'::regnamespace AND p.proname IN('preview_postpaid_statement_checked','approve_postpaid_statement_checked','issue_postpaid_invoice_checked')

@@ -168,12 +168,24 @@ BEGIN
 END $$;
 INSERT INTO public.api_test_preservation VALUES('organizations',(SELECT md5(jsonb_agg(to_jsonb(o) ORDER BY id)::text) FROM public.organizations o)),
  ('agreements',(SELECT md5(jsonb_agg(to_jsonb(a) ORDER BY id)::text) FROM public.organization_billing_agreements a));
+-- Same materialization barrier as the after-migration assertion: introspect
+-- only known ordinary-function OIDs, never planner-selected aggregates.
+WITH native_functions AS MATERIALIZED (
+ SELECT p.oid,p.proacl FROM pg_proc p WHERE p.prokind='f' AND p.oid=ANY(ARRAY[
+  'public.postpaid_is_admin()'::regprocedure::oid,
+  'public.postpaid_require_admin()'::regprocedure::oid,
+  'public.postpaid_collect_snapshot(uuid,date)'::regprocedure::oid,
+  'public.postpaid_calculate(integer,integer,jsonb,integer,integer)'::regprocedure::oid,
+  'public.approve_postpaid_statement(uuid,text,integer,integer)'::regprocedure::oid,
+  'public.postpaid_authorize_invoice_write(uuid,text)'::regprocedure::oid,
+  'public.guard_postpaid_invoice()'::regprocedure::oid,
+  'public.issue_postpaid_invoice(uuid)'::regprocedure::oid,
+  'public.postpaid_statement_immutable_snapshot()'::regprocedure::oid
+ ])
+)
 INSERT INTO public.api_test_preservation
  SELECT 'function:'||p.oid::regprocedure::text,md5(pg_get_functiondef(p.oid)||p.proacl::text)
- FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN(
- 'postpaid_is_admin','postpaid_require_admin','postpaid_collect_snapshot','postpaid_calculate',
- 'approve_postpaid_statement','postpaid_authorize_invoice_write','guard_postpaid_invoice',
- 'issue_postpaid_invoice','postpaid_statement_immutable_snapshot');
+ FROM native_functions p;
 '''
 out.write_text(ddl+'\n\n'.join(parts)+permissions,encoding='utf-8')
 manifest={'base':str(base),'base_sha256':hashlib.sha256(base.read_bytes()).hexdigest(),
