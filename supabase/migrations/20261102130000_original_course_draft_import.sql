@@ -18,7 +18,7 @@ REVOKE ALL ON public.original_course_import_receipts FROM PUBLIC, anon, authenti
 GRANT SELECT ON public.original_course_import_receipts TO authenticated;
 CREATE POLICY original_course_import_receipts_editor_read
   ON public.original_course_import_receipts FOR SELECT TO authenticated
-  USING (auth.uid() IS NOT NULL AND public.can_access_organization(organization_id, 'courses.write'));
+  USING (auth.uid() IS NOT NULL AND public.can_access_organization(organization_id, 'courses.write') IS TRUE);
 
 CREATE FUNCTION public.import_original_course_draft_v1(p_organization_id uuid, p_payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
@@ -41,7 +41,7 @@ DECLARE
   v_sum numeric; v_hours numeric;
 BEGIN
   IF v_actor IS NULL OR p_organization_id IS NULL
-     OR NOT public.can_access_organization(p_organization_id, 'courses.write') THEN
+     OR public.can_access_organization(p_organization_id, 'courses.write') IS NOT TRUE THEN
     RAISE EXCEPTION 'Insufficient permission to import course' USING ERRCODE='42501';
   END IF;
   IF p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object'
@@ -149,8 +149,8 @@ BEGIN
   SELECT * INTO v_receipt FROM public.original_course_import_receipts WHERE organization_id=p_organization_id AND package_id=v_package;
   IF FOUND THEN
     IF v_receipt.payload_sha256<>v_hash OR v_receipt.course_id IS NULL
-       OR NOT EXISTS(SELECT 1 FROM public.courses WHERE id=v_receipt.course_id AND organization_id=p_organization_id) THEN
-      RAISE EXCEPTION 'Package already imported with different content or course removed' USING ERRCODE='23514';
+       OR NOT EXISTS(SELECT 1 FROM public.courses WHERE id=v_receipt.course_id AND organization_id=p_organization_id AND is_published IS FALSE) THEN
+      RAISE EXCEPTION 'Package already imported with different content, or draft removed or published' USING ERRCODE='23514';
     END IF;
     RETURN jsonb_build_object('course_id',v_receipt.course_id,'package_id',v_package,'payload_sha256',v_hash,'is_published',false,
       'module_count',v_receipt.module_count,'lesson_count',v_receipt.lesson_count,'question_count',v_receipt.question_count,'replayed',true);

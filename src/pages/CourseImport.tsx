@@ -317,9 +317,11 @@ export default function CourseImport() {
       }
 
       let courseId: string;
+      let wasReplayed = false;
       if (originalPayload) {
         const result = await createOriginalCourseDraft(verifiedScope.organizationId, { ...originalPayload, title: courseTitle.trim() });
         courseId = result.course_id;
+        wasReplayed = result.replayed;
       } else if (structuredPayload) {
         // The database validates and inserts the complete graph in a single
         // transaction. It always returns an unpublished course.
@@ -365,7 +367,7 @@ export default function CourseImport() {
       
       setCreatedCourseId(courseId);
       setStep('done');
-      toast.success('Черновик курса успешно создан');
+      toast.success(wasReplayed ? 'Пакет уже импортирован. Открыт сохранённый черновик' : 'Черновик курса успешно создан');
       
     } catch (error) {
       console.error('Create course error:', error);

@@ -37,6 +37,7 @@ with connect() as c:
     old=c.execute('select md5(jsonb_agg(to_jsonb(a))::text) from attempts a').fetchone()[0]
 expect_error('unauthenticated denied',payload(),'42501',None)
 expect_error('other tenant denied',payload(),'42501',OTHER,A)
+expect_error('nullable permission helper denied',payload(),'42501','33333333-3333-4333-8333-333333333333',A)
 for name,mutate,code in [
   ('missing key',lambda p:p['lessons'][2]['questions'][0].pop('correct_answer'),'22023'),
   ('key outside options',lambda p:p['lessons'][2]['questions'][0].update(correct_answer=8),'22023'),
@@ -56,6 +57,9 @@ with connect() as c:record('malformed payloads wrote zero courses',c.execute('se
 p=payload();r=call(p);same=call(p)
 record('idempotent replay returns same course',r['course_id']==same['course_id'] and not r['replayed'] and same['replayed'])
 altered=copy.deepcopy(p);altered['title']='Changed';expect_error('changed package denied',altered,'23514')
+with connect() as c:c.execute('update courses set is_published=true where id=%s',(r['course_id'],))
+expect_error('published course cannot be reported as draft',p,'23514')
+with connect() as c:c.execute('update courses set is_published=false where id=%s',(r['course_id'],))
 with connect() as c:
     rows=c.execute('select l.type,l.content,l.metadata from lessons l where course_id=%s order by order_index',(r['course_id'],)).fetchall()
     record('module graph and lesson order', [x[0] for x in rows]==['text','homework','test'] and c.execute('select count(*) from course_modules where course_id=%s',(r['course_id'],)).fetchone()[0]==1)

@@ -7,7 +7,8 @@ GRANT USAGE ON SCHEMA auth TO authenticated,anon;
 CREATE TABLE organizations(id uuid PRIMARY KEY, subscription_plan text DEFAULT 'free', custom_max_courses integer);
 CREATE TABLE lab_editors(actor uuid,organization_id uuid,PRIMARY KEY(actor,organization_id));
 CREATE FUNCTION public.can_access_organization(p_org uuid,p_action text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
- SELECT p_action='courses.write' AND EXISTS(SELECT 1 FROM lab_editors WHERE actor=auth.uid() AND organization_id=p_org)
+ SELECT CASE WHEN auth.uid()='33333333-3333-4333-8333-333333333333' THEN NULL
+ ELSE p_action='courses.write' AND EXISTS(SELECT 1 FROM lab_editors WHERE actor=auth.uid() AND organization_id=p_org) END
 $$;
 CREATE TABLE courses(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid NOT NULL REFERENCES organizations(id),title text,description text,is_published boolean DEFAULT false,landing_content jsonb,system_key text);
 CREATE TABLE course_modules(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),course_id uuid REFERENCES courses(id) ON DELETE CASCADE,title text,order_index integer);
