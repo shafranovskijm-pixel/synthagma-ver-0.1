@@ -1,0 +1,47 @@
+name: Support events eight new disabled probe model cases
+on:
+  push:
+    branches: [codex/support-events-probe-lab-20261103]
+permissions:
+  contents: read
+jobs:
+  native-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: support_events_lab_probe
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_support_events_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d support_events_lab_probe"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: support_events_lab_probe
+      PGUSER: postgres
+      PGPASSWORD: synthetic_support_events_only
+      MCP_EVENTS_SQL_PATH: ${{ github.workspace }}/supabase/migrations/20261103010000_support_mcp_events_outbox.sql
+      MCP_EVENTS_RUNTIME_SQL_PATH: ${{ github.workspace }}/supabase/migrations/20261103011000_support_mcp_events_runtime_disabled.sql
+      MCP_EVENTS_PROBE_SQL_PATH: ${{ github.workspace }}/supabase/migrations/20261103012000_support_mcp_events_disabled_probe.sql
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check --index-url https://pypi.org/simple 'psycopg[binary]==3.2.9'
+      - name: Eight new probe cases, old 48/19 suites not invoked
+        run: python supabase/tests/support_mcp_events/tests/run_probe.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: support-events-probe-model-${{ github.run_id }}-${{ github.run_attempt }}
+          path: supabase/tests/support_mcp_events/probe-results/
+          if-no-files-found: error
+          retention-days: 14
