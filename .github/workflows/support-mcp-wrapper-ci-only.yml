@@ -1,0 +1,59 @@
+name: MCP Events wrapper source integration only
+on:
+  push:
+    branches:
+      - codex/support-events-wrapper-ci-20261103
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node22-wrapper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WRAPPER_CI_BASE: bddf4080cf85d6646113986cbc261bd35174fbc6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - name: Clean locked dependencies
+        run: npm ci
+      - name: Record exact baseline, original tools, OAuth and disabled transport
+        run: node scripts/check-mcp-wrapper-ci.mjs capture
+      - name: Strict server integration types
+        run: >-
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck
+          --target ES2022 --module ESNext --moduleResolution Bundler
+          --allowImportingTsExtensions --types node --lib ES2022,DOM
+          supabase/functions/_shared/support-mcp-events/protocol.ts
+          supabase/functions/_shared/support-mcp-events/protocol.test.ts
+          supabase/functions/_shared/support-mcp-events/runtime-backend.ts
+          supabase/functions/_shared/support-mcp-events/runtime-entry.ts
+          supabase/functions/_shared/support-mcp-events/runtime-backend.test.ts
+      - name: Protocol 30 and backend/build 30 focused cases with native TS stripping
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap supabase/functions/_shared/support-mcp-events/protocol.test.ts supabase/functions/_shared/support-mcp-events/runtime-backend.test.ts scripts/support-mcp-events-build.test.mjs | tee outputs/mcp-wrapper-ci/focused-tests.log
+      - name: Existing application types
+        shell: bash
+        run: |
+          set -o pipefail
+          node node_modules/typescript/bin/tsc --noEmit | tee outputs/mcp-wrapper-ci/stock-types.log
+      - name: Full stock Vite build, SDK generation and post wrapper
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build | tee outputs/mcp-wrapper-ci/stock-build.log
+      - name: Verify real SDK output, byte preservation and deterministic wrapper replay
+        run: node scripts/check-mcp-wrapper-ci.mjs verify
+      - name: Preserve bounded source-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-wrapper-node22-source-only
+          path: outputs/mcp-wrapper-ci
+          if-no-files-found: error
+          retention-days: 30

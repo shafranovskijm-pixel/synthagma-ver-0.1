@@ -5,6 +5,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { loadMcpPlugin } from "./scripts/mcp-sdk-windows.mjs";
+import { supportMcpEventsBuildPlugin } from "./scripts/support-mcp-events-build.mjs";
 import { excludeAndroidDownloads } from "./scripts/rustore/exclude-android-downloads.mjs";
 import { privateCleanupWorkerSource, runtimeRequestMatcher } from "./src/lib/pwa/privateCachePolicy";
 import { createShellPrecache } from "./scripts/pwa/shellPrecache";
@@ -29,6 +30,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
     excludeAndroidDownloads(process.env.CAPACITOR_BUILD === "true"),
     react(),
     mcpPlugin(),
+    supportMcpEventsBuildPlugin(__dirname),
     mode === "development" && componentTagger(),
     {
       name: 'sintagma-private-cache-cleanup',
