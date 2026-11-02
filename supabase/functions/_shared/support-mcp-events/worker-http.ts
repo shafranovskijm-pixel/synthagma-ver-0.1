@@ -1,6 +1,6 @@
 import { constantTimeTextEqual, createSecretCrypto, strictBase64 } from './crypto.ts';
 import { createDeliveryWorker, createRpcDeliveryStore, DeliveryWorkerError, type RpcClient } from './delivery.ts';
-import { CallbackTransportError, createPinnedHttpsTransport, DENO_NODE_HTTPS_PINNING_PROVEN, type PinnedHttpsTransport } from './pinned-https.ts';
+import { CallbackTransportError, NativeHttpsTransportError, NATIVE_RUNTIME_PHASES, createPinnedHttpsTransport, DENO_NODE_HTTPS_PINNING_PROVEN, DENO_NATIVE_HTTPS_PINNING_PROVEN, type PinnedHttpsTransport } from './pinned-https.ts';
 
 export type RuntimeConfig = { enabled: boolean; encryptionKey: { key_base64: string; kid?: string }; workerToken: string; workerUrl?: string };
 type EnvGetter = (name: string) => string | undefined;
@@ -112,7 +112,10 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
         authenticatedProbe=true;
         if(!transport.probeRuntime)return response(503,{error:'runtime_not_proven'});
         const probe=await transport.probeRuntime();
-        return response(200,{probe:'pinning',observed:true,httpStatus:probe.status,deliveryEnabled:false,readinessMarker:DENO_NODE_HTTPS_PINNING_PROVEN});
+        const implementation=probe.implementation??transport.implementation;
+        const native=implementation==='deno-native-http1';
+        return response(200,{probe:'pinning',observed:true,httpStatus:probe.status,deliveryEnabled:false,readinessMarker:DENO_NODE_HTTPS_PINNING_PROVEN,
+          ...(native?{implementation,nativeReadinessMarker:DENO_NATIVE_HTTPS_PINNING_PROVEN}:implementation==='node-https'?{implementation}:{})});
       }
       if(url.search)return response(400,{error:'invalid_request'});
       const envelope=controlEnvelope(request);
@@ -137,7 +140,10 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
         // Only the authenticated fixed probe may expose this bounded value.
         // HMAC mode has consumed its nonce; never return URLs, IPs or messages.
         const diagnostic=authenticatedProbe&&typeof httpStatus==='number'&&Number.isInteger(httpStatus)&&httpStatus>=200&&httpStatus<=599?{httpStatus}:{};
-        return response(503,{error:error.reason,...diagnostic});
+        const implementation=transport.implementation;
+        const implementationDiagnostic=authenticatedProbe&&(implementation==='deno-native-http1'||implementation==='node-https')?{implementation}:{};
+        const nativeDiagnostic=authenticatedProbe&&error instanceof NativeHttpsTransportError&&NATIVE_RUNTIME_PHASES.includes(error.phase)?{implementation:'deno-native-http1',phase:error.phase}:{};
+        return response(503,{error:error.reason,...diagnostic,...implementationDiagnostic,...nativeDiagnostic});
       }
       if(error instanceof DeliveryWorkerError)return response(503,{error:error.code});
       return response(503,{error:'worker_failed'});
