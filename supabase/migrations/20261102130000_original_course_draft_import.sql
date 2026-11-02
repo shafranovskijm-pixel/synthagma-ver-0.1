@@ -55,7 +55,7 @@ BEGIN
   END IF;
   FOR v_key IN SELECT unnest(ARRAY['title','description','code','version']) LOOP
     IF jsonb_typeof(p_payload->v_key) IS DISTINCT FROM 'string'
-       OR length(btrim(p_payload->>v_key)) NOT BETWEEN 1 AND CASE WHEN v_key='description' THEN 12000 ELSE 600 END THEN
+       OR length(btrim(p_payload->>v_key)) NOT BETWEEN 1 AND (CASE WHEN v_key='description' THEN 12000 ELSE 600 END) THEN
       RAISE EXCEPTION 'Invalid course label' USING ERRCODE='22023';
     END IF;
   END LOOP;
