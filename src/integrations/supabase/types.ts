@@ -2176,6 +2176,70 @@ export type Database = {
           },
         ]
       }
+      course_learning_progress_resets: {
+        Row: {
+          actor_id: string
+          before_enrollment: Json
+          course_id: string
+          enrollment_id: string
+          id: string
+          learning_progress_epoch: number
+          lesson_progress_snapshot: Json
+          organization_id: string
+          previous_epoch: number
+          reset_at: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          before_enrollment: Json
+          course_id: string
+          enrollment_id: string
+          id?: string
+          learning_progress_epoch: number
+          lesson_progress_snapshot: Json
+          organization_id: string
+          previous_epoch: number
+          reset_at: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          before_enrollment?: Json
+          course_id?: string
+          enrollment_id?: string
+          id?: string
+          learning_progress_epoch?: number
+          lesson_progress_snapshot?: Json
+          organization_id?: string
+          previous_epoch?: number
+          reset_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_learning_progress_resets_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_learning_progress_resets_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_learning_progress_resets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_manual_credits: {
         Row: {
           credited_at: string
@@ -6107,12 +6171,12 @@ export type Database = {
       }
       homework_submissions: {
         Row: {
-          learning_progress_epoch: number
           attachments: Json | null
           content: string | null
           course_id: string
           created_at: string
           id: string
+          learning_progress_epoch: number
           lesson_id: string
           organization_id: string
           reviewed_at: string | null
@@ -6124,12 +6188,12 @@ export type Database = {
           submitted_at: string
         }
         Insert: {
-          learning_progress_epoch?: number | string
           attachments?: Json | null
           content?: string | null
           course_id: string
           created_at?: string
           id?: string
+          learning_progress_epoch?: number
           lesson_id: string
           organization_id: string
           reviewed_at?: string | null
@@ -6141,12 +6205,12 @@ export type Database = {
           submitted_at?: string
         }
         Update: {
-          learning_progress_epoch?: number
           attachments?: Json | null
           content?: string | null
           course_id?: string
           created_at?: string
           id?: string
+          learning_progress_epoch?: number
           lesson_id?: string
           organization_id?: string
           reviewed_at?: string | null
@@ -23212,37 +23276,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_own_homework_history: { Args: { p_lesson_id: string }; Returns: Json }
-      get_own_course_learning_history: { Args: { p_course_id: string; p_expected_epoch: string; p_cursor_ts?: string; p_cursor_kind?: string; p_cursor_id?: string }; Returns: Json }
-      get_course_learning_snapshot: {
-        Args: { p_course_id: string }
-        Returns: Json
-      }
-      save_own_lesson_progress: {
-        Args: { p_enrollment_id: string; p_lesson_id: string; p_expected_epoch: string; p_completed?: boolean | null; p_video_position?: number | null; p_video_duration?: number | null; p_seconds?: number | null }
-        Returns: Json
-      }
-      complete_own_course_enrollment_at_epoch: {
-        Args: { p_enrollment_id: string; p_expected_epoch: string }
-        Returns: Json
-      }
-      manual_complete_course_at_epoch: {
-        Args: { p_enrollment_id: string; p_organization_id: string; p_expected_epoch: string }
-        Returns: Json
-      }
-      get_student_test_state_at_epoch: {
-        Args: { p_lesson_id: string; p_expected_epoch: string }
-        Returns: Json
-      }
-      start_test_attempt_at_epoch: {
-        Args: { p_lesson_id: string; p_request_id: string; p_expected_epoch: string }
-        Returns: Json
-      }
-      submit_test_attempt_at_epoch: {
-        Args: { p_attempt_id: string; p_answers: Json; p_expected_epoch: string }
-        Returns: Json
-      }
-
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string
@@ -24075,6 +24108,10 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: Json
       }
+      complete_own_course_enrollment_at_epoch: {
+        Args: { p_enrollment_id: string; p_expected_epoch: string }
+        Returns: Json
+      }
       complete_registration_failure_alert: {
         Args: {
           _dedup_hash: string
@@ -24630,6 +24667,10 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
+      get_course_learning_snapshot: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
       get_course_program_binding: {
         Args: { p_course_id: string; p_organization_id: string }
         Returns: Json
@@ -25024,6 +25065,17 @@ export type Database = {
           subscription_plan: string
         }[]
       }
+      get_own_course_learning_history: {
+        Args: {
+          p_course_id: string
+          p_cursor_id?: string
+          p_cursor_kind?: string
+          p_cursor_ts?: string
+          p_expected_epoch: string
+        }
+        Returns: Json
+      }
+      get_own_homework_history: { Args: { p_lesson_id: string }; Returns: Json }
       get_platform_learning_task_proof: {
         Args: { p_course_id: string; p_lesson_id: string }
         Returns: Json
@@ -25146,6 +25198,10 @@ export type Database = {
         }[]
       }
       get_student_test_state: { Args: { p_lesson_id: string }; Returns: Json }
+      get_student_test_state_at_epoch: {
+        Args: { p_expected_epoch: string; p_lesson_id: string }
+        Returns: Json
+      }
       get_teacher_test_attempt_history: {
         Args: { p_attempt_ids: string[]; p_course_id: string }
         Returns: {
@@ -25469,8 +25525,138 @@ export type Database = {
           invitation_type: string
         }[]
       }
+      lpr_assert_epoch: {
+        Args: {
+          p_epoch: number
+          p_expected: string
+          p_legacy: boolean
+          p_reset_at: string
+        }
+        Returns: undefined
+      }
+      lpr_complete_own_course_enrollment: {
+        Args: {
+          p_enrollment_id: string
+          p_expected_epoch: string
+          p_legacy: boolean
+        }
+        Returns: Json
+      }
+      lpr_current_homework_approved: {
+        Args: {
+          p_course: string
+          p_epoch: number
+          p_lesson: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      lpr_current_test_passed: {
+        Args: { p_lesson: string; p_reset_at: string; p_user: string }
+        Returns: boolean
+      }
+      lpr_get_student_test_state: {
+        Args: {
+          p_expected_epoch: string
+          p_legacy: boolean
+          p_lesson_id: string
+        }
+        Returns: Json
+      }
+      lpr_lock_own_enrollment: {
+        Args: {
+          p_enrollment_id: string
+          p_expected: string
+          p_legacy?: boolean
+        }
+        Returns: {
+          access_days: number | null
+          completed_at: string | null
+          course_id: string
+          document_facts_revision: number
+          expires_at: string | null
+          id: string
+          learning_progress_epoch: number
+          learning_progress_reset_at: string | null
+          progress: number
+          started_at: string
+          status: string
+          time_spent: number
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lpr_lock_own_lesson: {
+        Args: { p_expected: string; p_legacy?: boolean; p_lesson_id: string }
+        Returns: {
+          access_days: number | null
+          completed_at: string | null
+          course_id: string
+          document_facts_revision: number
+          expires_at: string | null
+          id: string
+          learning_progress_epoch: number
+          learning_progress_reset_at: string | null
+          progress: number
+          started_at: string
+          status: string
+          time_spent: number
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lpr_manual_complete_course: {
+        Args: {
+          p_enrollment_id: string
+          p_expected_epoch: string
+          p_legacy: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      lpr_reset_error: {
+        Args: { p_epoch: number; p_reset_at: string }
+        Returns: undefined
+      }
+      lpr_snapshot: { Args: { p_enrollment_id: string }; Returns: Json }
+      lpr_start_test_attempt: {
+        Args: {
+          p_expected_epoch: string
+          p_legacy: boolean
+          p_lesson_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      lpr_submit_test_attempt: {
+        Args: {
+          p_answers: Json
+          p_attempt_id: string
+          p_expected_epoch: string
+          p_legacy: boolean
+        }
+        Returns: Json
+      }
       manual_complete_course: {
         Args: { p_enrollment_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      manual_complete_course_at_epoch: {
+        Args: {
+          p_enrollment_id: string
+          p_expected_epoch: string
+          p_organization_id: string
+        }
         Returns: Json
       }
       mark_email_sender_result: {
@@ -26636,6 +26822,18 @@ export type Database = {
         }
         Returns: Json
       }
+      save_own_lesson_progress: {
+        Args: {
+          p_completed?: boolean
+          p_enrollment_id: string
+          p_expected_epoch: string
+          p_lesson_id: string
+          p_seconds?: number
+          p_video_duration?: number
+          p_video_position?: number
+        }
+        Returns: Json
+      }
       save_postpaid_agreement: {
         Args: {
           p_contract_reference: string
@@ -26799,6 +26997,14 @@ export type Database = {
         Args: { p_lesson_id: string; p_request_id: string }
         Returns: Json
       }
+      start_test_attempt_at_epoch: {
+        Args: {
+          p_expected_epoch: string
+          p_lesson_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       storage_try_uuid: { Args: { _value: string }; Returns: string }
       store_ordinary_inbox_message: {
         Args: {
@@ -26831,6 +27037,14 @@ export type Database = {
       }
       submit_test_attempt: {
         Args: { p_answers: Json; p_attempt_id: string }
+        Returns: Json
+      }
+      submit_test_attempt_at_epoch: {
+        Args: {
+          p_answers: Json
+          p_attempt_id: string
+          p_expected_epoch: string
+        }
         Returns: Json
       }
       sync_organization_publication_calendar: {
