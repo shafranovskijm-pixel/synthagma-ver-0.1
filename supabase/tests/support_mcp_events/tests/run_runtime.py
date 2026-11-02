@@ -78,7 +78,9 @@ class RuntimeTests(unittest.TestCase):
   self.assertFalse(backend('select sintagma_support_event_consume_wake_nonce(%s,%s)',(n,t)))
  def test11_nonce_timestamp_window(self):
   enable();t=m.scalar('select floor(extract(epoch from clock_timestamp()))::bigint')
-  for ts in [t-61,t+6,None]:self.assertFalse(backend('select sintagma_support_event_consume_wake_nonce(%s,%s)',(str(uuid.uuid4()),ts)))
+  # The calls use separate real connections. Leave margin for a second-boundary
+  # rollover; t+6 can become the valid now+5 while the connection is opening.
+  for ts in [t-61,t+10,None]:self.assertFalse(backend('select sintagma_support_event_consume_wake_nonce(%s,%s)',(str(uuid.uuid4()),ts)))
   self.assertTrue(backend('select sintagma_support_event_consume_wake_nonce(%s,%s)',(str(uuid.uuid4()),t)))
  def test12_cleanup_only_private_retention_and_old_nonce(self):
   enable();n=str(uuid.uuid4());backend('select sintagma_support_event_consume_wake_nonce(%s,%s)',(n,int(time.time())))
