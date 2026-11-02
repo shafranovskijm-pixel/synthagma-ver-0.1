@@ -27017,6 +27017,31 @@ export type Database = {
         Args: { p_limit?: number; p_offset?: number; p_query: string }
         Returns: Json
       }
+      sintagma_support_detail: {
+        Args: {
+          p_after_created_at?: string
+          p_after_id?: string
+          p_message_limit?: number
+          p_source_id: string
+          p_source_kind: string
+        }
+        Returns: Json
+      }
+      sintagma_support_search: {
+        Args: {
+          p_before_created_at?: string
+          p_before_id?: string
+          p_before_kind?: string
+          p_limit?: number
+          p_organization_id?: string
+          p_query?: string
+          p_source_kind?: string
+          p_status?: string
+          p_updated_since?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       soft_delete_document: {
         Args: { p_id: string; p_table: string }
         Returns: boolean
