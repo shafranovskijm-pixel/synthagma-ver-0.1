@@ -80,6 +80,7 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
   return async function handle(request) {
     if(request.method!=='POST')return response(405,{error:'method_not_allowed'});
     if(!(await emptyJsonBody(request)))return response(400,{error:'invalid_body'});
+    let authenticatedProbe=false;
     try {
       const url=new URL(request.url);
       if(url.searchParams.has('probe')) {
@@ -108,6 +109,7 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
           if(consumed.error)throw new DeliveryWorkerError('delivery_store_failed');
           if(consumed.data!==true)return response(409,{error:'probe_replayed_or_expired'});
         }
+        authenticatedProbe=true;
         if(!transport.probeRuntime)return response(503,{error:'runtime_not_proven'});
         const probe=await transport.probeRuntime();
         return response(200,{probe:'pinning',observed:true,httpStatus:probe.status,deliveryEnabled:false,readinessMarker:DENO_NODE_HTTPS_PINNING_PROVEN});
@@ -130,7 +132,13 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
       const result=await worker.runOnce(cryptoApi.randomUUID(),3);
       return response(200,{enabled:true,...result});
     } catch(error) {
-      if(error instanceof CallbackTransportError)return response(503,{error:error.reason});
+      if(error instanceof CallbackTransportError){
+        const httpStatus=error.httpStatus;
+        // Only the authenticated fixed probe may expose this bounded value.
+        // HMAC mode has consumed its nonce; never return URLs, IPs or messages.
+        const diagnostic=authenticatedProbe&&typeof httpStatus==='number'&&Number.isInteger(httpStatus)&&httpStatus>=200&&httpStatus<=599?{httpStatus}:{};
+        return response(503,{error:error.reason,...diagnostic});
+      }
       if(error instanceof DeliveryWorkerError)return response(503,{error:error.code});
       return response(503,{error:'worker_failed'});
     }
