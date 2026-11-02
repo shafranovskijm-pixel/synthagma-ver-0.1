@@ -1,0 +1,28 @@
+name: MCP build declaration and actual Node project coverage (CI only)
+on:
+  push:
+    branches: [codex/support-events-declaration-ci-20261103]
+permissions:
+  contents: read
+jobs:
+  declaration-raw-vite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.1
+      - name: Fresh locked dependencies
+        run: npm ci
+      - name: Baseline Node error, declared Node fix, app coverage, actual raw-to-wrapped Vite
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: node scripts/check-support-events-declaration-ci.mjs
+      - name: Preserve bounded declaration and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-events-declaration-source-only
+          path: outputs/support-events-declaration-ci/
+          if-no-files-found: error
