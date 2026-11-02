@@ -301,3 +301,8 @@ verify_jwt = false
 # This worker captures/reads sealed own-course files; it cannot approve programmes.
 [functions.platform-course-file]
 verify_jwt = true
+
+# Signed short-lived HMAC wakes; service-role-only data-free pinning probe.
+[functions.support-event-delivery]
+verify_jwt = false
+
