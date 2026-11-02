@@ -17,9 +17,14 @@ def enable():m.execute('update mcp_events_private.runtime_config set enabled=tru
 class RuntimeTests(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
-  m.EventsTests.setUpClass()
   with m.connection() as c:
+   c.execute((ROOT/'tests/fixture.sql').read_text())
+   c.execute('insert into support_conversations(id,user_id,organization_id) values(%s,%s,%s)',(m.CONV,m.SOURCEUSER,m.ORG))
+   c.execute("insert into support_messages(id,conversation_id,role,content) values('99999999-9999-4999-8999-999999999999',%s,'user','Historical sentinel')",(m.CONV,))
    c.execute((ROOT/'tests/runtime_fixture.sql').read_text())
+   cls.default_acl_before=c.execute("select md5(coalesce(jsonb_agg(to_jsonb(d) order by d.oid)::text,'')) from pg_default_acl d").fetchone()[0]
+   cls.old_sentinel_acl=c.execute("select proacl::text from pg_proc where oid='public.support_events_lab_old_acl_sentinel()'::regprocedure").fetchone()[0]
+   c.execute(m.SQL_PATH.read_text())
    c.execute(RUNTIME.read_text())
  def setUp(self):
   m.EventsTests.setUp(self)
@@ -119,6 +124,20 @@ class RuntimeTests(unittest.TestCase):
   self.assertDbError('42P07',replay)
   self.assertEqual(before,m.scalar('select md5(to_jsonb(c)::text) from mcp_events_private.runtime_config c'))
   self.assertEqual(m.scalar('select count(*) from vault.secrets'),2)
+ def test18_named_inherited_grants_removed_only_from_new_objects(self):
+  with m.connection() as db:
+   rows=db.execute("select n.nspname,p.proname,has_function_privilege('sandbox_exec_support_events_lab',p.oid,'EXECUTE'),has_function_privilege('anon',p.oid,'EXECUTE'),has_function_privilege('authenticated',p.oid,'EXECUTE'),has_function_privilege('service_role',p.oid,'EXECUTE') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='mcp_events_private' or (n.nspname='public' and p.proname like 'sintagma_support_event_%')").fetchall()
+  self.assertEqual(len(rows),19)
+  for schema,name,sandbox,anon,authenticated,service in rows:
+   self.assertFalse(sandbox);self.assertFalse(anon)
+   self.assertEqual(authenticated,schema=='public' and name=='sintagma_support_event_authorize')
+   self.assertEqual(service,schema=='public' and name!='sintagma_support_event_authorize')
+  self.assertEqual(m.scalar("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='mcp_events_private' and c.relkind='r' and has_table_privilege('sandbox_exec_support_events_lab',c.oid,'SELECT')"),0)
+  self.assertFalse(m.scalar("select has_schema_privilege('sandbox_exec_support_events_lab','mcp_events_private','USAGE')"))
+ def test19_project_default_and_old_function_grants_preserved(self):
+  self.assertEqual(self.default_acl_before,m.scalar("select md5(coalesce(jsonb_agg(to_jsonb(d) order by d.oid)::text,'')) from pg_default_acl d"))
+  self.assertEqual(self.old_sentinel_acl,m.scalar("select proacl::text from pg_proc where oid='public.support_events_lab_old_acl_sentinel()'::regprocedure"))
+  self.assertTrue(m.scalar("select has_function_privilege('sandbox_exec_support_events_lab','public.support_events_lab_old_acl_sentinel()','EXECUTE')"))
 
 if __name__=='__main__':
  result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(RuntimeTests))

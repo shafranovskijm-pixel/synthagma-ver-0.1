@@ -1,6 +1,10 @@
 -- TEST MODEL ONLY: this fake Vault stores generated lab-only bytes in plaintext.
 -- It is not used in production, is not a real Vault encryption acceptance, and
 -- never contains existing user keys, OAuth secrets or application content.
+CREATE ROLE sandbox_exec_support_events_lab NOLOGIN;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO sandbox_exec_support_events_lab;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT ON TABLES TO sandbox_exec_support_events_lab;
+CREATE FUNCTION public.support_events_lab_old_acl_sentinel() RETURNS boolean LANGUAGE sql AS $$SELECT true$$;
 CREATE SCHEMA extensions;
 CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
 CREATE SCHEMA vault;
