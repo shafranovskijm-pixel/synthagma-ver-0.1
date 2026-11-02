@@ -1,3 +1,4 @@
+import { ownedArrayBuffer } from './crypto-buffer.ts';
 import { base64Encode, constantTimeTextEqual, hashSecret, sha256Hex, validateWebhookSecret } from './crypto.ts';
 import { CallbackTransportError, canonicalizeCallback, type PinnedHttpsTransport } from './pinned-https.ts';
 
@@ -25,8 +26,10 @@ export async function signWebhook(input: SigningInput, cryptoApi: Crypto = globa
   const signedBytes = new Uint8Array(prefix.length + input.body.byteLength); signedBytes.set(prefix); signedBytes.set(input.body, prefix.length);
   async function mac(secret: string) {
     const bytes = validateWebhookSecret(secret);
-    const key = await cryptoApi.subtle.importKey('raw', bytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    bytes.fill(0);
+    const rawKey = ownedArrayBuffer(bytes);
+    let key: CryptoKey;
+    try { key = await cryptoApi.subtle.importKey('raw', rawKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); }
+    finally { bytes.fill(0); new Uint8Array(rawKey).fill(0); }
     return `v1,${base64Encode(new Uint8Array(await cryptoApi.subtle.sign('HMAC', key, signedBytes)))}`;
   }
   const signatures = [await mac(input.secret)];

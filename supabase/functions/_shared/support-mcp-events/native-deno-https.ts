@@ -2,8 +2,9 @@
 import {CallbackTransportError,NativeHttpsTransportError,canonicalizeCallback,isPublicAddress,sameAddress,PINNING_PROBE_URL,type NativeRuntimePhase,type PostInput,type PostResult,type PinnedHttpsTransport,type ResolvedAddress,type NativeAddressDiagnostic,type NativePinDiagnostics} from './callback-policy.ts';
 import {readHttp1Response,serializeHttp1Request,writeAll,type NativeRead,type NativeWrite} from './native-http1.ts';
 
-// Only a separately reviewed actual Edge pilot can change this marker.
-export const DENO_NATIVE_HTTPS_PINNING_PROVEN=false;
+// Reviewed actual Edge124241 proved native TCP/TLS/fixed HEAD compatibility.
+// Event POST/challenge, Cloud processing and database enablement remain separate.
+export const DENO_NATIVE_HTTPS_PINNING_PROVEN=true;
 export type NativeConn={readonly remoteAddr:unknown;read:NativeRead;write:NativeWrite;close():void};
 export type NativeTlsConn=NativeConn&{handshake():Promise<{alpnProtocol:string|null}>};
 export type NativeDenoRuntime={
@@ -12,9 +13,13 @@ export type NativeDenoRuntime={
   startTls(connection:NativeConn,options:{hostname:string;alpnProtocols:['http/1.1']}):Promise<NativeTlsConn>;
 };
 export type NativeDenoDependencies={runtime?:NativeDenoRuntime;timeoutMs?:number;signal?:AbortSignal};
+function runtimeUsable(value:Partial<NativeDenoRuntime>|undefined):value is NativeDenoRuntime{
+  try{return Boolean(value&&typeof value.resolveDns==='function'&&typeof value.connect==='function'&&typeof value.startTls==='function');}
+  catch{return false;}
+}
 function currentRuntime():NativeDenoRuntime|undefined{
   const value=(globalThis as {Deno?:Partial<NativeDenoRuntime>}).Deno;
-  return value&&typeof value.resolveDns==='function'&&typeof value.connect==='function'&&typeof value.startTls==='function'?value as NativeDenoRuntime:undefined;
+  return runtimeUsable(value)?value:undefined;
 }
 export function nativeDenoRuntimeAvailable():boolean{return currentRuntime()!==undefined;}
 function closeSafely(conn:NativeConn|undefined){try{conn?.close();}catch{/* Consumed or already closed resource; never expose its raw error. */}}
@@ -46,10 +51,10 @@ export function createNativeDenoHttpsTransport(deps:NativeDenoDependencies={}):P
   if(deps.timeoutMs!==undefined&&!Number.isFinite(deps.timeoutMs))throw new CallbackTransportError('invalid_callback');
   const timeoutMs=Math.min(10000,Math.max(1,deps.timeoutMs??10000));
   function assertReady(){
-    if(!runtime||!DENO_NATIVE_HTTPS_PINNING_PROVEN)throw new CallbackTransportError('runtime_not_proven');
+    if(!runtimeUsable(runtime)||!DENO_NATIVE_HTTPS_PINNING_PROVEN)throw new CallbackTransportError('runtime_not_proven');
   }
   async function send(input:PostInput,method:'HEAD'|'POST'):Promise<PostResult&{pinDiagnostics:NativePinDiagnostics}>{
-    if(!runtime)throw new NativeHttpsTransportError('runtime_not_proven','connect');
+    if(!runtimeUsable(runtime))throw new NativeHttpsTransportError('runtime_not_proven','connect');
     const u=new URL(canonicalizeCallback(input.url));
     const framed=serializeHttp1Request(u.href,input.headers,input.body,method);
     const requested=input.responseLimitBytes??4096;

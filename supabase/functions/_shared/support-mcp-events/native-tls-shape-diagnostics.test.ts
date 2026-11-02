@@ -50,7 +50,7 @@ function handler(transport:PinnedHttpsTransport,enabled=false){
 test('authenticated fixed probe returns bounded raw/TLS diagnostics after its nonce on success',async()=>{
   const f=fake({hostname:'8.8.8.8',port:443}),h=handler(f.transport),response=await h.handle(await request());
   assert.equal(response.status,200);assert.deepEqual(h.calls,['sintagma_support_event_runtime_config','sintagma_support_event_consume_probe_nonce']);
-  assert.deepEqual(await response.json(),{probe:'pinning',observed:true,httpStatus:403,deliveryEnabled:false,readinessMarker:false,implementation:'deno-native-http1',nativeReadinessMarker:false,pinDiagnostics:{raw:positive,tls:{...positive,transport:'absent'}}});
+  assert.deepEqual(await response.json(),{probe:'pinning',observed:true,httpStatus:403,deliveryEnabled:false,readinessMarker:false,implementation:'deno-native-http1',nativeReadinessMarker:true,pinDiagnostics:{raw:positive,tls:{...positive,transport:'absent'}}});
 });
 test('authenticated fixed probe reports only enum/boolean snapshots on pin failure, before HTTP bytes',async()=>{
   const f=fake({...rawAddress,transport:'udp'}),h=handler(f.transport),response=await h.handle(await request());

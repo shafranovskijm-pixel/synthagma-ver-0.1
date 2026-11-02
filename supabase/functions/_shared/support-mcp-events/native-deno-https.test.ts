@@ -1,29 +1,31 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
 import {createNativeDenoHttpsTransport,DENO_NATIVE_HTTPS_PINNING_PROVEN,type NativeDenoRuntime,type NativeConn,type NativeTlsConn} from './native-deno-https.ts';
 import {createPinnedHttpsTransport,DENO_NODE_HTTPS_PINNING_PROVEN,NativeHttpsTransportError,CallbackTransportError,type PinnedHttpsTransport} from './pinned-https.ts';
 import {base64Encode} from './crypto.ts';
 import {createWorkerHttpHandler,signProbe,signWake,type RuntimeConfig} from './worker-http.ts';
 import type {RpcClient} from './delivery.ts';
+import {createCallbackVerifier,CallbackEndpointError} from './webhooks.ts';
 const encoder=new TextEncoder();
 const public4={transport:'tcp',hostname:'8.8.8.8',port:443};
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 type Stage='dns'|'connect'|'tls'|'handshake'|'write'|'read';
 function deferred<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>{resolve=r;});return{promise,resolve};}
-type Settings={A?:string[];AAAA?:string[];dnsError?:Partial<Record<'A'|'AAAA',Error>>;rawRemote?:unknown;tlsRemote?:unknown;alpn?:unknown;status?:number;response?:string;partial?:number;stall?:Stage;fail?:Stage;fragment?:number};
+type Settings={A?:string[];AAAA?:string[];dnsError?:Partial<Record<'A'|'AAAA',Error>>;rawRemote?:unknown;tlsRemote?:unknown;alpn?:unknown;status?:number;response?:string;responseFromRequest?:(wire:Uint8Array)=>Uint8Array;stallBodyWrite?:boolean;partial?:number;stall?:Stage;fail?:Stage;fragment?:number};
 function fixture(settings:Settings={}){
   const order:string[]=[],writes:Uint8Array[]=[],dns:{host:string;rr:string;signal?:AbortSignal}[]=[],connectOptions:unknown[]=[],tlsOptions:unknown[]=[];
-  let rawClosed=0,tlsClosed=0,reads=0,offset=0,wrapped=false;
-  const response=encoder.encode(settings.response??`HTTP/1.1 ${settings.status??403} Response\r\nContent-Length: 12345\r\n\r\n`);
+  let rawClosed=0,tlsClosed=0,reads=0,offset=0,wrapped=false,responseBuilt=false,writeStart=0;
+  let response=encoder.encode(settings.response??`HTTP/1.1 ${settings.status??403} Response\r\nContent-Length: 12345\r\n\r\n`);
   const rawGate=deferred<NativeConn>(),tlsGate=deferred<NativeTlsConn>();
   const raw:NativeConn={get remoteAddr(){order.push('rawPin');return settings.rawRemote??public4;},async read(){throw Error('raw read forbidden');},async write(){throw Error('raw write forbidden');},close(){rawClosed++;order.push('rawClose');}};
   const tls:NativeTlsConn={get remoteAddr(){order.push('tlsPin');return settings.tlsRemote??settings.rawRemote??public4;},
     async handshake(){order.push('handshake');if(settings.fail==='handshake')throw Error('secret handshake detail');if(settings.stall==='handshake')return new Promise(()=>{});return{alpnProtocol:settings.alpn===undefined?'http/1.1':settings.alpn as string|null};},
-    async read(buffer){order.push('read');reads++;if(settings.fail==='read')throw Error('unsafe TLS read detail');if(settings.stall==='read')return new Promise(()=>{});if(offset===response.length)return null;const n=Math.min(buffer.length,settings.fragment??buffer.length,response.length-offset);buffer.set(response.subarray(offset,offset+n));offset+=n;return n;},
-    async write(buffer){order.push('write');if(settings.fail==='write')throw Error('unsafe TLS write detail');if(settings.stall==='write')return new Promise(()=>{});const n=Math.min(buffer.length,settings.partial??buffer.length);writes.push(Uint8Array.from(buffer.subarray(0,n)));return n;},close(){tlsClosed++;order.push('tlsClose');},
+    async read(buffer){order.push('read');reads++;if(settings.fail==='read')throw Error('unsafe TLS read detail');if(settings.stall==='read')return new Promise(()=>{});if(!responseBuilt&&settings.responseFromRequest){response=settings.responseFromRequest(Buffer.concat(writes.slice(writeStart).map(bytes=>Buffer.from(bytes))));responseBuilt=true;}if(offset===response.length)return null;const n=Math.min(buffer.length,settings.fragment??buffer.length,response.length-offset);buffer.set(response.subarray(offset,offset+n));offset+=n;return n;},
+    async write(buffer){order.push('write');if(settings.fail==='write')throw Error('unsafe TLS write detail');if(settings.stall==='write'||settings.stallBodyWrite&&Buffer.concat(writes.slice(writeStart).map(bytes=>Buffer.from(bytes))).includes(Buffer.from('\r\n\r\n')))return new Promise(()=>{});const n=Math.min(buffer.length,settings.partial??buffer.length);writes.push(Uint8Array.from(buffer.subarray(0,n)));return n;},close(){tlsClosed++;order.push('tlsClose');},
   };
   const runtime:NativeDenoRuntime={async resolveDns(host,rr,options){order.push('dns:'+rr);dns.push({host,rr,signal:options?.signal});if(settings.fail==='dns')throw Error('unsafe DNS detail');if(settings.stall==='dns')return new Promise(()=>{});if(settings.dnsError?.[rr])throw settings.dnsError[rr];return rr==='A'?(settings.A??['8.8.8.8']):(settings.AAAA??['2606:4700:4700::1111']);},
-    async connect(options){order.push('connect');connectOptions.push(options);offset=0;if(settings.fail==='connect')throw Error('secret connect detail');if(settings.stall==='connect')return rawGate.promise;return raw;},
+    async connect(options){order.push('connect');connectOptions.push(options);offset=0;responseBuilt=false;writeStart=writes.length;if(settings.fail==='connect')throw Error('secret connect detail');if(settings.stall==='connect')return rawGate.promise;return raw;},
     async startTls(connection,options){order.push('startTls');assert.equal(connection,raw);wrapped=true;tlsOptions.push(options);if(settings.fail==='tls')throw Error('secret TLS detail');if(settings.stall==='tls')return tlsGate.promise;return tls;},
   };
   return{runtime,raw,tls,order,writes,dns,connectOptions,tlsOptions,lateRaw:()=>rawGate.resolve(raw),lateTls:()=>tlsGate.resolve(tls),rawClosed:()=>rawClosed,tlsClosed:()=>tlsClosed,reads:()=>reads,wrapped:()=>wrapped};
@@ -38,12 +40,13 @@ for(const status of [200,403,503])test('native fixed HEAD '+status+' uses litera
   const bytes=Buffer.concat(f.writes.map(b=>Buffer.from(b))).toString('utf8');
   assert.equal(bytes,'HEAD /plugins/build/mcp-events HTTP/1.1\r\nHost: developers.openai.com\r\nConnection: close\r\nContent-Length: 0\r\nAccept-Encoding: identity\r\n\r\n');
   assert.equal(f.rawClosed(),0);assert.equal(f.tlsClosed(),1);assert.ok(f.dns.every(d=>d.signal?.aborted));
-  assert.equal(DENO_NATIVE_HTTPS_PINNING_PROVEN,false);assert.equal(DENO_NODE_HTTPS_PINNING_PROVEN,false);
+  assert.equal(DENO_NATIVE_HTTPS_PINNING_PROVEN,true);assert.equal(DENO_NODE_HTTPS_PINNING_PROVEN,false);
 });
-test('native delivery remains gated before DNS even when all APIs and transport are available',async()=>{
-  const f=fixture(),transport=createNativeDenoHttpsTransport({runtime:f.runtime});
-  assert.throws(()=>transport.assertReady(),e=>e instanceof CallbackTransportError&&e.reason==='runtime_not_proven');
-  await assert.rejects(transport.post({url:'https://receiver.openai.com/events',body:encoder.encode('{}'),headers:{}}),e=>e instanceof CallbackTransportError&&e.reason==='runtime_not_proven');assert.deepEqual(f.order,[]);
+test('native readiness still fails before DNS without complete runtime APIs',async()=>{
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'Deno');
+  try{Object.defineProperty(globalThis,'Deno',{value:{},configurable:true});const transport=createNativeDenoHttpsTransport();assert.throws(()=>transport.assertReady(),e=>e instanceof CallbackTransportError&&e.reason==='runtime_not_proven');await assert.rejects(transport.post({url:'https://receiver.openai.com/events',body:encoder.encode('{}'),headers:{}}),e=>e instanceof CallbackTransportError&&e.reason==='runtime_not_proven');}
+  finally{if(descriptor)Object.defineProperty(globalThis,'Deno',descriptor);else delete(globalThis as {Deno?:unknown}).Deno;}
+  for(const name of ['resolveDns','connect','startTls']){const f=fixture();Reflect.deleteProperty(f.runtime,name);const transport=createNativeDenoHttpsTransport({runtime:f.runtime});assert.throws(()=>transport.assertReady(),e=>e instanceof CallbackTransportError&&e.reason==='runtime_not_proven');await assert.rejects(transport.post({url:'https://receiver.openai.com/events',body:encoder.encode('{}'),headers:{}}),e=>e instanceof CallbackTransportError&&e.reason==='runtime_not_proven');assert.deepEqual(f.order,[]);}
 });
 test('native feature detection selects actual Deno APIs while explicit Node dependency injection preserves the old path',()=>{
   const descriptor=Object.getOwnPropertyDescriptor(globalThis,'Deno'),f=fixture();
@@ -117,7 +120,46 @@ test('only authenticated native probe exposes bounded implementation and phase; 
   assert.deepEqual(await(await handler(await authRequest(true,false))).json(),{error:'unauthorized'});config.enabled=true;
   assert.deepEqual(await(await handler(await authRequest(false))).json(),{error:'tls_failed'});
   config.enabled=false;transport.probeRuntime=async()=>({status:403,implementation:'deno-native-http1'});
-  assert.deepEqual(await(await handler(await authRequest())).json(),{probe:'pinning',observed:true,httpStatus:403,deliveryEnabled:false,readinessMarker:false,implementation:'deno-native-http1',nativeReadinessMarker:false});
+  assert.deepEqual(await(await handler(await authRequest())).json(),{probe:'pinning',observed:true,httpStatus:403,deliveryEnabled:false,readinessMarker:false,implementation:'deno-native-http1',nativeReadinessMarker:true});
   const nodeHandler=createWorkerHttpHandler({client,env:()=>undefined,now:()=>now,transport:{implementation:'node-https',assertReady(){},async post(){throw new Error('unused');},async probeRuntime(){throw new CallbackTransportError('network_error');}}});
   assert.deepEqual(await(await nodeHandler(await authRequest())).json(),{error:'network_error',implementation:'node-https'});
+});
+
+function requestParts(wire:Uint8Array){
+  const bytes=Buffer.from(wire),end=bytes.indexOf('\r\n\r\n');assert.ok(end>=0);
+  const lines=bytes.subarray(0,end).toString('ascii').split('\r\n'),requestLine=lines.shift()!;
+  const headers=Object.fromEntries(lines.map(line=>{const colon=line.indexOf(':');return[line.slice(0,colon).toLowerCase(),line.slice(colon+1).trim()];}));
+  return{requestLine,headers,body:Uint8Array.from(bytes.subarray(end+4))};
+}
+function jsonResponse(status:number,data:unknown):Uint8Array{
+  const body=encoder.encode(JSON.stringify(data)),header=encoder.encode(`HTTP/1.1 ${status} Response\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\n\r\n`),wire=new Uint8Array(header.length+body.length);wire.set(header);wire.set(body,header.length);return wire;
+}
+test('reviewed native POST preserves exact UTF8 bytes through partial writes and returns no pin metadata',async()=>{
+  const body=encoder.encode('{ "value": "\u044F\uD83D\uDE80" }'),before=Uint8Array.from(body),f=fixture({partial:3,response:'HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}'}),transport=createNativeDenoHttpsTransport({runtime:f.runtime});
+  assert.equal(Buffer.from(body).includes(Buffer.from([0xd1,0x8f,0xf0,0x9f,0x9a,0x80])),true);
+  transport.assertReady();const result=await transport.post({url:'https://receiver.openai.com/events?q=1',body,headers:{'Content-Type':'application/json','webhook-id':'evt_synthetic'}});
+  const sent=requestParts(Buffer.concat(f.writes.map(bytes=>Buffer.from(bytes))));assert.equal(sent.requestLine,'POST /events?q=1 HTTP/1.1');assert.equal(sent.headers.host,'receiver.openai.com');assert.equal(sent.headers['content-length'],String(body.byteLength));assert.deepEqual(sent.body,before);assert.deepEqual(body,before);assert.deepEqual(result,{status:200,body:encoder.encode('{}')});assert.equal(f.tlsClosed(),1);assert.equal(f.order.filter(item=>item==='write').length>2,true);
+});
+test('real callback verifier signs a fresh challenge and sends it through native POST with original TLS host',async()=>{
+  const secret='whsec_'+base64Encode(new Uint8Array(32).fill(17)),subscriptionId='sub_'+'1'.repeat(64);let verified=0;
+  const f=fixture({partial:5,responseFromRequest:wire=>{
+    const request=requestParts(wire),body=JSON.parse(new TextDecoder().decode(request.body));assert.equal(request.requestLine,'POST /events HTTP/1.1');assert.equal(body.type,'verification');assert.match(body.challenge,/^[A-Za-z0-9_-]{43}$/);assert.equal(request.headers['x-mcp-subscription-id'],subscriptionId);assert.equal(request.headers['webhook-timestamp'],'1700000000');
+    const expected=createHmac('sha256',Buffer.from(secret.slice(6),'base64')).update(request.headers['webhook-id']+'.'+request.headers['webhook-timestamp']+'.').update(request.body).digest('base64');assert.equal(request.headers['webhook-signature'],'v1,'+expected);verified++;return jsonResponse(200,{challenge:body.challenge});
+  }});
+  await createCallbackVerifier({transport:createNativeDenoHttpsTransport({runtime:f.runtime}),now:()=>1700000000000,cacheTtlMs:0})({url:'https://receiver.openai.com/events',secret,subscriptionId,principalKey:'synthetic-owner/client'});
+  assert.equal(verified,1);assert.deepEqual(f.tlsOptions,[{hostname:'receiver.openai.com',alpnProtocols:['http/1.1']}]);assert.equal(f.tlsClosed(),1);
+});
+test('native callback POST still requires 2xx and exact challenge echo',async()=>{
+  for(const mode of ['403','503','wrong_echo']){const f=fixture({responseFromRequest:wire=>{const body=JSON.parse(new TextDecoder().decode(requestParts(wire).body));return jsonResponse(mode==='wrong_echo'?200:Number(mode),{challenge:body.challenge+(mode==='wrong_echo'?'wrong':'')});}});
+    await assert.rejects(createCallbackVerifier({transport:createNativeDenoHttpsTransport({runtime:f.runtime}),cacheTtlMs:0})({url:'https://receiver.openai.com/events',secret:'whsec_'+base64Encode(new Uint8Array(32).fill(17)),subscriptionId:'sub_'+'1'.repeat(64),principalKey:'synthetic-owner/client'}),e=>e instanceof CallbackEndpointError&&e.reason==='challenge_failed');assert.equal(f.tlsClosed(),1);}
+});
+test('native POST never writes HTTP before verified TLS and exact public-IP/443 gates',async()=>{
+  for(const settings of [{fail:'handshake' as const},{tlsRemote:{hostname:'1.1.1.1',port:443}},{tlsRemote:{hostname:'8.8.8.8',port:8443}}]){const f=fixture(settings);await assert.rejects(createNativeDenoHttpsTransport({runtime:f.runtime}).post({url:'https://receiver.openai.com/events',body:encoder.encode('{}'),headers:{}}),e=>e instanceof NativeHttpsTransportError&&['tls_failed','pinning_failed'].includes(e.reason));assert.equal(f.writes.length,0);}
+});
+test('native POST body-write deadline and caller abort close the active connection',async()=>{
+  for(const abort of [false,true]){const controller=new AbortController(),f=fixture({stallBodyWrite:true}),transport=createNativeDenoHttpsTransport({runtime:f.runtime,timeoutMs:15}),pending=transport.post({url:'https://receiver.openai.com/events',body:encoder.encode('{}'),headers:{},signal:controller.signal});if(abort){await tick();controller.abort();}await assert.rejects(pending,reason('timeout','write'));assert.equal(f.tlsClosed(),1);assert.equal(requestParts(Buffer.concat(f.writes.map(bytes=>Buffer.from(bytes)))).body.length,0);}
+});
+test('native POST enforces payload and decoded response budgets through the real transport',async()=>{
+  const oversized=fixture();await assert.rejects(createNativeDenoHttpsTransport({runtime:oversized.runtime}).post({url:'https://receiver.openai.com/events',body:new Uint8Array(262145),headers:{}}),e=>e instanceof CallbackTransportError&&e.reason==='payload_too_large');assert.equal(oversized.order.length,0);
+  const f=fixture({response:'HTTP/1.1 200 OK\r\nContent-Length: 4097\r\n\r\n'+'x'.repeat(4097)});await assert.rejects(createNativeDenoHttpsTransport({runtime:f.runtime}).post({url:'https://receiver.openai.com/events',body:encoder.encode('{}'),headers:{}}),reason('response_too_large','body'));assert.equal(f.tlsClosed(),1);
 });
