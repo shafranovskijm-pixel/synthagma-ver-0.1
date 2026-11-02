@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - src/**
+      - index.html
       - .github/workflows/learning-progress-reset-frontend.yml
   workflow_dispatch:
 
@@ -35,7 +36,7 @@ jobs:
           mkdir -p outputs/learning-progress-reset-frontend
           git rev-parse HEAD > outputs/learning-progress-reset-frontend/head.txt
           node --version > outputs/learning-progress-reset-frontend/node.txt
-          git ls-files src/hooks/course-learning src/hooks/useStudentDashboard.ts src/hooks/useStudentDashboardSnapshot.ts src/hooks/useCourseDetails.ts src/hooks/useVideoProgress.ts src/components/course-learning/HomeworkSubmission.tsx src/pages/CourseLearning.tsx src/lib/learningProgress.ts src/utils/offlineSync.ts src/utils/testAnswerQueue.ts src/integrations/supabase/types.ts src/lib/courseLearningHistory.ts src/components/course-learning/TestAttemptHistory.tsx src/components/course-learning/CourseSidebar.tsx src/components/student/CourseCardNew.tsx src/components/student/OfflineBanner.tsx src/components/organization/student-detail/LearningResultsTab.tsx src/api/studentLearningResults.ts .github/workflows/learning-progress-reset-frontend.yml | xargs sha256sum > outputs/learning-progress-reset-frontend/source-manifest.sha256
+          git ls-files src/hooks/course-learning src/hooks/useStudentDashboard.ts src/hooks/useStudentDashboardSnapshot.ts src/hooks/useCourseDetails.ts src/hooks/useVideoProgress.ts src/components/course-learning/HomeworkSubmission.tsx src/pages/CourseLearning.tsx src/lib/learningProgress.ts src/utils/offlineSync.ts src/utils/testAnswerQueue.ts src/integrations/supabase/types.ts index.html src/utils/credentialPrivacy.ts src/utils/__tests__/credentialPrivacy.test.ts src/lib/courseLearningHistory.ts src/components/course-learning/TestAttemptHistory.tsx src/components/course-learning/CourseSidebar.tsx src/components/student/CourseCardNew.tsx src/components/student/OfflineBanner.tsx src/components/organization/student-detail/LearningResultsTab.tsx src/api/studentLearningResults.ts .github/workflows/learning-progress-reset-frontend.yml | xargs sha256sum > outputs/learning-progress-reset-frontend/source-manifest.sha256
       - name: Type check actual application
         run: npm run typecheck 2>&1 | tee outputs/learning-progress-reset-frontend/typecheck.stdout.txt
       - name: Course learning, history, access and offline regression tests
@@ -47,6 +48,7 @@ jobs:
           src/utils/__tests__/testAnswerQueue.attempts.test.ts
           src/utils/__tests__/offlineSync.privacy.test.ts
           src/utils/__tests__/offlineSync.sdk-header.test.ts
+          src/utils/__tests__/credentialPrivacy.test.ts
           src/lib/__tests__/learningProgress.reset.test.ts
           src/hooks/__tests__/useStudentDashboard
           src/hooks/__tests__/useVideoProgress.runScope.test.tsx
