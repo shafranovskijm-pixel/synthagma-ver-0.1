@@ -54,8 +54,8 @@ test('wake body is exactly empty JSON and bounded before RPC',async()=>{
 test('enabled worker still fails closed before claim on unproven runtime',async()=>{
   const f=fixture({enabled:true});f.notReady();const res=await f.handler(await wake());assert.equal(res.status,503);assert.deepEqual(await res.json(),{error:'runtime_not_proven'});assert.ok(!f.calls.some(x=>x.name.endsWith('_claim')));
 });
-test('probe requires exact service credential and never accepts wake authentication',async()=>{
-  const f=fixture();assert.equal((await f.handler(await wake({},'{}','?probe=pinning'))).status,401);assert.equal(f.calls.length,0);assert.equal(f.probeCount(),0);
+test('probe never accepts a wake-purpose HMAC as probe authentication',async()=>{
+  const f=fixture();assert.equal((await f.handler(await wake({},'{}','?probe=pinning'))).status,401);assert.deepEqual(f.calls.map(x=>x.name),['sintagma_support_event_runtime_config']);assert.equal(f.probeCount(),0);
 });
 test('service-only disabled probe invokes only fixed read-only transport and never activates delivery',async()=>{
   const f=fixture();const res=await f.handler(new Request('https://project.supabase.co/functions/v1/support-event-delivery?probe=pinning',{method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},body:'{}'}));assert.equal(res.status,200);assert.equal(f.probeCount(),1);assert.deepEqual(f.calls.map(x=>x.name),['sintagma_support_event_runtime_config']);assert.equal((await res.json()).readinessMarker,false);
