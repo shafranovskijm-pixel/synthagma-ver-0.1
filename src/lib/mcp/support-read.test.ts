@@ -133,7 +133,7 @@ describe("read-only support API", () => {
     vi.stubEnv("SUPABASE_URL", "https://example.invalid");
     vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", "public-test-key");
     const f = fake({ items: [], has_more: false, next_cursor: null });
-    vi.mocked(createClient).mockReturnValue(f.factory("fixture"));
+    vi.mocked(createClient).mockReturnValue(f.factory() as unknown as ReturnType<typeof createClient>);
     await searchSintagmaSupportRequests({}, ctx);
     expect(createClient).toHaveBeenCalledWith("https://example.invalid", "public-test-key", {
       global: { headers: { Authorization: "Bearer caller-token-fixture" } }, auth: { persistSession: false, autoRefreshToken: false } });

@@ -79,13 +79,13 @@ function failure(error: unknown) {
 }
 function encodeCursor(scope: string, position: unknown) {
   const bytes = new TextEncoder().encode(JSON.stringify({ v: 1, scope, position }));
-  return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 function decodeCursor<S extends z.ZodTypeAny>(value: string | undefined, scope: string, schema: S): z.output<S> | null {
   if (!value) return null;
   try {
     if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
-    const raw = atob(value.replaceAll("-", "+").replaceAll("_", "/"));
+    const raw = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
     const decoded = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(raw, c => c.charCodeAt(0))));
     const envelope = z.object({ v: z.literal(1), scope: z.literal(scope), position: schema }).strict().parse(decoded);
     return envelope.position;
