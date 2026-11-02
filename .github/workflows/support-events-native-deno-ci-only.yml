@@ -1,0 +1,55 @@
+name: Support events native Deno source verification
+on:
+  push:
+    branches: [codex/support-events-native-deno-ci-20261103]
+permissions:
+  contents: read
+jobs:
+  native-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 3
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Native transport 210 unit cases sequentially, including unchanged92
+        run: |
+          mkdir -p outputs/support-events-native-deno
+          node --experimental-strip-types --test --test-concurrency=1 --test-reporter=spec supabase/functions/_shared/support-mcp-events/webhook-security.test.ts supabase/functions/_shared/support-mcp-events/worker-http.test.ts supabase/functions/_shared/support-mcp-events/worker-probe-auth-v2.test.ts supabase/functions/_shared/support-mcp-events/worker-probe-status-v3.test.ts supabase/functions/_shared/support-mcp-events/native-deno-https.test.ts supabase/functions/_shared/support-mcp-events/native-http1-adversarial-peer.test.ts | tee outputs/support-events-native-deno/tests.log
+          grep -Eq 'tests 210$' outputs/support-events-native-deno/tests.log
+          grep -Eq 'pass 210$' outputs/support-events-native-deno/tests.log
+          grep -Eq 'fail 0$' outputs/support-events-native-deno/tests.log
+      - name: Strict backend and shared source types
+        run: >-
+          node node_modules/typescript/bin/tsc --noEmit --strict
+          --target ES2022 --module NodeNext --moduleResolution NodeNext
+          --allowImportingTsExtensions --types node --lib ES2023,DOM
+          supabase/functions/_shared/support-mcp-events/crypto.ts
+          supabase/functions/_shared/support-mcp-events/callback-policy.ts
+          supabase/functions/_shared/support-mcp-events/pinned-https.ts
+          supabase/functions/_shared/support-mcp-events/native-http1.ts
+          supabase/functions/_shared/support-mcp-events/native-deno-https.ts
+          supabase/functions/_shared/support-mcp-events/webhooks.ts
+          supabase/functions/_shared/support-mcp-events/delivery.ts
+          supabase/functions/_shared/support-mcp-events/worker-http.ts
+          supabase/functions/_shared/support-mcp-events/webhook-security.test.ts
+          supabase/functions/_shared/support-mcp-events/worker-http.test.ts
+          supabase/functions/_shared/support-mcp-events/worker-probe-auth-v2.test.ts
+          supabase/functions/_shared/support-mcp-events/worker-probe-status-v3.test.ts
+          supabase/functions/_shared/support-mcp-events/native-deno-https.test.ts
+          supabase/functions/_shared/support-mcp-events/native-http1-adversarial-peer.test.ts
+      - name: Exact graph, markers false, unchanged old Node sender and protected App/MCP/SQL
+        run: node scripts/check-support-events-native-deno.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: support-events-native-deno-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/support-events-native-deno/
+          if-no-files-found: error
+          retention-days: 14
