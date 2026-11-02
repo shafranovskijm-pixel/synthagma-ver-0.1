@@ -1,0 +1,30 @@
+name: Netlify Bun controlled reproduction (CI only)
+on:
+  push:
+    branches: [codex/netlify-bun-repro-214-20261103]
+permissions:
+  contents: read
+jobs:
+  bun-lock-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Fresh repository locks and default Bun linker, then production/development builds
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-repro-cache
+        run: node scripts/check-netlify-bun-repro.mjs
+      - name: Preserve controlled reproduction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-bun-repro-214
+          path: netlify-bun-repro-evidence/
+          if-no-files-found: error
