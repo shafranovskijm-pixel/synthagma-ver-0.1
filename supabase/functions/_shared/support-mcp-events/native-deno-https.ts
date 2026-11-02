@@ -1,5 +1,5 @@
 /** Native Deno literal-IP TCP -> verified TLS -> bounded HTTP/1.1. No fetch. */
-import {CallbackTransportError,NativeHttpsTransportError,canonicalizeCallback,isPublicAddress,sameAddress,PINNING_PROBE_URL,type NativeRuntimePhase,type PostInput,type PostResult,type PinnedHttpsTransport,type ResolvedAddress} from './callback-policy.ts';
+import {CallbackTransportError,NativeHttpsTransportError,canonicalizeCallback,isPublicAddress,sameAddress,PINNING_PROBE_URL,type NativeRuntimePhase,type PostInput,type PostResult,type PinnedHttpsTransport,type ResolvedAddress,type NativeAddressDiagnostic,type NativePinDiagnostics} from './callback-policy.ts';
 import {readHttp1Response,serializeHttp1Request,writeAll,type NativeRead,type NativeWrite} from './native-http1.ts';
 
 // Only a separately reviewed actual Edge pilot can change this marker.
@@ -18,10 +18,25 @@ function currentRuntime():NativeDenoRuntime|undefined{
 }
 export function nativeDenoRuntimeAvailable():boolean{return currentRuntime()!==undefined;}
 function closeSafely(conn:NativeConn|undefined){try{conn?.close();}catch{/* Consumed or already closed resource; never expose its raw error. */}}
-function remoteIsPinned(raw:unknown,pinned:ResolvedAddress):boolean{
-  if(!raw||typeof raw!=='object')return false;
-  const remote=raw as {transport?:unknown;hostname?:unknown;port?:unknown};
-  return remote.transport==='tcp'&&remote.port===443&&typeof remote.hostname==='string'&&isPublicAddress(remote.hostname)&&sameAddress(remote.hostname,pinned.address);
+function remoteDiagnostic(readAddress:()=>unknown,pinned:ResolvedAddress):NativeAddressDiagnostic{
+  const empty={transport:'other',public:false,ipEqual:false,portMatch:false} as const;
+  try{
+    const value=readAddress();
+    if(value===undefined)return{shape:'absent',...empty};
+    if(!value||typeof value!=='object'||Array.isArray(value))return{shape:'other',...empty};
+    const remote=value as {transport?:unknown;hostname?:unknown;port?:unknown};
+    const hostname=remote.hostname,port=remote.port;
+    const hasTransport='transport' in remote,transportValue=hasTransport?remote.transport:undefined;
+    const transport:NativeAddressDiagnostic['transport']=!hasTransport?'absent':transportValue==='tcp'||transportValue==='udp'||transportValue==='tls'||transportValue==='unix'?transportValue:'other';
+    const publicAddress=typeof hostname==='string'&&isPublicAddress(hostname);
+    return{shape:'object',transport,public:publicAddress,ipEqual:publicAddress&&sameAddress(hostname as string,pinned.address),portMatch:port===443};
+  }catch{return{shape:'unreadable',...empty};}
+}
+function remoteIsPinned(diagnostic:NativeAddressDiagnostic,tls:boolean):boolean{
+  // Deno2.1.4 op_tls_start returns hostname/port from the same TCP peer_addr;
+  // 02_tls.js startTls does not add transport, unlike connectTls. Only genuine
+  // property absence is supported. Present undefined/null/unknown still fail.
+  return diagnostic.shape==='object'&&(diagnostic.transport==='tcp'||(tls&&diagnostic.transport==='absent'))&&diagnostic.public&&diagnostic.ipEqual&&diagnostic.portMatch;
 }
 function emptyDnsAnswer(error:unknown):boolean{
   return error instanceof Error&&error.name==='NotFound';
@@ -33,22 +48,24 @@ export function createNativeDenoHttpsTransport(deps:NativeDenoDependencies={}):P
   function assertReady(){
     if(!runtime||!DENO_NATIVE_HTTPS_PINNING_PROVEN)throw new CallbackTransportError('runtime_not_proven');
   }
-  async function send(input:PostInput,method:'HEAD'|'POST'):Promise<PostResult>{
+  async function send(input:PostInput,method:'HEAD'|'POST'):Promise<PostResult&{pinDiagnostics:NativePinDiagnostics}>{
     if(!runtime)throw new NativeHttpsTransportError('runtime_not_proven','connect');
     const u=new URL(canonicalizeCallback(input.url));
     const framed=serializeHttp1Request(u.href,input.headers,input.body,method);
     const requested=input.responseLimitBytes??4096;
     if(!Number.isFinite(requested))throw new CallbackTransportError('invalid_callback');
     const maxBodyBytes=method==='HEAD'?0:Math.min(262144,Math.max(0,Math.floor(requested)));
-    return await new Promise<PostResult>((resolve,reject)=>{
+    return await new Promise<PostResult&{pinDiagnostics:NativePinDiagnostics}>((resolve,reject)=>{
       let done=false,conn:NativeConn|undefined,phase:NativeRuntimePhase='dns';
+      let rawDiagnostic:NativeAddressDiagnostic|undefined,tlsDiagnostic:NativeAddressDiagnostic|undefined;
       const dnsAbort=new AbortController();
       const signals=[input.signal,deps.signal].filter((signal):signal is AbortSignal=>signal!==undefined);
       const clear=()=>{clearTimeout(timer);for(const signal of signals)signal.removeEventListener('abort',onAbort);dnsAbort.abort();};
       const fail=(error:unknown)=>{
         if(done)return;done=true;clear();closeSafely(conn);
         const reason=error instanceof CallbackTransportError?error.reason:phase==='dns'?'dns_failed':phase==='tls'||phase==='handshake'?'tls_failed':phase==='raw_pin'||phase==='tls_pin'?'pinning_failed':'network_error';
-        reject(new NativeHttpsTransportError(reason,phase,error instanceof CallbackTransportError?error.httpStatus:undefined));
+        const pinDiagnostics=rawDiagnostic?{raw:rawDiagnostic,...(tlsDiagnostic?{tls:tlsDiagnostic}:{})}:undefined;
+        reject(new NativeHttpsTransportError(reason,phase,error instanceof CallbackTransportError?error.httpStatus:undefined,pinDiagnostics));
       };
       const onAbort=()=>fail(new CallbackTransportError('timeout'));
       const timer=setTimeout(onAbort,timeoutMs);
@@ -75,7 +92,7 @@ export function createNativeDenoHttpsTransport(deps:NativeDenoDependencies={}):P
         phase='connect';
         const raw=await runtime.connect({hostname:pinned.address,port:443,transport:'tcp'});
         if(done){closeSafely(raw);return;}conn=raw;
-        phase='raw_pin';if(!remoteIsPinned(raw.remoteAddr,pinned))throw new CallbackTransportError('pinning_failed');
+        phase='raw_pin';rawDiagnostic=remoteDiagnostic(()=>raw.remoteAddr,pinned);if(!remoteIsPinned(rawDiagnostic,false))throw new CallbackTransportError('pinning_failed');
         phase='tls';
         // startTls consumes this exact TCP connection; hostname sets SNI and
         // default certificate identity verification, not a second DNS lookup.
@@ -84,22 +101,22 @@ export function createNativeDenoHttpsTransport(deps:NativeDenoDependencies={}):P
         phase='handshake';const handshake=await tls.handshake();
         if(done)return;
         if(!handshake||(handshake.alpnProtocol!==null&&handshake.alpnProtocol!=='http/1.1'))throw new CallbackTransportError('tls_failed');
-        phase='tls_pin';if(!remoteIsPinned(tls.remoteAddr,pinned))throw new CallbackTransportError('pinning_failed');
+        phase='tls_pin';tlsDiagnostic=remoteDiagnostic(()=>tls.remoteAddr,pinned);if(!remoteIsPinned(tlsDiagnostic,true))throw new CallbackTransportError('pinning_failed');
         phase='write';
         const write:NativeWrite=async bytes=>{if(done)throw new CallbackTransportError('timeout');const n=await tls.write(bytes);if(done)throw new CallbackTransportError('timeout');return n;};
         await writeAll(write,framed.header);await writeAll(write,framed.body);
         if(done)return;
         const read:NativeRead=async bytes=>{if(done)throw new CallbackTransportError('timeout');const n=await tls.read(bytes);if(done)throw new CallbackTransportError('timeout');return n;};
         const result=await readHttp1Response(read,{method,maxBodyBytes,onPhase:value=>{phase=value;}});
-        if(done)return;done=true;clear();closeSafely(conn);resolve(result);
+        if(done)return;done=true;clear();closeSafely(conn);resolve({...result,pinDiagnostics:{raw:rawDiagnostic,tls:tlsDiagnostic}});
       })().catch(fail);
     });
   }
   return{implementation:'deno-native-http1',assertReady,
-    async post(input){assertReady();return send(input,'POST');},
+    async post(input){assertReady();const result=await send(input,'POST');return{status:result.status,body:result.body};},
     async probeRuntime(){
       const result=await send({url:PINNING_PROBE_URL,body:new Uint8Array(),headers:{},responseLimitBytes:0},'HEAD');
-      return{status:result.status,implementation:'deno-native-http1'};
+      return{status:result.status,implementation:'deno-native-http1',pinDiagnostics:result.pinDiagnostics};
     },
   };
 }

@@ -31,7 +31,8 @@ function fixture(settings:Settings={}){
 function reason(expected:string,phase?:string){return(error:unknown)=>error instanceof NativeHttpsTransportError&&error.reason===expected&&(!phase||error.phase===phase)&&error.message===expected;}
 for(const status of [200,403,503])test('native fixed HEAD '+status+' uses literal TCP, original TLS hostname, explicit handshake and closes',async()=>{
   const f=fixture({status,partial:3,fragment:1}),transport=createNativeDenoHttpsTransport({runtime:f.runtime});
-  assert.deepEqual(await transport.probeRuntime!(),{status,implementation:'deno-native-http1'});
+  const pinned={shape:'object',transport:'tcp',public:true,ipEqual:true,portMatch:true};
+  assert.deepEqual(await transport.probeRuntime!(),{status,implementation:'deno-native-http1',pinDiagnostics:{raw:pinned,tls:pinned}});
   assert.deepEqual(f.connectOptions,[{hostname:'8.8.8.8',port:443,transport:'tcp'}]);assert.deepEqual(f.tlsOptions,[{hostname:'developers.openai.com',alpnProtocols:['http/1.1']}]);
   assert.deepEqual(f.order.slice(0,7),['dns:A','dns:AAAA','connect','rawPin','startTls','handshake','tlsPin']);
   const bytes=Buffer.concat(f.writes.map(b=>Buffer.from(b))).toString('utf8');

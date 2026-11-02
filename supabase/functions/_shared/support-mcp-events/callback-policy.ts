@@ -12,14 +12,35 @@ export class CallbackTransportError extends Error {
 export type ResolvedAddress = { address: string; family: 4 | 6 };
 export type PostInput = { url: string; body: Uint8Array; headers: Record<string, string>; responseLimitBytes?: number; signal?: AbortSignal };
 export type PostResult = { status: number; body: Uint8Array };
-export type PinnedHttpsTransport = { assertReady(): void; post(input: PostInput): Promise<PostResult>; readonly implementation?: TransportImplementation; probeRuntime?(): Promise<{ status: number; implementation?: TransportImplementation }> };
+export type PinnedHttpsTransport = { assertReady(): void; post(input: PostInput): Promise<PostResult>; readonly implementation?: TransportImplementation; probeRuntime?(): Promise<{ status: number; implementation?: TransportImplementation; pinDiagnostics?:NativePinDiagnostics }> };
 export type TransportImplementation='node-https'|'deno-native-http1';
 export const NATIVE_RUNTIME_PHASES=['dns','connect','raw_pin','tls','handshake','tls_pin','write','headers','body'] as const;
 export type NativeRuntimePhase=typeof NATIVE_RUNTIME_PHASES[number];
+export type NativeAddressDiagnostic=Readonly<{shape:'object'|'absent'|'other'|'unreadable';transport:'tcp'|'udp'|'tls'|'unix'|'absent'|'other';public:boolean;ipEqual:boolean;portMatch:boolean}>;
+export type NativePinDiagnostics=Readonly<{raw:NativeAddressDiagnostic;tls?:NativeAddressDiagnostic}>;
+/** Copy only bounded fields. Never spread a runtime address/error into HTTP. */
+export function safeNativePinDiagnostics(value:unknown):NativePinDiagnostics|undefined{
+  try{
+    if(!value||typeof value!=='object'||Array.isArray(value))return undefined;
+    const input=value as {raw?:unknown;tls?:unknown},rawValue=input.raw,tlsValue=input.tls;
+    function address(raw:unknown):NativeAddressDiagnostic|undefined{
+      if(!raw||typeof raw!=='object'||Array.isArray(raw))return undefined;
+      const item=raw as NativeAddressDiagnostic;
+      const shape=item.shape,transport=item.transport,publicAddress=item.public,ipEqual=item.ipEqual,portMatch=item.portMatch;
+      if(!['object','absent','other','unreadable'].includes(shape)||!['tcp','udp','tls','unix','absent','other'].includes(transport)||
+        typeof publicAddress!=='boolean'||typeof ipEqual!=='boolean'||typeof portMatch!=='boolean')return undefined;
+      return Object.freeze({shape,transport,public:publicAddress,ipEqual,portMatch});
+    }
+    const raw=address(rawValue);if(!raw)return undefined;
+    if(tlsValue===undefined)return Object.freeze({raw});
+    const tls=address(tlsValue);return tls?Object.freeze({raw,tls}):undefined;
+  }catch{return undefined;}
+}
 export class NativeHttpsTransportError extends CallbackTransportError {
   readonly implementation='deno-native-http1' as const;
   readonly phase:NativeRuntimePhase;
-  constructor(reason:TransportReason,phase:NativeRuntimePhase,httpStatus?:number){super(reason,httpStatus);this.name='NativeHttpsTransportError';this.phase=phase;}
+  readonly pinDiagnostics?:NativePinDiagnostics;
+  constructor(reason:TransportReason,phase:NativeRuntimePhase,httpStatus?:number,pinDiagnostics?:NativePinDiagnostics){super(reason,httpStatus);this.name='NativeHttpsTransportError';this.phase=phase;this.pinDiagnostics=safeNativePinDiagnostics(pinDiagnostics);}
 }
 export const PINNING_PROBE_URL='https://developers.openai.com/plugins/build/mcp-events';
 
