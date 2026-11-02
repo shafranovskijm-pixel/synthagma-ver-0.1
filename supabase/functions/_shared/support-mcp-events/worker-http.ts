@@ -24,12 +24,35 @@ export async function loadRuntimeConfig(client: RpcClient, env: EnvGetter): Prom
   strictBase64(config.workerToken,32,32,'invalid_encryption_key');
   return config;
 }
-export async function signWake(timestamp: string, nonce: string, workerToken: string, cryptoApi: Crypto = globalThis.crypto): Promise<string> {
+type ControlPurpose = 'sintagma-support-events-wake-v1' | 'sintagma-support-events-probe-v1';
+async function signControl(purpose: ControlPurpose, timestamp: string, nonce: string, workerToken: string, cryptoApi: Crypto): Promise<string> {
   const bytes = strictBase64(workerToken,32,32,'invalid_encryption_key');
   const key = await cryptoApi.subtle.importKey('raw',bytes,{name:'HMAC',hash:'SHA-256'},false,['sign']);bytes.fill(0);
-  const data = new TextEncoder().encode(`sintagma-support-events-wake-v1\n${timestamp}\n${nonce}`);
+  const data = new TextEncoder().encode(`${purpose}\n${timestamp}\n${nonce}`);
   const signature = await cryptoApi.subtle.sign('HMAC',key,data);
   return Array.from(new Uint8Array(signature),b=>b.toString(16).padStart(2,'0')).join('');
+}
+export function signWake(timestamp: string, nonce: string, workerToken: string, cryptoApi: Crypto = globalThis.crypto): Promise<string> {
+  return signControl('sintagma-support-events-wake-v1',timestamp,nonce,workerToken,cryptoApi);
+}
+export function signProbe(timestamp: string, nonce: string, workerToken: string, cryptoApi: Crypto = globalThis.crypto): Promise<string> {
+  return signControl('sintagma-support-events-probe-v1',timestamp,nonce,workerToken,cryptoApi);
+}
+type ControlEnvelope = { timestamp: string; nonce: string; supplied: string; signed: number };
+function controlEnvelope(request: Request): ControlEnvelope | null {
+  const allowed=new Set(['x-sintagma-events-timestamp','x-sintagma-events-nonce','x-sintagma-events-signature']);
+  let unknown=false;
+  request.headers.forEach((_value,name)=>{if(name.startsWith('x-sintagma-events-')&&!allowed.has(name))unknown=true;});
+  const timestamp=request.headers.get('x-sintagma-events-timestamp')??'';
+  const nonce=request.headers.get('x-sintagma-events-nonce')??'';
+  const supplied=request.headers.get('x-sintagma-events-signature')??'';
+  if(unknown||!/^[1-9][0-9]{9,12}$/.test(timestamp)||!Number.isSafeInteger(Number(timestamp))||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(nonce)||!/^[0-9a-f]{64}$/.test(supplied))return null;
+  return{timestamp,nonce,supplied,signed:Number(timestamp)};
+}
+function controlIsFresh(envelope: ControlEnvelope, now: number): boolean {
+  const seconds=Math.floor(now/1000);
+  return seconds-envelope.signed<=60&&envelope.signed-seconds<=5;
 }
 function response(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type':'application/json', 'Cache-Control':'no-store' } });
@@ -61,29 +84,43 @@ export function createWorkerHttpHandler(options: WorkerHttpOptions): (request: R
       const url=new URL(request.url);
       if(url.searchParams.has('probe')) {
         if(url.searchParams.get('probe')!=='pinning'||url.searchParams.size!==1)return response(400,{error:'invalid_request'});
-        const serviceKey=options.env('SUPABASE_SERVICE_ROLE_KEY');
-        const authorization=request.headers.get('authorization')??'';
-        if(!serviceKey||authorization.length>4096||!(await constantTimeTextEqual(`Bearer ${serviceKey}`,authorization,cryptoApi)))return response(401,{error:'unauthorized'});
-        const config=await configLoader();
+        let config:RuntimeConfig;
+        let probeEnvelope:ControlEnvelope|null=null;
+        if(request.headers.has('authorization')) {
+          // Preserve the existing service-only probe. Never fall through from a
+          // bad Bearer credential to another authentication mode or mix modes.
+          let mixed=false;request.headers.forEach((_value,name)=>{if(name.startsWith('x-sintagma-events-'))mixed=true;});
+          const serviceKey=options.env('SUPABASE_SERVICE_ROLE_KEY'),authorization=request.headers.get('authorization')??'';
+          if(mixed||!serviceKey||authorization.length>4096||!(await constantTimeTextEqual(`Bearer ${serviceKey}`,authorization,cryptoApi)))return response(401,{error:'unauthorized'});
+          config=await configLoader();
+        } else {
+          probeEnvelope=controlEnvelope(request);
+          if(!probeEnvelope||!controlIsFresh(probeEnvelope,now()))return response(401,{error:'unauthorized'});
+          config=await configLoader();
+          const expected=await signProbe(probeEnvelope.timestamp,probeEnvelope.nonce,config.workerToken,cryptoApi);
+          if(!(await constantTimeTextEqual(expected,probeEnvelope.supplied,cryptoApi)))return response(401,{error:'unauthorized'});
+        }
         if(config.enabled)return response(409,{error:'probe_requires_disabled_delivery'});
+        if(probeEnvelope) {
+          let consumed:{data:unknown;error:unknown};
+          try{consumed=await options.client.rpc('sintagma_support_event_consume_probe_nonce',{p_nonce:probeEnvelope.nonce,p_timestamp:probeEnvelope.signed});}
+          catch{throw new DeliveryWorkerError('delivery_store_failed');}
+          if(consumed.error)throw new DeliveryWorkerError('delivery_store_failed');
+          if(consumed.data!==true)return response(409,{error:'probe_replayed_or_expired'});
+        }
         if(!transport.probeRuntime)return response(503,{error:'runtime_not_proven'});
         const probe=await transport.probeRuntime();
         return response(200,{probe:'pinning',observed:true,httpStatus:probe.status,deliveryEnabled:false,readinessMarker:DENO_NODE_HTTPS_PINNING_PROVEN});
       }
       if(url.search)return response(400,{error:'invalid_request'});
-      const timestamp=request.headers.get('x-sintagma-events-timestamp')??'';
-      const nonce=request.headers.get('x-sintagma-events-nonce')??'';
-      const supplied=request.headers.get('x-sintagma-events-signature')??'';
-      if(!/^[1-9][0-9]{9,12}$/.test(timestamp)||!Number.isSafeInteger(Number(timestamp))||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(nonce)||!/^[0-9a-f]{64}$/.test(supplied))return response(401,{error:'unauthorized'});
-      const seconds=Math.floor(now()/1000),signed=Number(timestamp);
-      if(seconds-signed>60||signed-seconds>5)return response(401,{error:'unauthorized'});
+      const envelope=controlEnvelope(request);
+      if(!envelope||!controlIsFresh(envelope,now()))return response(401,{error:'unauthorized'});
       const config=await configLoader();
-      const expected=await signWake(timestamp,nonce,config.workerToken,cryptoApi);
-      if(!(await constantTimeTextEqual(expected,supplied,cryptoApi)))return response(401,{error:'unauthorized'});
+      const expected=await signWake(envelope.timestamp,envelope.nonce,config.workerToken,cryptoApi);
+      if(!(await constantTimeTextEqual(expected,envelope.supplied,cryptoApi)))return response(401,{error:'unauthorized'});
       if(!config.enabled)return response(202,{enabled:false,delivered:false});
       let consumed:{data:unknown;error:unknown};
-      try{consumed=await options.client.rpc('sintagma_support_event_consume_wake_nonce',{p_nonce:nonce,p_timestamp:signed});}
+      try{consumed=await options.client.rpc('sintagma_support_event_consume_wake_nonce',{p_nonce:envelope.nonce,p_timestamp:envelope.signed});}
       catch{throw new DeliveryWorkerError('delivery_store_failed');}
       if(consumed.error)throw new DeliveryWorkerError('delivery_store_failed');
       if(consumed.data!==true)return response(409,{error:'wake_replayed_or_expired'});
