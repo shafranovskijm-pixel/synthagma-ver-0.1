@@ -1,0 +1,79 @@
+name: Support Events readiness and MCP wrapper candidate only
+on:
+  push:
+    branches:
+      - codex/support-events-ready-wrapper-ci-20261103
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ready-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EXPECTED_WORKER_TESTS: '224'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - name: Clean locked application dependencies
+        run: npm ci
+      - name: Capture exact base, old crypto, original tools and bounded candidate paths
+        run: node scripts/check-support-events-ready-ci.mjs capture
+      - name: Strict shared runtime and affected test types
+        run: >-
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck
+          --target ES2022 --module ESNext --moduleResolution Bundler
+          --allowImportingTsExtensions --types node --lib ES2022,DOM
+          supabase/functions/_shared/support-mcp-events/*.ts
+      - name: Affected worker suites including native POST and challenge wire assertions
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap supabase/functions/_shared/support-mcp-events/webhook-security.test.ts supabase/functions/_shared/support-mcp-events/worker-http.test.ts supabase/functions/_shared/support-mcp-events/worker-probe-auth-v2.test.ts supabase/functions/_shared/support-mcp-events/worker-probe-status-v3.test.ts supabase/functions/_shared/support-mcp-events/native-deno-https.test.ts supabase/functions/_shared/support-mcp-events/native-http1-adversarial-peer.test.ts supabase/functions/_shared/support-mcp-events/native-tls-shape-diagnostics.test.ts | tee outputs/ready-mcp-events-ci/worker-tests.log
+      - name: Protocol30 and backend-build30 wrapper cases
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap supabase/functions/_shared/support-mcp-events/protocol.test.ts supabase/functions/_shared/support-mcp-events/runtime-backend.test.ts scripts/support-mcp-events-build.test.mjs | tee outputs/ready-mcp-events-ci/wrapper-tests.log
+      - name: Twelve old-new crypto byte and key lifetime vectors
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap scripts/support-mcp-events-crypto-vectors.test.mjs | tee outputs/ready-mcp-events-ci/crypto-vectors.log
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.1.4'
+          deno-binary-name: deno214
+      - name: Deno2.1.4 baseline and candidate source checks
+        run: node scripts/check-support-events-deno-types.mjs deno214 2.1.4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.8.3'
+          deno-binary-name: deno283
+      - name: Deno2.8.3 seven-position reproduction and zero-error candidate source checks
+        run: node scripts/check-support-events-deno-types.mjs deno283 2.8.3
+      - name: Stock application types
+        shell: bash
+        run: |
+          set -o pipefail
+          node node_modules/typescript/bin/tsc --noEmit | tee outputs/ready-mcp-events-ci/stock-types.log
+      - name: Stock Vite build with SDK generation and sequential wrapper
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build | tee outputs/ready-mcp-events-ci/stock-build.log
+      - name: Verify exact twelve-module native closure, byte preservation and build replay
+        run: node scripts/check-support-events-ready-ci.mjs verify
+      - name: Preserve bounded source evidence without deployment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-events-ready-source-only
+          path: outputs/ready-mcp-events-ci
+          if-no-files-found: error
+          retention-days: 30
