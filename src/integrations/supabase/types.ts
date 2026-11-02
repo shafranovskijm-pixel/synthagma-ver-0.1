@@ -27091,6 +27091,10 @@ export type Database = {
         }
         Returns: Json
       }
+      sintagma_support_event_consume_probe_nonce: {
+        Args: { p_nonce: string; p_timestamp: number }
+        Returns: boolean
+      }
       sintagma_support_event_consume_wake_nonce: {
         Args: { p_nonce: string; p_timestamp: number }
         Returns: boolean
