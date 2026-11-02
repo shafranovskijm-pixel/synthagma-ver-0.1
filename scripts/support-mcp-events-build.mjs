@@ -48,7 +48,8 @@ export async function buildSupportMcpEvents(rootDir, options = {}) {
   const output = inside(root, 'supabase/functions/_shared/support-mcp-events/runtime.bundle.mjs');
   const original = await fs.readFile(input, 'utf8');
   const wrapped = wrapGeneratedMcp(original);
-  const esbuild = options.esbuild ?? require('esbuild');
+  // Resolve the SDK's declared build dependency; isolated installs need no root hoist.
+  const esbuild = options.esbuild ?? createRequire(sdkEntry)('esbuild');
   const bundle = await esbuild.build({
     entryPoints: [adapter], bundle: true, write: false, outfile: output,
     platform: 'neutral', format: 'esm', target: 'es2022', sourcemap: false,
