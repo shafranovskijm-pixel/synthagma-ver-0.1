@@ -73,7 +73,7 @@ export function StudentDocumentsUpload({
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
+  const selectedDocTypeRef = useRef<string | null>(null);
   
   // Swipe to close
   const swipeRef = useRef<HTMLDivElement>(null);
@@ -160,17 +160,21 @@ export function StudentDocumentsUpload({
   };
 
   const handleUploadClick = (docType: string) => {
-    setSelectedDocType(docType);
+    selectedDocTypeRef.current = docType;
+    if (fileInputRef.current) fileInputRef.current.value = "";
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    const selectedDocType = selectedDocTypeRef.current;
     if (!file || !selectedDocType) return;
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast.error("Файл слишком большой. Максимальный размер: 10 МБ");
+      e.target.value = "";
+      selectedDocTypeRef.current = null;
       return;
     }
 
@@ -209,7 +213,7 @@ export function StudentDocumentsUpload({
       });
     } finally {
       setUploadingType(null);
-      setSelectedDocType(null);
+      selectedDocTypeRef.current = null;
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
