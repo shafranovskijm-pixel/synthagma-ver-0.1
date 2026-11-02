@@ -77,7 +77,7 @@ export function UploadStep({
         }`}
         onClick={() => document.getElementById('file-input')?.click()}
       >
-        <input id="file-input" type="file" accept=".pptx,.doc,.docx,.txt,.html,.htm" onChange={onFileSelect} className="hidden" />
+        <input id="file-input" type="file" accept=".pptx,.doc,.docx,.txt,.html,.htm,.sintagma.json" onChange={onFileSelect} className="hidden" />
         {selectedFile ? (
           <div className="space-y-4">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center">
@@ -96,7 +96,7 @@ export function UploadStep({
             </div>
             <div>
               <p className="font-medium text-lg">Перетащите файл сюда или нажмите для выбора</p>
-              <p className="text-sm text-muted-foreground mt-1">PPTX, DOCX, TXT, HTML; старый DOC — Beta (до 30 МБ)</p>
+              <p className="text-sm text-muted-foreground mt-1">PPTX, DOCX, TXT, HTML, .sintagma.json; старый DOC — Beta (до 30 МБ)</p>
             </div>
           </div>
         )}
@@ -106,7 +106,7 @@ export function UploadStep({
         <div>
           <p className="font-medium">Закрытый JSON с ключами тестов</p>
           <p className="text-sm text-muted-foreground">
-            Обязателен только для структурированного курса ЦСЗ. Ключи не добавляются в HTML уроков.
+            Обязателен только для структурированного курса ЦСЗ. Пакет .sintagma.json уже содержит отдельный банк. Ключи не добавляются в HTML уроков.
           </p>
         </div>
         <input
