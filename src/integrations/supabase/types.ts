@@ -6193,8 +6193,7 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
-          // PostgreSQL BIGINT accepts decimal strings without JavaScript precision loss.
-          learning_progress_epoch?: number | string
+          learning_progress_epoch?: number
           lesson_id: string
           organization_id: string
           reviewed_at?: string | null
