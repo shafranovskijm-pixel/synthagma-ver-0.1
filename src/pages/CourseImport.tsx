@@ -18,6 +18,8 @@ import {
 } from "@/lib/courseImportScope";
 import { createImportedCourseHeader } from "@/api/courseImport";
 import { createStructuredCourseDraft } from "@/api/structuredCourseImport";
+import { createOriginalCourseDraft } from "@/api/originalCourseImport";
+import { parseOriginalCoursePackage, type OriginalCoursePackage } from "@/utils/originalCoursePackage";
 import { CourseCreationError, courseCreationErrorMessage } from "@/api/courses";
 import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 import {
@@ -85,6 +87,7 @@ export default function CourseImport() {
   const [isCreating, setIsCreating] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [structuredPayload, setStructuredPayload] = useState<StructuredCourseDraftPayload | null>(null);
+  const [originalPayload, setOriginalPayload] = useState<OriginalCoursePackage | null>(null);
   const [scopeState, setScopeState] = useState<ScopeState>({ status: "loading" });
   const [scopeRefreshKey, setScopeRefreshKey] = useState(0);
 
@@ -129,8 +132,8 @@ export default function CourseImport() {
     setIsDragging(false);
     
     const files = Array.from(e.dataTransfer.files);
-    const answerKeyFile = files.find((file) => file.name.toLowerCase().endsWith(".json"));
-    const courseFile = files.find((file) => !file.name.toLowerCase().endsWith(".json"));
+    const answerKeyFile = files.find((file) => file.name.toLowerCase().endsWith(".json") && !file.name.toLowerCase().endsWith(".sintagma.json"));
+    const courseFile = files.find((file) => !file.name.toLowerCase().endsWith(".json") || file.name.toLowerCase().endsWith(".sintagma.json"));
     if (courseFile) validateAndSetFile(courseFile);
     if (answerKeyFile) validateAndSetAnswerKeyFile(answerKeyFile);
   }, []);
@@ -150,9 +153,10 @@ export default function CourseImport() {
     const isDoc = fileName.endsWith('.doc');
     const isTxt = fileName.endsWith('.txt');
     const isHtml = fileName.endsWith('.html') || fileName.endsWith('.htm');
+    const isOriginalPackage = fileName.endsWith('.sintagma.json');
     
-    if (!isPptx && !isDocx && !isDoc && !isTxt && !isHtml) {
-      toast.error('Поддерживаются PPTX, DOCX, TXT, HTML; старый DOC доступен в Beta-режиме');
+    if (!isPptx && !isDocx && !isDoc && !isTxt && !isHtml && !isOriginalPackage) {
+      toast.error('Поддерживаются PPTX, DOCX, TXT, HTML и пакеты .sintagma.json; старый DOC доступен в Beta-режиме');
       return;
     }
     
@@ -198,8 +202,22 @@ export default function CourseImport() {
     setStep('processing');
     setProgress(10);
     setStructuredPayload(null);
+    setOriginalPayload(null);
     
     try {
+      if (selectedFile.name.toLowerCase().endsWith(".sintagma.json")) {
+        // Parse locally: closed keys are never sent to office-document/AI
+        // extraction, displayed in the lesson preview, or persisted as HTML.
+        const parsed = parseOriginalCoursePackage(await selectedFile.text());
+        setOriginalPayload(parsed);
+        setImportResult({ success: true, courseTitle: parsed.title,
+          lessons: parsed.lessons.map((l, order_index) => ({ id: l.key, type: l.type, title: l.title, content: l.content, order_index })),
+          filesCount: 1, sectionsCount: parsed.modules.length,
+          analysis: [{ fileName: selectedFile.name, title: parsed.title, wordCount: 0, contentType: "original-private-course" }],
+        });
+        setCourseTitle(parsed.title); setProgress(100); setStep("preview");
+        return;
+      }
       const isHtml = /\.html?$/i.test(selectedFile.name) || selectedFile.type === "text/html";
       if (isHtml) {
         const html = await selectedFile.text();
@@ -299,7 +317,10 @@ export default function CourseImport() {
       }
 
       let courseId: string;
-      if (structuredPayload) {
+      if (originalPayload) {
+        const result = await createOriginalCourseDraft(verifiedScope.organizationId, { ...originalPayload, title: courseTitle.trim() });
+        courseId = result.course_id;
+      } else if (structuredPayload) {
         // The database validates and inserts the complete graph in a single
         // transaction. It always returns an unpublished course.
         const result = await createStructuredCourseDraft({
@@ -367,6 +388,7 @@ export default function CourseImport() {
     setCourseTitle('');
     setCreatedCourseId(null);
     setStructuredPayload(null);
+    setOriginalPayload(null);
   };
 
   return (

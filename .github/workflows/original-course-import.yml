@@ -1,0 +1,74 @@
+name: Original course import verification
+on:
+  push:
+    branches: [codex/original-course-import-20261103]
+  pull_request:
+    paths:
+      - src/utils/originalCoursePackage*
+      - src/api/originalCourseImport.ts
+      - src/pages/CourseImport.tsx
+      - src/components/course-import/**
+      - supabase/migrations/20261102130000_original_course_draft_import.sql
+      - supabase/tests/original_course_import/**
+      - vitest.original-course-import.config.ts
+      - .github/workflows/original-course-import.yml
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check application types
+        run: npm run typecheck
+      - name: Verify strict package parsing
+        run: node node_modules/vitest/vitest.mjs run --config vitest.original-course-import.config.ts
+      - name: Build application
+        run: npm run build
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: original_course_lab
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_original_course_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d original_course_lab"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: original_course_lab
+      PGUSER: postgres
+      PGPASSWORD: synthetic_original_course_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check --index-url https://pypi.org/simple 'psycopg[binary]==3.2.9'
+      - name: Test atomic imports, access, quotas, retry and concurrent callers
+        run: python supabase/tests/original_course_import/run-native.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: original-course-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/original-course-native/
+          if-no-files-found: error
+          retention-days: 14
