@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "sintagma-mcp",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "title": "СИНТАГМА"
     },
     "tools": [
@@ -256,6 +256,227 @@
             "act_date",
             "request_id",
             "source_sha256"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_sintagma_postpaid_billing_overview",
+        "title": "Расчёты постоплаты СИНТАГМЫ",
+        "description": "Только администратор: прочитать условия и сохранённые месячные расчёты точно выбранной организации. Личные заметки, подтверждения клиента и идентификаторы проверяющих не возвращаются. Состояние расчёта, выпуск счёта и оплата различаются. Ничего не меняет и не отправляет.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "organization_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "period_start": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          },
+          "required": [
+            "organization_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "prepare_sintagma_postpaid_statement",
+        "title": "Подготовить расчёт постоплаты СИНТАГМЫ",
+        "description": "По поручению администратора подготовить или прочитать существующий месячный черновик точно выбранной организации. Только завершившийся календарный месяц по Москве; period_start — первое число. Повтор без изменения источников возвращает прежнюю ревизию, уже выпущенный счёт не пересоздаётся. Не подтверждает неполную историю, не выпускает счёт, не отправляет письмо и не отмечает оплату.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "organization_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "period_start": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "required": [
+            "organization_id",
+            "period_start"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "preview_sintagma_postpaid_statement",
+        "title": "Проверить расчёт постоплаты СИНТАГМЫ",
+        "description": "Только администратор: проверить точные organization_id и statement_id. Возвращает сохранённый расчёт, свежие показатели, серверную цену и хеши для подтверждения/выпуска. Ретроспективные данные требуют предметной сверки; отсутствие событий не доказывает отсутствие прежнего обучения. Ничего не сохраняет и не отправляет.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "organization_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "statement_id": {
+              "$ref": "#/properties/organization_id"
+            }
+          },
+          "required": [
+            "organization_id",
+            "statement_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "approve_sintagma_postpaid_statement",
+        "title": "Подтвердить расчёт постоплаты СИНТАГМЫ",
+        "description": "По поручению администратора подтвердить один закрытый месячный расчёт после предметной сверки. Передайте точные ID, ожидаемые source_hash, тариф и сумму из предпросмотра, явные проверенные количества курсов/обучавшихся и письменное основание. База атомарно проверяет организацию, свежесть и сумму. Повтор того же подтверждения сохраняет прежний результат; конфликт требует нового чтения. Не создаёт счёт, не отправляет письмо и не подтверждает оплату.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "organization_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "statement_id": {
+              "$ref": "#/properties/organization_id"
+            },
+            "expected_source_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "expected_amount": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 16990
+            },
+            "expected_plan": {
+              "type": "string",
+              "enum": [
+                "start",
+                "standard",
+                "professional"
+              ]
+            },
+            "courses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "learners": {
+              "$ref": "#/properties/courses"
+            },
+            "review_note": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "organization_id",
+            "statement_id",
+            "expected_source_hash",
+            "expected_amount",
+            "expected_plan",
+            "courses",
+            "learners",
+            "review_note"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "issue_sintagma_postpaid_invoice",
+        "title": "Выпустить счёт постоплаты СИНТАГМЫ",
+        "description": "По поручению администратора выпустить или прочитать уже выпущенный счёт к точно подтверждённому расчёту. Передайте ID организации/расчёта, ожидаемые source_hash, review_hash, тариф и сумму. Сумма и неизменность проверки контролируются в одной транзакции; повтор возвращает тот же счёт. После ошибки сначала перечитайте тот же расчёт, не создавайте дубль. Не отправляет клиенту, не отмечает оплату и не продлевает предоплатную подписку. Договорная безлимитная постоплата сохраняется.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "organization_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "statement_id": {
+              "$ref": "#/properties/organization_id"
+            },
+            "expected_source_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "expected_amount": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 16990
+            },
+            "expected_plan": {
+              "type": "string",
+              "enum": [
+                "start",
+                "standard",
+                "professional"
+              ]
+            },
+            "expected_review_hash": {
+              "$ref": "#/properties/expected_source_hash"
+            }
+          },
+          "required": [
+            "organization_id",
+            "statement_id",
+            "expected_source_hash",
+            "expected_amount",
+            "expected_plan",
+            "expected_review_hash"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
