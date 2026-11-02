@@ -18,13 +18,13 @@ async function hashes(paths){return Object.fromEntries(await Promise.all(paths.m
 async function files(dir){const result=[];for(const item of await fs.readdir(path.join(root,dir),{withFileTypes:true})){const p=dir+'/'+item.name;result.push(...item.isDirectory()?await files(p):[p]);}return result.sort();}
 const redact=s=>s.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,'[REDACTED_JWT]').replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/g,'$1[REDACTED]@').replace(/([?&](?:token|key|signature|password|secret)=)[^\s&]+/gi,'$1[REDACTED]');
 async function command(label,program,args){
-  const r=await new Promise((done,reject)=>{const child=spawn(program,args,{cwd:root,env:process.env});let output='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>output+=b);child.on('error',reject);child.on('exit',(code,signal)=>done({code,signal,output:redact(output)}));});
+  const r=await new Promise((done,reject)=>{const child=spawn(program,args,{cwd:root,env:process.env});let output='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>output+=b);child.on('error',reject);child.on('close',(code,signal)=>done({code,signal,output:redact(output)}));});
   await fs.writeFile(path.join(out,label+'.log'),r.output);console.log(JSON.stringify({label,code:r.code,signal:r.signal}));
   return {code:r.code,signal:r.signal,log:label+'.log',tail:r.output.slice(-2000)};
 }
 const originalSources=await files('src/lib/mcp');
 const runtimeSources=(await files(shared.slice(0,-1))).filter(p=>!p.endsWith('runtime.bundle.mjs'));
-const preserved=[...locks,...originalSources,...runtimeSources,'vite.config.ts'];
+const preserved=[...locks,...originalSources,...runtimeSources,'vite.config.ts','scripts/support-mcp-events-build.mjs','scripts/support-mcp-events-build.test.mjs'];
 const report={scope:'SDK-declared esbuild build-portability candidate; no deployment, DB access, callback or Cloud subscription acceptance',manager,node:{version:process.version,arch:process.arch,platform:process.platform},before:await hashes(preserved),commands:{}};
 let failed=false;
 try {
@@ -70,7 +70,7 @@ try {
   const smokeFile=path.join(out,'compiled-wrapper-smoke.test.ts'),smokeConfig=path.join(out,'deno-smoke.json');
   await fs.writeFile(smokeFile,smoke);await fs.writeFile(smokeConfig,'{"nodeModulesDir":"none"}\n');
   report.commands.denoVersion=await command('deno-version','deno',['--version']);
-  report.commands.denoSmoke=await command('compiled-deno-smoke','deno',['test','--no-check','--no-prompt','--allow-read','--config='+smokeConfig,smokeFile]);
+  report.commands.denoSmoke=await command('compiled-deno-smoke','deno',['test','--no-check','--no-prompt','--deny-env','--deny-net','--allow-read','--config='+smokeConfig,smokeFile]);
   assert.equal(report.commands.denoSmoke.code,0,'compiled Deno module smoke');
 } catch(error){report.error={name:error.name,message:redact(error.message)};failed=true;}
 report.after=await hashes(preserved);report.preserved=JSON.stringify(report.before)===JSON.stringify(report.after);if(!report.preserved)failed=true;
