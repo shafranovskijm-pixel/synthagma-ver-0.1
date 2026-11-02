@@ -1,3 +1,4 @@
+import { ownedArrayBuffer } from './crypto-buffer.ts';
 import { constantTimeTextEqual, createSecretCrypto, strictBase64 } from './crypto.ts';
 import { createDeliveryWorker, createRpcDeliveryStore, DeliveryWorkerError, type RpcClient } from './delivery.ts';
 import { CallbackTransportError, NativeHttpsTransportError, NATIVE_RUNTIME_PHASES, safeNativePinDiagnostics, createPinnedHttpsTransport, DENO_NODE_HTTPS_PINNING_PROVEN, DENO_NATIVE_HTTPS_PINNING_PROVEN, type PinnedHttpsTransport } from './pinned-https.ts';
@@ -27,7 +28,10 @@ export async function loadRuntimeConfig(client: RpcClient, env: EnvGetter): Prom
 type ControlPurpose = 'sintagma-support-events-wake-v1' | 'sintagma-support-events-probe-v1';
 async function signControl(purpose: ControlPurpose, timestamp: string, nonce: string, workerToken: string, cryptoApi: Crypto): Promise<string> {
   const bytes = strictBase64(workerToken,32,32,'invalid_encryption_key');
-  const key = await cryptoApi.subtle.importKey('raw',bytes,{name:'HMAC',hash:'SHA-256'},false,['sign']);bytes.fill(0);
+  const rawKey = ownedArrayBuffer(bytes);
+  let key: CryptoKey;
+  try { key = await cryptoApi.subtle.importKey('raw',rawKey,{name:'HMAC',hash:'SHA-256'},false,['sign']); }
+  finally { bytes.fill(0); new Uint8Array(rawKey).fill(0); }
   const data = new TextEncoder().encode(`${purpose}\n${timestamp}\n${nonce}`);
   const signature = await cryptoApi.subtle.sign('HMAC',key,data);
   return Array.from(new Uint8Array(signature),b=>b.toString(16).padStart(2,'0')).join('');

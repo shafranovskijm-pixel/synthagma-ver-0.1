@@ -1,5 +1,6 @@
 /** Server-only key handling. No OAuth/JWT key is used for stored webhook secrets. */
 import { timingSafeEqual } from 'node:crypto';
+import { ownedArrayBuffer } from './crypto-buffer.ts';
 
 export type SecretEnvelope = { v: 1; kid: string; iv: string; ciphertext: string };
 export type SecretBinding = {
@@ -31,11 +32,16 @@ export function validateWebhookSecret(secret: unknown): Uint8Array {
   return strictBase64(secret.slice(6), 24, 64, 'invalid_secret');
 }
 export async function sha256Hex(bytes: Uint8Array, cryptoApi: Crypto = globalThis.crypto): Promise<string> {
-  const digest = await cryptoApi.subtle.digest('SHA-256', bytes);
+  const input = ownedArrayBuffer(bytes);
+  let digest: ArrayBuffer;
+  try { digest = await cryptoApi.subtle.digest('SHA-256', input); }
+  finally { new Uint8Array(input).fill(0); }
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 export async function hashSecret(secret: string, cryptoApi: Crypto = globalThis.crypto): Promise<string> {
-  return await sha256Hex(validateWebhookSecret(secret), cryptoApi);
+  const bytes = validateWebhookSecret(secret);
+  try { return await sha256Hex(bytes, cryptoApi); }
+  finally { bytes.fill(0); }
 }
 export function secretAad(binding: SecretBinding): string {
   const fields = [binding.owner_user_id, binding.oauth_client_id, binding.event_name, binding.callback_url];
@@ -54,16 +60,21 @@ export type SecretCrypto = {
 };
 export async function createSecretCrypto(base64Key: string, cryptoApi: Crypto = globalThis.crypto): Promise<SecretCrypto> {
   const keyBytes = strictBase64(base64Key, 32, 32, 'invalid_encryption_key');
-  const kid = `mcp_${(await sha256Hex(keyBytes, cryptoApi)).slice(0, 32)}`;
-  const key = await cryptoApi.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-  keyBytes.fill(0);
+  let kid: string;
+  let rawKey: ArrayBuffer | undefined;
+  let key: CryptoKey;
+  try {
+    kid = `mcp_${(await sha256Hex(keyBytes, cryptoApi)).slice(0, 32)}`;
+    rawKey = ownedArrayBuffer(keyBytes);
+    key = await cryptoApi.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  } finally { keyBytes.fill(0); if (rawKey) new Uint8Array(rawKey).fill(0); }
   return {
     kid,
     hashSecret: (secret) => hashSecret(secret, cryptoApi),
     async encryptSecret(secret, aad) {
       validateWebhookSecret(secret);
       const iv = cryptoApi.getRandomValues(new Uint8Array(12));
-      const ciphertext = await cryptoApi.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aadBytes(aad), tagLength: 128 }, key, encoder.encode(secret));
+      const ciphertext = await cryptoApi.subtle.encrypt({ name: 'AES-GCM', iv: ownedArrayBuffer(iv), additionalData: ownedArrayBuffer(aadBytes(aad)), tagLength: 128 }, key, ownedArrayBuffer(encoder.encode(secret)));
       return { v: 1, kid, iv: base64Encode(iv), ciphertext: base64Encode(new Uint8Array(ciphertext)) };
     },
     async decryptSecret(envelope, aad) {
@@ -72,7 +83,7 @@ export async function createSecretCrypto(base64Key: string, cryptoApi: Crypto = 
       const iv = strictBase64(envelope.iv, 12, 12, 'invalid_envelope');
       const ciphertext = strictBase64(envelope.ciphertext, 40, 256, 'invalid_envelope');
       let bytes: ArrayBuffer;
-      try { bytes = await cryptoApi.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: aadBytes(aad), tagLength: 128 }, key, ciphertext); }
+      try { bytes = await cryptoApi.subtle.decrypt({ name: 'AES-GCM', iv: ownedArrayBuffer(iv), additionalData: ownedArrayBuffer(aadBytes(aad)), tagLength: 128 }, key, ownedArrayBuffer(ciphertext)); }
       catch { throw new SecretCryptoError('decryption_failed'); }
       let secret: string;
       try { secret = new TextDecoder('utf-8', { fatal: true }).decode(bytes); validateWebhookSecret(secret); }

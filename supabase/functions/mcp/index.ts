@@ -1352,4 +1352,6 @@ var mcp_default = defineMcp({
 
 // lovable-mcp-supabase-entry.ts
 import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.23.0/stacks/supabase";
-Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));
+// SINTAGMA_SUPPORT_MCP_EVENTS_POSTBUILD_V1
+import { withSupportMcpEvents } from "../_shared/support-mcp-events/runtime.bundle.mjs";
+Deno.serve(withSupportMcpEvents(createSupabaseHandler(mcp_default, { functionName: "mcp" })));
