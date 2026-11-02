@@ -27082,6 +27082,71 @@ export type Database = {
         }
         Returns: Json
       }
+      sintagma_support_event_authorize: { Args: never; Returns: Json }
+      sintagma_support_event_claim: {
+        Args: {
+          p_lease_seconds?: number
+          p_limit?: number
+          p_worker_id: string
+        }
+        Returns: Json
+      }
+      sintagma_support_event_consume_wake_nonce: {
+        Args: { p_nonce: string; p_timestamp: number }
+        Returns: boolean
+      }
+      sintagma_support_event_finish_delivery: {
+        Args: {
+          p_fence: number
+          p_http_status?: number
+          p_job_id: string
+          p_lease_token: string
+          p_outcome: string
+        }
+        Returns: boolean
+      }
+      sintagma_support_event_identity: {
+        Args: {
+          p_arguments: Json
+          p_callback_url: string
+          p_client_id: string
+          p_name: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      sintagma_support_event_prepare_delivery: {
+        Args: { p_fence: number; p_job_id: string; p_lease_token: string }
+        Returns: Json
+      }
+      sintagma_support_event_runtime_config: { Args: never; Returns: Json }
+      sintagma_support_event_runtime_readiness: { Args: never; Returns: Json }
+      sintagma_support_event_subscribe_verified: {
+        Args: {
+          p_arguments: Json
+          p_callback_url: string
+          p_client_id: string
+          p_name: string
+          p_secret_envelope: Json
+          p_secret_sha256: string
+          p_session_id: string
+          p_ttl_seconds?: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      sintagma_support_event_unsubscribe: {
+        Args: {
+          p_arguments: Json
+          p_callback_url: string
+          p_client_id: string
+          p_name: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       sintagma_support_search: {
         Args: {
           p_before_created_at?: string
