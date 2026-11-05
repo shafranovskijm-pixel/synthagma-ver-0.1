@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { SupportRequestScreenshot } from "./SupportRequestScreenshot";
 
 interface SupportRequest {
   id: string;
@@ -234,9 +235,9 @@ export function SupportRequestsManager() {
                   {req.screenshot_url && (
                     <div>
                       <h4 className="text-sm font-medium mb-1">Скриншот</h4>
-                      <a href={req.screenshot_url} target="_blank" rel="noopener">
+                      {req.screenshot_url.startsWith("storage://") ? <SupportRequestScreenshot reference={req.screenshot_url} userId={req.user_id} requestId={req.id} /> : <a href={req.screenshot_url} target="_blank" rel="noopener">
                         <img src={req.screenshot_url} alt="Скриншот" className="max-h-48 rounded-lg border" />
-                      </a>
+                      </a>}
                     </div>
                   )}
 

@@ -9,6 +9,9 @@ on:
       - src/components/course-learning/VideoProblemReportButton.tsx
       - src/components/course-learning/__tests__/Video*test.tsx
       - src/lib/support/**
+      - src/components/admin/SupportRequestScreenshot.tsx
+      - src/components/admin/SupportRequestsManager.tsx
+      - src/components/admin/__tests__/SupportRequestScreenshot.test.tsx
       - .github/workflows/video-support-report.yml
   workflow_dispatch:
 permissions:
@@ -30,5 +33,5 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - name: Video, privacy, retry, navigation, and existing notification regressions
-        run: node node_modules/vitest/vitest.mjs run src/lib/support/videoProblemReport.test.ts src/components/course-learning/__tests__/VideoProblemReportButton.test.tsx src/components/course-learning/__tests__/VideoPlayerInline.video-report.test.tsx src/components/course-learning/__tests__/VideoPlayerInline.test.tsx src/components/video/__tests__/CourseVideoPlayer.test.tsx src/security/__tests__/TelegramDomainEndpointSecurity.test.ts --maxWorkers=1
+        run: node node_modules/vitest/vitest.mjs run src/lib/support src/components/admin/__tests__/SupportRequestScreenshot.test.tsx src/components/course-learning/__tests__/VideoProblemReportButton.test.tsx src/components/course-learning/__tests__/VideoPlayerInline.video-report.test.tsx src/components/course-learning/__tests__/VideoPlayerInline.test.tsx src/components/video/__tests__/CourseVideoPlayer.test.tsx src/security/__tests__/TelegramDomainEndpointSecurity.test.ts --maxWorkers=1
       - run: npm run build
