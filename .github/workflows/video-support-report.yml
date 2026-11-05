@@ -1,0 +1,34 @@
+name: Video error support report
+on:
+  push:
+    branches: [codex/video-error-support-20261105]
+  pull_request:
+    paths:
+      - src/components/video/**
+      - src/components/course-learning/VideoPlayerInline.tsx
+      - src/components/course-learning/VideoProblemReportButton.tsx
+      - src/components/course-learning/__tests__/Video*test.tsx
+      - src/lib/support/**
+      - .github/workflows/video-support-report.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Video, privacy, retry, navigation, and existing notification regressions
+        run: node node_modules/vitest/vitest.mjs run src/lib/support/videoProblemReport.test.ts src/components/course-learning/__tests__/VideoProblemReportButton.test.tsx src/components/course-learning/__tests__/VideoPlayerInline.video-report.test.tsx src/components/course-learning/__tests__/VideoPlayerInline.test.tsx src/components/video/__tests__/CourseVideoPlayer.test.tsx src/security/__tests__/TelegramDomainEndpointSecurity.test.ts --maxWorkers=1
+      - run: npm run build

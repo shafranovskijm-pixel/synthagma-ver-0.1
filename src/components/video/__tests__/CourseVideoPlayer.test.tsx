@@ -226,3 +226,53 @@ describe('Kinescope uses the same controls through the official API', () => {
     expect(provider.destroy).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('error report action without playback mutations', () => {
+  const action = (report: (failure: unknown) => void) => (failure: unknown) =>
+    <button onClick={() => report(failure)}>Report video</button>;
+  it('offers a native report only after failure and preserves saved position/progress on click', () => {
+    const report = vi.fn(); const progress = vi.fn(); const complete = vi.fn(); const save = vi.fn();
+    const view = render(<CourseVideoPlayer src="https://example.invalid/private.mp4?token=secret" savedPosition={20}
+      renderErrorAction={action(report)} onProgressChange={progress} onSavePosition={save} onVideoComplete={complete} />);
+    const video = view.container.querySelector('video')!; metadata(video);
+    progress.mockClear(); save.mockClear(); fireEvent.error(video);
+    expect(report).not.toHaveBeenCalled(); fireEvent.click(screen.getByText('Report video'));
+    expect(report).toHaveBeenCalledWith(expect.objectContaining({backend:'native',stage:'media'}));
+    expect(progress).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
+    expect(video.currentTime).toBe(20);
+  });
+  it('offers the action for a fatal HLS error', async () => {
+    const report = vi.fn();
+    render(<CourseVideoPlayer src="https://example.invalid/master.m3u8" renderErrorAction={action(report)} />);
+    await waitFor(() => expect(mocks.hlsInstances).toHaveLength(1));
+    act(() => mocks.hlsInstances[0].errorListener('error', {fatal:true,type:'networkError',details:'manifestLoadError'}));
+    fireEvent.click(screen.getByText('Report video'));
+    expect(report).toHaveBeenCalledWith(expect.objectContaining({backend:'hls',stage:'media'}));
+  });
+  it('offers the action on Kinescope provider and API errors', async () => {
+    const report = vi.fn();
+    render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope renderErrorAction={action(report)} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    await emit('Error', {error: {code:403,message:'private'}});
+    expect(report).not.toHaveBeenCalled(); fireEvent.click(screen.getByText('Report video'));
+    expect(report).toHaveBeenCalledWith(expect.objectContaining({backend:'kinescope',stage:'provider-media',code:'403'}));
+  });
+  it('offers the action when the Kinescope API cannot load', async () => {
+    const report = vi.fn(); mocks.loadApi.mockRejectedValue(new Error('script failed'));
+    render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope renderErrorAction={action(report)} />);
+    fireEvent.click(await screen.findByText('Report video'));
+    expect(report).toHaveBeenCalledWith(expect.objectContaining({backend:'kinescope',stage:'api-load'}));
+  });
+  it('offers a user-initiated report for a loading timeout without completing the lesson', () => {
+    vi.useFakeTimers();
+    try {
+      const report = vi.fn(); const complete = vi.fn();
+      render(<CourseVideoPlayer src="https://example.invalid/slow.mp4" renderErrorAction={action(report)} onVideoComplete={complete} />);
+      act(() => vi.advanceTimersByTime(15000));
+      expect(screen.getByText('Видео загружается слишком долго')).toBeInTheDocument();
+      expect(report).not.toHaveBeenCalled(); fireEvent.click(screen.getByText('Report video'));
+      expect(report).toHaveBeenCalledWith(expect.objectContaining({stage:'loading-timeout'}));
+      expect(complete).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+});
