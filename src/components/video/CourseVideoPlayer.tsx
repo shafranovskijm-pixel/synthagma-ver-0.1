@@ -320,7 +320,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
 
   return (
     <div ref={containerRef} className={cn('relative aspect-video w-full overflow-hidden rounded-xl bg-black', className,
-      (error || timedOut) && 'min-h-[320px] sm:min-h-0',
+      (error || timedOut) && !fullscreen && !pseudoFullscreen && 'min-h-[440px]',
       pseudoFullscreen && 'fixed inset-0 z-[100] h-[100dvh] max-h-none w-screen rounded-none', !controlsVisible && playing && 'cursor-none')}
       onMouseMove={showControls} onTouchStart={showControls} onFocusCapture={() => setControlsVisible(true)}
       onContextMenu={event => { if (!allowSeek) event.preventDefault(); }}>
@@ -343,20 +343,20 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
         onCanPlay={() => setLoading(false)} onWaiting={() => setLoading(true)} onStalled={() => setLoading(true)} onError={nativeError}
         onVolumeChange={() => { setMuted(videoRef.current!.muted); setVolume(videoRef.current!.volume); }}
         onRateChange={() => { const video = videoRef.current!; if (!allowSeek && video.playbackRate !== 1) video.playbackRate = 1; setRate(video.playbackRate); }} />}
-      {loading && !error && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-black/30">
+      {loading && !error && <div className={cn('absolute inset-0 overflow-y-auto bg-black/30', timedOut ? 'pointer-events-auto' : 'pointer-events-none')}><div className="flex min-h-full flex-col items-center justify-center py-4">
         <SigmaSpinner size="xl" className="text-white" />
         <p className="mt-2 text-sm text-white">{timedOut ? 'Видео загружается слишком долго' : 'Загрузка видео…'}</p>
         {timedOut && <div className="pointer-events-auto mt-3 space-y-3 text-center">
           <Button variant="outline" onClick={retry} className="gap-2"><RotateCcw className="h-4 w-4" />Попробовать снова</Button>
           {renderErrorAction?.({ backend: kinescope ? 'kinescope' : isMpegTsOrHlsUrl(src) ? 'hls' : 'native', stage: 'loading-timeout', message: 'Loading timeout' })}
         </div>}
-      </div>}
-      {error && <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/90 p-4 text-center text-white">
+      </div></div>}
+      {error && <div className="absolute inset-0 z-30 overflow-y-auto bg-black/90 p-4 text-center text-white"><div className="flex min-h-full flex-col items-center justify-center gap-3">
         <Video className="h-10 w-10" /><p className="text-sm">Не удалось воспроизвести видео</p>
         <Button variant="outline" onClick={retry} className="gap-2"><RotateCcw className="h-4 w-4" />Попробовать снова</Button>
         {failure && renderErrorAction?.(failure)}
         {allowSeek && <a href={src} target="_blank" rel="noopener noreferrer" className="text-xs underline">Открыть видео отдельно</a>}
-      </div>}
+      </div></div>}
       {controls && !error && <div className={cn('transition-opacity', controlsVisible ? 'opacity-100' : 'opacity-0 focus-within:opacity-100')}>
         <VideoControls playing={playing} muted={muted} volume={volume} time={time} duration={duration} rate={rate} allowSeek={allowSeek}
           ready={ready} fullscreen={fullscreen || pseudoFullscreen} onTogglePlay={togglePlay} onReplay={() => { seek(0); if (!playing) togglePlay(); }}

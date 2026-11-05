@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), profile: vi.fn(), insert: vi.fn(), read: vi.fn(), invoke: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), profile: vi.fn(), insert: vi.fn(), read: vi.fn(), invoke: vi.fn(), upload: vi.fn() }));
+vi.mock('./videoReportScreenshotUpload',()=>({uploadVideoReportScreenshot:mocks.upload}));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   auth: { getUser: mocks.getUser }, functions: { invoke: mocks.invoke },
   from: (table: string) => table === 'profiles' ? { select: () => ({ eq: () => ({ single: mocks.profile }) }) } : {
     insert: (row: unknown) => ({ select: () => ({ single: () => mocks.insert(row) }) }),
-    select: () => ({ eq: () => ({ eq: () => ({ single: mocks.read }) }) }),
+    select: () => ({ eq: () => ({ eq: () => ({ single: mocks.read, maybeSingle:mocks.read }) }) }),
   },
 } }));
 import { submitVideoProblemReport, videoReportBrowser, videoReportDiagnostics, videoReportIncident } from './videoProblemReport';
@@ -17,9 +18,45 @@ beforeEach(() => {
   mocks.profile.mockResolvedValue({ data: { full_name: 'QA', organization_id: '40000000-0000-4000-8000-000000000001' }, error: null });
   mocks.insert.mockImplementation(async (row: {id: string}) => ({ data: {id: row.id}, error: null }));
   mocks.invoke.mockResolvedValue({ data: {ok: true}, error: null });
+  mocks.read.mockResolvedValue({data:null,error:null});
+  mocks.upload.mockResolvedValue('storage://student-documents/support/private-image.png');
 });
 
 describe('video error support persistence', () => {
+  it('uploads an explicitly chosen image before saving only its private reference',async()=>{
+    const file=new File(['synthetic'],'private-file-name.png',{type:'image/png'});
+    const result=await submitVideoProblemReport({...context,lessonId:'30000000-0000-4000-8000-000000000088'},failure,()=>true,file);
+    expect(result.selectedScreenshotNotAdded).toBe(false);
+    expect(mocks.upload).toHaveBeenCalledWith(context.userId,result.id,file,expect.any(Function));
+    expect(mocks.insert.mock.calls[0][0].screenshot_url).toBe('storage://student-documents/support/private-image.png');
+    expect(JSON.stringify(mocks.insert.mock.calls[0][0])).not.toMatch(/private-file-name|token=|https:\/\/private/);
+    expect(mocks.upload.mock.invocationCallOrder[0]).toBeLessThan(mocks.insert.mock.invocationCallOrder[0]);
+  });
+  it('preserves an already stored incident instead of replacing its image after an uncertain response',async()=>{
+    const scope={...context,lessonId:'30000000-0000-4000-8000-000000000089'};
+    let stored:any;mocks.insert.mockImplementationOnce(async row=>{stored=row;return{data:null,error:{code:'NETWORK'}};});
+    await expect(submitVideoProblemReport(scope,failure)).rejects.toThrow();
+    mocks.read.mockResolvedValue({data:stored,error:null});
+    const result=await submitVideoProblemReport(scope,failure,()=>true,new File(['image'],'new.png',{type:'image/png'}));
+    expect(result).toEqual({id:stored.id,selectedScreenshotNotAdded:true});
+    expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.insert).toHaveBeenCalledTimes(1);
+  });
+  it.each([null,'storage://student-documents/support/private-image.png'])('reports the image actually stored when a concurrent insert wins',async savedReference=>{
+    let stored:any;
+    mocks.read.mockImplementation(async()=>({data:stored||null,error:null}));
+    mocks.insert.mockImplementation(async row=>{stored={...row,screenshot_url:savedReference};return{data:null,error:{code:'23505'}};});
+    const result=await submitVideoProblemReport(context,failure,()=>true,new File(['image'],'new.png',{type:'image/png'}));
+    expect(result.selectedScreenshotNotAdded).toBe(savedReference===null);
+    expect(mocks.insert).toHaveBeenCalledTimes(1);
+  });
+  it.each(['foreign','unreadable','upload-failed','context-changed'])('never saves a misleading screenshot report when %s',async kind=>{
+    if(kind==='foreign')mocks.read.mockResolvedValue({data:{id:'other'},error:null});
+    if(kind==='unreadable')mocks.read.mockResolvedValue({data:null,error:{code:'403'}});
+    if(kind==='upload-failed')mocks.upload.mockRejectedValue(new Error('storage unavailable'));
+    let current=true;if(kind==='context-changed')mocks.upload.mockImplementation(async()=>{current=false;return'private-ref';});
+    await expect(submitVideoProblemReport(context,failure,()=>current,new File(['image'],'new.png',{type:'image/png'}))).rejects.toThrow();
+    expect(mocks.insert).not.toHaveBeenCalled();expect(mocks.invoke).not.toHaveBeenCalled();
+  });
   it('stores only allowlisted diagnostics and canonical lesson context; not URLs, tokens or raw errors', async () => {
     await submitVideoProblemReport(context, failure);
     const row = mocks.insert.mock.calls[0][0];
