@@ -228,7 +228,7 @@ describe('Kinescope uses the same controls through the official API', () => {
 });
 
 describe('error report action without playback mutations', () => {
-  const action = (report: ReturnType<typeof vi.fn>) => (failure: any) =>
+  const action = (report: (failure: unknown) => void) => (failure: unknown) =>
     <button onClick={() => report(failure)}>Report video</button>;
   it('offers a native report only after failure and preserves saved position/progress on click', () => {
     const report = vi.fn(); const progress = vi.fn(); const complete = vi.fn(); const save = vi.fn();
