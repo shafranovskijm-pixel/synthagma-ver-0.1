@@ -320,6 +320,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
 
   return (
     <div ref={containerRef} className={cn('relative aspect-video w-full overflow-hidden rounded-xl bg-black', className,
+      (error || timedOut) && 'min-h-[320px] sm:min-h-0',
       pseudoFullscreen && 'fixed inset-0 z-[100] h-[100dvh] max-h-none w-screen rounded-none', !controlsVisible && playing && 'cursor-none')}
       onMouseMove={showControls} onTouchStart={showControls} onFocusCapture={() => setControlsVisible(true)}
       onContextMenu={event => { if (!allowSeek) event.preventDefault(); }}>
