@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronRight, RotateCcw, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
@@ -27,11 +27,12 @@ export interface CourseVideoPlayerProps {
   onSavePosition?: (position: number, duration: number) => void;
   onFinishLesson?: () => void;
   onError?: (reason?: VideoPlaybackFailure) => void;
+  renderErrorAction?: (reason: VideoPlaybackFailure) => ReactNode;
 }
 
 // Both backends feed this same surface. State changes never change the media URL.
 export function CourseVideoPlayer({ src, kinescope = false, className, controls = true, preload = 'metadata', allowSeek = true,
-  savedPosition = 0, onVideoComplete, onProgressChange, onSavePosition, onFinishLesson, onError }: CourseVideoPlayerProps) {
+  savedPosition = 0, onVideoComplete, onProgressChange, onSavePosition, onFinishLesson, onError, renderErrorAction }: CourseVideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeHostRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
   const [rate, setRate] = useState(1);
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState(false);
+  const [failure, setFailure] = useState<VideoPlaybackFailure>();
   const [loading, setLoading] = useState(preload !== 'none');
   const [timedOut, setTimedOut] = useState(false);
   const [ready, setReady] = useState(!kinescope);
@@ -101,7 +103,9 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     // QA receives diagnostics, never video authorization tokens or full URLs.
     message = message.replace(/https?:\/\/[^\s)'"<>]+/g, value => { try { const url = new URL(value); return `${url.origin}${url.pathname}`; } catch { return '[URL]'; } }).slice(0, 240);
     const code = reason && typeof reason === 'object' && 'code' in reason ? String(reason.code).slice(0, 80) : undefined;
-    setError(true); setLoading(false); callbacks.current.onError?.({ backend, stage, code, message });
+    const failure = { backend, stage, code, message };
+    setFailure(failure);
+    setError(true); setLoading(false); callbacks.current.onError?.(failure);
   };
   const nativeError = () => {
     const error = videoRef.current?.error;
@@ -341,11 +345,15 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       {loading && !error && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-black/30">
         <SigmaSpinner size="xl" className="text-white" />
         <p className="mt-2 text-sm text-white">{timedOut ? 'Видео загружается слишком долго' : 'Загрузка видео…'}</p>
-        {timedOut && <Button variant="outline" onClick={retry} className="pointer-events-auto mt-3 gap-2"><RotateCcw className="h-4 w-4" />Попробовать снова</Button>}
+        {timedOut && <div className="pointer-events-auto mt-3 space-y-3 text-center">
+          <Button variant="outline" onClick={retry} className="gap-2"><RotateCcw className="h-4 w-4" />Попробовать снова</Button>
+          {renderErrorAction?.({ backend: kinescope ? 'kinescope' : isMpegTsOrHlsUrl(src) ? 'hls' : 'native', stage: 'loading-timeout', message: 'Loading timeout' })}
+        </div>}
       </div>}
       {error && <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/90 p-4 text-center text-white">
         <Video className="h-10 w-10" /><p className="text-sm">Не удалось воспроизвести видео</p>
         <Button variant="outline" onClick={retry} className="gap-2"><RotateCcw className="h-4 w-4" />Попробовать снова</Button>
+        {failure && renderErrorAction?.(failure)}
         {allowSeek && <a href={src} target="_blank" rel="noopener noreferrer" className="text-xs underline">Открыть видео отдельно</a>}
       </div>}
       {controls && !error && <div className={cn('transition-opacity', controlsVisible ? 'opacity-100' : 'opacity-0 focus-within:opacity-100')}>

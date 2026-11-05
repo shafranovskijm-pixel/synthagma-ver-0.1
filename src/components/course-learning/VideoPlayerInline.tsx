@@ -5,6 +5,8 @@ import { nativeInlineVideoAllowed } from '@/mobile/nativeLearnerScope';
 import DOMPurify from 'dompurify';
 import { Play, Video } from 'lucide-react';
 import { CourseVideoPlayer } from '@/components/video/CourseVideoPlayer';
+import { VideoProblemReportButton } from './VideoProblemReportButton';
+import type { VideoPlaybackFailure } from '@/components/video/CourseVideoPlayer';
 import { getVideoEmbedUrl, isDirectVideoFileUrl, isMpegTsOrHlsUrl, isIframeEmbed,
   getKinescopeVideoId, getKinescopeEmbedUrl, generateKinescopeDrmToken } from '@/utils/courseBuilderHelpers';
 import { proxiedAssetUrl } from '@/utils/proxyFetch';
@@ -24,7 +26,9 @@ export interface VideoPlayerInlineProps {
   onPlayerTypeDetected?: (type: 'native' | 'embed') => void;
 }
 
-export const VideoPlayerInline = ({ content, allowSeek = true, userId, courseId, onPlayerTypeDetected, ...playback }: VideoPlayerInlineProps) => {
+export const VideoPlayerInline = ({ content, allowSeek = true, userId, courseId, lessonId, onPlayerTypeDetected, ...playback }: VideoPlayerInlineProps) => {
+  const renderErrorAction = userId && courseId && lessonId ? (failure: VideoPlaybackFailure) =>
+    <VideoProblemReportButton key={`${userId}:${courseId}:${lessonId}`} context={{ userId, courseId, lessonId }} failure={failure} /> : undefined;
   const embedResult = getVideoEmbedUrl(content);
   const kinescopeId = getKinescopeVideoId(content);
   // Keep the time-dependent DRM token stable across progress/fullscreen renders.
@@ -37,11 +41,11 @@ export const VideoPlayerInline = ({ content, allowSeek = true, userId, courseId,
   useEffect(() => { onPlayerTypeDetected?.(isEmbed ? 'embed' : 'native'); }, [isEmbed, onPlayerTypeDetected]);
 
   if (!content) return null;
-  if (kinescopeSrc) return <CourseVideoPlayer key={kinescopeSrc} src={kinescopeSrc} kinescope allowSeek={allowSeek} {...playback} />;
+  if (kinescopeSrc) return <CourseVideoPlayer key={kinescopeSrc} src={kinescopeSrc} kinescope allowSeek={allowSeek} {...playback} renderErrorAction={renderErrorAction} />;
   if (directSrc || (!isIframeEmbed(content) && !embedResult)) {
     const source = directSrc || content;
     const playable = isDirectVideoFileUrl(source) || isMpegTsOrHlsUrl(source) ? proxiedAssetUrl(source) : source;
-    return <CourseVideoPlayer key={playable} src={playable} allowSeek={allowSeek} {...playback} />;
+    return <CourseVideoPlayer key={playable} src={playable} allowSeek={allowSeek} {...playback} renderErrorAction={renderErrorAction} />;
   }
   const iframeSrc = isIframeEmbed(content) ? content.match(/<iframe[^>]*src=["']([^"']+)["']/i)?.[1] : embedResult?.url;
   if (Capacitor.isNativePlatform() && (isIframeEmbed(content) || !nativeInlineVideoAllowed(iframeSrc))) {
