@@ -16,6 +16,7 @@ on:
       - supabase/functions/**
       - supabase/tests/edge/**
       - supabase/migrations/20261106120000_organization_billing_hold.sql
+      - supabase/migrations/20261106123000_organization_billing_request_guard_message.sql
       - supabase/tests/org_billing_hold/**
       - .github/workflows/org-billing-hold.yml
 permissions:

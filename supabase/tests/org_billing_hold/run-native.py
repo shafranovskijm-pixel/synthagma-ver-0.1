@@ -6,6 +6,7 @@ import psycopg
 
 ROOT=pathlib.Path(__file__).resolve().parents[3];HERE=pathlib.Path(__file__).resolve().parent
 MIGRATION=ROOT/'supabase/migrations/20261106120000_organization_billing_hold.sql'
+GUARD_MIGRATION=ROOT/'supabase/migrations/20261106123000_organization_billing_request_guard_message.sql'
 OUT=ROOT/'outputs/organization-billing-hold-native'
 A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 CA='aaaaaaaa-0000-4000-8000-000000000001';CB='bbbbbbbb-0000-4000-8000-000000000001'
@@ -64,6 +65,7 @@ def service_access(org):return query(None,'select public.organization_billing_ac
 with connect(bootstrap=True)as c:
     check('dedicated empty fixture',c.execute("select count(*)from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public'and c.relkind='r'").fetchone()[0]==0)
     c.execute((HERE/'fixture.sql').read_text());c.execute((HERE/'released-sources.sql').read_text())
+    c.execute((HERE/'released-request-guard.sql').read_text())
     for org,name in[(A,'Synthetic target'),(B,'Synthetic unaffected')]:
         c.execute("insert into organizations values(%s,%s,false,null,'start')",(org,name))
     for actor,org,role in[(OWNER,A,'organization'),(ADMIN,A,'admin'),(OB,B,'organization'),(SB,B,'student'),(STAFF,B,'student'),(REVOKED,B,'student')]+[(s,A,'student')for s in LEARNERS]:
@@ -95,6 +97,14 @@ with connect(bootstrap=True)as c:
     check('nine existing ABI/OID/owner/ACL configurations exact',metadata(c)==ABI_BEFORE)
     check('installation applies no hold',counts()==(0,0,0))
     check('installation preserves old data',old_data(c)==BEFORE)
+    guard_source=(HERE/'released-request-guard.sql').read_text()
+    guard_abi=c.execute("select to_jsonb(p)-array['prosrc','probin','prosqlbody']from pg_proc p where oid='public.account_deletion_request_guard()'::regprocedure").fetchone()[0]
+    c.execute(guard_source.replace('Account access revoked','Synthetic source drift'))
+    denied('request guard exact source CAS refuses drift',lambda:c.execute(GUARD_MIGRATION.read_text()),'P0001','billing_request_guard_source_changed')
+    c.execute('rollback');c.execute(guard_source)
+    c.execute(GUARD_MIGRATION.read_text())
+    check('request guard ABI/OID/ACL exact',guard_abi==c.execute("select to_jsonb(p)-array['prosrc','probin','prosqlbody']from pg_proc p where oid='public.account_deletion_request_guard()'::regprocedure").fetchone()[0])
+    check('request guard update changes no old data or active hold',old_data(c)==BEFORE and counts()==(0,0,0))
     check('DDL grant wrapper ran',c.execute('select count(*)>0 from lab_ddl_events').fetchone()[0])
     check('new private function ACLs remove observer/PUBLIC default grants',c.execute("""select not exists(
       select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
@@ -134,6 +144,7 @@ for actor in TARGET:
     state=query(actor,"select public.account_deletion_access_allowed(),public.is_user_blocked(%s),public.has_role(%s,%s::app_role),public.has_role(%s::app_role,%s),public.can_access_organization(%s)",(actor,actor,role,role,actor,A))[0]
     check('target common/role/tenant deny '+actor,state==(False,True,False,False,False))
     denied('restored role RPC denied '+actor,lambda:query(actor,'select public.get_user_role(%s)',(actor,)),message='organization_access_suspended')
+    denied('PostgREST request guard preserves billing reason '+actor,lambda:query(actor,'select public.account_deletion_request_guard()'),message='organization_access_suspended')
     for table in('profiles','courses','course_modules','enrollments','lesson_progress','test_attempts'):
         check('target RLS zero '+actor+' '+table,query(actor,'select count(*)from public.'+table)[0][0]==0)
     denied('target RLS write denied '+actor,lambda:query(actor,'insert into public.lesson_progress values(%s,%s,%s,99)',(str(uuid.uuid4()),actor,A)))
@@ -145,10 +156,14 @@ check('service direct staff helper closes held target only',query(None,"select p
 check('service actor role checks cannot bypass hold',query(None,"select public.has_role(%s,'organization'::app_role),public.has_role('organization'::app_role,%s)",(OWNER,OWNER),'service_role')[0]==(False,False))
 check('external-primary staff loses held target only',query(STAFF,"select public.account_deletion_access_allowed(),public.can_access_organization(%s,'courses.read'),public.can_access_organization(%s,'courses.read')",(A,B))[0]==(True,False,True))
 check('unrelated student active',query(SB,'select public.account_deletion_access_allowed(),public.is_user_blocked(%s),public.can_access_course_as_learner(%s)',(SB,CB))[0]==(True,False,True))
+check('unrelated student request guard allowed',len(query(SB,'select public.account_deletion_request_guard()'))==1)
+check('admin request guard bypasses billing only',len(query(ADMIN,'select public.account_deletion_request_guard()'))==1)
 check('admin bypasses billing only',query(ADMIN,"select public.account_deletion_access_allowed(),public.is_user_blocked(%s),public.can_access_organization(%s),public.get_user_role(%s)",(ADMIN,A,ADMIN))[0]==(True,False,True,'admin'))
 check('old privacy revocation denied',query(REVOKED,"select public.account_deletion_access_allowed(),public.has_role(%s,'student'::app_role)",(REVOKED,))[0]==(False,False))
+denied('privacy request guard retains old reason',lambda:query(REVOKED,'select public.account_deletion_request_guard()'),message='Account access revoked')
 with connect()as c:c.execute('insert into account_deletion_revocations values(%s)',(ADMIN,))
 check('privacy overrides admin billing bypass',query(ADMIN,"select public.account_deletion_access_allowed(),public.is_user_blocked(%s),public.has_role(%s,'admin'::app_role)",(ADMIN,ADMIN))[0]==(False,True,False))
+denied('privacy reason wins for held admin',lambda:query(ADMIN,'select public.account_deletion_request_guard()'),message='Account access revoked')
 denied('revoked admin cannot release',lambda:set_hold('release',str(uuid.uuid4()),hold_id),'42501')
 with connect()as c:c.execute('delete from account_deletion_revocations where user_id=%s',(ADMIN,))
 denied('release exact-hold CAS refuses stale ID',lambda:set_hold('release',str(uuid.uuid4()),str(uuid.uuid4())),'40001')
@@ -157,6 +172,7 @@ check('release clears projection only',released['active']is False and released['
 check('release retry idempotent',set_hold('release',release_request,hold_id,'Synthetic administrative release')['replayed']is True and counts()==(1,0,2))
 check('old hold replay does not reactivate/misreport',set_hold('hold',request,reason=reason)['active']is False and counts()==(1,0,2))
 check('18 target accounts regain fence',all(query(actor,'select public.account_deletion_access_allowed()')[0][0]is True for actor in TARGET))
+check('18 target request guards recover after release',all(len(query(actor,'select public.account_deletion_request_guard()'))==1 for actor in TARGET))
 check('learner read restored without editing history',query(LEARNERS[0],'select public.lab_learner_content(%s)',(CA,))[0][0]=='Synthetic content')
 # Genuine separate sessions, not a sequential model of concurrent operations.
 concurrent_request=str(uuid.uuid4())
