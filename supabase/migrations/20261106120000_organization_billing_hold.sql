@@ -406,13 +406,13 @@ GRANT EXECUTE ON FUNCTION public.get_organization_billing_hold(uuid),
  public.set_organization_billing_hold(uuid,uuid,text,uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.organization_billing_access_allowed(uuid) TO service_role;
 
-DO $abi$ DECLARE old record;p record;current_catalog jsonb;BEGIN
+DO $abi$ DECLARE old record;p record;billing_catalog_snapshot jsonb;BEGIN
  FOR old IN SELECT *FROM pg_temp.billing_hold_function_before LOOP
   SELECT *INTO p FROM pg_proc WHERE oid=to_regprocedure(old.signature);
-  current_catalog:=jsonb_build_object('oid',p.oid,'owner',p.proowner,'acl',p.proacl::text,'args',p.proargtypes::text,'argnames',p.proargnames,
+  billing_catalog_snapshot:=jsonb_build_object('oid',p.oid,'owner',p.proowner,'acl',p.proacl::text,'args',p.proargtypes::text,'argnames',p.proargnames,
     'result',p.prorettype,'volatility',p.provolatile,'strict',p.proisstrict,'security_definer',p.prosecdef,
     'config',p.proconfig,'language',p.prolang,'parallel',p.proparallel,'leakproof',p.proleakproof);
-  IF current_catalog IS DISTINCT FROM old.catalog THEN RAISE EXCEPTION 'billing_hold_existing_abi_changed: %',old.signature;END IF;
+  IF billing_catalog_snapshot IS DISTINCT FROM old.catalog THEN RAISE EXCEPTION 'billing_hold_existing_abi_changed: %',old.signature;END IF;
  END LOOP;
  IF EXISTS(SELECT 1 FROM billing_access_private.holds)OR EXISTS(SELECT 1 FROM billing_access_private.active_holds)
  OR EXISTS(SELECT 1 FROM billing_access_private.events)THEN RAISE EXCEPTION 'billing_hold_install_must_not_apply_a_hold';END IF;
