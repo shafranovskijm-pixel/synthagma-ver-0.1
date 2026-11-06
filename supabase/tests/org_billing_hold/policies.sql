@@ -44,6 +44,7 @@ GRANT EXECUTE ON FUNCTION public.account_deletion_access_allowed(),public.can_ac
  public.is_user_blocked(uuid),public.has_role(uuid,public.app_role),public.has_role(public.app_role,uuid),
  public.can_access_course_as_learner(uuid),public.get_user_role(uuid),public.is_org_owner(uuid,uuid),
  public.has_org_staff_permission(uuid,uuid,text),public.transfer_org_ownership_atomic(uuid,uuid) TO authenticated,service_role,billing_lab_observer;
+GRANT EXECUTE ON FUNCTION public.account_deletion_request_guard() TO anon,authenticated,service_role,billing_lab_observer;
 GRANT EXECUTE ON FUNCTION public.account_deletion_access_allowed(),public.can_access_organization(uuid,text),
  public.is_user_blocked(uuid),public.has_role(uuid,public.app_role),public.has_role(public.app_role,uuid),public.get_user_role(uuid),
  public.is_org_owner(uuid,uuid),public.has_org_staff_permission(uuid,uuid,text) TO anon;
