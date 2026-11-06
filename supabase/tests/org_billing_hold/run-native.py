@@ -1,7 +1,7 @@
 """Disposable PostgreSQL17 verification; no project credentials or live access.
 Only synthetic sessions in this dedicated fixture use request.jwt.claim.*.
 """
-import concurrent.futures,json,pathlib,re,uuid
+import atexit,concurrent.futures,json,pathlib,re,uuid
 import psycopg
 
 ROOT=pathlib.Path(__file__).resolve().parents[3];HERE=pathlib.Path(__file__).resolve().parent
@@ -16,14 +16,23 @@ SIGS=['account_deletion_access_allowed()','can_access_organization(uuid,text)','
       'has_role(app_role,uuid)','has_role(uuid,app_role)','can_access_course_as_learner(uuid)','get_user_role(uuid)',
       'is_org_owner(uuid,uuid)','has_org_staff_permission(uuid,uuid,text)']
 RESULTS=[]
+COMPLETE=False
+def write_result():
+    OUT.mkdir(parents=True,exist_ok=True)
+    (OUT/'result.json').write_text(json.dumps({'scope':'synthetic isolated PostgreSQL17, not live JWT/Storage acceptance',
+      'checks':RESULTS,'passed':len(RESULTS),'failed':0 if COMPLETE else 1,'complete':COMPLETE},indent=2))
+atexit.register(write_result)
 def check(name,value):
     assert value,name
     RESULTS.append({'name':name,'passed':True})
 def connect(actor=None,role=None):
     c=psycopg.connect(autocommit=True)
     db,addr,ver=c.execute("select current_database(),inet_server_addr()::text,current_setting('server_version_num')::int").fetchone()
-    if db!='org_billing_hold_lab_ci'or addr not in('127.0.0.1','::1')or not 170000<=ver<180000:
-        c.close();raise RuntimeError('REFUSE: dedicated loopback org_billing_hold_lab_ci on PostgreSQL17 required')
+    # GitHub's loopback port publishes a Docker server whose inet_server_addr()
+    # is a container address. Validate the actual client destination instead.
+    if db!='org_billing_hold_lab_ci'or c.info.host not in('127.0.0.1','::1','localhost')or not 170000<=ver<180000:
+        destination=c.info.host;c.close()
+        raise RuntimeError('REFUSE: dedicated loopback PostgreSQL17 fixture required: '+str((db,destination,addr,ver)))
     if actor:c.execute("select set_config('request.jwt.claim.sub',%s,false)",(actor,))
     if role:
         assert role in('anon','authenticated','service_role')
@@ -182,4 +191,5 @@ OUT.mkdir(parents=True,exist_ok=True)
 (OUT/'data-preservation.json').write_text(json.dumps({'before':BEFORE,'after':AFTER,'exact':BEFORE==AFTER},indent=2))
 (OUT/'function-metadata.json').write_text(json.dumps({'before':ABI_BEFORE,'after':ABI_AFTER,'exact':ABI_BEFORE==ABI_AFTER},indent=2,default=str))
 print(json.dumps({'passed':len(RESULTS),'failed':0,'old_data_exact':BEFORE==AFTER,'old_function_abi_exact':ABI_BEFORE==ABI_AFTER}))
+COMPLETE=True
 
