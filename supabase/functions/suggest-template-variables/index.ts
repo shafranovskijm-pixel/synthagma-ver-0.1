@@ -2,6 +2,7 @@
 // Принимает массив слотов { id, context } + справочник допустимых ключей.
 // Возвращает [{ id, suggested_key, confidence }].
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { billingHoldResponse } from '../_shared/billing-access.ts';
 import { callAI } from "../_shared/gigachat-client.ts";
 
 
@@ -41,6 +42,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const billingDenied=await billingHoldResponse(userClient,userRes.user.id,corsHeaders);
+    if(billingDenied)return billingDenied;
     const body = await req.json().catch(() => ({}));
     const slots: Array<{ id: string; context: string; hint?: string }> = Array.isArray(body?.slots) ? body.slots : [];
     const catalog: Array<{ key: string; label: string }> = Array.isArray(body?.catalog) ? body.catalog : [];

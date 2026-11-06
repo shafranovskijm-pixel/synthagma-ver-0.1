@@ -1,3 +1,4 @@
+import { billingHoldResponse } from './billing-access.ts';
 // Shared, server-authoritative learner credential workflow. No client-supplied
 // email/password is ever used to compose a credentials email.
 export const STUDENT_CREDENTIALS_REVISION = "s047-credentials-20261012";
@@ -113,6 +114,8 @@ export function createStudentCredentialsHandler(action: "send" | "update", depen
       if (!authorization) throw new CredentialsError(401, "Требуется вход в систему");
       const auth = await authenticate(authorization);
       if (auth.error || !auth.userId) throw new CredentialsError(401, "Сессия истекла. Войдите повторно.");
+      const billingDenied = await billingHoldResponse(db, auth.userId, cors);
+      if (billingDenied) return billingDenied;
       let body: any;
       try { body = await req.json(); } catch { throw new CredentialsError(400, "Некорректный запрос"); }
       if (!body || typeof body !== "object" || Array.isArray(body)) throw new CredentialsError(400, "Некорректный запрос");

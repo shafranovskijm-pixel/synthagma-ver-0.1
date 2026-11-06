@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { buildSupportRequestMessage, uuid } from "../_shared/telegram-domain-contract.ts";
 import {
   deliverTelegramDomainNotification,
@@ -37,6 +38,8 @@ Deno.serve(async (req) => {
   });
   const { data: authData, error: authError } = await userClient.auth.getUser();
   if (authError || !authData.user) return json({ ok: false, error: "invalid_session" }, 401);
+  const billingDenied = await billingHoldResponse(userClient, authData.user.id, corsHeaders);
+  if (billingDenied) return billingDenied;
 
   let body: Record<string, unknown>;
   try {

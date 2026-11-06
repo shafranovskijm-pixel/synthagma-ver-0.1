@@ -1,6 +1,7 @@
 // Validates a student auto-login token and returns a Supabase magic-link action_url.
 // Public endpoint (no JWT) — the bearer of the token represents the student.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { billingHoldResponse } from '../_shared/billing-access.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const billingDenied=await billingHoldResponse(sb,rec.user_id,corsHeaders);
+    if(billingDenied)return billingDenied;
     // Resolve email from auth.users via admin API
     const { data: userResp, error: uErr } = await sb.auth.admin.getUserById(rec.user_id);
     if (uErr || !userResp?.user?.email) {

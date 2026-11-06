@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 // Модерация участников вебинара: mute/kick через LiveKit RoomService API.
 // Только хост (организация/админ) вебинара может выполнять.
 
@@ -28,6 +29,8 @@ Deno.serve(async (req) => {
 
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, u.user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const { webinarId, action, identity, trackSid } = await req.json().catch(() => ({}));
     if (!webinarId || !action || !identity) return json({ error: "webinarId, action, identity required" }, 400);

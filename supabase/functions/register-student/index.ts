@@ -12,6 +12,7 @@ import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from '..
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { billingHoldResponse, organizationBillingHoldResponse } from '../_shared/billing-access.ts';
 import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "../_shared/student-registration-details.ts";
 import { persistStudentJobPosition } from "../_shared/student-job-position.ts";
@@ -124,6 +125,8 @@ serve(async (req) => {
         }, 401);
       }
       callerUserId = user.id;
+      const billingDenied=await billingHoldResponse(supabaseAdmin,user.id,corsHeaders);
+      if(billingDenied)return billingDenied;
       callerClient = supabaseAuth;
 
       // Multi-role aware: user may hold multiple roles.
@@ -241,6 +244,8 @@ serve(async (req) => {
     if (!effectiveOrgId) {
       return j({ error: "Не удалось определить организацию для ученика" }, 400);
     }
+    const organizationDenied=await organizationBillingHoldResponse(supabaseAdmin,effectiveOrgId,corsHeaders);
+    if(organizationDenied)return organizationDenied;
 
     let registrationDetails;
     try {

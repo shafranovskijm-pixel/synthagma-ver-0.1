@@ -1,4 +1,5 @@
 // Передача владения организацией (атомарная операция через service role)
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -25,6 +26,9 @@ Deno.serve(async (req) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const billingDenied = await billingHoldResponse(supabase, user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const body = await req.json();
     const { organization_id, new_owner_user_id } = body;

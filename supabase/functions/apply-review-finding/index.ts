@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -32,6 +33,8 @@ serve(async (req) => {
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
     const userId = userData.user.id;
+    const billingDenied = await billingHoldResponse(userClient, userId, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const body = (await req.json()) as ApplyBody;
     const { courseId, target_kind, target_id, patch } = body || ({} as ApplyBody);

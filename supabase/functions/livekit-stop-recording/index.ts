@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 // Останавливает Egress по webinarId. После остановки LiveKit Cloud отдаст file_url через GetEgressInfo.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -27,6 +28,8 @@ Deno.serve(async (req) => {
     );
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, u.user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const { webinarId } = await req.json().catch(() => ({}));
     if (!webinarId) return json({ error: "webinarId required" }, 400);

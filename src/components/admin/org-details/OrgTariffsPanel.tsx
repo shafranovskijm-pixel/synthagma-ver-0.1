@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { OrganizationBillingHoldPanel } from './OrganizationBillingHoldPanel';
 
 interface OrgTariffsPanelProps {
   organizationId: string;
@@ -50,6 +51,7 @@ export function OrgTariffsPanel({
   customCategories, setCustomCategories, customPrice, setCustomPrice, customDiscount, setCustomDiscount }: OrgTariffsPanelProps) {
   return (
     <div className="space-y-4">
+      <OrganizationBillingHoldPanel key={organizationId} organizationId={organizationId} />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Crown className="w-5 h-5" />Тарифный план</CardTitle>

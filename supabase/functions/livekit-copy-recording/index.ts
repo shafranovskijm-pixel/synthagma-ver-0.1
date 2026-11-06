@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 // Скачивает MP4 запись с LiveKit Cloud по recording_external_url
 // и загружает в наш бакет webinar-recordings → обновляет recording_url в webinars.
 
@@ -27,6 +28,8 @@ Deno.serve(async (req) => {
 
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, u.user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const { webinarId } = await req.json().catch(() => ({}));
     if (!webinarId) return json({ error: "webinarId required" }, 400);

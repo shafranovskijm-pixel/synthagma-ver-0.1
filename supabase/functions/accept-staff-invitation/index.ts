@@ -11,6 +11,7 @@
 //    ДО любых service-role действий.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { billingHoldResponse, organizationBillingHoldResponse } from "../_shared/billing-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,6 +57,8 @@ Deno.serve(async (req) => {
       });
     }
     const user = userData.user;
+    const billingDenied = await billingHoldResponse(userClient, user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
     const userEmail = (user.email || "").trim().toLowerCase();
 
     let body: Json = {};
@@ -85,6 +88,10 @@ Deno.serve(async (req) => {
       return json(404, { error: "Приглашение не найдено", code: "NOT_FOUND", request_id: requestId });
     }
 
+    if (inv.organization_id) {
+      const organizationDenied = await organizationBillingHoldResponse(admin, inv.organization_id, corsHeaders);
+      if (organizationDenied) return organizationDenied;
+    }
     // -------- Organization staff: атомарно через RPC --------
     if (inv.invitation_type === "organization") {
       const { data: profile } = await admin

@@ -73,6 +73,17 @@ function actualHandler(name: string, db: ReturnType<typeof database>["db"], fetc
 }
 
 describe("privileged operations fail closed", () => {
+  it('stops a verified but held actor before service business reads or writes',async()=>{
+    const {db,effects}=database();db.rpc.mockResolvedValue({data:true,error:null});
+    const response=await actualHandler('convert-company-to-lead',db,effects.fetch)(request());
+    expect(response.status).toBe(403);
+    expect(db.from.mock.calls.map(([table])=>table)).toEqual(['account_deletion_revocations']);
+    expect(effects.insert).not.toHaveBeenCalled();expect(effects.update).not.toHaveBeenCalled();
+  });
+  it('does not authorize a business operation when billing access cannot be checked',async()=>{
+    const {db}=database();db.rpc.mockResolvedValue({data:null as any,error:null});
+    await expect(access.requireActiveUser(request(),db)).rejects.toMatchObject({status:503});
+  });
   it("requires verified JWT, never treats the publishable key as a user", async () => {
     const { db } = database({ invalidToken: true });
     await expect(access.requireActiveUser(request(null), db)).rejects.toMatchObject({ status: 401 });

@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
@@ -51,6 +52,8 @@ serve(async (req: Request) => {
       });
     }
     const callerId = authData.user.id;
+    const billingDenied = await billingHoldResponse(userClient, callerId, corsHeaders);
+    if (billingDenied) return billingDenied;
     if (callerId !== bodyUserId) {
       return new Response(JSON.stringify({ error: "forbidden" }), {
         status: 403,

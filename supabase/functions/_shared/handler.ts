@@ -23,6 +23,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { billingHoldResponse } from './billing-access.ts';
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,9 +119,12 @@ export function withAuth(handler: AuthedHandler, options: HandlerOptions = {}) {
 
       const token = authHeader.replace("Bearer ", "");
       const { data, error } = await client.auth.getClaims(token);
-      if (error || !data?.claims) {
+      if (error || !data?.claims || typeof data.claims.sub !== 'string' || !data.claims.sub) {
         return fail("unauthorized", "Сессия истекла или недействительна", 401, wrap);
       }
+
+      const billingDenied = await billingHoldResponse(client, data.claims.sub, corsHeaders);
+      if (billingDenied) return billingDenied;
 
       const body = await readBody(req);
       const result = await handler({ req, body, user: data.claims as JwtClaims });
