@@ -1,10 +1,16 @@
 -- Disposable native PostgreSQL17 fixture only; NEVER a project database.
+-- Docker initializes lab_bootstrap as OID10; PostgreSQL17 forbids demoting it.
+-- The app owner is a separate non-superuser postgres, matching production.
+CREATE ROLE postgres NOLOGIN BYPASSRLS NOSUPERUSER;
 CREATE ROLE anon NOLOGIN;
 CREATE ROLE authenticated NOLOGIN;
 CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE ROLE billing_lab_observer NOLOGIN;
 GRANT anon,authenticated,service_role,billing_lab_observer TO postgres;
-CREATE SCHEMA auth;
+ALTER SCHEMA public OWNER TO postgres;
+GRANT CREATE ON DATABASE org_billing_hold_lab_ci TO postgres;
+CREATE SCHEMA auth AUTHORIZATION postgres;
+SET ROLE postgres;
 GRANT USAGE ON SCHEMA auth,public TO anon,authenticated,service_role;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $fn$
  SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid

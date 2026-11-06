@@ -47,17 +47,17 @@ jobs:
         image: postgres:17.11-bookworm
         env:
           POSTGRES_DB: org_billing_hold_lab_ci
-          POSTGRES_USER: postgres
+          POSTGRES_USER: lab_bootstrap
           POSTGRES_PASSWORD: synthetic_billing_hold_only
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U postgres -d org_billing_hold_lab_ci"
+          --health-cmd "pg_isready -U lab_bootstrap -d org_billing_hold_lab_ci"
           --health-interval 5s --health-timeout 5s --health-retries 15
     env:
       PGHOST: 127.0.0.1
       PGPORT: '5432'
       PGDATABASE: org_billing_hold_lab_ci
-      PGUSER: postgres
+      PGUSER: lab_bootstrap
       PGPASSWORD: synthetic_billing_hold_only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

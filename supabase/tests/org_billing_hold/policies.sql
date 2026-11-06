@@ -27,6 +27,7 @@ DECLARE value text;BEGIN
 END;$fn$;
 GRANT EXECUTE ON FUNCTION public.lab_learner_content(uuid) TO authenticated;
 -- Model an extra deployment DDL grant wrapper on CREATE FUNCTION.
+RESET ROLE;
 CREATE FUNCTION public.lab_ddl_watch() RETURNS event_trigger LANGUAGE plpgsql AS $fn$
 DECLARE command record;BEGIN
  FOR command IN SELECT * FROM pg_event_trigger_ddl_commands()LOOP
@@ -48,6 +49,6 @@ GRANT EXECUTE ON FUNCTION public.account_deletion_access_allowed(),public.can_ac
  public.is_org_owner(uuid,uuid),public.has_org_staff_permission(uuid,uuid,text) TO anon;
 REVOKE EXECUTE ON FUNCTION public.account_deletion_access_allowed(),public.can_access_course_as_learner(uuid),
  public.is_org_owner(uuid,uuid),public.transfer_org_ownership_atomic(uuid,uuid) FROM PUBLIC;
--- Match actual owner characteristics: no superuser, but a deliberate RLS bypass.
-ALTER ROLE postgres BYPASSRLS NOSUPERUSER;
+-- Execute the actual migration as the reviewed non-superuser BYPASSRLS owner.
+SET ROLE postgres;
 

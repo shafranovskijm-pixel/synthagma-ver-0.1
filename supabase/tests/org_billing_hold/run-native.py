@@ -25,7 +25,7 @@ atexit.register(write_result)
 def check(name,value):
     assert value,name
     RESULTS.append({'name':name,'passed':True})
-def connect(actor=None,role=None):
+def connect(actor=None,role=None,bootstrap=False):
     c=psycopg.connect(autocommit=True)
     db,addr,ver=c.execute("select current_database(),inet_server_addr()::text,current_setting('server_version_num')::int").fetchone()
     # GitHub's loopback port publishes a Docker server whose inet_server_addr()
@@ -37,6 +37,7 @@ def connect(actor=None,role=None):
     if role:
         assert role in('anon','authenticated','service_role')
         c.execute("select set_config('request.jwt.claim.role',%s,false)",(role,));c.execute('set role '+role)
+    elif not bootstrap:c.execute('set role postgres')
     return c
 def get(actor=ADMIN,org=A,role='authenticated'):
     with connect(actor,role)as c:return c.execute('select public.get_organization_billing_hold(%s)',(org,)).fetchone()[0]
@@ -60,7 +61,7 @@ def counts():
     with connect()as c:return c.execute('select(select count(*)from billing_access_private.holds),(select count(*)from billing_access_private.active_holds),(select count(*)from billing_access_private.events)').fetchone()
 def service_access(org):return query(None,'select public.organization_billing_access_allowed(%s)',(org,),'service_role')[0][0]
 
-with connect()as c:
+with connect(bootstrap=True)as c:
     check('dedicated empty fixture',c.execute("select count(*)from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public'and c.relkind='r'").fetchone()[0]==0)
     c.execute((HERE/'fixture.sql').read_text());c.execute((HERE/'released-sources.sql').read_text())
     for org,name in[(A,'Synthetic target'),(B,'Synthetic unaffected')]:
