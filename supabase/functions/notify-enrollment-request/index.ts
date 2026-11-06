@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { telegramHtmlValue } from "../_shared/telegram-html.ts";
@@ -47,6 +48,8 @@ serve(async (req) => {
       });
     }
 
+    const billingDenied = await billingHoldResponse(supabaseAuth, user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",

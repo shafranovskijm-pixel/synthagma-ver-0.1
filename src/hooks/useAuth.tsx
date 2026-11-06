@@ -11,7 +11,7 @@ interface AuthContextType {
   session: Session | null;
   userRole: 'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null;
   loading: boolean;
-  authError: 'SESSION_UNAVAILABLE' | 'ROLE_UNAVAILABLE' | null;
+  authError: 'SESSION_UNAVAILABLE' | 'ROLE_UNAVAILABLE' | 'ACCESS_SUSPENDED' | null;
   retryAuth: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -100,6 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const abortable = typeof query.abortSignal === 'function' ? query.abortSignal(request.controller.signal) : query;
         const { data, error } = await withTimeout(Promise.resolve(abortable), AUTH_REQUEST_TIMEOUT_MS, 'role_timeout');
         if (!request.active || roleFetchInFlight.current !== request || !mounted.current || authRevision.current !== revision || authUserId.current !== userId) return null;
+        if (error?.code === '42501' && error.message === 'organization_access_suspended') {
+          setUserRole(null);localStorage.removeItem('user_role');
+          setOfflineAuthActor(null);void clearPrivateRuntimeCaches();
+          setAuthError('ACCESS_SUSPENDED');return null;
+        }
         if (data && !error) {
           if (!['admin', 'organization', 'student', 'sales_manager', 'company'].includes(data)) throw new Error('role_unconfirmed');
           const role = data as AuthContextType['userRole'];

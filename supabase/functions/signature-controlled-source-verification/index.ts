@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.90.1';
+import { billingHoldResponse } from '../_shared/billing-access.ts';
 import { createSignatureSourceHttpHandler } from './http.ts';
 import { canonicalSignatureStorageReader, SignatureSourceError, type SignatureSourceFailure } from './worker.ts';
 
@@ -25,6 +26,10 @@ Deno.serve(createSignatureSourceHttpHandler(originalJwt => {
         },
       });
       const { data, error } = await caller.auth.getUser(originalJwt);
+      if (!error && data.user?.id) {
+        const denied = await billingHoldResponse(caller, data.user.id, {});
+        if (denied) throw new SignatureSourceError(denied.status === 403 ? 'ACCESS_DENIED' : 'DEPENDENCY_UNAVAILABLE');
+      }
       return !signal.aborted && !error ? data.user?.id ?? null : null;
     },
     async service(input, signal) {

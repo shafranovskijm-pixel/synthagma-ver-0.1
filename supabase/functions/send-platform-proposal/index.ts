@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 // Sends a platform commercial proposal: clones a template proposal for the lead,
 // renders the platform email template "Отправка КП", and sends via platform SMTP.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -187,6 +188,8 @@ serve(async (req: Request) => {
       });
     }
 
+    const billingDenied = await billingHoldResponse(userClient, user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
     let managerId: string | null = null;
     const { data: existingManager } = await admin
       .from("sales_managers")

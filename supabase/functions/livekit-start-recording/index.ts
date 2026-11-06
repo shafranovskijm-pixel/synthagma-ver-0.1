@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 // Запускает RoomCompositeEgress для вебинара. Запись идёт во встроенное хранилище LiveKit Cloud.
 // Хост организации/админ инициирует — webinarId обязателен.
 
@@ -28,6 +29,8 @@ Deno.serve(async (req) => {
 
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, u.user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const body = await req.json().catch(() => ({}));
     const webinarId = body.webinarId;

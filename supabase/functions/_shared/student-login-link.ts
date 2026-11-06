@@ -1,5 +1,6 @@
 // Login-link management only. This endpoint never sends email or signs a user in.
-export const STUDENT_LOGIN_LINK_REVISION = "student-login-link-v2";
+import { billingHoldResponse } from './billing-access.ts';
+export const STUDENT_LOGIN_LINK_REVISION = "student-login-link-v3-billing-hold";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -42,6 +43,8 @@ export function createStudentLoginLinkHandler({ authenticate, db, now = () => ne
         throw new RequestError(400, "Некорректный запрос");
       }
       const actor = auth.userId;
+      const billingDenied=await billingHoldResponse(db,actor,cors);
+      if(billingDenied)return billingDenied;
       // The database has two has_role overloads with the same named arguments,
       // which makes a PostgREST RPC call ambiguous. Read only this actor's admin
       // role through the service client; other roles must not grant access.

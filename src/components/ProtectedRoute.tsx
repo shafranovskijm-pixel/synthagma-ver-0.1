@@ -26,7 +26,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   // the post-signup role insert. This is what made first-time org users
   // appear stuck on a spinner right after registration.
   useEffect(() => {
-    if (!loading && user && requiredRole && !userRole) {
+    if (!loading && user && requiredRole && !userRole && authError !== 'ACCESS_SUSPENDED') {
       const autoRetry = setTimeout(() => {
         refreshUserRole().catch(() => {});
       }, 1500);
@@ -41,12 +41,13 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (userRole) {
       setTimedOut(false);
     }
-  }, [loading, user, userRole, requiredRole, refreshUserRole]);
+  }, [loading, user, userRole, requiredRole, refreshUserRole, authError]);
 
   if (loading) {
     return <SmartLoadingFallback timeoutSec={8} label="Загрузка..." />;
   }
 
+  if (authError === 'ACCESS_SUSPENDED') return <div className="min-h-screen flex items-center justify-center bg-background"><div role="alert" className="max-w-md space-y-4 px-6 text-center"><p className="font-medium">Доступ временно приостановлен</p><p className="text-sm text-muted-foreground">Для восстановления доступа свяжитесь с администратором СИНТАГМЫ.</p><Button variant="outline" onClick={()=>void retryAuth()}>Проверить доступ</Button></div></div>;
   if (authError) return <AccountLoadError onRetry={retryAuth} />;
 
   if (!user) {

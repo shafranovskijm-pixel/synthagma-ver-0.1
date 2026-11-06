@@ -2,6 +2,7 @@
 // via platform SMTP. Caller must be the organization staff (students.manage perm)
 // or a global admin.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
@@ -34,6 +35,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const billingDenied = await billingHoldResponse(sbAuth, user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
     const { user_id } = await req.json();
     if (!user_id) {
       return new Response(JSON.stringify({ error: "Missing user_id" }), {

@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logAiOperation } from "../_shared/ai-observability.ts";
 
@@ -27,6 +28,8 @@ Deno.serve(async (req) => {
     );
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, u.user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const { name, subject, style } = await req.json();
     const apiKey = Deno.env.get("LOVABLE_API_KEY");

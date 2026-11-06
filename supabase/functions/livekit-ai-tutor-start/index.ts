@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -60,6 +61,8 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
     if (!user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const apiKey = Deno.env.get("LIVEKIT_API_KEY");
     const apiSecret = Deno.env.get("LIVEKIT_API_SECRET");

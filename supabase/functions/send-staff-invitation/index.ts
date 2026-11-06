@@ -4,6 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { billingHoldResponse, organizationBillingHoldResponse } from "../_shared/billing-access.ts";
 import { sendPlatformEmail, sendSmtpEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
@@ -128,6 +129,8 @@ serve(async (req) => {
       });
     }
     const inviter = userData.user;
+    const billingDenied = await billingHoldResponse(userClient, inviter.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const body = await req.json();
     const {
@@ -183,6 +186,10 @@ serve(async (req) => {
       });
     }
 
+    if (invitation_type === 'organization') {
+      const organizationDenied = await organizationBillingHoldResponse(admin, organization_id, corsHeaders);
+      if (organizationDenied) return organizationDenied;
+    }
     const { data: inviterRoleRow, error: inviterRoleErr } = await admin
       .from("user_roles")
       .select("role")

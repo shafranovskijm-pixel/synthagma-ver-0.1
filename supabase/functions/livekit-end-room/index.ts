@@ -1,3 +1,4 @@
+import { billingHoldResponse } from "../_shared/billing-access.ts";
 // Завершает LiveKit-комнату вебинара через DeleteRoom.
 // Все участники моментально отключаются, ресурсы LiveKit Cloud освобождаются.
 
@@ -29,6 +30,8 @@ Deno.serve(async (req) => {
 
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const billingDenied = await billingHoldResponse(supabase, u.user.id, corsHeaders);
+    if (billingDenied) return billingDenied;
 
     const { webinarId } = await req.json().catch(() => ({}));
     if (!webinarId) return json({ error: "webinarId required" }, 400);

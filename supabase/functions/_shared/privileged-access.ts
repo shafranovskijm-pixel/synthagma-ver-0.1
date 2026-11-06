@@ -1,5 +1,6 @@
 // Authorization for legacy service-role handlers. A valid JWT alone never
 // authorizes an operation on an organization or another user's document.
+import { billingHoldResponse } from './billing-access.ts';
 export class AccessError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }
@@ -41,6 +42,8 @@ export async function requireActiveUser(req: Request, db: AccessDb, internalServ
   const revoked = checked(await db.from("account_deletion_revocations").select("user_id")
     .eq("user_id", data.user.id).maybeSingle());
   if (revoked) throw new AccessError(403, "Доступ к аккаунту отозван");
+  const billingDenied = await billingHoldResponse(db, data.user.id, {});
+  if (billingDenied) throw new AccessError(billingDenied.status, billingDenied.status===403?'Доступ временно приостановлен':'Не удалось подтвердить права доступа. Повторите попытку.');
   return { userId: data.user.id, service: false };
 }
 

@@ -79,7 +79,7 @@ beforeEach(() => {
     org_staff: [{ user_id: actor, organization_id: org, role: "admin", expires_at: null }],
     organizations: [{ id: org, name: "Учебная <организация>" }],
   };
-  rpcValues = { is_org_owner: false, has_org_staff_permission: true, is_student_profile: true, decrypt_password: "real<&password" };
+  rpcValues = { is_user_blocked: false, is_org_owner: false, has_org_staff_permission: true, is_student_profile: true, decrypt_password: "real<&password" };
   failure = null; noWriteRows = false; calls = []; writes = [];
   authenticate.mockReset().mockResolvedValue({ userId: actor, error: null });
   updateAuthUser.mockReset().mockResolvedValue({ error: null });
@@ -87,6 +87,20 @@ beforeEach(() => {
 });
 
 describe("authenticated student credential authorization", () => {
+  it.each(['send','update'] as const)('denies a held actor before reading credentials or sending/updating: %s',async action=>{
+    rpcValues.is_user_blocked=true;
+    expect((await invoke(action,{new_password:'synthetic-change'})).status).toBe(403);
+    expect(calls).toEqual([{name:'is_user_blocked',args:{_user_id:actor}}]);
+    assertNoSideEffects();
+  });
+  it.each(['send','update'] as const)('fails closed if billing status cannot be verified: %s',async action=>{
+    failure='is_user_blocked';
+    const result=await invoke(action,{new_password:'synthetic-change'});
+    expect(result.status).toBe(503);
+    expect(JSON.stringify(result.body)).not.toContain('private database detail');
+    expect(calls).toEqual([{name:'is_user_blocked',args:{_user_id:actor}}]);
+    assertNoSideEffects();
+  });
   it.each(["send", "update"] as const)("allows active employee with null profile and global student role: %s", async action => {
     const result = await invoke(action, action === "update" ? { new_password: "updated_password" } : {});
     expect(result.status).toBe(200);

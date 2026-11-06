@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { billingHoldResponse } from '../_shared/billing-access.ts';
 import { callAI } from "../_shared/gigachat-client.ts";
 
 const corsHeaders = {
@@ -36,6 +37,8 @@ serve(async (req) => {
       );
     }
 
+    const billingDenied=await billingHoldResponse(supabaseAuth,user.id,corsHeaders);
+    if(billingDenied)return billingDenied;
     const { messages, context } = await req.json();
 
     console.log("Processing student chat request for user", user.id, "with", messages?.length || 0, "messages");

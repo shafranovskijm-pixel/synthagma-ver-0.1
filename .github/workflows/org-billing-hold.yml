@@ -1,0 +1,79 @@
+name: Organization billing hold
+on:
+  pull_request:
+    paths:
+      - src/components/ProtectedRoute.tsx
+      - src/components/admin/org-details/OrganizationBillingHoldPanel*
+      - src/components/admin/org-details/OrgTariffsPanel.tsx
+      - src/hooks/useAuth.tsx
+      - src/hooks/__tests__/useAuth*
+      - src/components/__tests__/ProtectedRoute.billingHold.test.tsx
+      - src/security/__tests__/organizationBillingAccess.test.ts
+      - supabase/functions/**
+      - supabase/tests/edge/**
+      - src/components/__tests__/ProtectedRoute.billingHold.test.tsx
+      - src/security/__tests__/organizationBillingAccess.test.ts
+      - supabase/functions/**
+      - supabase/tests/edge/**
+      - supabase/migrations/20261106120000_organization_billing_hold.sql
+      - supabase/tests/org_billing_hold/**
+      - .github/workflows/org-billing-hold.yml
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Authentication restore and admin hold UI regression
+        run: node node_modules/vitest/vitest.mjs run src/hooks/__tests__/useAuth src/components/admin/org-details/OrganizationBillingHoldPanel.test.tsx src/components/__tests__/ProtectedRoute.billingHold.test.tsx src/security/__tests__/organizationBillingAccess.test.ts supabase/tests/edge/privileged-access.test.ts supabase/tests/edge/student-login-link.test.ts supabase/tests/edge/student-credentials.test.ts supabase/tests/edge/billing-hold-entrypoints.test.ts supabase/tests/edge/billing-hold-registration.test.ts supabase/tests/edge/billing-hold-with-auth.test.ts supabase/tests/edge/register-student-details-access.test.ts src/security/__tests__/TelegramDomainEndpointSecurity.test.ts --maxWorkers=1
+      - run: npm run build
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: org_billing_hold_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_billing_hold_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d org_billing_hold_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: org_billing_hold_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_billing_hold_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check --index-url https://pypi.org/simple 'psycopg[binary]==3.2.9'
+      - name: Native PostgreSQL17 hold/CAS/concurrency/ABI/data-preservation verification
+        run: python supabase/tests/org_billing_hold/run-native.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: organization-billing-hold-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/organization-billing-hold-native/
+          if-no-files-found: error
+          retention-days: 14
+

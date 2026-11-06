@@ -7,6 +7,7 @@ import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, res
 import { persistStudentJobPosition } from "../../functions/_shared/student-job-position";
 import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from "../../functions/_shared/course-quota-error";
 import { claimStudentCapacity, confirmStudentCapacityClaim } from "../../functions/_shared/student-capacity-claim";
+import { billingHoldResponse,organizationBillingHoldResponse } from '../../functions/_shared/billing-access';
 
 const ids = { actor: "a1000000-0000-4000-8000-000000000001", org: "a1000000-0000-4000-8000-000000000002",
   student: "a1000000-0000-4000-8000-000000000003", group: "a1000000-0000-4000-8000-000000000004" };
@@ -33,6 +34,8 @@ function fixture(options: Options = {}) {
   });
   const adminRpc = vi.fn(async (name: string, args: any) => {
     events.push(`service.rpc:${name}`);
+    if (name === 'is_user_blocked') return {data:false,error:null};
+    if (name === 'organization_billing_access_allowed') return {data:true,error:null};
     if (name === "is_org_owner") return { data: role === "organization", error: null };
     if (name === "has_org_staff_permission") return { data: !!options.staff, error: null };
     if (name === "is_student_profile") return { data: args._target_user_id === ids.student, error: null };
@@ -84,10 +87,10 @@ function fixture(options: Options = {}) {
   let handler!: (request: Request) => Promise<Response>;
   const source = readFileSync("supabase/functions/register-student/index.ts", "utf8").replace(/^import .*;\r?\n/gm, "");
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", "isStudentAssignmentQuotaError", "studentAssignmentQuotaFailure", "claimStudentCapacity", "confirmStudentCapacityClaim", compiled)(
+  new Function("serve", "createClient", "Deno", "isEnrollmentAccessExpired", "hasStudentRegistrationDetails", "normalizeStudentRegistrationDetails", "resolveRegistrationProfile", "persistStudentJobPosition", "isStudentAssignmentQuotaError", "studentAssignmentQuotaFailure", "claimStudentCapacity", "confirmStudentCapacityClaim", "billingHoldResponse", "organizationBillingHoldResponse", compiled)(
     (callback: typeof handler) => { handler = callback; }, createClient,
     { env: { get: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? "service-key" : key === "SUPABASE_ANON_KEY" ? "anon-key" : "https://synthetic.invalid" } },
-    isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, isStudentAssignmentQuotaError, studentAssignmentQuotaFailure, claimStudentCapacity, confirmStudentCapacityClaim,
+    isEnrollmentAccessExpired, hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile, persistStudentJobPosition, isStudentAssignmentQuotaError, studentAssignmentQuotaFailure, claimStudentCapacity, confirmStudentCapacityClaim,billingHoldResponse,organizationBillingHoldResponse,
   );
   return { events, createUser, callerRpc, adminRpc, profileUpdate, linkUpdate, profiles,
     call: async (fields: Record<string, unknown> = {}, method = "POST") => {

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { billingHoldResponse } from '../_shared/billing-access.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +41,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const billingDenied=await billingHoldResponse(supabase,caller.id,corsHeaders);
+    if(billingDenied)return billingDenied;
     // Check caller role
     const { data: roleData } = await supabase
       .from("user_roles")

@@ -6,6 +6,7 @@ import { isStudentAssignmentQuotaError, studentAssignmentQuotaFailure } from '..
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { organizationBillingHoldResponse } from '../_shared/billing-access.ts';
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 import { claimStudentCapacity, confirmStudentCapacityClaim } from "../_shared/student-capacity-claim.ts";
 import {
@@ -94,6 +95,8 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!course || !course.is_published) return json({ error: "Курс не найден или не опубликован" }, 404);
+    const organizationDenied=await organizationBillingHoldResponse(admin,course.organization_id,corsHeaders);
+    if(organizationDenied)return organizationDenied;
 
     const enrollmentCfg = (course.landing_content as any)?.enrollment ?? {};
     const mode = enrollmentCfg.mode ?? "request";

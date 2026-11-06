@@ -9,6 +9,7 @@ const db = {
   rpc: async (name: string, args: any) => {
     calls.push({ name, args });
     if (queryFailure === name) return { data: null, error: new Error("private database detail") };
+    if (name === 'is_user_blocked') return {data:role==='billing-held',error:null};
     // Reproduce the production schema: has_role(uuid, app_role) and
     // has_role(app_role, uuid) have indistinguishable PostgREST argument names.
     if (name === "has_role") return { data: null, error: { code: "PGRST203", message: "Could not choose the best candidate function" } };
@@ -72,6 +73,16 @@ describe("student-login-link authorization and actions", () => {
     staff = null; userRoles = []; tokens = []; writes = []; calls = [];
     authenticate.mockReset().mockResolvedValue({ userId: actor, error: null });
   });
+  it('refuses a held actor before reading or generating a login token',async()=>{
+    role='billing-held';const result=await invoke();
+    expect(result.status).toBe(403);expect(writes).toEqual([]);
+    expect(calls).toEqual([{name:'is_user_blocked',args:{_user_id:actor}}]);
+  });
+  it('does not continue token handling when the billing check is unavailable',async()=>{
+    queryFailure='is_user_blocked';const result=await invoke();
+    expect(result.status).toBe(503);expect(writes).toEqual([]);
+    expect(result.body.error).not.toContain('private database detail');
+  });
   it.each(["admin", "owner", "staff"])("permits %s and attributes creation to authenticated actor", async allowedRole => {
     role = allowedRole;
     if (role === "admin") userRoles = [{ user_id: actor, role: "admin" }];
@@ -81,7 +92,7 @@ describe("student-login-link authorization and actions", () => {
     expect(result.body).toEqual({ token, user_id: learner, organization_id: org });
     expect(writes).toEqual([{ table: "student_login_tokens", operation: "insert", values: { user_id: learner, organization_id: org, created_by: actor } }]);
     expect(result.headers.get("cache-control")).toBe("no-store");
-    expect(result.headers.get("x-sintagma-student-login-link-revision")).toBe("student-login-link-v2");
+    expect(result.headers.get("x-sintagma-student-login-link-revision")).toBe("student-login-link-v3-billing-hold");
   });
   it("works with ambiguous has_role overloads without calling that RPC", async () => {
     const result = await invoke();
