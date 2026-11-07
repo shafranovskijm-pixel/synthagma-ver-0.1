@@ -23,6 +23,11 @@ beforeEach(() => {
 });
 
 describe('video error support persistence', () => {
+  it.each(['api-play', 'api-pause', 'api-restore', 'api-restrict-rate'])('records the precise %s operation without raw provider data', stage => {
+    const diagnostic = videoReportDiagnostics(context, {...failure, stage}, videoReportIncident(context));
+    expect(diagnostic.stage).toBe(stage);
+    expect(JSON.stringify(diagnostic)).not.toMatch(/unsafe|secret-token|private\.invalid/);
+  });
   it('uploads an explicitly chosen image before saving only its private reference',async()=>{
     const file=new File(['synthetic'],'private-file-name.png',{type:'image/png'});
     const result=await submitVideoProblemReport({...context,lessonId:'30000000-0000-4000-8000-000000000088'},failure,()=>true,file);

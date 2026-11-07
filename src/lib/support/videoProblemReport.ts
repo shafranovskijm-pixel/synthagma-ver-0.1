@@ -11,7 +11,7 @@ export interface VideoReportContext {
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validVideoReportContext = (context: VideoReportContext) =>
   [context.userId, context.courseId, context.lessonId].every(value => uuid.test(value));
-const stages = new Set(['api-load', 'api-create', 'api-call', 'init', 'media', 'provider-media', 'loading-timeout']);
+const stages = new Set(['api-load', 'api-create', 'api-call', 'api-play', 'api-pause', 'api-restore', 'api-restrict-rate', 'init', 'media', 'provider-media', 'loading-timeout']);
 const backends = new Set(['native', 'hls', 'kinescope']);
 const incidentTtl = 15 * 60_000;
 type Incident = { id: string; createdAt: number; confirmedAt?: number };

@@ -19,6 +19,7 @@ interface VideoControlsProps {
   fullscreen: boolean;
   allowSeek: boolean;
   ready: boolean;
+  volumeControllable?: boolean;
   onTogglePlay: () => void;
   onReplay: () => void;
   onToggleMute: () => void;
@@ -51,7 +52,7 @@ export function VideoControls(props: VideoControlsProps) {
         <button type="button" className={buttonClass} aria-label={props.muted || props.volume === 0 ? 'Включить звук' : 'Выключить звук'} disabled={!props.ready} onClick={props.onToggleMute}>
           {props.muted || props.volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
         </button>
-        <input type="range" aria-label="Громкость" min={0} max={1} step={0.05} value={props.muted ? 0 : props.volume} disabled={!props.ready}
+        <input type="range" aria-label="Громкость" title={props.volumeControllable === false ? 'Используйте кнопки громкости устройства' : undefined} min={0} max={1} step={0.05} value={props.muted ? 0 : props.volume} disabled={!props.ready || props.volumeControllable === false}
           onChange={event => props.onVolume(Number(event.target.value))} className="hidden h-1 w-16 cursor-pointer accent-white sm:block" />
         <span className="flex-1 whitespace-nowrap px-1 text-xs tabular-nums">{formatVideoTime(props.time)} / {formatVideoTime(props.duration)}</span>
         {props.allowSeek && <div className="relative" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setSpeedOpen(false); }}>
