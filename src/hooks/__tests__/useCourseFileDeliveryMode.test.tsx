@@ -10,8 +10,83 @@ const scope = { courseId: id(3), organizationId: id(2), accessMode: "learner" as
 const context = { schema_version: 1, actor_id: id(1), organization_id: id(2), course_id: id(3), access_mode: "learner", mode: "legacy", state: "legacy", cohort: null };
 function pending() { let resolve!: (value: any) => void; const promise = new Promise<any>(yes => { resolve = yes; }); return { promise, resolve }; }
 beforeEach(() => { mocks.actor = id(1); mocks.revision = 1; mocks.read.mockReset(); mocks.listeners.clear(); Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" }); });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); document.querySelectorAll('iframe[data-focus-fixture]').forEach(frame => frame.remove()); vi.restoreAllMocks(); });
+
+function focusInChildFrame() {
+  const frame = document.createElement('iframe'); frame.dataset.focusFixture = 'true'; document.body.appendChild(frame);
+  frame.focus();
+  vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+  act(() => window.dispatchEvent(new Event('blur')));
+  return frame;
+}
 describe("course mode lifecycle", () => {
+  it.each(['legacy', 'frozen_required'])('preserves the same %s classification when focus returns from a child frame', async mode => {
+    mocks.read.mockResolvedValue({...context, mode});
+    const hook = renderHook(() => useCourseFileDeliveryMode(scope));
+    await waitFor(() => expect(hook.result.current.view.state).toBe(mode));
+    const original = hook.result.current.view;
+    focusInChildFrame();
+    act(() => window.dispatchEvent(new Event('focus')));
+    expect(hook.result.current.view).toBe(original);
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+  });
+
+  it('still invalidates an ambiguous window focus without an observed internal blur', async () => {
+    const reread = pending(); mocks.read.mockResolvedValueOnce(context).mockReturnValue(reread.promise);
+    const hook = renderHook(() => useCourseFileDeliveryMode(scope));
+    await waitFor(() => expect(hook.result.current.view.state).toBe('legacy'));
+    act(() => window.dispatchEvent(new Event('focus')));
+    expect(hook.result.current.view.state).not.toBe('legacy');
+    expect(mocks.read).toHaveBeenCalledTimes(2);
+  });
+
+  it('rereads and holds denied access after external focus loss, even after focusing a frame', async () => {
+    mocks.read.mockRejectedValue(new Error('access denied')).mockResolvedValueOnce(context);
+    const hook = renderHook(() => useCourseFileDeliveryMode(scope));
+    await waitFor(() => expect(hook.result.current.view.state).toBe('legacy'));
+    focusInChildFrame();
+    vi.mocked(document.hasFocus).mockReturnValue(false);
+    act(() => window.dispatchEvent(new Event('blur')));
+    vi.mocked(document.hasFocus).mockReturnValue(true);
+    act(() => window.dispatchEvent(new Event('focus')));
+    expect(hook.result.current.view.state).not.toBe('legacy');
+    await waitFor(() => expect(hook.result.current.view.state).toBe('held'));
+  });
+
+  it('hides the old mode on hidden/visible transitions after iframe focus', async () => {
+    mocks.read.mockRejectedValue(new Error('access denied')).mockResolvedValueOnce(context);
+    const hook = renderHook(() => useCourseFileDeliveryMode(scope));
+    await waitFor(() => expect(hook.result.current.view.state).toBe('legacy'));
+    focusInChildFrame();
+    Object.defineProperty(document, 'visibilityState', {configurable:true,value:'hidden'});
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(hook.result.current.view.state).toBe('idle');
+    Object.defineProperty(document, 'visibilityState', {configurable:true,value:'visible'});
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(hook.result.current.view.state).not.toBe('legacy');
+    await waitFor(() => expect(hook.result.current.view.state).toBe('held'));
+  });
+
+  it('never lets an internal iframe transfer override an auth-revision invalidation', async () => {
+    mocks.read.mockRejectedValue(new Error('blocked')).mockResolvedValueOnce(context);
+    const hook = renderHook(() => useCourseFileDeliveryMode(scope));
+    await waitFor(() => expect(hook.result.current.view.state).toBe('legacy'));
+    focusInChildFrame();
+    act(() => { mocks.revision++; for (const listener of mocks.listeners) listener(); });
+    act(() => window.dispatchEvent(new Event('focus')));
+    expect(hook.result.current.view.state).not.toBe('legacy');
+    await waitFor(() => expect(hook.result.current.view.state).toBe('held'));
+  });
+
+  it('invalidates on pagehide even if the focus previously moved into a frame', async () => {
+    mocks.read.mockRejectedValue(new Error('blocked')).mockResolvedValueOnce(context);
+    const hook = renderHook(() => useCourseFileDeliveryMode(scope));
+    await waitFor(() => expect(hook.result.current.view.state).toBe('legacy'));
+    focusInChildFrame();
+    act(() => window.dispatchEvent(new Event('pagehide')));
+    expect(hook.result.current.view.state).not.toBe('legacy');
+    await waitFor(() => expect(hook.result.current.view.state).toBe('held'));
+  });
   it("does not read for missing org or a foreign effective learner", () => {
     const hook = renderHook(({ value }) => useCourseFileDeliveryMode(value), { initialProps: { value: { ...scope, organizationId: "", effectiveUserId: id(1) } } });
     expect(hook.result.current.view.state).toBe("idle"); hook.rerender({ value: { ...scope, effectiveUserId: id(9) } }); expect(mocks.read).not.toHaveBeenCalled();
