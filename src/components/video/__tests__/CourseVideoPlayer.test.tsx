@@ -164,6 +164,12 @@ describe('common native/HLS controls and progress', () => {
 });
 
 describe('Kinescope uses the same controls through the official API', () => {
+  it('does not allow untracked iframe playback before the API is connected', () => {
+    mocks.loadApi.mockReturnValue(new Promise(() => {}));
+    const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope />);
+    expect(view.container.querySelector('iframe')!.parentElement).toHaveClass('pointer-events-none');
+    expect(screen.getByRole('button', {name:'Воспроизвести'})).toBeDisabled();
+  });
   it('disables provider controls and wires shared buttons to the API', async () => {
     const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa-video?drmauthtoken=qa" kinescope />);
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));

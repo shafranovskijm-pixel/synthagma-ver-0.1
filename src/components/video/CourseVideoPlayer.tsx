@@ -352,7 +352,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       onMouseMove={showControls} onTouchStart={showControls} onFocusCapture={() => setControlsVisible(true)}
       onContextMenu={event => { if (!allowSeek) event.preventDefault(); }}>
       {kinescope ? <>
-        <div ref={iframeHostRef} className={cn('h-full w-full', playing && 'pointer-events-none')} />
+        <div ref={iframeHostRef} className={cn('h-full w-full', (!ready || playing) && 'pointer-events-none')} />
         {playing && <button type="button" tabIndex={-1} aria-label="Область видео" className="absolute inset-0" onClick={togglePlay} disabled={!ready} />}
         {playGestureRequired && <p role="status" className="pointer-events-none absolute inset-x-2 top-2 rounded bg-black/70 p-2 text-center text-sm text-white">Нажмите кнопку воспроизведения в центре видео</p>}
       </> : <video ref={videoRef} controls={false} playsInline preload={preload} className="h-full w-full object-contain video-no-controls"
