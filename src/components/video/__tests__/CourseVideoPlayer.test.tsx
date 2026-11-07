@@ -168,7 +168,7 @@ describe('Kinescope uses the same controls through the official API', () => {
     const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa-video?drmauthtoken=qa" kinescope />);
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Воспроизвести' })).toBeEnabled());
-    expect(mocks.create.mock.calls[0][1]).toMatchObject({ ui: { controls: false, mainPlayButton: false }, behavior: { keyboard: false, localStorage: false } });
+    expect(mocks.create.mock.calls[0][1]).toMatchObject({ ui: { controls: false, mainPlayButton: true }, behavior: { keyboard: false, localStorage: false } });
     fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' })); expect(provider.play).toHaveBeenCalledTimes(1);
     await emit('Playing'); fireEvent.click(screen.getByRole('button', { name: 'Пауза' })); expect(provider.pause).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Выключить звук' })); expect(provider.mute).toHaveBeenCalledTimes(1);
@@ -192,6 +192,96 @@ describe('Kinescope uses the same controls through the official API', () => {
     expect(mocks.create).toHaveBeenCalledTimes(1); expect(provider.destroy).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Пауза' })).toBeInTheDocument();
     view.unmount(); expect(provider.destroy).toHaveBeenCalledTimes(1); expect(provider.off).toHaveBeenCalled();
+  });
+
+  it('does not require a programmatic volume change to initialize or play', async () => {
+    const onError = vi.fn();
+    provider.setVolume.mockRejectedValue(new DOMException('Hardware volume only', 'NotSupportedError'));
+    render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope onError={onError} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Воспроизвести' })).toBeEnabled());
+    expect(provider.setVolume).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
+    await emit('Playing');
+    expect(screen.getByRole('button', { name: 'Пауза' })).toBeInTheDocument();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it.each(['reject', 'throw'])('keeps the same playing instance when optional volume %s fails', async mode => {
+    const onError = vi.fn(); const save = vi.fn(); const complete = vi.fn();
+    const failure = new DOMException('Hardware volume only', 'NotSupportedError');
+    if (mode === 'throw') provider.setVolume.mockImplementation(() => { throw failure; });
+    else provider.setVolume.mockRejectedValue(failure);
+    const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope onError={onError} onSavePosition={save} onVideoComplete={complete} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    const frame = view.container.querySelector('iframe');
+    await emit('Playing');
+    fireEvent.change(screen.getByRole('slider', { name: 'Громкость' }), { target: { value: 0.5 } });
+    await waitFor(() => expect(screen.getByRole('slider', { name: 'Громкость' })).toBeDisabled());
+    expect(view.container.querySelector('iframe')).toBe(frame);
+    expect(screen.getByRole('button', { name: 'Пауза' })).toBeInTheDocument();
+    expect(onError).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('keeps a direct iframe play target after browser gesture denial without relaxing seeking', async () => {
+    const onError = vi.fn(); const complete = vi.fn(); const save = vi.fn();
+    provider.play.mockRejectedValue(new DOMException('A user gesture is required', 'NotAllowedError'));
+    const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope allowSeek={false}
+      onError={onError} onSavePosition={save} onVideoComplete={complete} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
+    expect(await screen.findByText('Нажмите кнопку воспроизведения в центре видео')).toBeInTheDocument();
+    expect(view.container.querySelector('iframe')!.parentElement).not.toHaveClass('pointer-events-none');
+    expect(screen.queryByRole('button', { name: 'Область видео' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'Позиция видео' })).not.toBeInTheDocument();
+    expect(mocks.create.mock.calls[0][1]).toMatchObject({ ui: { controls: false, mainPlayButton: true }, behavior: { keyboard: false, localStorage: false, playbackRate: 1 } });
+    expect(onError).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
+    await emit('Playing');
+    expect(screen.queryByText('Нажмите кнопку воспроизведения в центре видео')).not.toBeInTheDocument();
+    expect(view.container.querySelector('iframe')!.parentElement).toHaveClass('pointer-events-none');
+    await emit('TimeUpdate', {currentTime: 90});
+    expect(provider.seekTo).toHaveBeenLastCalledWith(0); expect(complete).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled();
+  });
+
+  it('still reports real play failures with the specific operation stage', async () => {
+    const onError = vi.fn(); provider.play.mockRejectedValue(new Error('Decoder unavailable'));
+    render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope onError={onError} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.objectContaining({stage:'api-play'})));
+    expect(screen.getByText('Не удалось воспроизвести видео')).toBeInTheDocument();
+  });
+
+  it('ignores delayed operation rejection from an old instance after retry', async () => {
+    let rejectOld!: (reason: unknown) => void;
+    provider.setVolume.mockReturnValue(new Promise((_, reject) => { rejectOld = reject; }));
+    const onError = vi.fn();
+    render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope onError={onError} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    fireEvent.change(screen.getByRole('slider', {name:'Громкость'}), {target:{value:0.5}});
+    const next = makeProvider(); mocks.create.mockResolvedValueOnce(next);
+    await emit('Error', {error:new Error('Media failure')});
+    fireEvent.click(screen.getByRole('button', {name:'Попробовать снова'}));
+    await waitFor(() => expect(next.on).toHaveBeenCalled());
+    onError.mockClear();
+    await act(async () => rejectOld(new Error('Late volume failure')));
+    expect(screen.getByRole('slider', {name:'Громкость'})).toBeEnabled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(screen.queryByText('Не удалось воспроизвести видео')).not.toBeInTheDocument();
+  });
+
+  it('does not apply a late play rejection to the next lesson player', async () => {
+    let rejectOld!: (reason: unknown) => void;
+    provider.play.mockReturnValue(new Promise((_, reject) => { rejectOld = reject; }));
+    const onError = vi.fn();
+    const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa-a" kinescope onError={onError} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', {name:'Воспроизвести'}));
+    const next = makeProvider(); mocks.create.mockResolvedValueOnce(next);
+    view.rerender(<CourseVideoPlayer src="https://kinescope.io/embed/qa-b" kinescope onError={onError} />);
+    await waitFor(() => expect(next.on).toHaveBeenCalled());
+    await act(async () => rejectOld(new Error('Late play failure')));
+    expect(onError).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', {name:'Воспроизвести'})).toBeEnabled();
   });
 
   it('restores/tracks Kinescope playback while rejecting a jump ahead and a faster rate', async () => {

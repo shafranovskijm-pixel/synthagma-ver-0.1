@@ -65,6 +65,8 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
   const [loading, setLoading] = useState(preload !== 'none');
   const [timedOut, setTimedOut] = useState(false);
   const [ready, setReady] = useState(!kinescope);
+  const [volumeControllable, setVolumeControllable] = useState(true);
+  const [playGestureRequired, setPlayGestureRequired] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
@@ -202,18 +204,24 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     setReady(false);
     setLoading(true);
     setError(false);
+    setVolumeControllable(true);
+    setPlayGestureRequired(false);
+    const failCurrent = (reason: unknown, stage: string) => { if (!cancelled) fail(reason, stage); };
     const subscribe = (name: string, listener: (event: KinescopeEvent) => void) => {
       const event = instance!.Events[name];
       if (!event) return;
-      instance!.on(event, listener);
-      listeners.push([event, listener]);
+      const currentListener = (value: KinescopeEvent) => { if (!cancelled) listener(value); };
+      instance!.on(event, currentListener);
+      listeners.push([event, currentListener]);
     };
     void loadKinescopeApi().then(factory => {
       if (cancelled) return;
       initStage = 'api-create';
       return factory.create(frameId, {
         url: src, size: { width: '100%', height: '100%' },
-        ui: { controls: false, mainPlayButton: false, language: 'ru' },
+        // A tap inside the provider iframe preserves the browser's user gesture
+        // on iPhone. Transport controls and keyboard seeking stay disabled.
+        ui: { controls: false, mainPlayButton: true, language: 'ru' },
         behavior: { preload, localStorage: false, keyboard: false, playsInline: true, muted, playbackRate: callbacks.current.allowSeek ? rate : 1 },
       });
     }).then(async player => {
@@ -221,7 +229,12 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       if (cancelled) { await player.destroy().catch(() => {}); return; }
       instance = player;
       playerRef.current = player;
-      void player.setVolume(volume).catch(fail);
+      // Volume 1 is already the provider default. iOS controls output volume
+      // with hardware buttons; an optional setting must never kill playback.
+      if (volume !== 1) {
+        try { void player.setVolume(volume).catch(() => { if (!cancelled) setVolumeControllable(false); }); }
+        catch { if (!cancelled) setVolumeControllable(false); }
+      }
       setReady(true);
       setLoading(false);
       subscribe('Loaded', event => {
@@ -230,7 +243,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
         if (!restoredRef.current && positionRef.current > 0 && positionRef.current < durationRef.current - 1) {
           restoredRef.current = true;
           maxWatchedRef.current = Math.max(maxWatchedRef.current, positionRef.current);
-          player.seekTo(positionRef.current).catch(fail);
+          player.seekTo(positionRef.current).catch(reason => failCurrent(reason, 'api-restore'));
           setTime(positionRef.current);
           callbacks.current.onProgressChange?.(positionRef.current / durationRef.current * 100);
         }
@@ -238,15 +251,15 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       subscribe('DurationChange', event => updateDuration(event.data?.duration ?? 0));
       subscribe('TimeUpdate', event => updateTime(event.data?.currentTime ?? 0));
       subscribe('Play', () => { setEnded(false); lastUpdateRef.current = Date.now(); });
-      subscribe('Playing', () => { setPlaying(true); setLoading(false); });
+      subscribe('Playing', () => { setPlaying(true); setLoading(false); setPlayGestureRequired(false); });
       subscribe('Pause', () => setPlaying(false));
       subscribe('Ended', () => { setPlaying(false); setEnded(true); updateTime(durationRef.current); });
       subscribe('Waiting', () => setLoading(true));
-      subscribe('Error', event => fail(event.data?.error, 'provider-media'));
+      subscribe('Error', event => failCurrent(event.data?.error, 'provider-media'));
       subscribe('VolumeChange', event => { setVolume(event.data?.volume ?? 1); setMuted(!!event.data?.muted); });
       subscribe('PlaybackRateChange', event => {
         const next = event.data?.playbackRate ?? 1;
-        if (!callbacks.current.allowSeek && next !== 1) { player.setPlaybackRate(1).catch(fail); setRate(1); }
+        if (!callbacks.current.allowSeek && next !== 1) { player.setPlaybackRate(1).catch(reason => failCurrent(reason, 'api-restrict-rate')); setRate(1); }
         else setRate(next);
       });
       // Metadata may already have arrived before create() resolves.
@@ -276,9 +289,23 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     void playerRef.current?.setPlaybackRate(1).catch(fail);
   }, [allowSeek]);
 
-  const action = (operation: () => Promise<void> | undefined) => { void operation()?.catch(fail); };
+  const action = (operation: () => Promise<void> | undefined, stage = 'api-call', optional = false) => {
+    const player = playerRef.current;
+    const rejected = (reason: unknown) => {
+      if (kinescope && playerRef.current !== player) return;
+      if (optional) { if (stage === 'api-volume') setVolumeControllable(false); return; }
+      if (kinescope && stage === 'api-play' && reason && typeof reason === 'object' &&
+        'name' in reason && reason.name === 'NotAllowedError') {
+        setPlayGestureRequired(true);
+        setLoading(false);
+        return;
+      }
+      fail(reason, stage);
+    };
+    try { void operation()?.catch(rejected); } catch (reason) { rejected(reason); }
+  };
   const togglePlay = () => {
-    if (kinescope) action(() => playing ? playerRef.current?.pause() : playerRef.current?.play());
+    if (kinescope) action(() => playing ? playerRef.current?.pause() : playerRef.current?.play(), playing ? 'api-pause' : 'api-play');
     else if (videoRef.current) {
       if (videoRef.current.paused) action(() => videoRef.current?.play()); else videoRef.current.pause();
     }
@@ -297,7 +324,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     setMuted(next);
   };
   const changeVolume = (next: number) => {
-    if (kinescope) { action(() => playerRef.current?.setVolume(next)); if (muted && next > 0) action(() => playerRef.current?.unmute()); }
+    if (kinescope) { action(() => playerRef.current?.setVolume(next), 'api-volume', true); if (muted && next > 0) action(() => playerRef.current?.unmute()); }
     else if (videoRef.current) { videoRef.current.volume = next; if (next > 0) videoRef.current.muted = false; }
     setVolume(next);
     if (next > 0) setMuted(false);
@@ -325,8 +352,9 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       onMouseMove={showControls} onTouchStart={showControls} onFocusCapture={() => setControlsVisible(true)}
       onContextMenu={event => { if (!allowSeek) event.preventDefault(); }}>
       {kinescope ? <>
-        <div ref={iframeHostRef} className="h-full w-full pointer-events-none" />
-        <button type="button" tabIndex={-1} aria-label="Область видео" className="absolute inset-0" onClick={togglePlay} disabled={!ready} />
+        <div ref={iframeHostRef} className={cn('h-full w-full', playing && 'pointer-events-none')} />
+        {playing && <button type="button" tabIndex={-1} aria-label="Область видео" className="absolute inset-0" onClick={togglePlay} disabled={!ready} />}
+        {playGestureRequired && <p role="status" className="pointer-events-none absolute inset-x-2 top-2 rounded bg-black/70 p-2 text-center text-sm text-white">Нажмите кнопку воспроизведения в центре видео</p>}
       </> : <video ref={videoRef} controls={false} playsInline preload={preload} className="h-full w-full object-contain video-no-controls"
         controlsList={`nodownload${!allowSeek ? ' noplaybackrate noremoteplayback' : ''}`} disablePictureInPicture={!allowSeek} disableRemotePlayback={!allowSeek}
         onClick={togglePlay} onLoadedMetadata={() => {
@@ -359,7 +387,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       </div></div>}
       {controls && !error && <div className={cn('transition-opacity', controlsVisible ? 'opacity-100' : 'opacity-0 focus-within:opacity-100')}>
         <VideoControls playing={playing} muted={muted} volume={volume} time={time} duration={duration} rate={rate} allowSeek={allowSeek}
-          ready={ready} fullscreen={fullscreen || pseudoFullscreen} onTogglePlay={togglePlay} onReplay={() => { seek(0); if (!playing) togglePlay(); }}
+          ready={ready} volumeControllable={volumeControllable} fullscreen={fullscreen || pseudoFullscreen} onTogglePlay={togglePlay} onReplay={() => { seek(0); if (!playing) togglePlay(); }}
           onToggleMute={toggleMute} onVolume={changeVolume} onSeek={seek} onRate={changeRate} onFullscreen={() => void toggleFullscreen()} />
       </div>}
       {!allowSeek && !ended && <div className="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-xs text-white">Просмотрено: {duration > 0 ? Math.round(time / duration * 100) : 0}%</div>}
