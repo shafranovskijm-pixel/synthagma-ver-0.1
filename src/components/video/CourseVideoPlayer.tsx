@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { CheckCircle2, ChevronRight, RotateCcw, Video } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Play, RotateCcw, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { cn } from '@/lib/utils';
@@ -354,7 +354,10 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       {kinescope ? <>
         <div ref={iframeHostRef} className={cn('h-full w-full', (!ready || playing) && 'pointer-events-none')} />
         {playing && <button type="button" tabIndex={-1} aria-label="Область видео" className="absolute inset-0" onClick={togglePlay} disabled={!ready} />}
-        {playGestureRequired && <p role="status" className="pointer-events-none absolute inset-x-2 top-2 rounded bg-black/70 p-2 text-center text-sm text-white">Нажмите кнопку воспроизведения в центре видео</p>}
+        {ready && !playing && !loading && !error && <div aria-hidden="true" data-video-direct-play className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/60 text-white"><Play className="h-8 w-8" /></span>
+        </div>}
+        {playGestureRequired && <p role="status" className="pointer-events-none absolute inset-x-2 top-2 rounded bg-black/70 p-2 text-center text-sm text-white">Нажмите на видео, чтобы начать просмотр</p>}
       </> : <video ref={videoRef} controls={false} playsInline preload={preload} className="h-full w-full object-contain video-no-controls"
         controlsList={`nodownload${!allowSeek ? ' noplaybackrate noremoteplayback' : ''}`} disablePictureInPicture={!allowSeek} disableRemotePlayback={!allowSeek}
         onClick={togglePlay} onLoadedMetadata={() => {

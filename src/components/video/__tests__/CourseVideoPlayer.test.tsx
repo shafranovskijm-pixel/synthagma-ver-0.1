@@ -235,14 +235,16 @@ describe('Kinescope uses the same controls through the official API', () => {
       onError={onError} onSavePosition={save} onVideoComplete={complete} />);
     await waitFor(() => expect(provider.on).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
-    expect(await screen.findByText('Нажмите кнопку воспроизведения в центре видео')).toBeInTheDocument();
+    expect(await screen.findByText('Нажмите на видео, чтобы начать просмотр')).toBeInTheDocument();
+    expect(view.container.querySelector('[data-video-direct-play]')).toHaveClass('pointer-events-none');
     expect(view.container.querySelector('iframe')!.parentElement).not.toHaveClass('pointer-events-none');
     expect(screen.queryByRole('button', { name: 'Область видео' })).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: 'Позиция видео' })).not.toBeInTheDocument();
     expect(mocks.create.mock.calls[0][1]).toMatchObject({ ui: { controls: false, mainPlayButton: true }, behavior: { keyboard: false, localStorage: false, playbackRate: 1 } });
     expect(onError).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
     await emit('Playing');
-    expect(screen.queryByText('Нажмите кнопку воспроизведения в центре видео')).not.toBeInTheDocument();
+    expect(screen.queryByText('Нажмите на видео, чтобы начать просмотр')).not.toBeInTheDocument();
+    expect(view.container.querySelector('[data-video-direct-play]')).not.toBeInTheDocument();
     expect(view.container.querySelector('iframe')!.parentElement).toHaveClass('pointer-events-none');
     await emit('TimeUpdate', {currentTime: 90});
     expect(provider.seekTo).toHaveBeenLastCalledWith(0); expect(complete).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled();
