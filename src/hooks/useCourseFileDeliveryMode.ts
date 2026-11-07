@@ -33,9 +33,26 @@ export function useCourseFileDeliveryMode(scope: CourseFileModeScope, enabled = 
   }, []);
   useEffect(() => subscribeOfflineAuthRevision(invalidate), [invalidate]);
   useEffect(() => {
-    const visibility = () => { invalidate(); setVisible(document.visibilityState === "visible"); };
-    window.addEventListener("focus", invalidate); document.addEventListener("visibilitychange", visibility);
-    return () => { window.removeEventListener("focus", invalidate); document.removeEventListener("visibilitychange", visibility); };
+    // Moving into a child iframe blurs this Window while the document still
+    // has focus. Returning to our controls is not a return from another app/tab.
+    // Reclassifying on that internal focus transfer unmounts the active video.
+    let childFrameFocused = false;
+    const blur = () => {
+      childFrameFocused = document.hasFocus() && document.activeElement?.tagName === "IFRAME";
+    };
+    const focus = () => {
+      const internalTransfer = childFrameFocused && document.hasFocus() && document.visibilityState === "visible";
+      childFrameFocused = false;
+      if (!internalTransfer) invalidate();
+    };
+    const visibility = () => { childFrameFocused = false; invalidate(); setVisible(document.visibilityState === "visible"); };
+    const pagehide = () => { childFrameFocused = false; invalidate(); };
+    window.addEventListener("blur", blur); window.addEventListener("focus", focus);
+    window.addEventListener("pagehide", pagehide); document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("blur", blur); window.removeEventListener("focus", focus);
+      window.removeEventListener("pagehide", pagehide); document.removeEventListener("visibilitychange", visibility);
+    };
   }, [invalidate]);
   useEffect(() => {
     requestRef.current?.abort.abort();
