@@ -191,10 +191,9 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     // instance still being destroyed (create() would return that old player).
     const frameId = `${playerId}-${++iframeGenerationRef.current}`;
     frame.id = frameId;
-    const frameUrl = new URL(src);
-    frameUrl.searchParams.set('controls', '0');
-    frameUrl.searchParams.set('keyboard', '0');
-    frame.src = frameUrl.toString();
+    // Only the SDK navigates this frame. A preliminary document can finish
+    // the handshake before the configured navigation replaces it, leaving
+    // the player connected to the old document's MessagePort.
     frame.title = 'Видео урока';
     frame.className = 'h-full w-full border-0';
     frame.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write';
