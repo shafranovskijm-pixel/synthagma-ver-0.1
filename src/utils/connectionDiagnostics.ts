@@ -37,6 +37,28 @@ async function timedFetch(url: string, init?: RequestInit): Promise<{ ok: boolea
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
+// An image does not require the CORS header that this public icon does not send.
+// Its availability is connectivity evidence, not proof of video playback.
+function probeKinescopeResource(): Promise<ProbeResult> {
+  const start = performance.now();
+  return new Promise(resolve => {
+    const image = new Image();
+    let settled = false;
+    const finish = (status: ProbeStatus, detail: string) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      image.onload = null; image.onerror = null; image.removeAttribute('src');
+      resolve({ id: 'kinescope', label: 'Видео-сервис (Kinescope)', status,
+        durationMs: Math.round(performance.now() - start), detail });
+    };
+    const timer = setTimeout(() => finish('error', 'Контрольный ресурс не загрузился за 7 секунд. Доступность плеера не подтверждена.'), TIMEOUT_MS);
+    image.onload = () => finish(performance.now() - start > 4000 ? 'slow' : 'ok',
+      'Контрольный ресурс провайдера доступен. Запуск видео проверяется отдельно.');
+    image.onerror = () => finish('error', 'Не удалось загрузить контрольный ресурс провайдера. Это не устанавливает причину ошибки видео.');
+    image.src = 'https://kinescope.io/favicon.ico';
+  });
+}
+
 function getInternetProbeUrl() {
   const url = new URL('/robots.txt', window.location.origin);
   url.searchParams.set('_probe', Date.now().toString());
@@ -98,13 +120,7 @@ export async function runConnectionDiagnostics(): Promise<ProbeResult[]> {
     })).catch((e): ProbeResult => ({ id: 'cloudflare', label: 'Сторонний эталон', status: 'blocked', durationMs: 0, detail: String(e) })),
 
     // 6. Kinescope — для жалоб на видео
-    timedFetch('https://kinescope.io/favicon.ico', { method: 'GET' }).then((r): ProbeResult => ({
-      id: 'kinescope',
-      label: 'Видео-сервис (Kinescope)',
-      status: r.status !== undefined ? (r.ms > 4000 ? 'slow' : 'ok') : 'blocked',
-      durationMs: r.ms,
-      detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
-    })).catch((e): ProbeResult => ({ id: 'kinescope', label: 'Видео-сервис (Kinescope)', status: 'blocked', durationMs: 0, detail: String(e) })),
+    probeKinescopeResource(),
   ];
 
   const settled = await Promise.allSettled(probes);
@@ -119,9 +135,10 @@ export async function runConnectionDiagnostics(): Promise<ProbeResult[]> {
 export function summarizeDiagnostics(results: ProbeResult[]): { headline: string; advice: string; severity: 'ok' | 'warn' | 'error' } {
   const blockedIds = results.filter(r => r.status === 'blocked').map(r => r.id);
   const slowCount = results.filter(r => r.status === 'slow').length;
+  const incomplete = results.some(r => r.status === 'error' || r.status === 'pending');
 
-  if (blockedIds.length === 0 && slowCount === 0) {
-    return { headline: 'Всё работает нормально', advice: 'Соединение с платформой стабильное. Если проблема повторяется — обратитесь в поддержку.', severity: 'ok' };
+  if (blockedIds.length === 0 && slowCount === 0 && !incomplete) {
+    return { headline: 'Проверяемые серверы доступны', advice: 'Соединение установлено. Эта проверка не подтверждает прохождение тестов или воспроизведение видео. Если проблема повторяется — обратитесь в поддержку.', severity: 'ok' };
   }
 
   if (blockedIds.includes('internet')) {
@@ -139,6 +156,10 @@ export function summarizeDiagnostics(results: ProbeResult[]): { headline: string
         'Запросы на серверы Sintagma не проходят. Скорее всего, антивирус (Kaspersky, McAfee), VPN или корпоративный firewall блокирует домены платформы. Скачайте отчёт ниже и передайте системному администратору с просьбой добавить в исключения: sintagma.com.ru, *.supabase.co, *.functions.supabase.co.',
       severity: 'error',
     };
+  }
+
+  if (incomplete) {
+    return { headline: 'Проверка соединения неполная', advice: 'Доступность части ресурсов не подтверждена. Проверьте проблемное действие в своём кабинете и передайте отчёт в поддержку.', severity: 'warn' };
   }
 
   if (slowCount > 0) {
