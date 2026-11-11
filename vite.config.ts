@@ -83,6 +83,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
         clientsClaim: true,
         importScripts: ['sw-private-cache-cleanup.js'],
         navigateFallbackDenylist: [
+          /^\/video-check\.html$/, // Standalone, anonymous connection check; never replace it with the app shell.
           /^\/~oauth/, /^\/downloads\//,
           /\/(?:sb-api|sb-functions|sb-storage|sb-realtime)(?:\/|$)/i,
           /\/(?:rest|auth|functions|storage)\/v1(?:\/|$)/i,
