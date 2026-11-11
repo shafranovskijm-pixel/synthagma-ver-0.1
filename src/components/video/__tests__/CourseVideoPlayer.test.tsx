@@ -164,6 +164,31 @@ describe('common native/HLS controls and progress', () => {
 });
 
 describe('Kinescope uses the same controls through the official API', () => {
+  it('leaves navigation to the SDK even when its script resolves after the frame is mounted', async () => {
+    let sdkReady!: (factory: any) => void;
+    mocks.loadApi.mockReturnValue(new Promise(resolve => { sdkReady = resolve; }));
+    const save = vi.fn(); const complete = vi.fn();
+    const source = 'https://kinescope.io/embed/qa?drmauthtoken=qa-only';
+    const view = render(<CourseVideoPlayer src={source} kinescope allowSeek={false}
+      onSavePosition={save} onVideoComplete={complete} />);
+    const frame = view.container.querySelector('iframe')!;
+    // A preliminary document can answer the SDK handshake just before the
+    // configured navigation replaces it, leaving a ready-looking dead channel.
+    expect(frame.getAttribute('src')).toBeNull();
+    mocks.create.mockImplementation(async (id, options) => {
+      expect(document.getElementById(id)).toBe(frame);
+      expect(frame.getAttribute('src')).toBeNull();
+      expect(options.url).toBe(source);
+      frame.src = options.url;
+      return provider;
+    });
+    await act(async () => sdkReady({create:mocks.create}));
+    await waitFor(() => expect(screen.getByRole('button', {name:'Воспроизвести'})).toBeEnabled());
+    expect(view.container.querySelector('iframe')).toBe(frame);
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(save).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
+  });
+
   it('does not allow untracked iframe playback before the API is connected', () => {
     mocks.loadApi.mockReturnValue(new Promise(() => {}));
     const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope />);
