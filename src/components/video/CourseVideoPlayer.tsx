@@ -228,7 +228,6 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
       return factory.create(frameId, options).catch(error => {
         if (cancelled || !isKinescopeHandshakeTimeout(error) || navigator.onLine === false) throw error;
         recovery = recoverKinescopeConnection(factory, frame, `${playerId}-${++iframeGenerationRef.current}`, options);
-        if (!recovery) throw error;
         frame = recovery.frame;
         setTimedOut(false);
         return recovery.ready;
