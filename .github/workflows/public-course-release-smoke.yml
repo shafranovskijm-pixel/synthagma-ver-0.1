@@ -1,0 +1,46 @@
+name: Public course release smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/public-course-release-smoke.yml'
+      - 'scripts/qa/public-course-release-smoke.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  public-http:
+    name: Public HTTPS and bounded static feature strings
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Read CI-only checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # Same official pin as CI161
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Pinned Linux Node runtime without package installation
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # Same official pin as CI161
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+      - name: Public GET-only smoke with a120-second hard bound
+        shell: bash
+        run: env -i PATH="$PATH" LANG=C.UTF-8 TZ=UTC CI=true timeout --signal=TERM --kill-after=5s 115s node scripts/qa/public-course-release-smoke.mjs
+      - name: Preserve only safe observation metadata
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # Same official pin as CI161
+        with:
+          name: 'public-course-release-smoke-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: '.ci-artifacts/public-course-release-smoke/report.json'
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
