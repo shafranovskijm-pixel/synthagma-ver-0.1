@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { cn } from '@/lib/utils';
 import { isMpegTsOrHlsUrl } from '@/utils/courseBuilderHelpers';
-import { loadKinescopeApi, type KinescopeEvent, type KinescopePlayer } from './kinescopeApi';
+import { isKinescopePlayGestureDenial, loadKinescopeApi, type KinescopeEvent, type KinescopePlayer } from './kinescopeApi';
 import { VideoControls } from './VideoControls';
 
 export interface VideoPlaybackFailure {
@@ -294,8 +294,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     const rejected = (reason: unknown) => {
       if (kinescope && playerRef.current !== player) return;
       if (optional) { if (stage === 'api-volume') setVolumeControllable(false); return; }
-      if (kinescope && stage === 'api-play' && reason && typeof reason === 'object' &&
-        'name' in reason && reason.name === 'NotAllowedError') {
+      if (kinescope && stage === 'api-play' && isKinescopePlayGestureDenial(reason)) {
         setPlayGestureRequired(true);
         setLoading(false);
         return;
