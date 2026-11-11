@@ -69,29 +69,37 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); fullscreen(null); });
 
 describe('initial Kinescope connection recovery', () => {
   const cause = { message: 'Timeout of 8000ms exceeded. Unable to connect to iframe.' };
-  it('recovers one HTTP200 handshake failure, then restores only the supplied saved position', async () => {
-    const created = new Set<(event: any) => void>();
-    const stop = vi.fn();
-    const factory = { create: mocks.create, version: '2.200.3', Events: { Created: 'created' },
-      on: vi.fn((_name, fn) => created.add(fn)), off: vi.fn((_name, fn) => created.delete(fn)), monitor: vi.fn(() => stop) };
-    mocks.loadApi.mockResolvedValue(factory);
-    mocks.create.mockRejectedValue({ code: 'HTTP_STATUS', status: 200, cause });
+  it('recovers one HTTP200 handshake failure on a fresh SDK node without changing saved progress', async () => {
+    const ids: string[] = [];
+    mocks.create.mockImplementation(async (id, options) => {
+      ids.push(id);
+      const frame = document.getElementById(id)!;
+      expect(frame.getAttribute('src')).toBeNull();
+      expect(options.behavior.localStorage).toBe(false);
+      frame.setAttribute('src', options.url);
+      if (ids.length === 1) throw { code: 'HTTP_STATUS', status: 200, cause };
+      return provider;
+    });
     const onError = vi.fn(), onProgressChange = vi.fn();
     const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/fixture" kinescope allowSeek={false}
       savedPosition={35} onError={onError} onProgressChange={onProgressChange} />);
-    await waitFor(() => expect(factory.monitor).toHaveBeenCalledOnce());
-    const frame = view.container.querySelector('iframe')!;
-    expect(screen.getByRole('button', { name: 'Воспроизвести' })).toBeDisabled();
-    const candidate = { ...provider, getTargetContainer: () => frame, setOptions: vi.fn().mockResolvedValue(undefined) };
-    await act(async () => { [...created].forEach(fn => fn({ data: candidate })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Воспроизвести' })).toBeEnabled());
-    expect(candidate.seekTo.mock.calls.map(([time]) => time)).toEqual([0, 35]);
+    expect(ids).toHaveLength(2); expect(ids[0]).not.toBe(ids[1]);
+    expect(view.container.querySelectorAll('iframe')).toHaveLength(1);
+    expect(view.container.querySelector('iframe')!.id).toBe(ids[1]);
+    expect(provider.seekTo.mock.calls.map(([time]) => time)).toEqual([35]);
     expect(onProgressChange).toHaveBeenCalledExactlyOnceWith(35);
-    expect(onError).not.toHaveBeenCalled(); expect(mocks.create).toHaveBeenCalledOnce();
+    expect(onError).not.toHaveBeenCalled(); expect(mocks.create).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('slider', { name: 'Позиция видео' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
-    expect(candidate.play).toHaveBeenCalledOnce();
-    view.unmount(); expect(candidate.destroy).toHaveBeenCalledOnce(); expect(stop).toHaveBeenCalledOnce();
+    expect(provider.play).toHaveBeenCalledOnce();
+    view.unmount(); expect(provider.destroy).toHaveBeenCalledOnce();
+  });
+  it('reports a second failure once without an automatic retry loop', async () => {
+    mocks.create.mockRejectedValue({ code: 'HTTP_STATUS', status: 200, cause });
+    const onError = vi.fn(); render(<CourseVideoPlayer src="https://kinescope.io/embed/fixture" kinescope onError={onError} />);
+    await waitFor(() => expect(onError).toHaveBeenCalledOnce());
+    expect(mocks.create).toHaveBeenCalledTimes(2);
   });
   it.each([
     { code: 'HTTP_STATUS', status: 403, cause },
