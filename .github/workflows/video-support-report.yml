@@ -4,6 +4,8 @@ on:
     branches: [codex/video-error-support-20261105]
   pull_request:
     paths:
+      - public/video-check.html
+      - vite.config.ts
       - src/components/video/**
       - src/hooks/useCourseFileDeliveryMode.ts
       - src/hooks/__tests__/useCourseFileDeliveryMode.test.tsx

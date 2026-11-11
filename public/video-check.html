@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="strict-origin">
+<title>Проверка подключения видео — СИНТАГМА</title>
+<style>body{font:16px/1.5 system-ui;margin:24px;background:#f7f7fa;color:#202330}main{max-width:960px;margin:auto}input,select,button{font:inherit;padding:8px;margin:4px}input{width:min(90%,440px)}#host{aspect-ratio:16/9;background:#111;margin:16px 0}iframe{width:100%;height:100%;border:0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:16px}button:disabled{opacity:.5}</style>
+<main><h1>Проверка подключения видео</h1><p>Проверка не сохраняет учебный прогресс. Введите идентификатор видео Kinescope; пароль и ссылки с токенами здесь не используются.</p>
+<label>Идентификатор видео <input id="video" autocomplete="off" placeholder="Идентификатор из ссылки Kinescope"></label><br>
+<label>Способ подключения <select id="mode"><option value="div">SDK: новый плеер</option><option value="iframe">SDK: существующий iframe</option><option value="plain">Обычный iframe</option></select></label>
+<button id="start">Проверить</button><button id="stop" disabled>Остановить проверку</button><p id="status" role="status">Готово к проверке</p><div id="host"></div>
+<button id="play" disabled>Воспроизвести</button><button id="pause" disabled>Пауза</button><button id="read" disabled>Проверить длительность</button><pre id="trace">[]</pre></main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),events=[];let player,factory,serial=0,active=0,t0=0,pending;
+const clean=value=>String(value??'').replace(/https?:\/\/[^\s)'"<>]+/g,'[URL]').slice(0,300);
+const log=(type,data)=>{events.push({ms:Math.round(performance.now()-t0),type,data});$('trace').textContent=JSON.stringify(events,null,2);};
+const error=reason=>({code:clean(reason?.code),name:clean(reason?.name),message:clean(reason?.message??reason),cause:clean(reason?.cause?.message)});
+const buttons=ready=>['play','pause','read'].forEach(id=>$(id).disabled=!ready);
+const decorate=frame=>{frame.title='Проверяемое видео';frame.allow='autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer';frame.allowFullscreen=true;};
+const load=()=>{if(factory)return Promise.resolve(factory);if(pending)return pending;pending=new Promise((resolve,reject)=>{const script=document.createElement('script');const timer=setTimeout(()=>reject(Error('API load timeout')),15000);window.onKinescopeIframeAPIReady=value=>{clearTimeout(timer);factory=value;resolve(value);};script.src='https://player.kinescope.io/latest/iframe.player.js';script.onerror=()=>{clearTimeout(timer);reject(Error('API script failed'));};document.head.append(script);});return pending;};
+const reset=async()=>{active++;buttons(false);const previous=player;player=undefined;if(previous)await previous.destroy().catch(()=>{});$('host').replaceChildren();};
+window.addEventListener('message',event=>{if(!['@_IFRAME_PING','@_IFRAME_CLIENT_READY'].includes(event.data?.type))return;const frame=$('host').querySelector('iframe');if(!frame||event.source!==frame.contentWindow)return;log('handshake',{type:event.data.type,origin:event.origin,ports:event.ports.length,stub:event.data?.data?.stub===true});});
+$('start').onclick=async()=>{const video=$('video').value.trim();if(!/^(?:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[A-Za-z0-9]{20,24})$/.test(video)){$('status').textContent='Введите только идентификатор видео, без URL, пароля или токена.';return;}
+ $('start').disabled=true;await reset();const run=active;events.length=0;t0=performance.now();$('stop').disabled=false;$('status').textContent='Подключаем видео';const mode=$('mode').value,url='https://kinescope.io/embed/'+encodeURIComponent(video),id='connection-check-'+(++serial);log('start',{mode});
+ try{if(mode==='plain'){const frame=document.createElement('iframe');decorate(frame);frame.src=url+'?controls=0&keyboard=0';frame.onload=()=>{if(run===active)log('iframe-load',{});};$('host').append(frame);$('status').textContent='Обычный iframe добавлен';return;}
+ const target=document.createElement(mode==='iframe'?'iframe':'div');target.id=id;if(mode==='iframe')decorate(target);$('host').append(target);const api=await load();if(run!==active)return;log('sdk-ready',{version:api.version});const result=await api.create(id,{url,size:{width:'100%',height:'100%'},ui:{controls:false,mainPlayButton:true,language:'ru'},behavior:{preload:'metadata',localStorage:false,keyboard:false,playsInline:true,autoPlay:false,playbackRate:1}});if(run!==active){await result.destroy().catch(()=>{});return;}player=result;const frame=$('host').querySelector('iframe');if(frame)decorate(frame);log('connected',{});$('status').textContent='Плеер подключён';buttons(true);
+ for(const name of ['Loaded','Playing','Pause','Error']){const type=player.Events[name];if(type)player.on(type,event=>{if(run===active)log(name,name==='Error'?error(event.data?.error):{});});}
+ }catch(reason){if(run===active){log('failure',error(reason));$('status').textContent='Подключение не удалось';}}finally{if(run===active)$('start').disabled=false;}};
+$('stop').onclick=async()=>{await reset();$('start').disabled=false;$('stop').disabled=true;$('status').textContent='Проверка остановлена';log('stopped',{});};
+for(const [id,method]of [['play','play'],['pause','pause'],['read','getDuration']])$(id).onclick=()=>{const current=player;if(!current)return;current[method]().then(value=>log(method,{value}),reason=>log(method+'-failure',error(reason)));};
+})();
+</script></html>
