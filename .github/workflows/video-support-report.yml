@@ -7,6 +7,7 @@ on:
       - public/video-check.html
       - vite.config.ts
       - src/utils/connectionDiagnostics.ts
+      - src/pages/ConnectionCheck.tsx
       - src/utils/__tests__/connectionDiagnostics.kinescope.test.ts
       - src/components/video/**
       - src/hooks/useCourseFileDeliveryMode.ts
