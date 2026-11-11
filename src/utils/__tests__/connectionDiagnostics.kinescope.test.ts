@@ -32,9 +32,12 @@ describe('Kinescope connectivity evidence', () => {
     expect(images[0].onload).toBeNull(); expect(images[0].removeAttribute).toHaveBeenCalledWith('src');
   });
   it('keeps a confirmed backend outage above an incomplete media probe', () => {
-    expect(summarizeDiagnostics([
+    const summary = summarizeDiagnostics([
       { id: 'api', label: 'API', status: 'blocked', durationMs: 0 },
       { id: 'kinescope', label: 'Video', status: 'error', durationMs: 0 },
-    ]).severity).toBe('error');
+    ]);
+    expect(summary.severity).toBe('error');
+    expect(summary.headline).toBe('Сервер платформы недоступен');
+    expect(summary.advice).toContain('Причина этой проверкой не установлена');
   });
 });

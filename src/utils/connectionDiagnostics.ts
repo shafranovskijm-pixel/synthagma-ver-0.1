@@ -151,9 +151,9 @@ export function summarizeDiagnostics(results: ProbeResult[]): { headline: string
 
   if (blockedIds.includes('edge') || blockedIds.includes('api')) {
     return {
-      headline: 'Корпоративный антивирус или firewall блокирует платформу',
+      headline: 'Сервер платформы недоступен',
       advice:
-        'Запросы на серверы Sintagma не проходят. Скорее всего, антивирус (Kaspersky, McAfee), VPN или корпоративный firewall блокирует домены платформы. Скачайте отчёт ниже и передайте системному администратору с просьбой добавить в исключения: sintagma.com.ru, *.supabase.co, *.functions.supabase.co.',
+        'Запросы к серверу платформы не завершились. Причина этой проверкой не установлена. Скачайте отчёт и передайте в поддержку; настройки защиты менять не требуется.',
       severity: 'error',
     };
   }
