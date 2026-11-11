@@ -38,6 +38,22 @@ type KinescopeWindow = Window & {
 
 let pending: Promise<KinescopeFactory> | undefined;
 
+// The iframe API rejects with the remote payload as-is, which can be a string or
+// a plain object rather than a DOMException. Only recognizable activation denials
+// should offer a direct tap; transport, decoder and unknown failures stay fatal.
+export function isKinescopePlayGestureDenial(reason: unknown): boolean {
+  const record = reason && typeof reason === 'object' ? reason : undefined;
+  const name = record && 'name' in record && typeof record.name === 'string' ? record.name : undefined;
+  if (name === 'NotAllowedError') return true;
+  if (name && name !== 'Error') return false;
+  const message = typeof reason === 'string' ? reason :
+    record && 'message' in record && typeof record.message === 'string' ? record.message : '';
+  return /^NotAllowedError(?::|$)/.test(message) ||
+    /^The request is not allowed by the user agent or the platform in the current context(?:, possibly because the user denied permission)?\.?$/.test(message) ||
+    /^The request is not triggered by a user activation\.?$/.test(message) ||
+    /^play\(\) failed because the user didn't interact with the document first\.?$/.test(message);
+}
+
 export function loadKinescopeApi(): Promise<KinescopeFactory> {
   const target = window as KinescopeWindow;
   if (target.Kinescope?.IframePlayer) return Promise.resolve(target.Kinescope.IframePlayer);

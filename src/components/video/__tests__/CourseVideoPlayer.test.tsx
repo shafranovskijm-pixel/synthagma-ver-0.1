@@ -7,7 +7,7 @@ import type { KinescopeEvent } from '../kinescopeApi';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 const mocks = vi.hoisted(() => ({ create: vi.fn(), loadApi: vi.fn(), hlsInstances: [] as Array<any> }));
-vi.mock('../kinescopeApi', () => ({ loadKinescopeApi: mocks.loadApi }));
+vi.mock('../kinescopeApi', async importOriginal => ({ ...await importOriginal<typeof import('../kinescopeApi')>(), loadKinescopeApi: mocks.loadApi }));
 vi.mock('hls.js', () => ({ default: class FakeHls {
   static isSupported() { return true; }
   static Events = { ERROR: 'error' };
@@ -250,8 +250,40 @@ describe('Kinescope uses the same controls through the official API', () => {
     expect(provider.seekTo).toHaveBeenLastCalledWith(0); expect(complete).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled();
   });
 
-  it('still reports real play failures with the specific operation stage', async () => {
-    const onError = vi.fn(); provider.play.mockRejectedValue(new Error('Decoder unavailable'));
+  it.each([
+    ['serialized name', { name: 'NotAllowedError', message: 'Playback requires activation' }],
+    ['serialized text', 'NotAllowedError: The request is not allowed by the user agent'],
+    ['WebKit message', { message: 'The request is not allowed by the user agent or the platform in the current context, possibly because the user denied permission.' }],
+    ['generic Error', new Error('The request is not triggered by a user activation.')],
+    ['Chromium message', "play() failed because the user didn't interact with the document first."],
+  ])('preserves direct playback for a gesture denial from the iframe: %s', async (_label, reason) => {
+    provider.play.mockRejectedValue(reason);
+    const onError = vi.fn(); const save = vi.fn(); const complete = vi.fn();
+    const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope allowSeek={false}
+      onError={onError} onSavePosition={save} onVideoComplete={complete} />);
+    await waitFor(() => expect(provider.on).toHaveBeenCalled());
+    const frame = view.container.querySelector('iframe');
+    fireEvent.click(screen.getByRole('button', {name:'Воспроизвести'}));
+    expect(await screen.findByText('Нажмите на видео, чтобы начать просмотр')).toBeInTheDocument();
+    expect(view.container.querySelector('iframe')).toBe(frame);
+    expect(frame!.parentElement).not.toHaveClass('pointer-events-none');
+    expect(screen.queryByText('Не удалось воспроизвести видео')).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', {name:'Позиция видео'})).not.toBeInTheDocument();
+    expect(onError).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
+    await emit('Playing');
+    expect(screen.queryByText('Нажмите на видео, чтобы начать просмотр')).not.toBeInTheDocument();
+    await emit('Error', {error:{code:'MEDIA_ERR_DECODE',message:'Decoder unavailable'}});
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({stage:'provider-media',code:'MEDIA_ERR_DECODE'}));
+  });
+
+  it.each([
+    new Error('Decoder unavailable'),
+    'Playback failed',
+    {name:'NotSupportedError',message:'The request is not triggered by a user activation.'},
+    {message:'Token is not allowed'},
+    null,
+  ])('still reports real or unknown play failures with the specific operation stage: %s', async reason => {
+    const onError = vi.fn(); provider.play.mockRejectedValue(reason);
     render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope onError={onError} />);
     await waitFor(() => expect(provider.on).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
