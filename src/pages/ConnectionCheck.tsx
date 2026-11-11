@@ -145,12 +145,12 @@ export default function ConnectionCheck() {
           </div>
 
           <div className="mt-8 pt-6 border-t text-sm text-muted-foreground space-y-2">
-            <p className="font-medium text-foreground">Если что-то заблокировано:</p>
+            <p className="font-medium text-foreground">Если проблема сохраняется:</p>
             <ol className="list-decimal pl-5 space-y-1">
-              <li>Скачайте отчёт и отправьте его системному администратору вашей компании.</li>
-              <li>Попросите добавить в исключения антивируса/firewall: <code className="px-1 py-0.5 bg-muted rounded">sintagma.com.ru</code>, <code className="px-1 py-0.5 bg-muted rounded">*.supabase.co</code>, <code className="px-1 py-0.5 bg-muted rounded">*.functions.supabase.co</code>.</li>
-              <li>Попробуйте отключить VPN или расширения браузера (AdBlock, Kaspersky Protection).</li>
-              <li>Проверьте через мобильный интернет — если там работает, значит блокирует именно корпоративная сеть.</li>
+              <li>Повторите проблемное действие в своём кабинете и запишите время ошибки.</li>
+              <li>Скачайте отчёт и передайте его в поддержку вместе с описанием действия.</li>
+              <li>Укажите, повторяется ли ошибка в другом браузере или через мобильный интернет. Различие помогает диагностике, но само по себе не устанавливает причину.</li>
+              <li>Не отключайте защиту устройства и не меняйте её исключения без установленной причины.</li>
             </ol>
           </div>
         </Card>
@@ -194,8 +194,8 @@ function ProxyChannelPanel() {
       <div className="font-medium text-sm mb-1">Канал к серверу</div>
       <div className="text-xs text-muted-foreground mb-3">
         {status.forced
-          ? 'Используется резервный канал (синтагма.рф). Прямой доступ к Supabase заблокирован у вашего провайдера.'
-          : 'Сейчас запросы идут через резервный канал. Если данные не подгружаются — сбросьте канал и попробуйте прямой.'}
+          ? 'Запросы идут через настроенный канал платформы. Этот режим не означает блокировку прямого соединения.'
+          : 'Запросы идут через резервный канал. Наличие этого режима само по себе не устанавливает причину ошибки.'}
       </div>
       {!status.forced && (
         <Button onClick={handleReset} variant="outline" size="sm">

@@ -191,12 +191,10 @@ export function buildDiagnosticsReport(results: ProbeResult[], deviceReport?: st
     lines.push(deviceReport);
     lines.push('');
   }
-  lines.push('--- Рекомендация для системного администратора ---');
-  lines.push('Добавьте в исключения антивируса / firewall следующие домены:');
-  lines.push('  • sintagma.com.ru');
-  lines.push('  • *.sintagma.com.ru');
-  lines.push('  • *.supabase.co');
-  lines.push('  • *.functions.supabase.co');
-  lines.push('  • *.kinescope.io (видео)');
+  lines.push('--- Адреса проверяемых сервисов ---');
+  const hosts = new Set([window.location.hostname, 'kinescope.io']);
+  try { hosts.add(new URL(SUPABASE_URL).hostname); } catch { /* Missing config is not a network diagnosis. */ }
+  for (const host of hosts) lines.push(`  • ${host}`);
+  lines.push('Причина сбоя этой проверкой не устанавливается. Передайте отчёт в поддержку.');
   return lines.join('\n');
 }
