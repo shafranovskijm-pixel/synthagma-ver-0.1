@@ -354,7 +354,10 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
   const retry = () => { setError(false); setLoading(true); setPlaying(false); setTimedOut(false); restoredRef.current = false; setReloadKey(value => value + 1); };
 
   return (
-    <div ref={containerRef} className={cn('relative aspect-video w-full overflow-hidden rounded-xl bg-black', className,
+    <div ref={containerRef} data-video-error-stage={error ? failure?.stage : undefined}
+      data-video-error-code={error ? failure?.code : undefined}
+      data-video-error-message={error ? failure?.message : undefined}
+      className={cn('relative aspect-video w-full overflow-hidden rounded-xl bg-black', className,
       (error || timedOut) && !fullscreen && !pseudoFullscreen && 'min-h-[440px]',
       pseudoFullscreen && 'fixed inset-0 z-[100] h-[100dvh] max-h-none w-screen rounded-none', !controlsVisible && playing && 'cursor-none')}
       onMouseMove={showControls} onTouchStart={showControls} onFocusCapture={() => setControlsVisible(true)}

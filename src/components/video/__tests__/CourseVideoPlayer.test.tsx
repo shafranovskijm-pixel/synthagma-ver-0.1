@@ -435,6 +435,15 @@ describe('Kinescope uses the same controls through the official API', () => {
 });
 
 describe('error report action without playback mutations', () => {
+  it('exposes the existing sanitized failure for diagnosis without changing the UI or leaking a signed URL', async () => {
+    mocks.create.mockRejectedValue({code:403,message:'Denied https://kinescope.io/embed/qa?drmauthtoken=secret'});
+    const view = render(<CourseVideoPlayer src="https://kinescope.io/embed/qa" kinescope />);
+    await waitFor(() => expect(view.container.firstElementChild).toHaveAttribute('data-video-error-stage', 'api-create'));
+    expect(view.container.firstElementChild).toHaveAttribute('data-video-error-code', '403');
+    expect(view.container.firstElementChild).toHaveAttribute('data-video-error-message', 'Denied https://kinescope.io/embed/qa');
+    expect(view.container.innerHTML).not.toContain('secret');
+    expect(screen.getByText('Не удалось воспроизвести видео')).toBeInTheDocument();
+  });
   const action = (report: (failure: unknown) => void) => (failure: unknown) =>
     <button onClick={() => report(failure)}>Report video</button>;
   it('offers a native report only after failure and preserves saved position/progress on click', () => {
