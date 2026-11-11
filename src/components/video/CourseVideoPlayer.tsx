@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { cn } from '@/lib/utils';
 import { isMpegTsOrHlsUrl } from '@/utils/courseBuilderHelpers';
-import { isKinescopePlayGestureDenial, loadKinescopeApi, type KinescopeEvent, type KinescopePlayer } from './kinescopeApi';
+import { isKinescopePlayGestureDenial, loadKinescopeApi, type KinescopeEvent, type KinescopePlayer, type KinescopeFactory } from './kinescopeApi';
 import { VideoControls } from './VideoControls';
+import { isKinescopeHandshakeTimeout, recoverKinescopeConnection } from './kinescopeAutoRecovery';
 
 export interface VideoPlaybackFailure {
   backend: 'native' | 'hls' | 'kinescope';
@@ -182,11 +183,12 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     if (!kinescope || !iframeHostRef.current) return;
     let cancelled = false;
     let instance: KinescopePlayer | undefined;
+    let recovery: ReturnType<typeof recoverKinescopeConnection>;
     let initStage = 'api-load';
     const listeners: Array<[string, (event: KinescopeEvent) => void]> = [];
     const host = iframeHostRef.current;
     // API destroy removes its iframe. Keep that node outside React ownership.
-    const frame = document.createElement('iframe');
+    let frame = document.createElement('iframe');
     // destroy() is asynchronous. A retry must never reuse the ID of an
     // instance still being destroyed (create() would return that old player).
     const frameId = `${playerId}-${++iframeGenerationRef.current}`;
@@ -216,12 +218,20 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     void loadKinescopeApi().then(factory => {
       if (cancelled) return;
       initStage = 'api-create';
-      return factory.create(frameId, {
+      const options = {
         url: src, size: { width: '100%', height: '100%' },
         // A tap inside the provider iframe preserves the browser's user gesture
         // on iPhone. Transport controls and keyboard seeking stay disabled.
         ui: { controls: false, mainPlayButton: true, language: 'ru' },
         behavior: { preload, localStorage: false, keyboard: false, playsInline: true, muted, playbackRate: callbacks.current.allowSeek ? rate : 1 },
+      } as Parameters<KinescopeFactory['create']>[1];
+      return factory.create(frameId, options).catch(error => {
+        if (cancelled || !isKinescopeHandshakeTimeout(error) || navigator.onLine === false) throw error;
+        recovery = recoverKinescopeConnection(factory, frame, `${playerId}-${++iframeGenerationRef.current}`, options);
+        if (!recovery) throw error;
+        frame = recovery.frame;
+        setTimedOut(false);
+        return recovery.ready;
       });
     }).then(async player => {
       if (!player) return;
@@ -274,6 +284,7 @@ export function CourseVideoPlayer({ src, kinescope = false, className, controls 
     }).catch(error => { if (!cancelled) fail(error, initStage); });
     return () => {
       cancelled = true;
+      recovery?.cancel();
       if (playerRef.current === instance) playerRef.current = undefined;
       listeners.forEach(([event, listener]) => instance?.off(event, listener));
       void instance?.destroy().catch(() => {});
