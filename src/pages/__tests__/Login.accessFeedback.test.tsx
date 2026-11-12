@@ -46,13 +46,13 @@ async function submit(branded: boolean) {
   if (branded) fireEvent.mouseDown(screen.getByRole('tab', { name: 'По email' }), { button: 0, ctrlKey: false });
   fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'qa@example.invalid' } });
   fireEvent.change(screen.getByLabelText('Пароль', { exact: true }), { target: { value: 'synthetic-password' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Войти', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
 }
 describe.each([false, true])('post-login access feedback (branded=%s)', branded => {
   it('shows the suspension after successful credentials instead of leaving a successful login form', async () => {
     page(branded); await submit(branded);
     expect(await screen.findByRole('alert')).toHaveTextContent('Доступ временно приостановлен');
-    expect(screen.queryByRole('button', { name: 'Войти', exact: true })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Войти' })).toBeNull();
     expect(screen.queryByText('Проверенный кабинет')).toBeNull();
     expect(m.success).not.toHaveBeenCalled();
   });

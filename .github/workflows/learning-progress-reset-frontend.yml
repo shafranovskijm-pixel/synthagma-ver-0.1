@@ -17,6 +17,9 @@ jobs:
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     env:
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
