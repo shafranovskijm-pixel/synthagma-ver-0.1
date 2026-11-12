@@ -14,6 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { AccessSuspendedNotice } from "@/components/auth/AccessSuspendedNotice";
+import { AccountLoadError } from "@/components/auth/AccountLoadError";
+import { SmartLoadingFallback } from "@/components/SmartLoadingFallback";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +46,7 @@ const Login = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  const { signIn, user, userRole, loading } = useAuth();
+  const { signIn, user, userRole, loading, authError, retryAuth, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isDrivingInvitation = isDrivingInvitationTarget(searchParams.get("next"));
@@ -55,13 +58,13 @@ const Login = () => {
     if (prefill?.password) setPassword(prefill.password);
   }, []);
   useEffect(() => {
-    if (!user || loading || !userRole) return;
+    if (!user || loading || !userRole || authError) return;
     let cancelled = false;
     resolveLoginDestination(user.id, userRole, searchParams.get("next")).then((target) => {
       if (!cancelled) navigate(target, { replace: true });
     });
     return () => { cancelled = true; };
-  }, [user, userRole, loading, navigate, searchParams]);
+  }, [user, userRole, loading, authError, navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,10 +110,9 @@ const Login = () => {
             ? "Неверный логин или пароль"
             : getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту или откройте «Не загружается?» ниже.");
         toast.error("Ошибка входа", { description: friendly });
-      } else {
-        toast.success("Успешно!", { description: "Вы вошли в систему" });
-        // Role is already loaded in context by signIn, useEffect will navigate
       }
+      // Authentication alone is not a confirmed account load. The context
+      // supplies the server role or an explicit access/loading failure.
     } catch (error) {
       toast.error("Ошибка входа", {
         description: getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту."),
@@ -233,6 +235,10 @@ const Login = () => {
 
     setDemoLoading(null);
   };
+
+  if (user && authError === 'ACCESS_SUSPENDED') return <AccessSuspendedNotice onRetry={retryAuth} onSignOut={signOut} />;
+  if (user && authError) return <AccountLoadError onRetry={retryAuth} />;
+  if (user && !userRole) return <SmartLoadingFallback timeoutSec={12} label="Проверяем доступ к кабинету..." />;
 
   if (loading) {
     return (

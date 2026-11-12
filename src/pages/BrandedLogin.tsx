@@ -10,6 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { AccessSuspendedNotice } from "@/components/auth/AccessSuspendedNotice";
+import { AccountLoadError } from "@/components/auth/AccountLoadError";
+import { SmartLoadingFallback } from "@/components/SmartLoadingFallback";
 
 interface LoginBranding {
   backgroundUrl?: string;
@@ -40,7 +43,7 @@ const BrandedLogin = () => {
   const [loginMode, setLoginMode] = useState<"email" | "login">("login");
   const [showPassword, setShowPassword] = useState(false);
   
-  const { signIn, user, userRole, loading } = useAuth();
+  const { signIn, user, userRole, loading, authError, retryAuth, signOut } = useAuth();
   const navigate = useNavigate();
   // Load organization by slug
   useEffect(() => {
@@ -85,7 +88,7 @@ const BrandedLogin = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && !loading && userRole) {
+    if (user && !loading && userRole && !authError) {
       if (userRole === 'admin') {
         navigate("/admin", { replace: true });
       } else if (userRole === 'organization') {
@@ -94,7 +97,7 @@ const BrandedLogin = () => {
         navigate("/student", { replace: true });
       }
     }
-  }, [user, userRole, loading, navigate]);
+  }, [user, userRole, loading, authError, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,12 +137,14 @@ const BrandedLogin = () => {
     
     if (error) {
       toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : getErrorMessage(error) });
-    } else {
-      toast.success("Успешно!", { description: "Вы вошли в систему" });
     }
     
     setIsLoading(false);
   };
+
+  if (user && authError === 'ACCESS_SUSPENDED') return <AccessSuspendedNotice onRetry={retryAuth} onSignOut={async () => { await signOut(); navigate('/login', { replace: true }); }} />;
+  if (user && authError) return <AccountLoadError onRetry={retryAuth} />;
+  if (user && !userRole) return <SmartLoadingFallback timeoutSec={12} label="Проверяем доступ к кабинету..." />;
 
   if (loading || loadingOrg) {
     return (
