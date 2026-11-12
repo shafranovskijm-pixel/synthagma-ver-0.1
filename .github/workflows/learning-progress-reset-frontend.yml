@@ -17,6 +17,9 @@ jobs:
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     env:
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
@@ -57,6 +60,10 @@ jobs:
           src/components/course-learning/__tests__/TestAttemptHistory.test.tsx
           src/lib/__tests__/courseLearningHistory.test.ts
           src/components/organization/student-detail/__tests__/LearningResultsTab.test.tsx
+          src/pages/__tests__/Login.accessFeedback.test.tsx
+          src/components/__tests__/ProtectedRoute.billingHold.test.tsx
+          src/hooks/__tests__/useAuth.billingHold.test.tsx
+          src/hooks/__tests__/useAuth.loadingRecovery.test.tsx
           --maxWorkers=1 --reporter=json
           --outputFile=outputs/learning-progress-reset-frontend/test-results.json
           2>&1 | tee outputs/learning-progress-reset-frontend/tests.stdout.txt
