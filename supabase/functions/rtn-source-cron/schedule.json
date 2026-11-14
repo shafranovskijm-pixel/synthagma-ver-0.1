@@ -1,0 +1,16 @@
+{
+  "name": "rtn-official-source-check",
+  "schedule": "0 * * * *",
+  "target_path": "rtn-source-cron",
+  "body": {
+    "task": "rtn-source-reconciliation"
+  },
+  "managed_credential": "cron_auth",
+  "mechanism": "supabase--create_http_schedule",
+  "cadence": {
+    "detection": "daily",
+    "full_reconciliation": "weekly",
+    "manual": "immediate genuine-user request"
+  },
+  "preserve_existing_schedules_and_credentials": true
+}

@@ -28,6 +28,8 @@ import { courseOverviewErrorMessage } from "./summaryStateMessages";
 import { FirstCourseCreationChoice } from "./courses/FirstCourseCreationChoice";
 import { hasOrganizationCourse, isSystemWelcomeCourse } from "@/lib/organization/firstRun";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RostechnadzorWorkspace } from "../rtn/RostechnadzorWorkspace";
 
 const FIRST_COURSE_SKIP_KEY_PREFIX = "org-first-course-choice-skipped-";
 
@@ -40,6 +42,7 @@ interface CoursesTabProps {
 
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
+  const [courseWorkspace, setCourseWorkspace] = useState("mine");
   const dashboard = useOrgDashboard();
   const { can } = useStaffPermissions();
   const { checkLimit, hasCourseSettings, loading: accessLoading, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
@@ -440,7 +443,12 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   return (
     <CourseCountsStateContext.Provider value={countsState}>
-    <div className="space-y-4 lg:space-y-6">
+    <Tabs value={courseWorkspace} onValueChange={setCourseWorkspace} className="min-w-0 space-y-4 lg:space-y-6">
+      <TabsList className="h-auto max-w-full justify-start rounded-none border-b border-border bg-transparent p-0" aria-label="Раздел курсов">
+        <TabsTrigger value="mine" className="rounded-none border-b-2 border-transparent px-3 py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5">Мои курсы</TabsTrigger>
+        <TabsTrigger value="rtn" className="rounded-none border-b-2 border-transparent px-3 py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5">Ростехнадзор</TabsTrigger>
+      </TabsList>
+      <TabsContent value="mine" forceMount hidden={courseWorkspace !== "mine"} className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
       {overviewErrorBanner && (
@@ -636,6 +644,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       </>
       )}
 
+      </TabsContent>
+      <TabsContent value="rtn" className="min-w-0">
+        <RostechnadzorWorkspace organizationId={organizationId} actorId={dashboard.user?.id ?? null} isAdminView={isAdminView} onUsageChanged={() => void refetchLimits()} />
+      </TabsContent>
       <CategoryDialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog} editingCategory={editingCategory} name={newCategoryName} setName={setNewCategoryName} color={newCategoryColor} setColor={setNewCategoryColor} isCreating={isCreatingCategory} onSubmit={handleCreateCategory} />
       <CreateCourseDialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog} title={newCourseTitle} setTitle={setNewCourseTitle} description={newCourseDescription} setDescription={setNewCourseDescription} categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId} categories={categories} showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory} inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName} inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor} isCreating={isCreatingCourse} onSubmit={handleCreateCourse} />
       <MoveCourseDialog open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog} movingCourse={movingCourse} targetCategoryId={targetCategoryId} setTargetCategoryId={setTargetCategoryId} categories={categories} isMoving={isMovingCourse} onSubmit={handleMoveCourse} />
@@ -648,7 +660,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         currentOrganizationId={organizationId}
         onTransferred={refresh}
       />
-    </div>
+    </Tabs>
     </CourseCountsStateContext.Provider>
   );
 });
