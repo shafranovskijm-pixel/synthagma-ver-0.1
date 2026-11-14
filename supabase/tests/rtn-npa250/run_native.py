@@ -5,7 +5,7 @@ from native_apply import HERE,MIGRATION,ARTIFACTS,query,close_query
 from pgwire_lab import LabConnection
 from verify_sources import verify
 
-EXPECTED_ASSERTIONS=312
+EXPECTED_ASSERTIONS=343
 
 def control(sql):
  connection=LabConnection('postgres','npa250-control')
@@ -51,6 +51,7 @@ def run():
  ARTIFACTS.mkdir(exist_ok=True)
  (ARTIFACTS/'verified-sources.json').write_text(json.dumps(sources,indent=2),encoding='utf-8')
  reset();total=0
+ total+=apply_file(HERE/'fixtures/npa-unsupported-federal-law.sql');print('Unknown FederalLaw ActualID cases passed; original baseline restored',flush=True)
  for name in ['npa-cases.sql','npa-advanced.sql']:
   total+=apply_file(HERE/'fixtures'/name);print(name+' passed',flush=True)
  apply_file(HERE/'fixtures/npa-contract-negatives.sql')

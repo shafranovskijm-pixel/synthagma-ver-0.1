@@ -136,10 +136,9 @@ export function parseDeclaredBasis(text: string): DeclaredBasis[] {
     || typeof r.kind !== 'string' || !r.kind.trim() || r.kind.length > 100 || typeof r.number !== 'string' || !r.number.trim() || r.number.length > 100
     || typeof r.title !== 'string' || !r.title.trim() || r.title.length > 1000 || !isoDate(r.date)
     || Object.keys(r).some(k => !['country', 'kind', 'date', 'number', 'title', 'docid', 'dochash'].includes(k))
-    || (r.docid !== undefined && (!Number.isInteger(r.docid) || (r.docid as number) <= 0))
-    || (r.kind === 'FederalLaw' && (!Number.isInteger(r.docid) || (r.docid as number) <= 0))
+    || (r.docid !== undefined && (!Number.isSafeInteger(r.docid) || (r.docid as number) <= 0 || (r.docid as number) > 9_999_999_999_999))
     || (r.dochash !== undefined && r.dochash !== null && (typeof r.dochash !== 'string' || !/^[a-f0-9]{64}$/.test(r.dochash)))))
-    throw new Error('Нужен непустой массив документов: country RU, kind, date, number, title.');
+    throw new Error('Нужен непустой массив документов: country RU, kind, date, number, title. Неизвестный docid пропустите; указанный docid должен быть целым числом от 1 до 9999999999999, без null.');
   return rows as DeclaredBasis[];
 }
 export function publicEvidenceUrl(value: string): string | null {
@@ -156,6 +155,7 @@ export function publicEvidenceUrl(value: string): string | null {
 }
 export function approvalBlock(bank: EditorialBank, check: CheckRun | null, serverTime: string): string | null {
   if (!bank.configuration || !bank.release_id || !check || check.id !== bank.latest_check?.id) return 'Нужны текущая конфигурация, выпуск и последняя проверка.';
+  if (bank.configuration.basis.some(b => b.docid === undefined)) return 'Для части оснований не установлен официальный идентификатор. Автоматическое подтверждение полного состава недоступно.';
   if (check.status !== 'completed' || !check.completed_at || !check.proof_full || !check.can_approve
     // A complete first bootstrap has no previous manifest to compare and SQL
     // legitimately calls its outcome unknown. Full proof + authoritative

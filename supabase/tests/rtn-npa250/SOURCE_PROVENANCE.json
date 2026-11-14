@@ -1,7 +1,7 @@
 {
   "frozen_migration": {
     "path": "supabase/migrations/20261114125000_rtn_normative_attestations.sql",
-    "sha256": "6b926bc42e27b6c0123c1104ea92684d30705bacb12487f9af04340f6eacd455"
+    "sha256": "01e85d16bcc8d1c94be059274d23e27c20bc9b92913750cf457e490edcba31dc"
   },
   "baseline_git": "8cff5617c576cd2268e6e8b0eb9169105896f6ef",
   "integration_base_git": "2ee76621278091e6c4939cd5495dc45757376d19",
@@ -45,6 +45,10 @@
     {
       "file": "npa-source-cases.sql",
       "sha256": "1f7d89460927d0a2548e917e8d13cc8514946473b293ea502e66cea3d6f86566"
+    },
+    {
+      "file": "npa-unsupported-federal-law.sql",
+      "sha256": "ee1930366742aac5b5b05b0e7687a5513c34f3ed5787a6aa8045e3d047404b98"
     },
     {
       "file": "seed.sql",
@@ -91,6 +95,7 @@
       "canonical_lf_sha256": "1440b5050a7c1d6d8172ab1aa3f2ac92bdded818a22b4e74bfcfc8d63066e01e"
     }
   ],
+  "revision_note": "Omitted FederalLaw docid is unsupported declaration; supplied any-kind IDs remain strict JSON positive integer1..13digits. Previous6b926/312 andZIP08903 preserved historical. Original312 plus31new actual WindowsPG17 PASS before updating these source pins; new Linux CI remains required.",
   "previous_preserved_prototype_revision": {
     "sha256": "dd80331659c20e34b6a841066dbae54d04c83878c24bcf1b5a37d0f9dddf3a7f",
     "assertions": 308,

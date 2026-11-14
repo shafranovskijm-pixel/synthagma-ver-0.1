@@ -1,6 +1,8 @@
 /** Frontend-only actual-admin NPA editorial protocol; no service worker capability. */
 export type NpaJson = null | boolean | number | string | NpaJson[] | { [key: string]: NpaJson };
 export type DeclaredBasis = {
+  // Omit an unknown docid even for FederalLaw. Explicit null/placeholder IDs are
+  // invalid; omission preserves an unsupported dependency, never proof/renewal.
   country: 'RU'; kind: string; date: string; number: string; title: string; docid?: number; dochash?: string | null;
 };
 export type Admission = {

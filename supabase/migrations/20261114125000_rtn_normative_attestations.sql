@@ -351,7 +351,8 @@ DECLARE actor uuid;old rtn_private.npa_configurations;current_id uuid;v integer;
    OR item->>'country'IS DISTINCT FROM'RU'OR length(coalesce(item->>'kind',''))NOT BETWEEN 1 AND 100
    OR rtn_private.npa_date(item->>'date')IS NULL OR length(coalesce(item->>'number',''))NOT BETWEEN 1 AND 100
    OR length(coalesce(item->>'title',''))NOT BETWEEN 1 AND 1000
-   OR(item->>'kind'='FederalLaw'AND NOT rtn_private.npa_supported(item))
+   OR(item->>'kind'='FederalLaw'AND jsonb_typeof(item->'number')IS DISTINCT FROM'string')
+   OR(item?'docid'AND(jsonb_typeof(item->'docid')IS DISTINCT FROM'number'OR coalesce(item->>'docid','')!~'^[1-9][0-9]{0,12}$'))
    OR(item->>'dochash'IS NOT NULL AND length(item->>'dochash')NOT BETWEEN 1 AND 200)
   THEN RAISE EXCEPTION'rtn_npa_basis_identity_invalid'USING ERRCODE='22023';END IF;
  END LOOP;

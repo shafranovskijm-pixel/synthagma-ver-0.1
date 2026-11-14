@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib,json
 from native_apply import HERE,ROOT,MIGRATION
 
-EXPECTED_MIGRATION_SHA256='6b926bc42e27b6c0123c1104ea92684d30705bacb12487f9af04340f6eacd455'
+EXPECTED_MIGRATION_SHA256='01e85d16bcc8d1c94be059274d23e27c20bc9b92913750cf457e490edcba31dc'
 
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 

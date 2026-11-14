@@ -2,7 +2,7 @@
 
 The migration under test is the single canonical file
 `supabase/migrations/20261114125000_rtn_normative_attestations.sql`, SHA256
-`6b926bc42e27b6c0123c1104ea92684d30705bacb12487f9af04340f6eacd455`.
+`01e85d16bcc8d1c94be059274d23e27c20bc9b92913750cf457e490edcba31dc`.
 The runner checks these exact bytes; it never generates or rewrites product SQL.
 
 `SOURCE_PROVENANCE.json` pins every copied synthetic fixture and its relevant
@@ -35,7 +35,7 @@ non-superuser source owner, preserving the provider permission model.
 python supabase/tests/rtn-npa250/run_native.py
 ```
 
-Success requires all312 assertions, including real backend lock waits in both
+Success requires all343 assertions, including real backend lock waits in both
 source/admission and manifest/finding race orders, plus prepared-release A versus
 concurrent publisher B configuration CAS. It also covers complete/partial NPA
 proofs, unsupported dependencies, transient failure windows, JSON null/missing
@@ -59,3 +59,12 @@ price, customer course, learner result or schedule.
 The reviewed follow-up adds only exact latest-check run identity/completion
 metadata to existing projections, with four targeted native assertions. Old
 dd803/308 prototype source and receipts were retained before this change.
+
+The current343 total preserves all previous312 cases and adds31 for an honest
+FederalLaw declaration with omitted ActualID, strict rejection of malformed
+supplied IDs, partial worker coverage, no automatic approval or extension, and
+the unchanged initial manual deadline. This new fixture rolls back before the
+original312 cases. The only product change is the declaration validator;
+support detection, verified evidence, admission, RPCs and ACLs stay unchanged.
+Previous SQL6b926/312 and releaseZIP08903 remain historical evidence, not proof
+of this revision. Platform-specific results must be reported separately.

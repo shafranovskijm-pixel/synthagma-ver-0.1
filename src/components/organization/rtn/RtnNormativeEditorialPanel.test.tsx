@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RtnNormativeEditorialPanel } from './RtnNormativeEditorialPanel';
 import { RtnEditorialPanel } from './RtnEditorialPanel';
+import { completeBasis50 } from './__fixtures__/rtn-complete-basis50';
 import { approvalBlock, parseDeclaredBasis, validateWorkspace, type NormativeEditorialWorkspace } from '@/api/rtn-npa';
 
 const mocks = vi.hoisted(() => ({ auth: null as any, getSession: vi.fn(), rpc: vi.fn(), invoke: vi.fn(), editorialRead: vi.fn() }));
@@ -242,13 +243,50 @@ describe('Actual-auth normative editorial candidate', () => {
     ]) { const w = workspace(); mutate(w.banks[0]); expect(approvalBlock(w.banks[0], w.banks[0].latest_check, w.server_time)).not.toBeNull(); }
     const w = workspace(); expect(approvalBlock(w.banks[0], { ...w.banks[0].latest_check!, id: 'old' }, w.server_time)).not.toBeNull();
   });
-  it('requires the immutable configuration binding and a real official identity before any submission', () => {
+  it('requires the immutable binding and never invents an omitted official identity', () => {
     const w = workspace(); delete (w.banks[0].configuration as any).context_sha256;
     expect(() => validateWorkspace(w)).toThrow(/неполные данные/);
     const basis = workspace().banks[0].configuration!.basis; delete basis[0].docid;
-    expect(() => parseDeclaredBasis(JSON.stringify(basis))).toThrow();
+    expect(parseDeclaredBasis(JSON.stringify(basis))[0]).not.toHaveProperty('docid');
     basis[0].docid = 38355; basis[0].date = '2026-02-31';
     expect(() => parseDeclaredBasis(JSON.stringify(basis))).toThrow();
+  });
+  it('shows exact116 with an omitted identifier as unverified and never enables automatic approval', async () => {
+    delete current.banks[0].configuration!.basis[0].docid;
+    // Even a contradictory old can_approve flag must not turn unknown identity
+    // metadata into complete automatic proof in the browser.
+    expect(current.banks[0].latest_check!.proof_full).toBe(true);
+    expect(current.banks[0].latest_check!.can_approve).toBe(true);
+    expect(approvalBlock(current.banks[0], current.banks[0].latest_check, current.server_time)).toMatch(/не установлен официальный идентификатор/);
+    mount(); await selectBank();
+    expect(screen.getByText(/Метаданные без идентификатора не проверены автоматически/)).toBeInTheDocument();
+    expect(screen.getByText(/Сейчас автоматический адаптер проверяет только 116-ФЗ/)).toHaveTextContent('подтверждённым идентификатором 38355');
+    expect(screen.getByText(/О промышленной безопасности.*идентификатор не установлен/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Утвердить сверенный нормативный состав' })).toBeDisabled();
+    expect(screen.getByText('2026-11-21T00:00:00+03:00')).toBeInTheDocument();
+    expect(calls('approve_rtn_npa_manifest')).toHaveLength(0);
+  });
+  it('sends the complete50 as a dependency draft with unknown IDs omitted and no optimistic approval or extension', async () => {
+    const basis = parseDeclaredBasis(JSON.stringify(completeBasis50)); const fallback = mocks.rpc.getMockImplementation();
+    mocks.rpc.mockImplementation(async (name: string, args: unknown) => {
+      if (name === 'configure_rtn_npa_basis') {
+        current.banks[0].configuration = { ...current.banks[0].configuration!, id: 'new-config50', version: 2, basis };
+        const supportedSyntax = basis.filter(b => b.kind === 'FederalLaw' && b.docid !== undefined).length;
+        return { data: { configuration_id: 'new-config50', version: 2, basis, supported_count: supportedSyntax, unsupported_count: 50 - supportedSyntax, replayed: false }, error: null };
+      }
+      return fallback!(name, args);
+    });
+    mount(); await selectBank();
+    fireEvent.change(screen.getByLabelText('Проверенный полный перечень нормативных оснований этого набора'), { target: { value: JSON.stringify(completeBasis50) } });
+    fireEvent.change(screen.getByLabelText('Основание изменения состава'), { target: { value: 'Полный список проверен; неизвестные идентификаторы не подставлялись' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить новый состав оснований' }));
+    await screen.findByText(/Состав оснований сохранён. Это не утверждение и не продление срока/);
+    const args = calls('configure_rtn_npa_basis')[0][1]; expect(args.p_basis).toEqual(basis);
+    expect(args.p_basis.find((b: any) => b.number === '126-ФЗ' && b.date === '2026-05-02')).not.toHaveProperty('docid');
+    await screen.findByText(/Метаданные без идентификатора не проверены автоматически/);
+    expect(screen.getByRole('button', { name: 'Утвердить сверенный нормативный состав' })).toBeDisabled();
+    expect(screen.getByText('2026-11-21T00:00:00+03:00')).toBeInTheDocument();
+    expect(calls('approve_rtn_npa_manifest')).toHaveLength(0); expect(calls('acknowledge_rtn_npa_manual_review')).toHaveLength(0);
   });
   it('cannot reuse one confirmed law observation for a second configured identity', () => {
     const w = workspace(); const b = w.banks[0];
