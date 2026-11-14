@@ -28,6 +28,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
   const [effective, setEffective] = useState('');
   const [note, setNote] = useState('');
   const [correctionNote, setCorrectionNote] = useState('');
+  const [packageError, setPackageError] = useState('');
   const [notice, setNotice] = useState('');
   const client = useQueryClient();
   const query = useQuery({ queryKey: ['rtn-editorial', actorId], queryFn: getRtnEditorial, enabled: open, retry: false, staleTime: 0 });
@@ -97,7 +98,16 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
           </select></label>
         </div>
         {mode === 'correct' && <label className="block space-y-1 text-sm">Основание исправления<input className={field} value={correctionNote} onChange={event => setCorrectionNote(event.target.value)} /><span className="block text-xs text-muted-foreground">Создаётся новая редакция извлечения. Старые формулировки, выпуски и результаты сохраняются.</span></label>}
-        <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => setText(event.target.value)} /></label>
+        <label className="block min-w-0 space-y-1 text-sm">Файл проверенного пакета<input type="file" accept=".json,application/json" className={field} disabled={busy} onChange={async event => {
+          const file = event.target.files?.[0];
+          if (!file) return;
+          setPackageError('');
+          if (file.size > 2_000_000) { setPackageError('Пакет должен быть не больше 2 МБ.'); return; }
+          try { const content = await file.text(); parsePackage(content); setText(content); }
+          catch { setPackageError('Не удалось прочитать JSON-пакет.'); }
+        }} /></label>
+        {packageError && <p role="alert" className="text-sm text-destructive">{packageError}</p>}
+        <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => { setText(event.target.value); setPackageError(''); }} /></label>
         <Button disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов</option>)}</select></label>

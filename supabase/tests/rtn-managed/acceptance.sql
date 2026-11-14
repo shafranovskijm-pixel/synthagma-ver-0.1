@@ -100,6 +100,18 @@ SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000102'
 SELECT lab.denied('foreign student cannot start',format('SELECT public.start_rtn_attempt(%L)',lab.ctx('assignment_id')#>>'{}'));
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000101',false);
 SELECT lab.check('module material available before start',public.get_rtn_assignment((lab.ctx('module_assignment')->'assignments'->0->>'id')::uuid)->'materials'->0->>'id'='section1');
+SELECT lab.keep('old_module_attempt',public.start_rtn_attempt((lab.ctx('module_assignment')->'assignments'->0->>'id')::uuid));
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT lab.keep('expanded_module_packet','{"code":"A.1-LAB-MODULE","title":"Synthetic module 2 of 2 questions","domain":"industrial-safety","materials":[{"id":"section1","title":"Synthetic expanded chapter","body":"Synthetic expanded material for both fixture questions.","source_refs":[{"url":"https://www.gosnadzor.ru/service/list/lab/norm","citation":"Synthetic fixture source"}]}]}');
+SELECT lab.keep('expanded_module',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic expanded curated coverage without fake source change',lab.ctx('expanded_module_packet')));
+SELECT lab.check('coverage expansion preserves stable module bank',lab.ctx('expanded_module')->>'bank_id'=lab.ctx('module')->>'bank_id' AND lab.ctx('expanded_module')->>'bank_revision_id'<>lab.ctx('module')->>'bank_revision_id');
+SELECT lab.check('expanded coverage exact review replay idempotent',(public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic expanded curated coverage without fake source change',lab.ctx('expanded_module_packet'))->>'key_set_id')=lab.ctx('expanded_module')->>'key_set_id');
+SELECT lab.keep('expanded_module_release',public.publish_rtn_release((lab.ctx('expanded_module')->>'key_set_id')::uuid,current_date,'Synthetic expanded module released without source change'));
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000101',false);
+SELECT lab.check('active module attempt keeps old title count and materials',public.start_rtn_attempt((lab.ctx('module_assignment')->'assignments'->0->>'id')::uuid)=lab.ctx('old_module_attempt') AND jsonb_array_length(lab.ctx('old_module_attempt')->'questions')=1 AND public.get_rtn_attempt((lab.ctx('old_module_attempt')->>'attempt_id')::uuid)->'materials'->0->>'title'='Synthetic chapter');
+SELECT lab.keep('old_module_result',public.submit_rtn_attempt((lab.ctx('old_module_attempt')->>'attempt_id')::uuid,'{"q1":["a"]}'));
+SELECT lab.keep('expanded_module_attempt',public.start_rtn_attempt((lab.ctx('module_assignment')->'assignments'->0->>'id')::uuid));
+SELECT lab.check('same assignment adopts expanded module only for new attempt',lab.ctx('expanded_module_attempt')->>'attempt_id'<>lab.ctx('old_module_attempt')->>'attempt_id' AND jsonb_array_length(lab.ctx('expanded_module_attempt')->'questions')=2 AND lab.ctx('expanded_module_attempt')->>'title'='Synthetic module 2 of 2 questions' AND lab.ctx('expanded_module_attempt')->'materials'->0->>'title'='Synthetic expanded chapter');
 SELECT lab.keep('attempt',public.start_rtn_attempt((lab.ctx('assignment_id')#>>'{}')::uuid));
 SELECT lab.check('public snapshot has no key',lab.ctx('attempt')->'questions'->0 ? 'correct_option_ids'=false AND lab.ctx('attempt')->'questions'->0 ? 'evidence'=false);
 SELECT lab.check('question gives truthful response instruction',lab.ctx('attempt')->'questions'->0->>'expected_correct_count'='1' AND lab.ctx('attempt')->'questions'->0->>'options_origin'='authorial_training');
@@ -168,6 +180,7 @@ SET ROLE postgres;
 SELECT lab.check('old attempt snapshots unchanged',(SELECT to_jsonb(md5(question_snapshot::text||key_snapshot::text))=lab.ctx('attempt_hash') FROM rtn_private.attempts WHERE id=(lab.ctx('attempt')->>'attempt_id')::uuid));
 SELECT lab.denied('submitted result immutable','UPDATE rtn_private.attempts SET score=0 WHERE status=''submitted''');
 SELECT lab.denied('attempt deletion refused','DELETE FROM rtn_private.attempts');
+SELECT lab.check('curated growth did not manufacture source or parent normalization',EXISTS(SELECT 1 FROM rtn_private.bank_revisions child JOIN rtn_private.bank_revisions parent ON parent.id=child.parent_bank_revision_id WHERE child.id=(lab.ctx('expanded_module')->>'bank_revision_id')::uuid AND child.normalization_version=2 AND child.question_count=2 AND parent.id=(lab.ctx('bank_revision_id')#>>'{}')::uuid AND parent.normalization_version=1) AND(SELECT count(*)=2 FROM rtn_private.source_revisions));
 SELECT lab.check('existing learning and finance bytes preserved',lab.ctx('old_data')=(SELECT jsonb_build_array((SELECT jsonb_agg(c)FROM public.courses c),(SELECT jsonb_agg(t)FROM public.test_attempts t),(SELECT jsonb_agg(i)FROM public.subscription_invoices i))));
 SELECT lab.check('no extra invoices or payment changes',(SELECT count(*)=1 AND sum(amount)=6990 AND min(status)='paid' FROM public.subscription_invoices));
 -- Correct OCR text without pretending the official PDF bytes changed. The

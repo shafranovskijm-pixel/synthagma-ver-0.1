@@ -50,7 +50,7 @@ CREATE TABLE rtn_private.bank_revisions(
  normalized_sha256 text NOT NULL CHECK(normalized_sha256 ~ '^[0-9a-f]{64}$'),
  normalization_note text NOT NULL CHECK(length(btrim(normalization_note)) BETWEEN 10 AND 4000),
  question_count integer NOT NULL CHECK(question_count>0),created_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(bank_id,source_revision_id,normalization_version),UNIQUE(bank_id,parent_bank_revision_id),UNIQUE(bank_id,id)
+ UNIQUE(bank_id,source_revision_id,normalization_version),UNIQUE(bank_id,parent_bank_revision_id,normalized_sha256),UNIQUE(bank_id,id)
 );
 CREATE TABLE rtn_private.key_sets(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bank_id uuid NOT NULL,
@@ -399,6 +399,9 @@ DECLARE actor uuid;rev rtn_private.bank_revisions;kid uuid;q jsonb;orig jsonb;ta
   OR((p_module IS NULL OR full_bank) AND jsonb_array_length(p_questions)<>rev.question_count)
   OR(p_module IS NOT NULL AND jsonb_array_length(p_questions)>rev.question_count)
  THEN RAISE EXCEPTION 'rtn_complete_review_required' USING ERRCODE='22023';END IF;
+ -- Serialize child coverage numbering and review context with official checks,
+ -- normalization corrections, and publication using the same source lock.
+ PERFORM 1 FROM rtn_private.sources WHERE id=(SELECT source_id FROM rtn_private.banks WHERE id=p_bank_id) FOR UPDATE;
  FOR q IN SELECT value FROM jsonb_array_elements(p_questions) LOOP
   SELECT x INTO orig FROM jsonb_array_elements(rev.questions)x WHERE x->>'id'=q->>'id' AND x->>'text'=q->>'text' AND x->'number'=q->'number';
   IF orig IS NULL
@@ -418,10 +421,13 @@ DECLARE actor uuid;rev rtn_private.bank_revisions;kid uuid;q jsonb;orig jsonb;ta
    ON CONFLICT(code) DO NOTHING RETURNING id INTO target_bank;
   IF target_bank IS NULL THEN SELECT id INTO target_bank FROM rtn_private.banks WHERE code=p_module->>'code' AND parent_bank_id=parent.id;END IF;
   IF target_bank IS NULL THEN RAISE EXCEPTION 'rtn_module_registration_conflict' USING ERRCODE='40001';END IF;
-  INSERT INTO rtn_private.bank_revisions(bank_id,source_revision_id,questions,question_count,parent_bank_revision_id,normalization_version,normalized_sha256,normalization_note)
-   SELECT target_bank,rev.source_revision_id,subset,jsonb_array_length(p_questions),rev.id,rev.normalization_version,encode(sha256(convert_to(subset::text,'UTF8')),'hex'),'Reviewed module subset of normalization '||rev.id::text
+  INSERT INTO rtn_private.bank_revisions(bank_id,source_revision_id,questions,question_count,parent_bank_revision_id,previous_revision_id,normalization_version,normalized_sha256,normalization_note)
+   SELECT target_bank,rev.source_revision_id,subset,jsonb_array_length(p_questions),rev.id,
+    (SELECT id FROM rtn_private.bank_revisions p WHERE p.bank_id=target_bank AND p.source_revision_id=rev.source_revision_id ORDER BY normalization_version DESC LIMIT 1),
+    coalesce((SELECT max(normalization_version) FROM rtn_private.bank_revisions p WHERE p.bank_id=target_bank AND p.source_revision_id=rev.source_revision_id),0)+1,
+    encode(sha256(convert_to(subset::text,'UTF8')),'hex'),'Reviewed module subset of normalization '||rev.id::text
    FROM(SELECT jsonb_agg(x ORDER BY n)subset FROM jsonb_array_elements(rev.questions) WITH ORDINALITY z(x,n) WHERE EXISTS(SELECT 1 FROM jsonb_array_elements(p_questions)q2 WHERE q2->>'id'=x->>'id'))subset_source
-   ON CONFLICT(bank_id,parent_bank_revision_id) DO NOTHING RETURNING id INTO target_rev;
+   ON CONFLICT(bank_id,parent_bank_revision_id,normalized_sha256) DO NOTHING RETURNING id INTO target_rev;
   IF target_rev IS NULL THEN
    SELECT id INTO target_rev FROM rtn_private.bank_revisions WHERE bank_id=target_bank AND parent_bank_revision_id=rev.id AND question_count=jsonb_array_length(p_questions)
     AND questions=(SELECT jsonb_agg(x ORDER BY n) FROM jsonb_array_elements(rev.questions) WITH ORDINALITY z(x,n) WHERE EXISTS(SELECT 1 FROM jsonb_array_elements(p_questions)q2 WHERE q2->>'id'=x->>'id'));
@@ -457,6 +463,7 @@ DECLARE actor uuid;k rtn_private.key_sets;rid uuid;prior rtn_private.releases;so
  SELECT id INTO latest_parent FROM rtn_private.bank_revisions WHERE bank_id=coalesce(b.parent_bank_id,b.id) AND source_revision_id=sr.id ORDER BY normalization_version DESC LIMIT 1;
  IF latest_parent IS NULL OR(b.parent_bank_id IS NULL AND latest_parent IS DISTINCT FROM br.id)
   OR(b.parent_bank_id IS NOT NULL AND latest_parent IS DISTINCT FROM br.parent_bank_revision_id)
+  OR(b.parent_bank_id IS NOT NULL AND br.id IS DISTINCT FROM(SELECT x.id FROM rtn_private.bank_revisions x WHERE x.bank_id=b.id AND x.source_revision_id=sr.id ORDER BY x.normalization_version DESC LIMIT 1))
  THEN RAISE EXCEPTION 'rtn_release_normalization_is_not_current' USING ERRCODE='40001';END IF;
  IF NOT rtn_private.valid_materials(k.materials) THEN RAISE EXCEPTION 'rtn_valid_learning_materials_required' USING ERRCODE='22023';END IF;
  source_effective:=sr.metadata->>'effective_from';
