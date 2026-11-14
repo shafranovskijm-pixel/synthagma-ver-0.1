@@ -1,4 +1,4 @@
-import {beforeEach,describe,expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 const mock=vi.hoisted(()=>({bucket:vi.fn(),upload:vi.fn(),sign:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{storage:{from:mock.bucket}}}));
 import {HOMEWORK_FILE_LIMIT,uploadHomeworkFile,resolveHomeworkFileUrl} from '../homeworkFiles';
@@ -7,7 +7,14 @@ const tail='44444444-4444-4444-8444-444444444444';
 const path=`${c.userId}/${c.courseId}/${c.lessonId}/${c.epoch}/${tail}`;
 const attachment={bucket:'homework-files',path,url:`homework-file:${path}`,name:'answer.jpg',type:'image/jpeg'};
 beforeEach(()=>{vi.clearAllMocks();mock.bucket.mockReturnValue({upload:mock.upload,createSignedUrl:mock.sign});mock.upload.mockImplementation(async p=>({data:{path:p},error:null}));mock.sign.mockResolvedValue({data:{signedUrl:'https://synthetic.test/signed'},error:null});});
+afterEach(()=>vi.unstubAllGlobals());
 describe('private homework file transport',()=>{
+ it('uses the existing platform storage proxy on the production hostname and retains the signature',async()=>{
+  vi.stubGlobal('window',{location:{hostname:'xn--80aaiswd0ak.xn--p1ai',origin:'https://xn--80aaiswd0ak.xn--p1ai'}});
+  const host=new URL(import.meta.env.VITE_SUPABASE_URL || 'https://atxwvjxbqjgkbjlhsdch.supabase.co').host;
+  mock.sign.mockResolvedValueOnce({data:{signedUrl:`https://${host}/storage/v1/object/sign/homework-files/${path}?token=synthetic-test&download=answer.jpg`},error:null});
+  expect(await resolveHomeworkFileUrl(attachment)).toBe(`https://api.xn--80aaiswd0ak.xn--p1ai/sb-storage/object/sign/homework-files/${path}?token=synthetic-test&download=answer.jpg`);
+ });
  it('uses private immutable storage with exact student/course/lesson/run scope',async()=>{
   const file=new File(['synthetic'],'answer.jpg',{type:'image/jpeg'});const result=await uploadHomeworkFile(file,c);
   expect(mock.bucket).toHaveBeenCalledExactlyOnceWith('homework-files');

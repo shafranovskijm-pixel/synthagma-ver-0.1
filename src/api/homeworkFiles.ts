@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { isLearningProgressEpoch } from '@/lib/learningProgress';
+import { proxiedAssetUrl } from '@/utils/proxyFetch';
 
 export const HOMEWORK_FILE_BUCKET = 'homework-files';
 export const HOMEWORK_FILE_LIMIT = 20 * 1024 * 1024;
@@ -22,10 +23,10 @@ export async function resolveHomeworkFileUrl(value: unknown): Promise<string> {
     const name=typeof a.name==='string' ? a.name.replace(/[\r\n/\\]/g,'_') : 'homework';
     const {data,error}=await supabase.storage.from(HOMEWORK_FILE_BUCKET).createSignedUrl(a.path,300,{download:name});
     if (error || !data?.signedUrl) throw new Error('Не удалось открыть файл');
-    return data.signedUrl;
+    return proxiedAssetUrl(data.signedUrl);
   }
   if (typeof a.url!=='string') throw new Error('Файл не подтверждён');
   const url=new URL(a.url,window.location.origin);
   if (!['https:','http:'].includes(url.protocol)) throw new Error('Недопустимая ссылка на файл');
-  return url.href;
+  return proxiedAssetUrl(url.href);
 }
