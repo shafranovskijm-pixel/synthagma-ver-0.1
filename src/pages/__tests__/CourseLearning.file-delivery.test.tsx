@@ -38,6 +38,29 @@ import CourseLearning from "../CourseLearning";
 beforeEach(() => { vi.clearAllMocks(); mocks.kind = "text"; mocks.content = "Учебный текст"; mocks.legacy = false; mocks.library = false; mocks.download = false; mocks.image = false; mocks.generation = 1; mocks.course = "course-a"; mocks.mobile = false; mocks.lessonCount = 1; mocks.accessible = [0]; mocks.completed = []; mocks.current = 0; mocks.run = null; mocks.offline = false; mocks.admin = false; });
 afterEach(cleanup);
 describe("learner file delivery page integration", () => {
+  it("shows a practice lesson's existing blocks instead of an empty page", () => {
+    mocks.kind = "practice"; mocks.legacy = true;
+    const blocks = [{ id: "instruction", type: "paragraph", content: "Выполните самостоятельную работу" }, { id: "video", type: "video", content: "kinescope:synthetic" }];
+    mocks.content = JSON.stringify(blocks);
+    render(<CourseLearning />);
+    expect(screen.getByRole("heading", { name: "Урок" })).toBeInTheDocument();
+    expect(mocks.blocks).toHaveBeenCalledWith(expect.objectContaining({ blocks }));
+    expect(mocks.complete).not.toHaveBeenCalled();
+  });
+  it("shows plain practice instructions without changing progress", () => {
+    mocks.kind = "practice"; mocks.legacy = true; mocks.content = "Соберите модель и сравните размеры";
+    render(<CourseLearning />);
+    expect(screen.getByText("Соберите модель и сравните размеры")).toBeInTheDocument();
+    expect(mocks.blocks).not.toHaveBeenCalled(); expect(mocks.complete).not.toHaveBeenCalled();
+  });
+  it("preserves the resource fence for practice lessons", () => {
+    mocks.kind = "practice";
+    mocks.content = JSON.stringify([{ id: "text", type: "paragraph", content: "Условие работы" }, { id: "video", type: "video", content: "https://private.example/raw" }]);
+    const view = render(<CourseLearning />);
+    expect(view.container.textContent).toContain("Условие работы");
+    expect(view.container.querySelector("[src],[href],iframe,audio,video")).toBeNull();
+    expect(mocks.blocks).not.toHaveBeenCalled(); expect(mocks.complete).not.toHaveBeenCalled();
+  });
   it("disables and marks locked mobile dots even when an old completed badge exists", () => {
     mocks.mobile = true; mocks.lessonCount = 3; mocks.completed = [2];
     render(<CourseLearning />);

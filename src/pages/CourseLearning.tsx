@@ -297,8 +297,8 @@ const CourseLearning = () => {
               <p role="status" className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">Урок пока недоступен. Пройдите предыдущие уроки или дождитесь открытия доступа учебной организацией.</p>
             ) : (
               <>
-            {/* Text lesson */}
-            {currentLesson?.type === 'text' && (
+            {/* Text and practice lessons share the authored block renderer and resource fence. */}
+            {(currentLesson?.type === 'text' || currentLesson?.type === 'practice') && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-primary/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><FileText className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-primary")} /></div>
