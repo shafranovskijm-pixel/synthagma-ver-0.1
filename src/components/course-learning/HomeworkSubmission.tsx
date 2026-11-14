@@ -69,17 +69,22 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [confirmReplacement, setConfirmReplacement] = useState<PreparedHomeworkReport | null>(null);
   const [transferNotice, setTransferNotice] = useState(false);
   const alive = useRef(false);
   const loadSequence = useRef(0);
   const submitting = useRef(false);
   const completedSubmission = useRef<string | null>(null);
+  const loadedOnce = useRef(false);
+  const resetHandler = useRef(onLearningProgressReset);
+  resetHandler.current = onLearningProgressReset;
   const context = { organizationId, courseId, lessonId, userId };
 
   const loadSubmissions = useCallback(async () => {
     const sequence = ++loadSequence.current;
-    setLoading(true);
+    setLoading(!loadedOnce.current);
+    setRefreshing(loadedOnce.current);
     setLoadError(false);
     try {
       if (!organizationId || !courseId || !lessonId || !userId) throw new Error('Missing context');
@@ -87,28 +92,29 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
         .rpc("get_own_homework_history", { p_lesson_id: lessonId });
       if (!alive.current || sequence !== loadSequence.current) return;
       if (error) {
-        if (await onLearningProgressReset?.(error)) return;
+        if (await resetHandler.current?.(error)) return;
         throw error;
       }
       const result = data as unknown as { learning_progress_epoch?: unknown; submissions?: unknown } | null;
       if (!result || !isLearningProgressEpoch(result.learning_progress_epoch)) throw new Error('History not confirmed');
       if (learningRun && result.learning_progress_epoch !== learningRun.epoch) {
-        await onLearningProgressReset?.(new Error('LEARNING_PROGRESS_RESET'));
+        await resetHandler.current?.(new Error('LEARNING_PROGRESS_RESET'));
         throw new Error('Learning run changed');
       }
       if (!alive.current || sequence !== loadSequence.current) return;
       if (!Array.isArray(result.submissions) || result.submissions.some(row => !row || !isLearningProgressEpoch(row.learning_progress_epoch)
         || row.organization_id !== organizationId || row.course_id !== courseId || row.lesson_id !== lessonId || row.student_id !== userId)) throw new Error('History not confirmed');
       setSubmissions(result.submissions as Submission[]);
+      loadedOnce.current = true;
     } catch {
       if (alive.current && sequence === loadSequence.current) {
         setSubmissions([]);
         setLoadError(true);
       }
     } finally {
-      if (alive.current && sequence === loadSequence.current) setLoading(false);
+      if (alive.current && sequence === loadSequence.current) { setLoading(false); setRefreshing(false); }
     }
-  }, [organizationId, courseId, lessonId, userId, learningRun?.epoch, onLearningProgressReset]);
+  }, [organizationId, courseId, lessonId, userId, learningRun?.epoch]);
 
   useEffect(() => {
     alive.current = true;
@@ -116,26 +122,37 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
     return () => { alive.current = false; };
   }, [loadSubmissions]);
 
+  useEffect(() => {
+    if (readOnly) return;
+    // A native file chooser returns focus to the page. Refresh teacher feedback
+    // without replacing the file input that is receiving the selected file.
+    const refresh = () => { if (document.visibilityState !== 'hidden') void loadSubmissions(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [loadSubmissions, readOnly]);
+
   // Historical answers and reviews stay visible, but cannot complete a new run.
   // The server-owned submission generation is decisive: grading an old answer
   // after reset does not move it into the current run.
   const currentSubmissions = learningRun ? submissions.filter(sub => sub.learning_progress_epoch === learningRun.epoch) : [];
   const latest = currentSubmissions[0];
   const history = submissions.filter(sub => sub.id !== latest?.id);
-  const canSubmit = !readOnly && !loading && !loadError && (!latest || latest.status === "revision" || latest.status === "rejected");
+  const canEditDraft = !readOnly && !loading && !loadError && (!latest || latest.status === "revision" || latest.status === "rejected");
+  const canSubmit = canEditDraft && !refreshing;
 
   // Auto-complete lesson when approved
   useEffect(() => {
-    if (!readOnly && !loading && !loadError && latest?.status === "approved" && completedSubmission.current !== latest.id) {
+    if (!readOnly && !loading && !refreshing && !loadError && latest?.status === "approved" && completedSubmission.current !== latest.id) {
       completedSubmission.current = latest.id;
       onComplete();
     }
-  }, [latest?.status, latest?.id, loading, loadError, onComplete, readOnly]);
+  }, [latest?.status, latest?.id, loading, refreshing, loadError, onComplete, readOnly]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const input = e.target;
-    if (!file || !allowAttachments || !canSubmit || sending || uploading) return;
+    if (!file || !allowAttachments || !canEditDraft || sending || uploading) return;
     setUploading(true);
     try {
       if (!learningRun) throw new Error('Learning run not confirmed');
@@ -172,7 +189,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
       status: "pending" }).select("id, organization_id, course_id, lesson_id, student_id, status, learning_progress_epoch").single();
       if (!alive.current) return;
       if (error) {
-        if (await onLearningProgressReset?.(error)) return;
+        if (await resetHandler.current?.(error)) return;
         throw error;
       }
       if (!alive.current) return;
@@ -249,7 +266,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
         {content && <Textarea aria-label="Сохранённый черновик, отправка не подтверждена" value={content} readOnly />}
         <Button variant="outline" onClick={() => void loadSubmissions()} disabled={sending}>Обновить историю</Button>
       </div>}
-      {canSubmit && (
+      {canEditDraft && (
         <div className="space-y-4">
           <h3 className="font-semibold text-sm">
             {latest ? "Отправить доработку" : "Отправить ответ"}
@@ -281,6 +298,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
             placeholder="Напишите ваш ответ..."
             className="rounded-xl min-h-[120px]"
           />
+          {refreshing && <p role="status" className="text-sm text-muted-foreground">Проверяем актуальное состояние задания. Черновик сохранён.</p>}
           {allowAttachments ? <div className="flex items-center gap-3 flex-wrap">
             <label className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors text-sm">
               {uploading ? <SigmaSpinner size="sm" /> : <Paperclip className="w-4 h-4" />}
@@ -296,7 +314,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
           </div> : <p className="text-sm text-muted-foreground">Для этого курса ответ передаётся текстом. Файлы с персональными данными сюда не загружайте.</p>}
           <Button
             onClick={handleSubmit}
-            disabled={sending || uploading || content.length > HOMEWORK_TEXT_LIMIT || (!content.trim() && (!allowAttachments || attachments.length === 0))}
+            disabled={sending || uploading || refreshing || content.length > HOMEWORK_TEXT_LIMIT || (!content.trim() && (!allowAttachments || attachments.length === 0))}
             className="btn-gradient rounded-xl gap-2"
           >
             {sending ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
