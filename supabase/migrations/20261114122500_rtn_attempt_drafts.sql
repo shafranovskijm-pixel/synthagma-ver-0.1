@@ -1,6 +1,5 @@
 -- Server-side partial answers for the exact immutable RTN attempt. No key,
 -- score, source revision or previous completed result can be changed here.
-BEGIN;
 DO $preflight$ BEGIN
  IF to_regclass('rtn_private.attempts') IS NULL
  OR to_regprocedure('rtn_private.record_activity(uuid,uuid,uuid,text)') IS NULL
@@ -81,4 +80,3 @@ DO $acl$ DECLARE f record;g record;BEGIN
  END LOOP;
 END;$acl$;
 GRANT EXECUTE ON FUNCTION public.get_rtn_attempt_draft(uuid),public.save_rtn_attempt_draft(uuid,jsonb,bigint) TO authenticated;
-COMMIT;

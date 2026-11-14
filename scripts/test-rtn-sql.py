@@ -31,7 +31,9 @@ if probe.returncode or not probe.stdout.strip().startswith('rtn_lab_ci|17'):
     raise SystemExit('REFUSE: dedicated PostgreSQL17 lab could not be verified')
 fixture = (HERE / 'fixture.sql').read_text(encoding='utf-8')
 guards = (HERE / 'released-guards.sql').read_text(encoding='utf-8')
-migration = (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8')
+# The supported provider owns the transaction around each payload. Native psql
+# emulates that boundary exactly once; product SQL contains no outer TX control.
+migration = 'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n'
 acceptance = (HERE / 'acceptance.sql').read_text(encoding='utf-8')
 baseline = """
 SELECT lab.keep('old_data',(SELECT jsonb_build_array((SELECT jsonb_agg(c)FROM public.courses c),(SELECT jsonb_agg(t)FROM public.test_attempts t),(SELECT jsonb_agg(i)FROM public.subscription_invoices i))));

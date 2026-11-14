@@ -148,9 +148,10 @@ def build_setup():
         (base / 'released-guards.sql').read_text(encoding='utf-8'),
         (base / 'quota-fixture.sql').read_text(encoding='utf-8'),
         (base / 'released-quota-sources.sql').read_text(encoding='utf-8'),
-        (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8'),
-        (ROOT / 'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text(encoding='utf-8'),
-        (ROOT / 'supabase/migrations/20261114122500_rtn_attempt_drafts.sql').read_text(encoding='utf-8'),
+        # Native psql emulates the provider-owned transaction once per payload.
+        'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
+        'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
+        'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114122500_rtn_attempt_drafts.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
         '\n'.join(tables), (HERE / 'fixture.sql').read_text(encoding='utf-8'), '\n'.join(funcs),
         # The new-RPC fixture deliberately models provider-default sandbox
         # grants. This old production source capture has its own exact ACLs;
@@ -171,7 +172,7 @@ if __name__ == '__main__':
     (OUT / 'native.stderr.txt').write_text(setup.stderr, encoding='utf-8')
     if setup.returncode:
         raise SystemExit(setup.stderr[-6000:])
-    migration = (ROOT / 'supabase/migrations/20261114123000_rtn_account_erasure.sql').read_text(encoding='utf-8')
+    migration = 'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114123000_rtn_account_erasure.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n'
     # A drifted actual entrypoint must reject the whole migration and leave the
     # paid rollout closed. Restore from the same captured source afterwards.
     drift = run("ALTER FUNCTION public.account_deletion_erase_data(uuid,text) SET search_path=public;")

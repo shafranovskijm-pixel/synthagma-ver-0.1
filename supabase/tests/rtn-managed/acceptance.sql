@@ -290,3 +290,9 @@ SELECT lab.denied('archived target owner denied','SELECT public.get_rtn_workspac
 SELECT lab.denied('owner cannot read editorial source workspace','SELECT public.get_rtn_editorial_workspace()');
 SET ROLE postgres;
 UPDATE public.profiles SET archived_at=NULL WHERE user_id='81000000-0000-4000-8000-000000000001';
+SELECT lab.check('official current legal text HTTP evidence host accepted',
+ rtn_private.valid_materials(jsonb_set(lab.ctx('full_review')->'materials','{0,source_refs,0,url}','"http://actual.pravo.gov.ru/fixture-document"'))
+ AND rtn_private.valid_questions(jsonb_set(lab.ctx('keys'),'{0,evidence,0,url}','"http://actual.pravo.gov.ru/fixture-document"'),true));
+SELECT lab.check('current legal text lookalike HTTP host refused',
+ NOT rtn_private.valid_materials(jsonb_set(lab.ctx('full_review')->'materials','{0,source_refs,0,url}','"http://actual.pravo.gov.ru.evil.test/fixture-document"'))
+ AND NOT rtn_private.valid_questions(jsonb_set(lab.ctx('keys'),'{0,evidence,0,url}','"http://actual.pravo.gov.ru.evil.test/fixture-document"'),true));

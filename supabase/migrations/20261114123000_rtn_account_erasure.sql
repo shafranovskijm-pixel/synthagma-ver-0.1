@@ -1,6 +1,5 @@
 -- Integrate only RTN-owned personal links into the existing confirmed erasure
 -- workflow. This migration NEVER invokes account erasure or deletes an account.
-BEGIN;
 
 -- SELECT-only live preimage capture, project d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2,
 -- 2026-11-14. Preserve existing owner/ACL/config and every unrelated body byte.
@@ -345,4 +344,3 @@ DO $postimage$ BEGIN
  THEN RAISE EXCEPTION 'RTN_ERASURE_BRIDGE_INCOMPLETE';END IF;
 END;$postimage$;
 UPDATE rtn_private.rollout_state SET privacy_integration_ready=true WHERE id=1;
-COMMIT;

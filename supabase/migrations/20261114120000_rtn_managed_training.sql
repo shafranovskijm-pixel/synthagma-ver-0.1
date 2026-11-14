@@ -1,6 +1,5 @@
 -- Additive managed Rostekhnadzor banks. No existing course, result or billing
 -- row/policy is changed. Public questions are distinct from reviewed keys.
-BEGIN;
 -- Provider Storage owns bucket creation. Create rtn-sources through the
 -- supported Storage API first (public=false), then apply this migration.
 -- A NULL limit is the provider default; the worker and SQL independently cap
@@ -221,7 +220,7 @@ DECLARE q jsonb;o jsonb;ids text[];option_ids text[];correct_ids text[];BEGIN
    IF coalesce(cardinality(correct_ids),0)=0 OR NOT correct_ids<@option_ids
     OR cardinality(correct_ids)<>(SELECT count(DISTINCT x) FROM unnest(correct_ids)x) THEN RETURN false;END IF;
    IF EXISTS(SELECT 1 FROM jsonb_array_elements(q->'evidence')e WHERE nullif(btrim(e->>'citation'),'') IS NULL OR length(e->>'citation')>4000
-    OR(coalesce(e->>'url','') !~ '^https://' AND coalesce(e->>'url','') !~ '^http://(publication\.)?pravo\.gov\.ru/')) THEN RETURN false;END IF;
+    OR(coalesce(e->>'url','') !~ '^https://' AND coalesce(e->>'url','') !~ '^http://(publication\.|actual\.)?pravo\.gov\.ru/')) THEN RETURN false;END IF;
   ELSIF q ?| ARRAY['correct_option_ids','correct_answer','answer','is_correct','key','evidence'] THEN RETURN false;
   END IF;
  END LOOP;RETURN true;
@@ -244,7 +243,7 @@ DECLARE m jsonb;ids text[]:=ARRAY[]::text[];BEGIN
    OR jsonb_typeof(m->'source_refs') IS DISTINCT FROM 'array' OR jsonb_array_length(m->'source_refs') NOT BETWEEN 1 AND 20
   THEN RETURN false;END IF;
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(m->'source_refs')r WHERE length(coalesce(r->>'citation','')) NOT BETWEEN 1 AND 4000
-   OR(coalesce(r->>'url','') !~ '^https://' AND coalesce(r->>'url','') !~ '^http://(publication\.)?pravo\.gov\.ru/')) THEN RETURN false;END IF;
+   OR(coalesce(r->>'url','') !~ '^https://' AND coalesce(r->>'url','') !~ '^http://(publication\.|actual\.)?pravo\.gov\.ru/')) THEN RETURN false;END IF;
   ids:=array_append(ids,m->>'id');
  END LOOP;RETURN true;
 END;$fn$;
@@ -762,4 +761,3 @@ DO $acl$ DECLARE f record;g record;BEGIN
   END IF;
  END LOOP;
 END;$acl$;
-COMMIT;

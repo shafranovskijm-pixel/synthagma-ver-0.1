@@ -39,11 +39,12 @@ CREATE TRIGGER enforce_organization_monthly_course_quota AFTER INSERT OR UPDATE 
 REVOKE ALL ON FUNCTION public._organization_monthly_course_limits(uuid),public.enforce_organization_monthly_course_quota() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION public.get_organization_student_capacity(uuid,integer),public.get_organization_training_capacity(uuid,integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.get_organization_student_capacity(uuid,integer),public.get_organization_training_capacity(uuid,integer) TO authenticated,service_role;
-"""+baseline+'\n'+(ROOT/'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text()+'\n'+(HERE/'acceptance.sql').read_text()+"""
+"""+baseline+'\nBEGIN;\n'+(ROOT/'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text()+'\nCOMMIT;\n'+(HERE/'acceptance.sql').read_text()+"""
 SELECT lab.keep('quota_abi',(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_proc p WHERE p.oid=ANY(ARRAY['public._organization_monthly_course_limits(uuid)'::regprocedure,'public.enforce_organization_monthly_course_quota()'::regprocedure,'public.get_organization_student_capacity(uuid,integer)'::regprocedure,'public.get_organization_training_capacity(uuid,integer)'::regprocedure])));
 """
 run(setup)
-run('SET ROLE postgres;\n'+(ROOT/'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text())
+# Emulate the provider's one atomic transaction per migration payload.
+run('SET ROLE postgres;BEGIN;\n'+(ROOT/'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text()+'\nCOMMIT;\n')
 run("SET ROLE postgres;SELECT lab.check('quota original trigger helpers ABI sources ACL unchanged',lab.ctx('quota_abi')=(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_proc p WHERE p.oid=ANY(ARRAY['public._organization_monthly_course_limits(uuid)'::regprocedure,'public.enforce_organization_monthly_course_quota()'::regprocedure,'public.get_organization_student_capacity(uuid,integer)'::regprocedure,'public.get_organization_training_capacity(uuid,integer)'::regprocedure])));")
 run("""SET ROLE postgres;
 SELECT lab.check('quota new material RPC removes every provider default grantee',(SELECT proacl::text='{postgres=X/postgres,authenticated=X/postgres}'FROM pg_proc WHERE oid='public.record_rtn_material_open(uuid,uuid)'::regprocedure) AND NOT has_function_privilege('sandbox_exec_atxwvjxbqjgkbjlhsdch','public.record_rtn_material_open(uuid,uuid)','EXECUTE'));

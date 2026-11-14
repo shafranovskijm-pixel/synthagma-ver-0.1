@@ -34,48 +34,43 @@ export function createRtnHandler(deps: Dependencies) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'POST') return json({ error: 'Use POST' }, 405);
     try {
-      const service = deps.service, cronSecret = request.headers.get('x-rtn-cron-secret');
-      let runId: string | null = null;
-      if (cronSecret) {
-        if (!/^[a-f0-9]{64}$/.test(cronSecret) || await rpcValue(service, 'verify_rtn_cron_secret', { p_secret: cronSecret }) !== true) return json({ error: 'RTN_AUTH_REQUIRED' }, 401);
-        await rpcValue(service, 'enqueue_due_rtn_checks');
-      } else {
-        const authorization = request.headers.get('authorization');
-        if (!authorization?.startsWith('Bearer ')) return json({ error: 'RTN_AUTH_REQUIRED' }, 401);
-        const user = deps.user(authorization);
-        const { data: auth, error: authError } = await user.auth.getUser();
-        if (authError || !auth.user) return json({ error: 'RTN_AUTH_REQUIRED' }, 401);
-        let body: Record<string, unknown>;
-        try { body = await readBody(request); } catch { return json({ error: 'RTN_INVALID_REQUEST' }, 400); }
-        if (body.operation !== undefined) {
-          if (!['bootstrap', 'normalize'].includes(String(body.operation))) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
-          // The real user's admin/privacy check precedes every narrow service mutation.
-          const admin = await user.rpc('get_rtn_editorial_workspace');
-          if (admin.error) return json({ error: 'RTN_ADMIN_REQUIRED' }, 403);
-          if (body.operation === 'bootstrap') {
-            const sources = [];
-            for (const source of INITIAL_RTN_SOURCES) sources.push(await rpcValue(service, 'register_rtn_source', { p_source: source }));
-            const queued = await rpcValue(service, 'enqueue_due_rtn_checks');
-            return json({ sources, queued });
-          }
-          if (typeof body.sourceRevisionId !== 'string' || !uuid.test(body.sourceRevisionId) || !Array.isArray(body.normalizedBanks) || !body.normalizedBanks.length) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
-          const args: Record<string, unknown> = { p_source_revision_id: body.sourceRevisionId, p_normalized_banks: body.normalizedBanks };
-          if (body.previousRevisionIds !== undefined || body.correctionNote !== undefined) {
-            if (!body.previousRevisionIds || typeof body.previousRevisionIds !== 'object' || Array.isArray(body.previousRevisionIds)
-              || !Object.values(body.previousRevisionIds).every(value => typeof value === 'string' && uuid.test(value))
-              || typeof body.correctionNote !== 'string' || body.correctionNote.trim().length < 10) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
-            args.p_previous_revision_ids = body.previousRevisionIds; args.p_correction_note = body.correctionNote;
-          }
-          return json(await rpcValue(service, 'normalize_rtn_revision', args));
+      // This entrypoint is exclusively a genuine user session. Managed cron
+      // has a separate authenticated entrypoint and never reaches user/admin RPCs.
+      const service = deps.service, authorization = request.headers.get('authorization');
+      if (!authorization?.startsWith('Bearer ')) return json({ error: 'RTN_AUTH_REQUIRED' }, 401);
+      const user = deps.user(authorization);
+      const { data: auth, error: authError } = await user.auth.getUser();
+      if (authError || !auth.user) return json({ error: 'RTN_AUTH_REQUIRED' }, 401);
+      let body: Record<string, unknown>;
+      try { body = await readBody(request); } catch { return json({ error: 'RTN_INVALID_REQUEST' }, 400); }
+      if (body.operation !== undefined) {
+        if (!['bootstrap', 'normalize'].includes(String(body.operation))) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
+        // The real user's admin/privacy check precedes every narrow service mutation.
+        const admin = await user.rpc('get_rtn_editorial_workspace');
+        if (admin.error) return json({ error: 'RTN_ADMIN_REQUIRED' }, 403);
+        if (body.operation === 'bootstrap') {
+          const sources = [];
+          for (const source of INITIAL_RTN_SOURCES) sources.push(await rpcValue(service, 'register_rtn_source', { p_source: source }));
+          const queued = await rpcValue(service, 'enqueue_due_rtn_checks');
+          return json({ sources, queued });
         }
-        if (JSON.stringify(body).length > 4096 || typeof body.organizationId !== 'string' || typeof body.sourceId !== 'string' || !uuid.test(body.organizationId) || !uuid.test(body.sourceId)) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
-        const { data, error } = await user.rpc('request_rtn_source_check', { p_organization_id: body.organizationId, p_source_id: body.sourceId });
-        if (error) return json({ error: error.code === '42501' ? 'RTN_ACCESS_REQUIRED' : 'RTN_QUEUE_UNAVAILABLE' }, error.code === '42501' ? 403 : 503);
-        const queued = data as { run_id?: string; status?: string } | null;
-        if (!queued?.run_id || !uuid.test(queued.run_id)) return json({ error: 'RTN_QUEUE_UNAVAILABLE' }, 503);
-        if (['changed', 'unchanged', 'error'].includes(queued.status || '')) return json(queued);
-        runId = queued.run_id;
+        if (typeof body.sourceRevisionId !== 'string' || !uuid.test(body.sourceRevisionId) || !Array.isArray(body.normalizedBanks) || !body.normalizedBanks.length) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
+        const args: Record<string, unknown> = { p_source_revision_id: body.sourceRevisionId, p_normalized_banks: body.normalizedBanks };
+        if (body.previousRevisionIds !== undefined || body.correctionNote !== undefined) {
+          if (!body.previousRevisionIds || typeof body.previousRevisionIds !== 'object' || Array.isArray(body.previousRevisionIds)
+            || !Object.values(body.previousRevisionIds).every(value => typeof value === 'string' && uuid.test(value))
+            || typeof body.correctionNote !== 'string' || body.correctionNote.trim().length < 10) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
+          args.p_previous_revision_ids = body.previousRevisionIds; args.p_correction_note = body.correctionNote;
+        }
+        return json(await rpcValue(service, 'normalize_rtn_revision', args));
       }
+      if (JSON.stringify(body).length > 4096 || typeof body.organizationId !== 'string' || typeof body.sourceId !== 'string' || !uuid.test(body.organizationId) || !uuid.test(body.sourceId)) return json({ error: 'RTN_INVALID_REQUEST' }, 400);
+      const { data, error } = await user.rpc('request_rtn_source_check', { p_organization_id: body.organizationId, p_source_id: body.sourceId });
+      if (error) return json({ error: error.code === '42501' ? 'RTN_ACCESS_REQUIRED' : 'RTN_QUEUE_UNAVAILABLE' }, error.code === '42501' ? 403 : 503);
+      const queued = data as { run_id?: string; status?: string } | null;
+      if (!queued?.run_id || !uuid.test(queued.run_id)) return json({ error: 'RTN_QUEUE_UNAVAILABLE' }, 503);
+      if (['changed', 'unchanged', 'error'].includes(queued.status || '')) return json(queued);
+      const runId = queued.run_id;
       // One bounded source per invocation; the durable queue drains on later cron
       // ticks. A terminated invocation never silently becomes a successful check.
       const claim = await rpcValue<CheckClaim | null>(service, 'claim_rtn_check', { p_run_id: runId });

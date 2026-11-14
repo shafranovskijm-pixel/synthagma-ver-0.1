@@ -214,11 +214,15 @@ describe("assigned RTN learner course", () => {
   it("keeps the primary law portal clickable without allowing credential-bearing source links", async () => {
     api.getRtnAssignment.mockResolvedValue({ ...detail, materials: [{ ...material, source_refs: [
       { url: "http://pravo.gov.ru/proxy/ips/?docbody=&nd=102048376", citation: "Первичная публикация закона" },
+      { url: "http://actual.pravo.gov.ru/fixture-document", citation: "Официальная актуальная редакция" },
+      { url: "http://actual.pravo.gov.ru.evil.test/fixture-document", citation: "Поддельный домен" },
       { url: "https://user:password@example.org/private", citation: "Непроверенная ссылка с реквизитами" },
     ] }] });
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Открыть обучение" }));
     expect(await screen.findByRole("link", { name: "Первичная публикация закона" })).toHaveAttribute("href", "http://pravo.gov.ru/proxy/ips/?docbody=&nd=102048376");
+    expect(screen.getByRole("link", { name: "Официальная актуальная редакция" })).toHaveAttribute("href", "http://actual.pravo.gov.ru/fixture-document");
+    expect(screen.queryByRole("link", { name: "Поддельный домен" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Непроверенная ссылка с реквизитами" })).not.toBeInTheDocument();
   });
 

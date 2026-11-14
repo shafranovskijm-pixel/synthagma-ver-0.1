@@ -42,15 +42,20 @@ context={'ROOT':ROOT,'HERE':ROOT/'supabase/tests/rtn-account-erasure','re':re}
 exec(compile(ast.fix_missing_locations(ast.Module(body=[builder],type_ignores=[])),'<reviewed-privacy-fixture-builder>','exec'),context)
 setup=context['build_setup']().replace('DATABASE rtn_erasure_lab_ci','DATABASE rtn_freshness_lab_ci')
 run(setup)
-run('SET ROLE postgres;'+read('supabase/migrations/20261114123000_rtn_account_erasure.sql'))
+run('SET ROLE postgres;BEGIN;\n'+read('supabase/migrations/20261114123000_rtn_account_erasure.sql')+'\nCOMMIT;\n')
 run((HERE/'seed.sql').read_text(encoding='utf-8'))
-migration=read('supabase/migrations/20261114124000_rtn_normative_review_admission.sql')
+# The provider wraps each source payload atomically; native psql emulates it.
+migration='BEGIN;\n'+read('supabase/migrations/20261114124000_rtn_normative_review_admission.sql')+'\nCOMMIT;\n'
 run('SET ROLE postgres;ALTER FUNCTION public.get_rtn_workspace(uuid) SET search_path=public;')
 refused=raw('SET ROLE postgres;'+migration)
 if not refused.returncode or'RTN_NORMATIVE_PREIMAGE_OR_AUTHORITY_CHANGED'not in refused.stderr:
     raise AssertionError('Drifted 240 preimage was not refused: '+refused.stderr)
 run("SET ROLE postgres;SELECT lab.check('freshness: preimage drift rolls back entire migration',NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='rtn_private' AND table_name='key_sets' AND column_name='normative_cutoff_at') AND to_regprocedure('rtn_private.normative_bounds(jsonb,jsonb)')IS NULL);ALTER FUNCTION public.get_rtn_workspace(uuid) SET search_path=pg_catalog,public;")
-run('SET ROLE postgres;'+migration+'\n'+(HERE/'acceptance.sql').read_text(encoding='utf-8'))
+run('SET ROLE postgres;'+migration)
+# Readiness-only121 runs AFTER the complete reviewed schema. This fixture has
+# neither Vault nor cron: the payload must not need or create either service.
+run('SET ROLE postgres;BEGIN;\n'+read('supabase/migrations/20261114121000_rtn_source_scheduler.sql')+'\nCOMMIT;\n')
+run((HERE/'acceptance.sql').read_text(encoding='utf-8'))
 
 ADMIN='81000000-0000-4000-8000-000000000999'
 OWNER='81000000-0000-4000-8000-000000000001'
@@ -104,6 +109,6 @@ run((HERE/'reviewer-erasure.sql').read_text(encoding='utf-8'))
 receipt=json.loads(run("SELECT jsonb_build_object('passed',count(*),'failed',0,'checks',jsonb_agg(name ORDER BY name))FROM lab.results;"))
 receipt.update({'complete':True,'scope':SCOPE})
 (OUT/'result.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
-manifest={str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()for p in[ROOT/'supabase/migrations/20261114124000_rtn_normative_review_admission.sql',Path(__file__).resolve(),HERE/'seed.sql',HERE/'acceptance.sql',HERE/'reviewer-erasure.sql']}
+manifest={str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()for p in[ROOT/'supabase/migrations/20261114124000_rtn_normative_review_admission.sql',ROOT/'supabase/migrations/20261114121000_rtn_source_scheduler.sql',Path(__file__).resolve(),HERE/'seed.sql',HERE/'acceptance.sql',HERE/'reviewer-erasure.sql']}
 (OUT/'source-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
 print(f"{receipt['passed']} PASS: {SCOPE}; actual post-lock edition races PASS")

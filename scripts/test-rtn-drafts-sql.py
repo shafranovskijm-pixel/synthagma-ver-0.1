@@ -24,6 +24,8 @@ probe = run("SELECT current_database(),current_setting('server_version_num');")
 if probe.returncode or not probe.stdout.strip().startswith('rtn_lab_ci|17'):
     raise SystemExit('REFUSE: dedicated native PostgreSQL17 lab required')
 read = lambda path: (ROOT / path).read_text(encoding='utf-8')
+# The provider supplies this transaction; native psql supplies it only here.
+migration = lambda path: 'BEGIN;\n' + read(path) + '\nCOMMIT;\n'
 baseline = """SELECT lab.keep('old_data',(SELECT jsonb_build_array((SELECT jsonb_agg(c)FROM public.courses c),(SELECT jsonb_agg(t)FROM public.test_attempts t),(SELECT jsonb_agg(i)FROM public.subscription_invoices i))));
 SELECT lab.keep('guard_metadata',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='billing_access_private' OR(n.nspname='public' AND p.proname IN('account_deletion_access_allowed','can_access_organization','has_role','is_student_profile','has_org_staff_permission','get_org_staff_permissions','normalize_org_staff_permission','org_role_default_permissions','has_active_postpaid_agreement','postpaid_is_admin'))));
 SELECT lab.keep('storage_policy_metadata',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_policy p WHERE polrelid='storage.objects'::regclass));"""
@@ -32,8 +34,8 @@ CREATE TABLE lab.draft_activity_calls(assignment_id uuid,attempt_id uuid,release
 CREATE FUNCTION rtn_private.record_activity(uuid,uuid,uuid,text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$BEGIN INSERT INTO lab.draft_activity_calls VALUES($1,$2,$3,$4);RETURN true;END;$$;
 REVOKE ALL ON FUNCTION rtn_private.record_activity(uuid,uuid,uuid,text) FROM PUBLIC,anon,authenticated,service_role;"""
 sql = '\n'.join([read('supabase/tests/rtn-managed/fixture.sql'), read('supabase/tests/rtn-managed/released-guards.sql'), baseline,
-                 read('supabase/migrations/20261114120000_rtn_managed_training.sql'), read('supabase/tests/rtn-managed/acceptance.sql'),
-                 adapter, read('supabase/migrations/20261114122500_rtn_attempt_drafts.sql'), read('supabase/tests/rtn-drafts/acceptance.sql')])
+                 migration('supabase/migrations/20261114120000_rtn_managed_training.sql'), read('supabase/tests/rtn-managed/acceptance.sql'),
+                 adapter, migration('supabase/migrations/20261114122500_rtn_attempt_drafts.sql'), read('supabase/tests/rtn-drafts/acceptance.sql')])
 result = run(sql)
 (OUT / 'stdout.txt').write_text(result.stdout, encoding='utf-8')
 (OUT / 'stderr.txt').write_text(result.stderr, encoding='utf-8')

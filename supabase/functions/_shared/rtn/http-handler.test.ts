@@ -5,7 +5,7 @@ import type { WorkerClient } from './check-worker';
 
 const id = '04cc2cb4-c837-40ca-9767-6d6b95def7f5';
 function setup() {
-  const serviceRpc = vi.fn(async (name: string) => ({ data: name === 'verify_rtn_cron_secret' ? true : null, error: null }));
+  const serviceRpc = vi.fn(async (_name: string) => ({ data: null, error: null }));
   const userRpc = vi.fn(async (name: string) => ({ data: name === 'request_rtn_source_check' ? { run_id: id, status: 'queued' } : {}, error: null }));
   const getUser = vi.fn().mockResolvedValue({ data: { user: { id } }, error: null });
   const service = { rpc: serviceRpc, storage: { from: vi.fn() } } as unknown as WorkerClient;
@@ -22,11 +22,23 @@ describe('RTN HTTP authorization and queue boundary', () => {
     expect((await a.request({ organizationId: id, sourceId: id })).status).toBe(401);
     expect(a.userRpc).not.toHaveBeenCalled(); expect(a.serviceRpc).not.toHaveBeenCalled();
   });
-  it('rejects a forged scheduler secret and never falls through to user or queue operations', async () => {
-    const a = setup(); a.serviceRpc.mockResolvedValue({ data: false, error: null } as never);
+  it('a legacy scheduler header alone cannot authenticate or invoke any service operation', async () => {
+    const a = setup();
     const response = await a.handler(new Request('https://local.test/rtn', { method: 'POST', headers: { 'x-rtn-cron-secret': 'a'.repeat(64) }, body: '{}' }));
     expect(response.status).toBe(401); expect(a.user).not.toHaveBeenCalled();
-    expect(a.serviceRpc.mock.calls.map(call => call[0])).toEqual(['verify_rtn_cron_secret']);
+    expect(a.serviceRpc).not.toHaveBeenCalled();
+  });
+  it('an opaque cron bearer cannot bypass genuine user verification on this entrypoint', async () => {
+    const a = setup(); a.getUser.mockResolvedValue({ data: { user: null }, error: new Error('not a user JWT') });
+    expect((await a.request({ task: 'rtn-source-reconciliation' }, { authorization: 'Bearer synthetic-opaque-cron-token' })).status).toBe(401);
+    expect(a.getUser).toHaveBeenCalledTimes(1); expect(a.userRpc).not.toHaveBeenCalled(); expect(a.serviceRpc).not.toHaveBeenCalled();
+  });
+  it('a mixed legacy header never changes the genuine user queue and exact-run boundary', async () => {
+    const a = setup();
+    const response = await a.request({ organizationId: id, sourceId: id }, { authorization: 'Bearer genuine-user-token', 'x-rtn-cron-secret': 'a'.repeat(64) } as never);
+    expect(response.status).toBe(200); expect(a.getUser).toHaveBeenCalledTimes(1);
+    expect(a.userRpc).toHaveBeenCalledWith('request_rtn_source_check', { p_organization_id: id, p_source_id: id });
+    expect(a.serviceRpc.mock.calls).toEqual([['claim_rtn_check', { p_run_id: id }]]);
   });
   it('queues a manual check only through the real user RPC and claims its exact returned run', async () => {
     const a = setup(); const response = await a.request({ organizationId: id, sourceId: id });

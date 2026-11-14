@@ -62,7 +62,7 @@ function httpsLink(value: string): string | null {
   try {
     const url = new URL(value);
     if (url.username || url.password || url.port) return null;
-    return url.protocol === "https:" || (url.protocol === "http:" && ["pravo.gov.ru", "publication.pravo.gov.ru"].includes(url.hostname)) ? url.href : null;
+    return url.protocol === "https:" || (url.protocol === "http:" && ["pravo.gov.ru", "publication.pravo.gov.ru", "actual.pravo.gov.ru"].includes(url.hostname)) ? url.href : null;
   }
   catch { return null; }
 }

@@ -1,7 +1,6 @@
 -- A source PDF staying byte-identical does not renew a normative review.
 -- Admission uses an immutable, explicitly reviewed deadline, independent of
 -- source-check timestamps. Existing active attempts/results remain frozen.
-BEGIN;
 CREATE TEMP TABLE rtn_normative_old_functions ON COMMIT DROP AS
  SELECT p.oid,to_jsonb(p)-'prosrc' AS metadata,p.prosrc,pg_get_functiondef(p.oid) AS definition
  FROM pg_proc p WHERE p.oid IN(
@@ -212,4 +211,3 @@ DO $postimage$ BEGIN
  IF EXISTS(SELECT 1 FROM pg_temp.rtn_normative_old_functions old LEFT JOIN pg_proc p ON p.oid=old.oid WHERE p.oid IS NULL OR to_jsonb(p)-'prosrc' IS DISTINCT FROM old.metadata)
  THEN RAISE EXCEPTION 'RTN_NORMATIVE_EXISTING_FUNCTION_AUTHORITY_CHANGED';END IF;
 END;$postimage$;
-COMMIT;

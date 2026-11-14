@@ -19,6 +19,8 @@ on:
       - src/pages/StudentDashboard.tsx
       - supabase/functions/_shared/rtn/**
       - supabase/functions/rtn-source-check/**
+      - supabase/functions/rtn-source-cron/**
+      - supabase/functions/_shared/cron-auth.ts
       - supabase/config.toml
   workflow_dispatch:
 permissions:
@@ -55,6 +57,7 @@ jobs:
       - name: Edge runtime types and bounded native decompression
         run: |
           deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/rtn-source-check/index.ts
+          deno check --config supabase/functions/rtn-source-cron/deno.json --no-lock supabase/functions/rtn-source-cron/index.ts
           deno eval 'new DecompressionStream("deflate-raw");'
   native:
     runs-on: ubuntu-24.04

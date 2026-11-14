@@ -1,6 +1,5 @@
 -- Included managed training shares the existing monthly quotas. This migration
 -- does not modify monetary collectors, prices, agreements, invoices or roles.
-BEGIN;
 CREATE TEMP TABLE rtn_quota_existing_function_oids ON COMMIT DROP AS SELECT oid FROM pg_proc;
 DO $preflight$ DECLARE f record;BEGIN
  IF to_regclass('rtn_private.assignments') IS NULL OR to_regclass('public.organization_monthly_course_usage') IS NULL
@@ -194,4 +193,3 @@ GRANT EXECUTE ON FUNCTION public.record_rtn_material_open(uuid,uuid) TO authenti
 -- This reviewed integration marks quota capability only. Privacy and genuine
 -- QA/Tech acceptance are independent gates; wider paid rollout stays OFF.
 UPDATE rtn_private.rollout_state SET quota_integration_ready=true WHERE id=1;
-COMMIT;
