@@ -1,10 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const transport = vi.hoisted(() => ({ rpc: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: transport.rpc, functions: { invoke: transport.invoke } } }));
-import { assignRtnTraining, checkRtnSource, getRtnAssignment, getRtnAttempt, getRtnStudentWorkspace, getRtnWorkspace, saveRtnSettings, startRtnAttempt, submitRtnAttempt } from "./rostechnadzor";
+import { assignRtnTraining, checkRtnSource, getRtnAssignment, getRtnAttempt, getRtnAttemptDraft, getRtnStudentWorkspace, getRtnWorkspace, hydrateRtnAttempt, recordRtnMaterialOpen, saveRtnAttemptDraft, saveRtnSettings, startRtnAttempt, submitRtnAttempt } from "./rostechnadzor";
 
 beforeEach(() => vi.resetAllMocks());
 describe("RTN API boundaries", () => {
+  it("requires an exact attempt and valid draft revision without accepting malformed selections", async () => {
+    transport.rpc.mockResolvedValueOnce({ data: { attempt_id: "other", status: "active", revision: 2, answers: {}, saved_at: null }, error: null });
+    await expect(getRtnAttemptDraft("attempt-a")).rejects.toMatchObject({ code: "invalid_response" });
+    transport.rpc.mockResolvedValueOnce({ data: { attempt_id: "attempt-a", status: "active", revision: 2, answers: { q1: ["a", "a"] }, saved_at: null }, error: null });
+    await expect(getRtnAttemptDraft("attempt-a")).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("loads partial answers only for question and option IDs in the pinned attempt", async () => {
+    const active = { attempt_id: "attempt-a", release_id: "release-a", status: "active" as const, started_at: "now", questions: [{ id: "q1", number: 1, text: "Q", options: [{ id: "a", text: "A" }] }] };
+    transport.rpc.mockResolvedValueOnce({ data: { attempt_id: "attempt-a", status: "active", revision: 3, answers: { q1: ["a"] }, saved_at: null }, error: null });
+    await expect(hydrateRtnAttempt(active)).resolves.toMatchObject({ answers: { q1: ["a"] }, draft_revision: 3 });
+    transport.rpc.mockResolvedValueOnce({ data: { attempt_id: "attempt-a", status: "active", revision: 3, answers: { q1: ["wrong"] }, saved_at: null }, error: null });
+    await expect(hydrateRtnAttempt(active)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("uses server CAS for autosave and distinguishes another-device conflicts", async () => {
+    transport.rpc.mockResolvedValueOnce({ data: { attempt_id: "attempt-a", status: "active", revision: 4, answers: { q1: ["a"] }, saved_at: null }, error: null });
+    await saveRtnAttemptDraft("attempt-a", { q1: ["a"] }, 3);
+    expect(transport.rpc).toHaveBeenCalledWith("save_rtn_attempt_draft", { p_attempt_id: "attempt-a", p_answers: { q1: ["a"] }, p_expected_revision: 3 });
+    transport.rpc.mockResolvedValueOnce({ data: null, error: { code: "40001", message: "rtn_draft_revision_conflict" } });
+    await expect(saveRtnAttemptDraft("attempt-a", {}, 3)).rejects.toMatchObject({ code: "conflict" });
+  });
+  it("records only an explicit own material opening and never accepts a hidden extra charge", async () => {
+    transport.rpc.mockResolvedValueOnce({ data: { recorded: true, extra_charge: 0 }, error: null });
+    await recordRtnMaterialOpen("assignment-a", "release-a");
+    expect(transport.rpc).toHaveBeenCalledWith("record_rtn_material_open", { p_assignment_id: "assignment-a", p_release_id: "release-a" });
+    transport.rpc.mockResolvedValueOnce({ data: { recorded: true, extra_charge: 1 }, error: null });
+    await expect(recordRtnMaterialOpen("assignment-a", "release-a")).rejects.toMatchObject({ code: "invalid_response" });
+  });
   it("fails closed instead of granting access for a malformed success payload", async () => {
     transport.rpc.mockResolvedValue({ data: { access: { allowed: true }, banks: [] }, error: null });
     await expect(getRtnWorkspace("tenant-a")).rejects.toMatchObject({ code: "invalid_response" });
@@ -40,6 +67,12 @@ describe("RTN API boundaries", () => {
     transport.rpc.mockResolvedValue({ data: { assignments: [], replayed: true }, error: null });
     await assignRtnTraining({ organizationId: "tenant-a", bankId: "bank-a", studentIds: ["profile-a"], groupId: null });
     expect(transport.rpc).toHaveBeenCalledWith("assign_rtn_training", { p_organization_id: "tenant-a", p_bank_id: "bank-a", p_student_ids: ["profile-a"], p_group_id: null });
+  });
+  it('explains the authoritative monthly quota without treating it as a personal-file restriction', async () => {
+    transport.rpc.mockResolvedValue({ data: null, error: { code: 'P0001', details: 'STUDENT_ASSIGNMENT_LIMIT_EXCEEDED' } });
+    await expect(assignRtnTraining({ organizationId: 'tenant-a', bankId: 'bank-a', studentIds: ['profile-a'], groupId: null })).rejects.toMatchObject({ code: 'quota', message: expect.stringContaining('Личные дела можно создавать и хранить без ограничений') });
+    transport.rpc.mockResolvedValue({ data: null, error: { code: 'P0001', details: 'TRAINING_COMPLETION_LIMIT_EXCEEDED' } });
+    await expect(submitRtnAttempt('attempt-a', { q1: ['a'] })).rejects.toMatchObject({ code: 'quota', message: expect.stringContaining('Ответы остаются в этом окне') });
   });
   it("rejects ambiguous settings writes rather than reporting them saved", async () => {
     transport.rpc.mockResolvedValue({ data: { notify_updates: true }, error: null });

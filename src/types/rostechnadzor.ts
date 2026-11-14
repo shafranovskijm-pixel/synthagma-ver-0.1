@@ -147,6 +147,14 @@ export interface RtnPublicQuestion {
 
 export type RtnAnswers = Record<string, string[]>;
 
+export interface RtnAttemptDraft {
+  attempt_id: string;
+  status: "active" | "submitted";
+  revision: number;
+  answers: RtnAnswers;
+  saved_at: string | null;
+}
+
 export interface RtnAttempt {
   attempt_id: string;
   assignment_id?: string;
@@ -158,6 +166,7 @@ export interface RtnAttempt {
   materials?: RtnMaterial[];
   feedback?: { id: string; explanation?: string | null; evidence: { url: string; citation: string }[] }[] | null;
   answers?: RtnAnswers;
+  draft_revision?: number;
   started_at: string;
   score?: number | null;
   total?: number;

@@ -76,6 +76,19 @@ CREATE TABLE rtn_private.pilot_grants(
  CHECK(organization_id IN('cdd87239-1b04-47c9-8cd6-7ad57af4c54b'::uuid,
   '0e29e728-bcc5-46e6-a339-066fb1e9c726'::uuid,'f7701297-2c10-4f8e-8123-4016cee9984f'::uuid))
 );
+CREATE TABLE rtn_private.rollout_events(
+ request_id uuid PRIMARY KEY,actor_id uuid NOT NULL,from_stage text NOT NULL CHECK(from_stage IN('pilot','paid')),
+ to_stage text NOT NULL CHECK(to_stage IN('pilot','paid')),expected_revision integer NOT NULL,
+ revision integer NOT NULL UNIQUE CHECK(revision>0),reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 10 AND 4000),
+ evidence jsonb NOT NULL CHECK(jsonb_typeof(evidence)='object' AND evidence<>'{}'),
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE rtn_private.rollout_state(
+ id integer PRIMARY KEY DEFAULT 1 CHECK(id=1),stage text NOT NULL DEFAULT 'pilot' CHECK(stage IN('pilot','paid')),
+ revision integer NOT NULL DEFAULT 0 CHECK(revision>=0),last_event_id uuid REFERENCES rtn_private.rollout_events(request_id),
+ quota_integration_ready boolean NOT NULL DEFAULT false,privacy_integration_ready boolean NOT NULL DEFAULT false
+);
+INSERT INTO rtn_private.rollout_state(id) VALUES(1);
 CREATE TABLE rtn_private.settings(
  organization_id uuid PRIMARY KEY REFERENCES public.organizations(id),notify_updates boolean NOT NULL DEFAULT true,
  show_archived_releases boolean NOT NULL DEFAULT false,updated_by uuid NOT NULL,updated_at timestamptz NOT NULL DEFAULT now()
@@ -126,7 +139,7 @@ END;$rls$;
 CREATE FUNCTION rtn_private.reject_mutation() RETURNS trigger LANGUAGE plpgsql
 SET search_path=pg_catalog,public AS $fn$ BEGIN RAISE EXCEPTION 'rtn_history_is_immutable' USING ERRCODE='42501';END;$fn$;
 DO $immutable$ DECLARE t text;BEGIN
- FOREACH t IN ARRAY ARRAY['source_revisions','bank_revisions','key_sets','releases'] LOOP
+ FOREACH t IN ARRAY ARRAY['source_revisions','bank_revisions','key_sets','releases','rollout_events'] LOOP
   EXECUTE format('CREATE TRIGGER rtn_immutable BEFORE UPDATE OR DELETE ON rtn_private.%I FOR EACH ROW EXECUTE FUNCTION rtn_private.reject_mutation()',t);
   EXECUTE format('CREATE TRIGGER rtn_no_truncate BEFORE TRUNCATE ON rtn_private.%I FOR EACH STATEMENT EXECUTE FUNCTION rtn_private.reject_mutation()',t);
  END LOOP;
@@ -166,10 +179,11 @@ END;$fn$;
 CREATE FUNCTION rtn_private.entitled(p_org uuid,p_bank uuid DEFAULT NULL) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
  SELECT EXISTS(SELECT 1 FROM public.organizations o WHERE o.id=p_org)
  AND NOT EXISTS(SELECT 1 FROM billing_access_private.active_holds h WHERE h.organization_id=p_org)
- AND(EXISTS(SELECT 1 FROM public.organizations o WHERE o.id=p_org AND o.is_paid AND o.subscription_plan<>'free' AND o.paid_until>now())
+ AND(EXISTS(SELECT 1 FROM rtn_private.rollout_state gate WHERE gate.id=1 AND gate.stage='paid') AND(
+ EXISTS(SELECT 1 FROM public.organizations o WHERE o.id=p_org AND o.is_paid AND o.subscription_plan<>'free' AND o.paid_until>now())
  OR EXISTS(SELECT 1 FROM public.organization_billing_agreements a WHERE a.organization_id=p_org
   AND a.effective_from<=(now() AT TIME ZONE 'Europe/Moscow')::date
-  AND(a.effective_to IS NULL OR a.effective_to>(now() AT TIME ZONE 'Europe/Moscow')::date))
+  AND(a.effective_to IS NULL OR a.effective_to>(now() AT TIME ZONE 'Europe/Moscow')::date)))
  OR EXISTS(SELECT 1 FROM rtn_private.pilot_grants p WHERE p.organization_id=p_org AND(p_bank IS NULL OR p.bank_id=p_bank)))
 $fn$;
 CREATE FUNCTION rtn_private.assert_entitled(p_org uuid,p_bank uuid DEFAULT NULL) RETURNS void LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
@@ -229,6 +243,38 @@ DECLARE m jsonb;ids text[]:=ARRAY[]::text[];BEGIN
    OR(coalesce(r->>'url','') !~ '^https://' AND coalesce(r->>'url','') !~ '^http://(publication\.)?pravo\.gov\.ru/')) THEN RETURN false;END IF;
   ids:=array_append(ids,m->>'id');
  END LOOP;RETURN true;
+END;$fn$;
+CREATE FUNCTION public.get_rtn_rollout_state() RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+DECLARE result jsonb;BEGIN
+ PERFORM rtn_private.assert_admin();SELECT to_jsonb(s)-'id' INTO result FROM rtn_private.rollout_state s WHERE id=1;
+ RETURN result||jsonb_build_object('events',(SELECT coalesce(jsonb_agg(to_jsonb(e) ORDER BY e.revision DESC),'[]') FROM rtn_private.rollout_events e));
+END;$fn$;
+CREATE FUNCTION public.set_rtn_rollout_stage(p_stage text,p_expected_revision integer,p_request_id uuid,p_reason text,p_evidence jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+DECLARE actor uuid;s rtn_private.rollout_state;prior rtn_private.rollout_events;e rtn_private.rollout_events;BEGIN
+ actor:=rtn_private.assert_admin();
+ IF p_stage IS NULL OR p_stage NOT IN('pilot','paid') OR p_expected_revision IS NULL OR p_expected_revision<0 OR p_request_id IS NULL
+  OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 10 AND 4000 OR jsonb_typeof(p_evidence) IS DISTINCT FROM 'object' OR p_evidence='{}'::jsonb
+  OR octet_length(p_evidence::text)>32768
+ THEN RAISE EXCEPTION 'rtn_invalid_rollout_request' USING ERRCODE='22023';END IF;
+ SELECT * INTO STRICT s FROM rtn_private.rollout_state WHERE id=1 FOR UPDATE;
+ SELECT * INTO prior FROM rtn_private.rollout_events WHERE request_id=p_request_id;
+ IF FOUND THEN
+  IF prior.actor_id IS DISTINCT FROM actor OR prior.to_stage IS DISTINCT FROM p_stage OR prior.expected_revision IS DISTINCT FROM p_expected_revision
+   OR prior.reason IS DISTINCT FROM p_reason OR prior.evidence IS DISTINCT FROM p_evidence THEN RAISE EXCEPTION 'rtn_rollout_request_conflict' USING ERRCODE='40001';END IF;
+  RETURN jsonb_build_object('stage',s.stage,'revision',s.revision,'receipt',to_jsonb(prior),'replayed',true);
+ END IF;
+ IF s.revision<>p_expected_revision THEN RAISE EXCEPTION 'rtn_rollout_revision_conflict' USING ERRCODE='40001';END IF;
+ IF s.stage=p_stage THEN RAISE EXCEPTION 'rtn_rollout_stage_already_current' USING ERRCODE='22023';END IF;
+ IF p_stage='paid' THEN
+  IF NOT s.quota_integration_ready OR NOT s.privacy_integration_ready THEN RAISE EXCEPTION 'rtn_rollout_integrations_not_ready' USING ERRCODE='P0001';END IF;
+  IF length(btrim(coalesce(p_evidence->>'qa_acceptance_receipt',''))) NOT BETWEEN 1 AND 4000
+   OR length(btrim(coalesce(p_evidence->>'technoservice_acceptance_receipt',''))) NOT BETWEEN 1 AND 4000
+  THEN RAISE EXCEPTION 'rtn_rollout_acceptance_evidence_required' USING ERRCODE='22023';END IF;
+ END IF;
+ INSERT INTO rtn_private.rollout_events(request_id,actor_id,from_stage,to_stage,expected_revision,revision,reason,evidence)
+  VALUES(p_request_id,actor,s.stage,p_stage,s.revision,s.revision+1,p_reason,p_evidence) RETURNING * INTO e;
+ UPDATE rtn_private.rollout_state SET stage=p_stage,revision=e.revision,last_event_id=e.request_id WHERE id=1;
+ RETURN jsonb_build_object('stage',p_stage,'revision',e.revision,'receipt',to_jsonb(e),'replayed',false);
 END;$fn$;
 
 CREATE FUNCTION public.register_rtn_source(p_source jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
@@ -485,6 +531,7 @@ CREATE FUNCTION public.get_rtn_editorial_workspace() RETURNS jsonb LANGUAGE plpg
 BEGIN
  PERFORM rtn_private.assert_admin();
  RETURN jsonb_build_object(
+  'rollout',(SELECT to_jsonb(s)-'id' FROM rtn_private.rollout_state s WHERE id=1),
   'sources',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY s.code),'[]') FROM rtn_private.sources s),
   'banks',(SELECT coalesce(jsonb_agg(to_jsonb(b) ORDER BY b.code),'[]') FROM rtn_private.banks b),
   'source_revisions',(SELECT coalesce(jsonb_agg(to_jsonb(r)||jsonb_build_object('normalization_required',NOT EXISTS(SELECT 1 FROM rtn_private.bank_revisions br WHERE br.source_revision_id=r.id)) ORDER BY r.captured_at DESC,r.id),'[]') FROM rtn_private.source_revisions r),
@@ -662,7 +709,9 @@ DECLARE can_manage boolean;can_students boolean;allowed boolean;v_banks jsonb;v_
    FROM rtn_private.attempts t JOIN rtn_private.assignments a ON a.id=t.assignment_id JOIN public.profiles p ON p.id=a.student_id
    WHERE t.organization_id=p_organization_id ORDER BY t.started_at DESC LIMIT 200)x;
  END IF;
- RETURN jsonb_build_object('access',jsonb_build_object('allowed',allowed,'reason',CASE WHEN allowed THEN 'included' ELSE 'active_platform_access_required' END,
+ RETURN jsonb_build_object('access',jsonb_build_object('allowed',allowed,'reason',CASE WHEN allowed THEN 'included'
+    WHEN EXISTS(SELECT 1 FROM rtn_private.rollout_state WHERE stage='pilot') THEN 'pilot_not_enabled' ELSE 'active_platform_access_required' END,
+  'rollout_stage',(SELECT stage FROM rtn_private.rollout_state WHERE id=1),
   'can_manage',can_manage,'can_assign',can_manage AND public.can_access_organization(p_organization_id,'students.write'),'can_view_results',can_students,
   'pilot',EXISTS(SELECT 1 FROM rtn_private.pilot_grants WHERE organization_id=p_organization_id),
   'pilot_kind',CASE WHEN p_organization_id='cdd87239-1b04-47c9-8cd6-7ad57af4c54b'::uuid THEN 'technoservice'
@@ -695,7 +744,7 @@ USING(bucket_id<>'rtn-sources') WITH CHECK(bucket_id<>'rtn-sources');
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA rtn_private FROM PUBLIC,anon,authenticated,service_role;
 DO $acl$ DECLARE f record;BEGIN
  FOR f IN SELECT p.oid::regprocedure signature,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-  WHERE n.nspname='public' AND p.proname=ANY(ARRAY['register_rtn_source','request_rtn_source_check','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision','review_rtn_keys','publish_rtn_release','get_rtn_editorial_workspace','save_rtn_settings','assign_rtn_training','get_rtn_assignment','start_rtn_attempt','submit_rtn_attempt','get_rtn_attempt','get_rtn_workspace','get_rtn_student_workspace']) LOOP
+  WHERE n.nspname='public' AND p.proname=ANY(ARRAY['register_rtn_source','request_rtn_source_check','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision','review_rtn_keys','publish_rtn_release','get_rtn_editorial_workspace','get_rtn_rollout_state','set_rtn_rollout_stage','save_rtn_settings','assign_rtn_training','get_rtn_assignment','start_rtn_attempt','submit_rtn_attempt','get_rtn_attempt','get_rtn_workspace','get_rtn_student_workspace']) LOOP
   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);
   IF f.proname=ANY(ARRAY['register_rtn_source','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision']) THEN
    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.signature);

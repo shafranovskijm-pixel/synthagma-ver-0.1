@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { getRtnEditorial, publishRtnModule, reviewRtnModule, rtnEditorialWorker } from '@/api/rtn-editorial';
+import { getRtnEditorial, openRtnPaidRollout, publishRtnModule, reviewRtnModule, rtnEditorialWorker, type RtnRolloutRequest } from '@/api/rtn-editorial';
 
 const field = 'min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm';
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Не удалось выполнить действие.';
@@ -30,12 +30,26 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
   const [correctionNote, setCorrectionNote] = useState('');
   const [packageError, setPackageError] = useState('');
   const [notice, setNotice] = useState('');
+  const [qaReceipt, setQaReceipt] = useState('');
+  const [techReceipt, setTechReceipt] = useState('');
+  const [rolloutReason, setRolloutReason] = useState('');
+  const [rolloutRequest, setRolloutRequest] = useState<RtnRolloutRequest | null>(null);
   const client = useQueryClient();
   const query = useQuery({ queryKey: ['rtn-editorial', actorId], queryFn: getRtnEditorial, enabled: open, retry: false, staleTime: 0 });
   async function refresh() { await client.invalidateQueries({ queryKey: ['rtn-editorial'] }); await client.invalidateQueries({ queryKey: ['rtn-workspace'] }); }
   const mutation = useMutation({
-    mutationFn: async (action: 'bootstrap' | 'save' | 'publish') => {
+    mutationFn: async (action: 'bootstrap' | 'save' | 'publish' | 'rollout') => {
       setNotice('');
+      if (action === 'rollout') {
+        const gate = query.data?.rollout;
+        if (!gate || gate.stage !== 'pilot' || !gate.quota_integration_ready || !gate.privacy_integration_ready) throw new Error('Проверки интеграции ещё не завершены. Массовое включение недоступно.');
+        if (!qaReceipt.trim() || !techReceipt.trim() || rolloutReason.trim().length < 10) throw new Error('Укажите подтверждения проверки QA, Техносервиса и основание включения.');
+        const request = rolloutRequest || { id: crypto.randomUUID(), expectedRevision: gate.revision, reason: rolloutReason,
+          evidence: { qa_acceptance_receipt: qaReceipt, technoservice_acceptance_receipt: techReceipt } };
+        setRolloutRequest(request);
+        await openRtnPaidRollout(request);
+        return 'Раздел включён для организаций с действующим оплаченным доступом и постоплатой. Отдельной доплаты нет.';
+      }
       if (action === 'bootstrap') {
         await rtnEditorialWorker({ operation: 'bootstrap' });
         return 'Официальные источники зарегистрированы. Проверка поставлена в очередь.';
@@ -77,6 +91,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
     },
     onSuccess: async (message, action) => {
       if (action === 'publish') { setKeyId(''); setEffective(''); setNote(''); }
+      if (action === 'rollout') setRolloutRequest(null);
       setNotice(message); await refresh();
     },
   });
@@ -89,7 +104,17 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
       {query.isPending && <p role="status">Загружаем редакции…</p>}
       {query.error && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{errorText(query.error)}</p><Button variant="outline" disabled={query.isFetching} onClick={() => query.refetch()}>Повторить загрузку редакций</Button></div>}
       {data && !query.error && <>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => mutation.mutate('bootstrap')}>Проверить подключение источников</Button><Button variant="ghost" disabled={busy} onClick={() => query.refetch()}>Обновить данные</Button></div>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => mutation.mutate('bootstrap')}>Проверить подключение источников</Button><Button variant="ghost" disabled={busy} onClick={async () => { const result = await query.refetch(); if (!result.error) setRolloutRequest(null); }}>Обновить данные</Button></div>
+        {data.rollout && <section className="space-y-3 rounded-xl border border-border p-3" aria-label="Этап запуска Ростехнадзора">
+          <h3 className="text-sm font-semibold">{data.rollout.stage === 'paid' ? 'Включено в действующий доступ организаций' : 'Пилот: Техносервис и технические QA-организации'}</h3>
+          <p className="text-xs text-muted-foreground">Учёт месячных лимитов: {data.rollout.quota_integration_ready ? 'подключён' : 'проходит проверку'}. Обработка удаления персональных данных: {data.rollout.privacy_integration_ready ? 'подключена' : 'проходит проверку'}.</p>
+          {data.rollout.stage === 'pilot' && <>
+            <label className="block space-y-1 text-sm">Подтверждение проверки QA<input className={field} value={qaReceipt} disabled={busy || !!rolloutRequest} onChange={event => setQaReceipt(event.target.value)} /></label>
+            <label className="block space-y-1 text-sm">Подтверждение проверки Техносервиса<input className={field} value={techReceipt} disabled={busy || !!rolloutRequest} onChange={event => setTechReceipt(event.target.value)} /></label>
+            <label className="block space-y-1 text-sm">Основание включения<input className={field} value={rolloutReason} disabled={busy || !!rolloutRequest} onChange={event => setRolloutReason(event.target.value)} /></label>
+            <Button disabled={busy || !data.rollout.quota_integration_ready || !data.rollout.privacy_integration_ready || !qaReceipt.trim() || !techReceipt.trim() || rolloutReason.trim().length < 10} onClick={() => mutation.mutate('rollout')}>Включить для организаций с действующим доступом</Button>
+          </>}
+        </section>}
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm">Этап<select className={field} value={mode} onChange={event => { setMode(event.target.value as typeof mode); setSelection(''); setNotice(''); }}><option value="normalize">Сохранить формулировки из оригинала</option><option value="correct">Исправить извлечение из оригинала</option><option value="review">Утвердить материалы и учебные ответы</option></select></label>
           <label className="min-w-0 space-y-1 text-sm">Исходная редакция<select className={field} value={selection} onChange={event => setSelection(event.target.value)}><option value="">Выберите редакцию</option>

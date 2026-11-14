@@ -646,7 +646,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
       </TabsContent>
       <TabsContent value="rtn" className="min-w-0">
-        <RostechnadzorWorkspace organizationId={organizationId} actorId={dashboard.user?.id ?? null} isAdminView={isAdminView} />
+        <RostechnadzorWorkspace organizationId={organizationId} actorId={dashboard.user?.id ?? null} isAdminView={isAdminView} onUsageChanged={() => void refetchLimits()} />
       </TabsContent>
       <CategoryDialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog} editingCategory={editingCategory} name={newCategoryName} setName={setNewCategoryName} color={newCategoryColor} setColor={setNewCategoryColor} isCreating={isCreatingCategory} onSubmit={handleCreateCategory} />
       <CreateCourseDialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog} title={newCourseTitle} setTitle={setNewCourseTitle} description={newCourseDescription} setDescription={setNewCourseDescription} categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId} categories={categories} showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory} inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName} inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor} isCreating={isCreatingCourse} onSubmit={handleCreateCourse} />

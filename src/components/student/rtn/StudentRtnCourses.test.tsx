@@ -2,11 +2,12 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { RtnApiError } from "@/api/rostechnadzor";
 import { StudentRtnCourses } from "./StudentRtnCourses";
 import type { RtnAssignmentDetail, RtnAttempt, RtnStudentAssignment } from "@/types/rostechnadzor";
 
-const api = vi.hoisted(() => ({ getRtnStudentWorkspace: vi.fn(), getRtnAssignment: vi.fn(), startRtnAttempt: vi.fn(), getRtnAttempt: vi.fn(), submitRtnAttempt: vi.fn() }));
-vi.mock("@/api/rostechnadzor", () => api);
+const api = vi.hoisted(() => ({ getRtnStudentWorkspace: vi.fn(), getRtnAssignment: vi.fn(), startRtnAttempt: vi.fn(), getRtnAttempt: vi.fn(), submitRtnAttempt: vi.fn(), hydrateRtnAttempt: vi.fn(), getRtnAttemptDraft: vi.fn(), saveRtnAttemptDraft: vi.fn(), recordRtnMaterialOpen: vi.fn() }));
+vi.mock("@/api/rostechnadzor", () => ({ ...api, RtnApiError: class extends Error { constructor(readonly code: string, message: string) { super(message); } } }));
 
 const assignment: RtnStudentAssignment = {
   id: "assignment-a", assignment_id: "assignment-a", organization_id: "org-a", bank_id: "bank-a", code: "А.1-116-ФЗ",
@@ -47,10 +48,102 @@ beforeEach(() => {
   api.startRtnAttempt.mockResolvedValue(attempt);
   api.getRtnAttempt.mockResolvedValue(submitted);
   api.submitRtnAttempt.mockResolvedValue(submitted);
+  api.getRtnAttemptDraft.mockResolvedValue({ attempt_id: "attempt-a", status: "active", revision: 0, answers: {}, saved_at: null });
+  api.hydrateRtnAttempt.mockImplementation(async loaded => {
+    if (loaded.status === "submitted") return loaded;
+    const saved = await api.getRtnAttemptDraft(loaded.attempt_id);
+    return { ...loaded, answers: saved.answers, draft_revision: saved.revision };
+  });
+  api.saveRtnAttemptDraft.mockImplementation(async (id, answers, revision) => ({ attempt_id: id, status: "active", answers, revision: revision + 1, saved_at: "2026-11-14T10:00:00Z" }));
+  api.recordRtnMaterialOpen.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
 
 describe("assigned RTN learner course", () => {
+  it("keeps an unsaved attempt open when Escape is pressed and permits closing after save", async () => {
+    let finish: (value: unknown) => void = () => {};
+    api.saveRtnAttemptDraft.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    mount(); await openQuestions();
+    fireEvent.click(screen.getByLabelText("Соблюдать требования"));
+    fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText(/Дождитесь синхронизации или повторите сохранение перед закрытием/)).toBeInTheDocument();
+    await waitFor(() => expect(api.saveRtnAttemptDraft).toHaveBeenCalled());
+    finish({ attempt_id: "attempt-a", status: "active", revision: 1, answers: { q1: ["a"] }, saved_at: "now" });
+    await screen.findByText("Ответы сохранены на сервере. Можно продолжить на другом устройстве.");
+    fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("does not log menu browsing as study and records actual opened material without starting a test", async () => {
+    mount();
+    await screen.findByRole("button", { name: "Открыть обучение" });
+    expect(api.recordRtnMaterialOpen).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть обучение" }));
+    await screen.findByText(material.body);
+    await waitFor(() => expect(api.recordRtnMaterialOpen).toHaveBeenCalledWith("assignment-a", "release-a"));
+    expect(api.startRtnAttempt).not.toHaveBeenCalled();
+  });
+
+  it("saves partial choices and restores them after closing and reopening the learner cabinet", async () => {
+    let saved = { attempt_id: "attempt-a", status: "active", revision: 0, answers: {}, saved_at: null };
+    api.getRtnAttemptDraft.mockImplementation(async () => saved);
+    api.saveRtnAttemptDraft.mockImplementation(async (id, answers, revision) => (saved = { attempt_id: id, status: "active", answers, revision: revision + 1, saved_at: "now" }));
+    const first = mount();
+    await openQuestions();
+    fireEvent.click(screen.getByLabelText("Соблюдать требования"));
+    await waitFor(() => expect(api.saveRtnAttemptDraft).toHaveBeenCalledWith("attempt-a", { q1: ["a"] }, 0));
+    await screen.findByText("Ответы сохранены на сервере. Можно продолжить на другом устройстве.");
+    first.unmount();
+    api.getRtnStudentWorkspace.mockResolvedValue({ access: { allowed: true }, assignments: [{ ...assignment, status: "in_progress", last_attempt_id: "attempt-a" }] });
+    api.getRtnAttempt.mockResolvedValue(attempt);
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Продолжить" }));
+    expect(await screen.findByLabelText("Соблюдать требования")).toBeChecked();
+    expect(screen.getByLabelText("Поддерживать готовность")).not.toBeChecked();
+    expect(api.startRtnAttempt).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries the exact uncertain autosave before sending newer local choices", async () => {
+    api.saveRtnAttemptDraft.mockRejectedValueOnce(new Error("Network timeout"));
+    mount(); await openQuestions();
+    fireEvent.click(screen.getByLabelText("Соблюдать требования"));
+    await screen.findByRole("button", { name: "Повторить сохранение ответов" });
+    fireEvent.click(screen.getByLabelText("Поддерживать готовность"));
+    fireEvent.click(screen.getByRole("button", { name: "Повторить сохранение ответов" }));
+    await waitFor(() => expect(api.saveRtnAttemptDraft).toHaveBeenCalledTimes(3), { timeout: 2000 });
+    expect(api.saveRtnAttemptDraft.mock.calls[0]).toEqual(api.saveRtnAttemptDraft.mock.calls[1]);
+    expect(api.saveRtnAttemptDraft.mock.calls[2]).toEqual(["attempt-a", { q1: ["a", "b"] }, 1]);
+  });
+
+  it("stops a device conflict and requires explicit loading of the saved remote choices", async () => {
+    api.saveRtnAttemptDraft.mockRejectedValueOnce(new RtnApiError("conflict", "Ответы изменились на другом устройстве"));
+    mount(); await openQuestions();
+    fireEvent.click(screen.getByLabelText("Соблюдать требования"));
+    const reload = await screen.findByRole("button", { name: "Загрузить ответы с сервера" });
+    expect(screen.getByLabelText("Поддерживать готовность")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Завершить и отправить результат" })).toBeDisabled();
+    api.getRtnAttempt.mockResolvedValue(attempt);
+    api.getRtnAttemptDraft.mockResolvedValue({ attempt_id: "attempt-a", status: "active", revision: 9, answers: { q1: ["wrong"] }, saved_at: "now" });
+    fireEvent.click(reload);
+    await waitFor(() => expect(screen.getByLabelText("Игнорировать требования")).toBeChecked());
+    expect(screen.getByLabelText("Соблюдать требования")).not.toBeChecked();
+    fireEvent.click(screen.getByLabelText("Действовать по инструкции"));
+    await waitFor(() => expect(api.saveRtnAttemptDraft).toHaveBeenLastCalledWith("attempt-a", { q1: ["wrong"], q2: ["c"] }, 9));
+  });
+
+  it("uses the authoritative final answers when another device submits during autosave", async () => {
+    api.saveRtnAttemptDraft.mockResolvedValue({ attempt_id: "attempt-a", status: "submitted", revision: 2, answers: { q1: ["wrong"], q2: ["d"] }, saved_at: "now" });
+    api.getRtnAttempt.mockResolvedValue({ ...submitted, answers: { q1: ["wrong"], q2: ["d"] } });
+    mount(); await openQuestions();
+    fireEvent.click(screen.getByLabelText("Соблюдать требования"));
+    expect(await screen.findByText("50% · 1 из 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Посмотреть свои ответы" }));
+    expect(screen.getByLabelText("Игнорировать требования")).toBeChecked();
+    expect(screen.getByLabelText("Соблюдать требования")).not.toBeChecked();
+    expect(api.submitRtnAttempt).not.toHaveBeenCalled();
+  });
+
   it("shows current-organization assignments and reads real material before starting an attempt", async () => {
     api.getRtnStudentWorkspace.mockResolvedValue({ access: { allowed: true }, assignments: [assignment, { ...assignment, id: "other", organization_id: "org-b", title: "Чужой контур" }] });
     mount();
@@ -98,7 +191,8 @@ describe("assigned RTN learner course", () => {
 
   it("resumes the exact existing active snapshot without starting another attempt", async () => {
     api.getRtnStudentWorkspace.mockResolvedValue({ access: { allowed: true }, assignments: [{ ...assignment, status: "in_progress", last_attempt_id: "attempt-old" }] });
-    api.getRtnAttempt.mockResolvedValue({ ...attempt, attempt_id: "attempt-old", release_id: "old-release", answers: { q1: ["a"] } });
+    api.getRtnAttempt.mockResolvedValue({ ...attempt, attempt_id: "attempt-old", release_id: "old-release" });
+    api.getRtnAttemptDraft.mockResolvedValue({ attempt_id: "attempt-old", status: "active", revision: 7, answers: { q1: ["a"] }, saved_at: "now" });
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Продолжить" }));
     expect(await screen.findByText("Редакция: old-release")).toBeInTheDocument();

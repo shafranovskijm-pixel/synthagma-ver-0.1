@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface EditorialWorkspace {
+  rollout?: { stage: 'pilot' | 'paid'; revision: number; quota_integration_ready: boolean; privacy_integration_ready: boolean };
   sources: { id: string; code: string; title: string }[];
   banks: { id: string; source_id: string; code: string; title: string; parent_bank_id: string | null }[];
   source_revisions: { id: string; source_id: string; sha256: string; captured_at: string; normalization_required: boolean }[];
@@ -34,4 +35,15 @@ export async function reviewRtnModule(bankId: string, bankRevisionId: string, pa
 }
 export function publishRtnModule(keyId: string, effectiveFrom: string, note: string) {
   return call<{ release_id: string }>('publish_rtn_release', { p_key_set_id: keyId, p_effective_from: effectiveFrom, p_release_note: note });
+}
+
+export interface RtnRolloutRequest {
+  id: string; expectedRevision: number; reason: string;
+  evidence: { qa_acceptance_receipt: string; technoservice_acceptance_receipt: string };
+}
+export function openRtnPaidRollout(request: RtnRolloutRequest) {
+  return call<{ stage: 'pilot' | 'paid'; revision: number }>('set_rtn_rollout_stage', {
+    p_stage: 'paid', p_expected_revision: request.expectedRevision, p_request_id: request.id,
+    p_reason: request.reason, p_evidence: request.evidence,
+  });
 }

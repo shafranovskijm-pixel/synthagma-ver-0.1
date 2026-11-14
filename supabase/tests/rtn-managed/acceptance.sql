@@ -10,6 +10,27 @@ SELECT lab.check('provider bucket configuration unchanged',(SELECT id='rtn-sourc
 SELECT lab.check('existing Storage policy ABI owner roles expressions unchanged',lab.ctx('storage_policy_metadata')=(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_policy p WHERE polrelid='storage.objects'::regclass AND polname<>'rtn_source_originals_private_fence'));
 SELECT lab.check('least privilege worker ACL',has_function_privilege('service_role','public.claim_rtn_check(uuid)','EXECUTE') AND NOT has_function_privilege('authenticated','public.claim_rtn_check(uuid)','EXECUTE') AND NOT has_function_privilege('anon','public.get_rtn_workspace(uuid)','EXECUTE'));
 SELECT lab.check('least privilege reviewed keys ACL',has_function_privilege('authenticated','public.review_rtn_keys(uuid,uuid,jsonb,text,jsonb)','EXECUTE') AND NOT has_function_privilege('service_role','public.review_rtn_keys(uuid,uuid,jsonb,text,jsonb)','EXECUTE'));
+SELECT lab.check('default rollout is pilot and paid users remain blocked',(SELECT stage='pilot' AND revision=0 AND NOT quota_integration_ready AND NOT privacy_integration_ready FROM rtn_private.rollout_state) AND NOT rtn_private.entitled('11111111-1111-4111-8111-111111111111'));
+SELECT lab.check('service worker cannot change paid rollout',NOT has_function_privilege('service_role','public.set_rtn_rollout_stage(text,integer,uuid,text,jsonb)','EXECUTE'));
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role','authenticated',false);
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT lab.keep('rollout_request',to_jsonb(gen_random_uuid()));
+SELECT lab.keep('rollout_evidence','{"qa_acceptance_receipt":"Synthetic fixture QA acceptance","technoservice_acceptance_receipt":"Synthetic fixture Tech acceptance"}');
+SELECT lab.denied('admin cannot bypass missing quota and privacy integrations',format('SELECT public.set_rtn_rollout_stage(''paid'',0,%L,''Synthetic wider rollout request'',%L)',lab.ctx('rollout_request')#>>'{}',lab.ctx('rollout_evidence')),'P0001');
+SET ROLE postgres;
+-- Only this isolated fixture simulates completed integration migrations so
+-- the stage transition can be tested. Production readiness remains FALSE.
+UPDATE rtn_private.rollout_state SET quota_integration_ready=true,privacy_integration_ready=true;
+SET ROLE authenticated;
+SELECT lab.keep('rollout_enabled',public.set_rtn_rollout_stage('paid',0,(lab.ctx('rollout_request')#>>'{}')::uuid,'Synthetic wider rollout request',lab.ctx('rollout_evidence')));
+SELECT lab.check('genuine admin CAS rollout records actual actor',lab.ctx('rollout_enabled')->>'stage'='paid' AND lab.ctx('rollout_enabled')->'receipt'->>'actor_id'='81000000-0000-4000-8000-000000000999' AND lab.ctx('rollout_enabled')->>'revision'='1');
+SELECT lab.check('rollout exact retry idempotent',(public.set_rtn_rollout_stage('paid',0,(lab.ctx('rollout_request')#>>'{}')::uuid,'Synthetic wider rollout request',lab.ctx('rollout_evidence'))->>'replayed')::boolean);
+SELECT lab.denied('rollout stale revision refused','SELECT public.set_rtn_rollout_stage(''pilot'',0,gen_random_uuid(),''Synthetic stale revision request'',''{"reason":"fixture"}'')','40001');
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000001',false);
+SELECT lab.denied('organization owner cannot change rollout','SELECT public.set_rtn_rollout_stage(''pilot'',1,gen_random_uuid(),''Synthetic unauthorized request'',''{"reason":"fixture"}'')');
+SET ROLE postgres;
+SELECT lab.denied('rollout history immutable','UPDATE rtn_private.rollout_events SET reason=''Rewritten history denied''');
 SELECT lab.check('paid current allowed',rtn_private.entitled('11111111-1111-4111-8111-111111111111'));
 SELECT lab.check('expired subscription denied',NOT rtn_private.entitled('55555555-5555-4555-8555-555555555555'));
 SELECT lab.check('free subscription denied',NOT rtn_private.entitled('33333333-3333-4333-8333-333333333333'));
@@ -60,6 +81,10 @@ SELECT lab.denied('immutable original cannot change','UPDATE rtn_private.source_
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT lab.keep('rollout_pilot_again',public.set_rtn_rollout_stage('pilot',1,gen_random_uuid(),'Synthetic pilot-only regression check','{"reason":"Technical pilot validation"}'));
+SELECT lab.check('pilot gate denies paid organization without deleting data',NOT(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'access'->>'allowed')::boolean AND public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'access'->>'reason'='pilot_not_enabled');
+SELECT lab.check('pilot gate allows exact Tech and QA grants',(public.get_rtn_workspace('cdd87239-1b04-47c9-8cd6-7ad57af4c54b')->'access'->>'allowed')::boolean AND(public.get_rtn_workspace('0e29e728-bcc5-46e6-a339-066fb1e9c726')->'access'->>'allowed')::boolean AND(public.get_rtn_workspace('f7701297-2c10-4f8e-8123-4016cee9984f')->'access'->>'allowed')::boolean);
+SELECT lab.keep('rollout_paid_again',public.set_rtn_rollout_stage('paid',2,gen_random_uuid(),'Synthetic resume broad fixture validation',lab.ctx('rollout_evidence')));
 SELECT lab.keep('workspace',public.get_rtn_workspace('11111111-1111-4111-8111-111111111111'));
 SELECT lab.check('canonical group membership survives empty legacy profile group',EXISTS(SELECT 1 FROM jsonb_array_elements(lab.ctx('workspace')->'students')s WHERE s->>'id'='71000000-0000-4000-8000-000000000101' AND s->>'group_id' IS NULL AND s->'group_ids'='["91000000-0000-4000-8000-000000000001"]'::jsonb));
 SELECT lab.keep('bank_revision_id',lab.ctx('workspace')->'banks'->0->'bank_revision_id');

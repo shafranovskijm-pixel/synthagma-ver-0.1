@@ -4,7 +4,10 @@ on:
     paths:
       - supabase/migrations/*rtn*.sql
       - supabase/tests/rtn-managed/**
-      - scripts/test-rtn-sql.py
+      - supabase/tests/rtn-quota/**
+      - supabase/tests/rtn-drafts/**
+      - supabase/tests/rtn-account-erasure/**
+      - scripts/test-rtn*.py
       - .github/workflows/rtn-managed.yml
       - src/api/rostechnadzor*
       - src/api/rtn-editorial*
@@ -86,5 +89,113 @@ jobs:
         with:
           name: rtn-managed-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-managed-native/
+          if-no-files-found: error
+          retention-days: 14
+  quota:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_quota_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_quota_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_quota_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_quota_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_quota_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Exact old trigger parity mixed normal RTN quota races and anonymous counter retention
+        run: python scripts/test-rtn-quota-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-quota-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-quota-native/
+          if-no-files-found: error
+          retention-days: 14
+  drafts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_drafts_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_drafts_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Native partial answers two-device CAS and immutable final submission
+        run: python scripts/test-rtn-drafts-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-drafts-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-drafts-native/
+          if-no-files-found: error
+          retention-days: 14
+  privacy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_erasure_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_erasure_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_erasure_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_erasure_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_erasure_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Actual captured erasure workflow narrow RTN cleanup and rollback
+        run: python supabase/tests/rtn-account-erasure/run.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-erasure-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-erasure-native/
           if-no-files-found: error
           retention-days: 14

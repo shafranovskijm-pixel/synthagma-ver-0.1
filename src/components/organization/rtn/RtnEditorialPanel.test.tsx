@@ -6,7 +6,7 @@ import { RtnEditorialPanel } from "./RtnEditorialPanel";
 import type { EditorialWorkspace } from "@/api/rtn-editorial";
 
 const auth = vi.hoisted(() => ({ current: { user: { id: "admin-a" } as { id: string } | null, userRole: "admin" as string | null, authError: null as string | null } }));
-const api = vi.hoisted(() => ({ getRtnEditorial: vi.fn(), publishRtnModule: vi.fn(), reviewRtnModule: vi.fn(), rtnEditorialWorker: vi.fn() }));
+const api = vi.hoisted(() => ({ getRtnEditorial: vi.fn(), publishRtnModule: vi.fn(), reviewRtnModule: vi.fn(), rtnEditorialWorker: vi.fn(), openRtnPaidRollout: vi.fn() }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth.current }));
 vi.mock("@/api/rtn-editorial", () => api);
 
@@ -38,6 +38,36 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("actual-admin RTN editorial controls", () => {
+  it("does not enable general rollout until server integration gates and both live receipts are present", async () => {
+    api.getRtnEditorial.mockResolvedValue({ ...data, rollout: { stage: "pilot", revision: 2, quota_integration_ready: true, privacy_integration_ready: false } });
+    mount(); openPanel();
+    const enable = await screen.findByRole("button", { name: "Включить для организаций с действующим доступом" });
+    fireEvent.change(screen.getByLabelText("Подтверждение проверки QA"), { target: { value: "outputs/actual-qa-receipt.json" } });
+    fireEvent.change(screen.getByLabelText("Подтверждение проверки Техносервиса"), { target: { value: "outputs/actual-tech-receipt.json" } });
+    fireEvent.change(screen.getByLabelText("Основание включения"), { target: { value: "Подтверждённая живая приёмка" } });
+    expect(enable).toBeDisabled();
+    expect(api.openRtnPaidRollout).not.toHaveBeenCalled();
+  });
+
+  it("retries an uncertain rollout with the exact original CAS request and receipts", async () => {
+    const ready = { ...data, rollout: { stage: "pilot" as const, revision: 7, quota_integration_ready: true, privacy_integration_ready: true } };
+    api.getRtnEditorial.mockResolvedValue(ready);
+    api.openRtnPaidRollout.mockRejectedValueOnce(new Error("Ответ потерян после сохранения")).mockResolvedValueOnce({ stage: "paid", revision: 8 });
+    mount(); openPanel();
+    const enable = await screen.findByRole("button", { name: "Включить для организаций с действующим доступом" });
+    expect(enable).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Подтверждение проверки QA"), { target: { value: "outputs/actual-qa-receipt.json" } });
+    fireEvent.change(screen.getByLabelText("Подтверждение проверки Техносервиса"), { target: { value: "outputs/actual-tech-receipt.json" } });
+    fireEvent.change(screen.getByLabelText("Основание включения"), { target: { value: "Подтверждённая живая приёмка" } });
+    fireEvent.click(enable);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ответ потерян после сохранения");
+    expect(screen.getByLabelText("Подтверждение проверки QA")).toBeDisabled();
+    fireEvent.click(enable);
+    await waitFor(() => expect(api.openRtnPaidRollout).toHaveBeenCalledTimes(2));
+    expect(api.openRtnPaidRollout.mock.calls[1]).toEqual(api.openRtnPaidRollout.mock.calls[0]);
+    expect(api.openRtnPaidRollout.mock.calls[0][0]).toMatchObject({ expectedRevision: 7, evidence: { qa_acceptance_receipt: "outputs/actual-qa-receipt.json", technoservice_acceptance_receipt: "outputs/actual-tech-receipt.json" } });
+  });
+
   it("makes no editorial request and exposes no control to an organization actor", () => {
     auth.current = { user: { id: "org-owner" }, userRole: "organization", authError: null };
     const mounted = mount();

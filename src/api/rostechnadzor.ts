@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { RtnAnswers, RtnAssignment, RtnAssignmentDetail, RtnAttempt, RtnCheckResult, RtnMaterial, RtnSettings, RtnStudentWorkspace, RtnSubmission, RtnWorkspace } from "@/types/rostechnadzor";
+import type { RtnAnswers, RtnAssignment, RtnAssignmentDetail, RtnAttempt, RtnAttemptDraft, RtnCheckResult, RtnMaterial, RtnSettings, RtnStudentWorkspace, RtnSubmission, RtnWorkspace } from "@/types/rostechnadzor";
 
-type RtnErrorCode = "forbidden" | "network" | "invalid_response" | "unknown";
+type RtnErrorCode = "forbidden" | "quota" | "conflict" | "network" | "invalid_response" | "unknown";
 
 export class RtnApiError extends Error {
   constructor(readonly code: RtnErrorCode, message: string) {
@@ -16,8 +16,17 @@ function apiError(error: unknown): RtnApiError {
   const message = String(record.message || "");
   const context = record.context && typeof record.context === "object" ? record.context as Record<string, unknown> : {};
   const status = record.status || context.status;
+  if (record.code === "40001" && message === "rtn_draft_revision_conflict") {
+    return new RtnApiError("conflict", "Ответы этой попытки изменились на другом устройстве. Загрузите сохранённую версию перед продолжением.");
+  }
   if (record.code === "42501" || status === 401 || status === 403) {
     return new RtnApiError("forbidden", "Нет прав для этого действия. Обновите доступ организации или обратитесь к её администратору.");
+  }
+  if (record.code === 'P0001' && record.details === 'STUDENT_ASSIGNMENT_LIMIT_EXCEEDED') {
+    return new RtnApiError('quota', 'Достигнут месячный лимит учеников с назначенными курсами. Личные дела можно создавать и хранить без ограничений. Обратитесь к администратору организации.');
+  }
+  if (record.code === 'P0001' && record.details === 'TRAINING_COMPLETION_LIMIT_EXCEEDED') {
+    return new RtnApiError('quota', 'Достигнут месячный лимит завершённых обучений. Ответы остаются в этом окне; обратитесь к администратору организации.');
   }
   if (/fetch|network|timeout|connection/i.test(message) || error instanceof TypeError) {
     return new RtnApiError("network", "Не удалось связаться с сервером. Проверьте соединение и повторите попытку.");
@@ -161,6 +170,42 @@ export async function startRtnAttempt(assignmentId: string): Promise<RtnAttempt>
 
 export async function getRtnAttempt(attemptId: string): Promise<RtnAttempt> {
   return attempt(await call("get_rtn_attempt", { p_attempt_id: attemptId }));
+}
+
+function draft(data: unknown, attemptId: string): RtnAttemptDraft {
+  if (!record(data) || data.attempt_id !== attemptId || !["active", "submitted"].includes(String(data.status))
+    || !Number.isSafeInteger(data.revision) || (data.revision as number) < 0 || !record(data.answers)
+    || !(data.saved_at === null || typeof data.saved_at === "string")
+    || !Object.values(data.answers).every(choices => Array.isArray(choices)
+      && choices.every(choice => typeof choice === "string") && new Set(choices).size === choices.length)) invalidResponse();
+  return data as unknown as RtnAttemptDraft;
+}
+
+export async function getRtnAttemptDraft(attemptId: string): Promise<RtnAttemptDraft> {
+  return draft(await call("get_rtn_attempt_draft", { p_attempt_id: attemptId }), attemptId);
+}
+
+export async function saveRtnAttemptDraft(attemptId: string, answers: RtnAnswers, revision: number): Promise<RtnAttemptDraft> {
+  return draft(await call("save_rtn_attempt_draft", {
+    p_attempt_id: attemptId, p_answers: answers, p_expected_revision: revision,
+  }), attemptId);
+}
+
+export async function hydrateRtnAttempt(loaded: RtnAttempt): Promise<RtnAttempt> {
+  if (loaded.status === "submitted") return loaded;
+  const saved = await getRtnAttemptDraft(loaded.attempt_id);
+  // A different device may have submitted while the active snapshot was loading.
+  if (saved.status === "submitted") return getRtnAttempt(loaded.attempt_id);
+  for (const [id, choices] of Object.entries(saved.answers)) {
+    const question = loaded.questions.find(item => item.id === id);
+    if (!question || choices.some(choice => !question.options.some(option => option.id === choice))) invalidResponse();
+  }
+  return { ...loaded, answers: saved.answers, draft_revision: saved.revision };
+}
+
+export async function recordRtnMaterialOpen(assignmentId: string, releaseId: string): Promise<void> {
+  const data = await call("record_rtn_material_open", { p_assignment_id: assignmentId, p_release_id: releaseId });
+  if (!record(data) || typeof data.recorded !== "boolean" || data.extra_charge !== 0) invalidResponse();
 }
 
 export async function submitRtnAttempt(attemptId: string, answers: RtnAnswers): Promise<RtnSubmission> {

@@ -66,12 +66,12 @@ function ErrorBox({ message, retry, busy = false }: { message: string; retry?: (
 }
 
 // A keyed child resets local selections and pending requests when the active tenant changes.
-export function RostechnadzorWorkspace({ organizationId, actorId, isAdminView = false }: { organizationId: string; actorId: string | null; isAdminView?: boolean }) {
+export function RostechnadzorWorkspace({ organizationId, actorId, isAdminView = false, onUsageChanged }: { organizationId: string; actorId: string | null; isAdminView?: boolean; onUsageChanged?: () => void }) {
   if (!actorId) return <ErrorBox message="Не удалось подтвердить текущую учётную запись. Дождитесь восстановления сеанса или войдите заново." />;
-  return <div className="min-w-0 space-y-5"><RtnWorkspaceContent key={`${actorId}:${organizationId}`} organizationId={organizationId} actorId={actorId} />{isAdminView && <RtnEditorialPanel organizationId={organizationId} />}</div>;
+  return <div className="min-w-0 space-y-5"><RtnWorkspaceContent key={`${actorId}:${organizationId}`} organizationId={organizationId} actorId={actorId} onUsageChanged={onUsageChanged} />{isAdminView && <RtnEditorialPanel organizationId={organizationId} />}</div>;
 }
 
-function RtnWorkspaceContent({ organizationId, actorId }: { organizationId: string; actorId: string }) {
+function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged }: { organizationId: string; actorId: string; onUsageChanged?: () => void }) {
   const client = useQueryClient();
   const queryKey = ["rtn-workspace", actorId, organizationId];
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -162,7 +162,7 @@ function RtnWorkspaceContent({ organizationId, actorId }: { organizationId: stri
       <Button variant={panel === "updates" ? "default" : "outline"} onClick={() => setPanel("updates")} className="gap-2"><RefreshCw className="h-4 w-4" />Обновления</Button>
       <Button variant={panel === "settings" ? "default" : "outline"} onClick={() => setPanel("settings")} className="gap-2"><Settings2 className="h-4 w-4" />Настройки</Button>
     </div>
-    {panel === "assign" && <AssignmentPanel organizationId={organizationId} workspace={workspace} selectedBank={selectedBank} onSelectBank={setSelectedBank} onSaved={() => void query.refetch()} />}
+    {panel === "assign" && <AssignmentPanel organizationId={organizationId} workspace={workspace} selectedBank={selectedBank} onSelectBank={setSelectedBank} onSaved={() => { void query.refetch(); onUsageChanged?.(); }} />}
     {panel === "results" && <ResultsPanel workspace={workspace} />}
     {panel === "updates" && <section className={`${boxClass} space-y-4`} aria-label="Обновления источников"><div><h3 className="font-semibold">Обновления источников</h3><p className="mt-1 text-sm text-muted-foreground">Обнаружение изменений — ежедневно, полная сверка — раз в неделю. Новые ответы допускаются к обучению после предметной проверки.</p></div>
       {check.isError && <ErrorBox message={errorMessage(check.error)} />}
