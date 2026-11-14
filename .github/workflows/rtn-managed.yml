@@ -50,7 +50,7 @@ jobs:
           deno-version: '2.1.4'
       - name: Edge runtime types and bounded native decompression
         run: |
-          deno check --no-lock supabase/functions/rtn-source-check/index.ts
+          deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/rtn-source-check/index.ts
           deno eval 'new DecompressionStream("deflate-raw");'
   native:
     runs-on: ubuntu-24.04
