@@ -37,6 +37,7 @@ vi.mock('@/components/student/TTSSettingsDialog', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error } }));
 vi.mock('@/utils/courseBuilderHelpers', () => ({ uploadToStorage: mocks.upload }));
+vi.mock('@/api/homeworkFiles', () => ({ uploadHomeworkFile: mocks.upload, resolveHomeworkFileUrl: async () => 'https://synthetic.test/file' }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: (name: string, args: unknown) => {
     if (name !== 'get_own_homework_history') return Promise.resolve({ data: null, error: null });
@@ -99,6 +100,24 @@ beforeEach(() => {
 });
 
 describe('HomeworkSubmission: real component with isolated database doubles', () => {
+  it('shows the confirmed private attachment without submitting or completing the lesson', async () => {
+    const file = new File(['synthetic'], 'answer.jpg', {type:'image/jpeg'});
+    const attachment = {url:'homework-file:synthetic-path',bucket:'homework-files',path:'synthetic-path',name:file.name,type:file.type};
+    mocks.upload.mockResolvedValueOnce(attachment);
+    const view=render(<HomeworkSubmission {...props} allowAttachments />); await answer();
+    fireEvent.change(view.container.querySelector('input[type=file]')!,{target:{files:[file]}});
+    await screen.findByText('answer.jpg');
+    expect(mocks.upload).toHaveBeenCalledWith(file,{userId:context.userId,courseId:context.courseId,lessonId:context.lessonId,epoch:'0'});
+    expect(mocks.inserts).toHaveLength(0); expect(props.onComplete).not.toHaveBeenCalled();
+  });
+  it('keeps a failed upload out of the attachment list and preserves the answer', async () => {
+    mocks.upload.mockRejectedValueOnce(new Error('Файл не загружен'));
+    const view=render(<HomeworkSubmission {...props} allowAttachments />); await answer('Сохранить ответ');
+    fireEvent.change(view.container.querySelector('input[type=file]')!,{target:{files:[new File(['x'],'failed.jpg')]}});
+    await waitFor(()=>expect(mocks.error).toHaveBeenCalledWith('Файл не загружен'));
+    expect(screen.queryByText('failed.jpg')).toBeNull(); expect(screen.getByLabelText('Ответ на практическое задание')).toHaveValue('Сохранить ответ');
+    expect(mocks.inserts).toHaveLength(0);
+  });
   it('keeps an old approved answer in history without completing or blocking a new run', async () => {
     mocks.historyEpoch = '1';
     mocks.history.push({ data: [row('approved')], error: null });

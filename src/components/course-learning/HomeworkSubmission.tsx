@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { BookCheck, Send, CheckCircle2, AlertCircle, RotateCcw, Paperclip, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { uploadToStorage } from "@/utils/courseBuilderHelpers";
+import { uploadHomeworkFile } from "@/api/homeworkFiles";
+import { HomeworkAttachmentLink } from './HomeworkAttachmentLink';
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { HOMEWORK_TEXT_LIMIT, homeworkContextKey, isReportForContext, type PreparedHomeworkReport } from "@/lib/homeworkReport";
@@ -137,14 +138,13 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
     if (!file || !allowAttachments || !canSubmit || sending || uploading) return;
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const fileName = `homework_${lessonId}_${Date.now()}.${ext}`;
-      const result = await uploadToStorage(file, 'course-files', `${courseId}/${fileName}`);
+      if (!learningRun) throw new Error('Learning run not confirmed');
+      const result = await uploadHomeworkFile(file, { userId, courseId, lessonId, epoch: learningRun.epoch });
       if (!alive.current) return;
       if (!result) throw new Error("Upload failed");
-      setAttachments(prev => [...prev, { url: result.url, name: file.name, type: ext || "file" }]);
-    } catch {
-      if (alive.current) toast.error("Ошибка загрузки файла");
+      setAttachments(prev => [...prev, result]);
+    } catch (error) {
+      if (alive.current) toast.error(error instanceof Error ? error.message : "Ошибка загрузки файла");
     }
     if (alive.current) { setUploading(false); input.value = ""; }
   };
@@ -242,6 +242,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
         </div>
       )}
 
+      {latest && Array.isArray(latest.attachments) && latest.attachments.length > 0 && <div className="flex flex-wrap gap-2 mt-3">{latest.attachments.map((attachment, i) => <HomeworkAttachmentLink key={i} attachment={attachment} />)}</div>}
       {/* Submission form */}
       {loadError && <div role="alert" className="rounded-xl border border-destructive/30 p-4 space-y-2">
         <p>Не удалось подтвердить историю ответов. Отправка временно недоступна; черновик не удалён.</p>
@@ -324,6 +325,7 @@ function ScopedHomeworkSubmission({ organizationId, lessonId, courseId, userId, 
                   {sub.score != null && <Badge variant="outline">{sub.score} баллов</Badge>}
                 </div>
                 {sub.content && <p className="text-muted-foreground line-clamp-2">{sub.content}</p>}
+                {Array.isArray(sub.attachments) && sub.attachments.length > 0 && <div className="flex flex-wrap gap-2 mt-3">{sub.attachments.map((attachment, i) => <HomeworkAttachmentLink key={i} attachment={attachment} />)}</div>}
                 {sub.reviewer_comment && <p className="mt-2"><span className="font-medium">Комментарий преподавателя: </span>{sub.reviewer_comment}</p>}
               </div>
             ))}
