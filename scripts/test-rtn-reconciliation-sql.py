@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from rtn_provider_payload import guarded_payload_sql
 
 ROOT = Path(__file__).resolve().parents[1]
 HERE = ROOT / 'supabase/tests/rtn-core-reconciliation'
@@ -42,12 +43,26 @@ probe = run("SELECT current_database(),current_setting('server_version_num');")
 if not probe.startswith('rtn_reconciliation_lab_ci|17'):
     raise SystemExit('REFUSE: dedicated native PostgreSQL17 lab could not be verified')
 read = lambda path: path.read_text(encoding='utf-8')
-atomic = lambda sql: 'SET ROLE postgres;BEGIN;\n' + sql + '\nCOMMIT;\n'
+atomic = lambda sql: 'SET ROLE postgres;BEGIN;\n' + guarded_payload_sql(sql) + '\nCOMMIT;\n'
 migration = atomic(read(ROOT / 'supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql'))
 base_runner = ast.parse(read(ROOT / 'scripts/test-rtn-sql.py'))
 baseline = next(ast.literal_eval(node.value) for node in base_runner.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'baseline' for target in node.targets))
 fixture = read(BASE / 'fixture.sql').replace('DATABASE rtn_lab_ci', 'DATABASE rtn_reconciliation_lab_ci')
 run(fixture + '\n' + read(BASE / 'released-guards.sql') + '\n' + baseline + '\n' + atomic(read(ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql')))
+
+# This is the same checksum guard used in provider delivery. A formatting or
+# content change must fail before even the first source statement can run.
+delivery_probe = "CREATE TABLE rtn_private.delivery_guard_probe(id integer);\nINSERT INTO rtn_private.delivery_guard_probe VALUES(1);\n"
+corrupted = atomic(delivery_probe).replace('VALUES(1);', 'VALUES(2);', 1)
+refused = raw(corrupted)
+if not refused.returncode or 'RTN_PROVIDER_PAYLOAD_BYTES_CHANGED' not in refused.stderr:
+    raise AssertionError('Changed provider source was not rejected before execution: ' + refused.stderr)
+run("SELECT lab.check('delivery checksum rejects changed source before any source DDL',to_regclass('rtn_private.delivery_guard_probe') IS NULL);")
+corrupted = atomic(delivery_probe).replace('CREATE TABLE rtn_private.delivery_guard_probe', 'CREATE  TABLE rtn_private.delivery_guard_probe', 1)
+refused = raw(corrupted)
+if not refused.returncode or 'RTN_PROVIDER_PAYLOAD_BYTES_CHANGED' not in refused.stderr:
+    raise AssertionError('Provider whitespace change was not rejected: ' + refused.stderr)
+run("SELECT lab.check('delivery checksum rejects source whitespace before any source DDL',to_regclass('rtn_private.delivery_guard_probe') IS NULL);")
 run("""SET ROLE postgres;
 SELECT lab.keep('reconciliation_canonical_catalog',(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','rtn_private')));
 SELECT lab.keep('reconciliation_canonical_definitions',(SELECT jsonb_agg(jsonb_build_object('signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid)))FROM pg_proc p WHERE p.oid=ANY(ARRAY['public.save_rtn_settings(uuid,boolean,boolean)'::regprocedure,'public.get_rtn_workspace(uuid)'::regprocedure])));
