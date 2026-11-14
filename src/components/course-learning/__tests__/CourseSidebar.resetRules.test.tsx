@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CourseSidebarContent } from "../CourseSidebar";
+import { withCourseModuleTitles } from '@/lib/courseModuleTitles';
 
 afterEach(cleanup);
 const props = () => ({ courseTitle: "Курс", lessons: [{ id: "first", title: "Первый", type: "text" }, { id: "second", title: "Второй", type: "test" }],
@@ -8,6 +9,20 @@ const props = () => ({ courseTitle: "Курс", lessons: [{ id: "first", title: 
   isLessonCompleted: (id: string) => id === "second", isLessonAccessible: (index: number) => index === 0,
   goToLesson: vi.fn(), resetCourseProgress: vi.fn(), onNavigateBack: vi.fn() });
 describe("sidebar reset and sequential access rules", () => {
+  it('shows the saved module headings once and keeps canonical indexes and locks',()=>{
+    const value=props();
+    const lessons=withCourseModuleTitles('course-a',[{id:'first',title:'Первый',type:'practice',module_id:'m1'},{id:'second',title:'Второй',type:'test',module_id:'m1'},{id:'third',title:'Третий',type:'text',module_id:'m2'}],[{id:'m1',course_id:'course-a',title:'Моделирование'},{id:'m2',course_id:'course-a',title:'ЧПУ'}]);
+    render(<CourseSidebarContent {...value} lessons={lessons} isLessonAccessible={i=>i!==1}/>);
+    expect(screen.getAllByRole('heading',{name:'Моделирование'})).toHaveLength(1);expect(screen.getByRole('heading',{name:'ЧПУ'})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/Первый/})).toHaveTextContent('Практика');
+    expect(screen.getByRole('button',{name:/Второй/})).toBeDisabled();
+    fireEvent.click(screen.getByRole('button',{name:/Третий/}));expect(value.goToLesson).toHaveBeenCalledExactlyOnceWith(2);
+  });
+  it('does not display headings from another course or invent missing module titles',()=>{
+    const value=props();const lessons=withCourseModuleTitles('course-a',[{id:'first',title:'Первый',type:'text',module_id:'m1'},{id:'second',title:'Второй',type:'test',module_id:null}],[{id:'m1',course_id:'foreign-course',title:'Чужая программа'}]);
+    render(<CourseSidebarContent {...value} lessons={lessons}/>);
+    expect(screen.queryByRole('heading',{name:'Чужая программа'})).toBeNull();expect(screen.getByRole('button',{name:/Первый/})).toBeEnabled();
+  });
   it("shows a lock for an inaccessible lesson even when an earlier result is marked completed", () => {
     const value = props(); render(<CourseSidebarContent {...value} />);
     const lesson = screen.getByRole("button", { name: /Второй/ });

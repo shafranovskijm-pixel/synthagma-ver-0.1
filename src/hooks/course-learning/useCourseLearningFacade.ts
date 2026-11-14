@@ -17,6 +17,7 @@ import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol
 import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 import { COURSE_LESSON_ORDER_VERSION, orderCourseLessons } from "@/lib/courseLessonOrder";
+import { withCourseModuleTitles } from '@/lib/courseModuleTitles';
 import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
 import { useCourseFileDeliveryMode } from "@/hooks/useCourseFileDeliveryMode";
 import { buildLessonCompletionIndex, isCourseLessonAccessible } from './lessonAccess';
@@ -594,7 +595,7 @@ export function useCourseLearning() {
             ? supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', lookupUserId).maybeSingle()
             : fetchOwnLearningProgress(courseId, lookupUserId).then(snapshot => ({ data: snapshot.enrollment, error: null, snapshot }))
           : Promise.resolve({ data: null, error: null }),
-        supabase.from('course_modules').select('id, order_index').eq('course_id', courseId).order('order_index'),
+        supabase.from('course_modules').select('id, course_id, title, order_index').eq('course_id', courseId).order('order_index'),
       ]);
       if (!current()) return;
       if (courseResult.error) throw courseResult.error;
@@ -607,7 +608,7 @@ export function useCourseLearning() {
 
       // Existing current enrollment/status/expiry checks below govern learning.
       // A newly submitted photo is pending evidence and cannot grant or revoke course access.
-      let lessonsData = orderCourseLessons(lessonsResult.data || [], modulesResult.data || []);
+      let lessonsData = withCourseModuleTitles(courseId, orderCourseLessons(lessonsResult.data || [], modulesResult.data || []), modulesResult.data || []);
 
       // Apply module access schedules + per-user overrides (use target student's id in admin view)
       try {
