@@ -34,6 +34,7 @@ guards = (HERE / 'released-guards.sql').read_text(encoding='utf-8')
 # The supported provider owns the transaction around each payload. Native psql
 # emulates that boundary exactly once; product SQL contains no outer TX control.
 migration = 'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n'
+reconciliation = 'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n'
 acceptance = (HERE / 'acceptance.sql').read_text(encoding='utf-8')
 baseline = """
 SELECT lab.keep('old_data',(SELECT jsonb_build_array((SELECT jsonb_agg(c)FROM public.courses c),(SELECT jsonb_agg(t)FROM public.test_attempts t),(SELECT jsonb_agg(i)FROM public.subscription_invoices i))));
@@ -64,7 +65,7 @@ for case, prepare, preserved in [
 restore = run("SET ROLE postgres;UPDATE storage.buckets SET public=false,file_size_limit=NULL WHERE id='rtn-sources';")
 if restore.returncode:
     raise SystemExit(restore.stderr)
-result = run('SET ROLE postgres;\n' + migration + '\n' + acceptance)
+result = run('SET ROLE postgres;\n' + migration + '\n' + reconciliation + '\n' + acceptance)
 with (OUT / 'native.stdout.txt').open('a', encoding='utf-8') as log:
     log.write(result.stdout)
 with (OUT / 'native.stderr.txt').open('a', encoding='utf-8') as log:

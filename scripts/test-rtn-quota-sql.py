@@ -39,7 +39,7 @@ CREATE TRIGGER enforce_organization_monthly_course_quota AFTER INSERT OR UPDATE 
 REVOKE ALL ON FUNCTION public._organization_monthly_course_limits(uuid),public.enforce_organization_monthly_course_quota() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION public.get_organization_student_capacity(uuid,integer),public.get_organization_training_capacity(uuid,integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.get_organization_student_capacity(uuid,integer),public.get_organization_training_capacity(uuid,integer) TO authenticated,service_role;
-"""+baseline+'\nBEGIN;\n'+(ROOT/'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text()+'\nCOMMIT;\n'+(HERE/'acceptance.sql').read_text()+"""
+"""+baseline+'\nBEGIN;\n'+(ROOT/'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text()+'\nCOMMIT;\nBEGIN;\n'+(ROOT/'supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql').read_text()+'\nCOMMIT;\n'+(HERE/'acceptance.sql').read_text()+"""
 SELECT lab.keep('quota_abi',(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_proc p WHERE p.oid=ANY(ARRAY['public._organization_monthly_course_limits(uuid)'::regprocedure,'public.enforce_organization_monthly_course_quota()'::regprocedure,'public.get_organization_student_capacity(uuid,integer)'::regprocedure,'public.get_organization_training_capacity(uuid,integer)'::regprocedure])));
 """
 run(setup)

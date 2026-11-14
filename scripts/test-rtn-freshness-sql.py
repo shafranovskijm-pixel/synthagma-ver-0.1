@@ -34,7 +34,8 @@ def read(path):return(ROOT/path).read_text(encoding='utf-8')
 if not run("SELECT current_database(),current_setting('server_version_num');").startswith('rtn_freshness_lab_ci|17'):
     raise SystemExit('REFUSE: native PG17 fixture required')
 
-# Reuse only the privacy lane's setup builder, without executing its module,
+# Reuse only the privacy lane's setup builder (core -> provider1215 -> quota ->
+# drafts), without executing its module,
 # creating an erasure request or resetting/touching the separate privacy lab.
 tree=ast.parse(read('supabase/tests/rtn-account-erasure/run.py'))
 builder=next(node for node in tree.body if isinstance(node,ast.FunctionDef)and node.name=='build_setup')

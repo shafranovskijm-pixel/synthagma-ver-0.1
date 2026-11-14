@@ -34,7 +34,8 @@ CREATE TABLE lab.draft_activity_calls(assignment_id uuid,attempt_id uuid,release
 CREATE FUNCTION rtn_private.record_activity(uuid,uuid,uuid,text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$BEGIN INSERT INTO lab.draft_activity_calls VALUES($1,$2,$3,$4);RETURN true;END;$$;
 REVOKE ALL ON FUNCTION rtn_private.record_activity(uuid,uuid,uuid,text) FROM PUBLIC,anon,authenticated,service_role;"""
 sql = '\n'.join([read('supabase/tests/rtn-managed/fixture.sql'), read('supabase/tests/rtn-managed/released-guards.sql'), baseline,
-                 migration('supabase/migrations/20261114120000_rtn_managed_training.sql'), read('supabase/tests/rtn-managed/acceptance.sql'),
+                 migration('supabase/migrations/20261114120000_rtn_managed_training.sql'),
+                 migration('supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql'), read('supabase/tests/rtn-managed/acceptance.sql'),
                  adapter, migration('supabase/migrations/20261114122500_rtn_attempt_drafts.sql'), read('supabase/tests/rtn-drafts/acceptance.sql')])
 result = run(sql)
 (OUT / 'stdout.txt').write_text(result.stdout, encoding='utf-8')

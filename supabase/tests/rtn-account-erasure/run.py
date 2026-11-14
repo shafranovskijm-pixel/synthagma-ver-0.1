@@ -150,6 +150,7 @@ def build_setup():
         (base / 'released-quota-sources.sql').read_text(encoding='utf-8'),
         # Native psql emulates the provider-owned transaction once per payload.
         'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
+        'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
         'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
         'BEGIN;\n' + (ROOT / 'supabase/migrations/20261114122500_rtn_attempt_drafts.sql').read_text(encoding='utf-8') + '\nCOMMIT;\n',
         '\n'.join(tables), (HERE / 'fixture.sql').read_text(encoding='utf-8'), '\n'.join(funcs),

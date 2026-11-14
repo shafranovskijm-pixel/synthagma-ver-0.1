@@ -8,6 +8,7 @@ on:
       - supabase/tests/rtn-drafts/**
       - supabase/tests/rtn-account-erasure/**
       - supabase/tests/rtn-freshness/**
+      - supabase/tests/rtn-core-reconciliation/**
       - scripts/test-rtn*.py
       - .github/workflows/rtn-managed.yml
       - src/api/rostechnadzor*
@@ -129,6 +130,42 @@ jobs:
         with:
           name: rtn-quota-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-quota-native/
+          if-no-files-found: error
+          retention-days: 14
+  reconciliation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_reconciliation_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_reconciliation_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_reconciliation_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_reconciliation_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_reconciliation_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Known provider whitespace reconciliation and unknown drift atomic rollback
+        run: python scripts/test-rtn-reconciliation-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-reconciliation-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-reconciliation-native/
           if-no-files-found: error
           retention-days: 14
   drafts:
