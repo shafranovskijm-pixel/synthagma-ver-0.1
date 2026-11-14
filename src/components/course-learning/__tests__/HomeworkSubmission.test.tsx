@@ -100,6 +100,31 @@ beforeEach(() => {
 });
 
 describe('HomeworkSubmission: real component with isolated database doubles', () => {
+  it('keeps the native file input and draft when the parent refreshes its reset callback',async()=>{
+    const view=render(<HomeworkSubmission {...props} allowAttachments onLearningProgressReset={async()=>false}/>);await answer('Не потерять черновик');
+    const input=view.container.querySelector('input[type=file]');
+    view.rerender(<HomeworkSubmission {...props} allowAttachments onLearningProgressReset={async()=>false}/>);
+    await screen.findByLabelText('Ответ на практическое задание');
+    expect(view.container.querySelector('input[type=file]')).toBe(input);
+    expect(screen.getByLabelText('Ответ на практическое задание')).toHaveValue('Не потерять черновик');
+    expect(mocks.historyRequests).toHaveLength(1);
+  });
+  it('refreshes feedback on file-chooser focus without removing the input or losing the selected file',async()=>{
+    const pending=deferred();const file=new File(['synthetic'],'focus.jpg',{type:'image/jpeg'});
+    mocks.upload.mockResolvedValueOnce({bucket:'homework-files',path:'synthetic',url:'homework-file:synthetic',name:file.name,type:file.type});
+    const view=render(<HomeworkSubmission {...props} allowAttachments/>);await answer('Сохранённый черновик');
+    const input=view.container.querySelector('input[type=file]');mocks.history.push(pending.promise);
+    fireEvent(window,new Event('focus'));
+    await waitFor(()=>expect(mocks.historyRequests).toHaveLength(2));
+    expect(view.container.querySelector('input[type=file]')).toBe(input);
+    expect(screen.getByRole('button',{name:/^Отправить$/})).toBeDisabled();
+    fireEvent.change(input!,{target:{files:[file]}});await screen.findByText('focus.jpg');
+    await act(async()=>pending.resolve({data:[],error:null}));
+    expect(view.container.querySelector('input[type=file]')).toBe(input);
+    expect(screen.getByLabelText('Ответ на практическое задание')).toHaveValue('Сохранённый черновик');
+    expect(screen.getByRole('button',{name:/^Отправить$/})).toBeEnabled();
+    expect(mocks.inserts).toHaveLength(0);expect(props.onComplete).not.toHaveBeenCalled();
+  });
   it('shows the confirmed private attachment without submitting or completing the lesson', async () => {
     const file = new File(['synthetic'], 'answer.jpg', {type:'image/jpeg'});
     const attachment = {url:'homework-file:synthetic-path',bucket:'homework-files',path:'synthetic-path',name:file.name,type:file.type};
