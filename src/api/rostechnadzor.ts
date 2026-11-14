@@ -77,6 +77,10 @@ export async function getRtnWorkspace(organizationId: string): Promise<RtnWorksp
     && typeof bank.source_id === "string" && typeof bank.available_for_training === "boolean"
     && ["current", "review_required"].includes(String(bank.normative_status))
     && (bank.normative_cutoff_at === null || typeof bank.normative_cutoff_at === "string")
+    && (bank.admission_basis === undefined || ["manual_review", "automatic_attestation", "blocked"].includes(String(bank.admission_basis)))
+    && (bank.latest_check_status === undefined || bank.latest_check_status === null || ["queued", "running", "unchanged", "needs_subject_review", "unknown", "partial_coverage", "error"].includes(String(bank.latest_check_status)))
+    && (bank.latest_check_run_id === undefined || bank.latest_check_run_id === null || typeof bank.latest_check_run_id === "string")
+    && (bank.latest_check_at === undefined || bank.latest_check_at === null || typeof bank.latest_check_at === "string")
     && typeof bank.can_manual_check === "boolean" && ["unreviewed", "reviewed", "released"].includes(String(bank.key_status)))) invalidResponse();
   if (!(data.students as unknown[]).every(student => record(student) && ["id", "user_id"].every(key => typeof student[key] === "string") && (typeof student.full_name === "string" || student.full_name === null))
     || !(data.groups as unknown[]).every(group => record(group) && typeof group.id === "string" && typeof group.name === "string")

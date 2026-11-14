@@ -30,3 +30,16 @@ supabase/tests/fixtures/uc-full-cycle-collect-stage51-metadata.sql text eol=lf
 supabase/tests/fixtures/uc-full-cycle-legacy-journal-live.json text eol=lf
 supabase/tests/fixtures/uc016-private-file-source-metadata.json text eol=lf
 supabase/tests/fixtures/uc016-legacy101-conflicts.json text eol=lf
+
+# RTN attestation source and captured text fixtures have pinned byte hashes.
+supabase/migrations/20261114125000_rtn_normative_attestations.sql text eol=lf
+supabase/tests/rtn-npa250/** text eol=lf
+supabase/functions/_shared/rtn-npa/** text eol=lf
+# Raw official responses retain original line endings and whitespace.
+supabase/functions/_shared/rtn-npa/fixtures/official/** -text -diff
+supabase/functions/rtn-npa-check/** text eol=lf
+supabase/functions/rtn-npa-cron/** text eol=lf
+src/api/rtn-npa* text eol=lf
+src/types/rtn-npa.ts text eol=lf
+src/components/organization/rtn/RtnNormative* text eol=lf
+.github/workflows/rtn-npa250.yml text eol=lf

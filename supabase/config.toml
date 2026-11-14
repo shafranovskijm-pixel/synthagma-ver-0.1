@@ -313,3 +313,11 @@ verify_jwt = true
 [functions.support-event-delivery]
 verify_jwt = false
 
+# Original user JWT is verified with getUser and exact current queue permissions.
+[functions.rtn-npa-check]
+verify_jwt = false
+
+# Separate managed cron uses the unchanged generated opaque-secret helper.
+[functions.rtn-npa-cron]
+verify_jwt = false
+

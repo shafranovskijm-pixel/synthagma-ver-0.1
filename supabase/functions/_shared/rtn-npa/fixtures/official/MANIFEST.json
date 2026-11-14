@@ -1,0 +1,83 @@
+{
+  "scope": "Recorded official responses for offline synthetic worker tests. NOT a production egress or live renewal acceptance.",
+  "files": [
+    {
+      "file": "actual-pravo-fz116-search.json",
+      "bytes": 757,
+      "sha256": "71c21830744fb2b1f150e9158a0c0d94adb7221d49f86a26cfc7176b76bab60c",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-fz116-search.json"
+    },
+    {
+      "file": "actual-pravo-fz116-redactions.json",
+      "bytes": 5018,
+      "sha256": "48dd26e50438a0f7ddd4303e5103f91b204d0477bb8fe3e7f2971eddab897e5d",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-fz116-redactions.json"
+    },
+    {
+      "file": "actual-pravo-fz116-redactions-all-observed-mode.json",
+      "bytes": 20791,
+      "sha256": "73bbcea3621fb1fc635a70dc2722382d9a092d32ba9caa813b49e3a1cc021c53",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-fz116-redactions-all-observed-mode.json"
+    },
+    {
+      "file": "actual-pravo-fz116-cardfull.json",
+      "bytes": 137533,
+      "sha256": "f2966738316fdc814a6cb9ba77d828b6aff83590a96c8f753c34c610c7033fa3",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-fz116-cardfull.json"
+    },
+    {
+      "file": "actual-pravo-fz116-current-redtext.json",
+      "bytes": 240542,
+      "sha256": "6cb448eb38e23b1addd26bf06b8c2af3d20a10d9ae5e109b7dc8887531159890",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-fz116-current-redtext.json"
+    },
+    {
+      "file": "actual-pravo-fz116-future-redtext.json",
+      "bytes": 276717,
+      "sha256": "b2e04d8c0b7914e988a508854cec053ec1d52c67d73f2ae4d6c50fa799414961",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-fz116-future-redtext.json"
+    },
+    {
+      "file": "actual-pravo-law94-original-redactions.json",
+      "bytes": 596,
+      "sha256": "d6208a70e3580aaee70f35c52ec00dd248ecaafbe23dab01139d2f4400755f94",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-law94-original-redactions.json"
+    },
+    {
+      "file": "actual-pravo-law94-original-redtext.json",
+      "bytes": 60552,
+      "sha256": "c14eb3fb041f0ed28ef734f2b467686cc9d5f2897b82ee3a7d36086b65c390e9",
+      "source": "work\\rtn-npa-watch-research-20261115\\actual-pravo-law94-original-redtext.json"
+    },
+    {
+      "file": "publication-law94-card.html",
+      "bytes": 21462,
+      "sha256": "a8d151185c6f8667518986d0978506d8e21da5adab23c18abd136208afe4de71",
+      "source": "work\\rtn-npa-watch-research-20261115\\publication-law94-card.html"
+    },
+    {
+      "file": "publication-search-federal-zero-20261114.html",
+      "bytes": 1868926,
+      "sha256": "403f9057e0d505bdafbd420c4941980f409bc258ec6067b487faec099656cefe",
+      "source": "work\\rtn-npa-watch-research-20261115\\publication-search-federal-zero-20261114.html"
+    },
+    {
+      "file": "publication-search-federal-all-after-index-p1.html",
+      "bytes": 2432110,
+      "sha256": "0168b6de12d876948601bf4540561d294e8c17d6fa5bf04869d1d60f0123726b",
+      "source": "work\\rtn-npa-watch-research-20261115\\publication-search-federal-all-after-index-p1.html"
+    },
+    {
+      "file": "publication-search-federal-all-after-index-p2.html",
+      "bytes": 2434499,
+      "sha256": "bc2747f3ebf57c54826b7a639d621bb6c4f90a76b423d15ca12261b0ee7c3c23",
+      "source": "work\\rtn-npa-watch-research-20261115\\publication-search-federal-all-after-index-p2.html"
+    },
+    {
+      "file": "publication-search-federal-all-after-index-p3.html",
+      "bytes": 2370193,
+      "sha256": "1b90c71f119e4bb8f2ecbebca7d48c66ef6d98ae11849af1916517029f1a80a1",
+      "source": "work\\rtn-npa-watch-research-20261115\\publication-search-federal-all-after-index-p3.html"
+    }
+  ]
+}

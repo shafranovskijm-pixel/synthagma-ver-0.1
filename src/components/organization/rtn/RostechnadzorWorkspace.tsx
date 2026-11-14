@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { assignRtnTraining, checkRtnSource, getRtnWorkspace, saveRtnSettings } from "@/api/rostechnadzor";
 import { canAssignRtnBank, type RtnBank, type RtnCheckResult, type RtnCheckStatus, type RtnReleaseMetadata, type RtnSettings, type RtnWorkspace } from "@/types/rostechnadzor";
 import { RtnEditorialPanel } from "./RtnEditorialPanel";
+import { RtnNormativeStatus } from "./RtnNormativeStatus";
 
 type Panel = "assign" | "results" | "updates" | "settings";
 const controlClass = "flex min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -83,10 +84,33 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged }: { orga
   const [checkResults, setCheckResults] = useState<Record<string, RtnCheckResult>>({});
   const [checkFailures, setCheckFailures] = useState<Record<string, boolean>>({});
   const [pendingRuns, setPendingRuns] = useState<Record<string, { id: string; until: number }>>({});
+  const [pendingNormative, setPendingNormative] = useState<Record<string, { id: string; until: number; timedOut: boolean }>>({});
   const query = useQuery({
     queryKey, queryFn: () => getRtnWorkspace(organizationId), retry: false, staleTime: 0,
-    refetchInterval: () => Object.values(pendingRuns).some(run => Date.now() < run.until) ? 2000 : false,
+    refetchInterval: () => [...Object.values(pendingRuns), ...Object.values(pendingNormative)].some(run => Date.now() < run.until) ? 2000 : false,
   });
+
+  useEffect(() => {
+    if (!query.data) return;
+    const finished = Object.entries(pendingNormative).filter(([id, run]) => {
+      const current = query.data.banks.find(bank => bank.id === id);
+      return current?.latest_check_run_id === run.id && current.latest_check_status
+        && current.latest_check_status !== "queued" && current.latest_check_status !== "running";
+    });
+    if (!finished.length) return;
+    setPendingNormative(previous => {
+      const next = { ...previous };
+      for (const [id] of finished) delete next[id];
+      return next;
+    });
+  }, [query.data, query.dataUpdatedAt, pendingNormative]);
+
+  useEffect(() => {
+    const deadlines = Object.values(pendingNormative).filter(run => !run.timedOut).map(run => run.until);
+    if (!deadlines.length) return;
+    const timer = window.setTimeout(() => setPendingNormative(previous => Object.fromEntries(Object.entries(previous).map(([id, run]) => [id, run.until <= Date.now() ? { ...run, timedOut: true } : run]))), Math.max(0, Math.min(...deadlines) - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [pendingNormative]);
 
   useEffect(() => {
     if (!query.data) return;
@@ -178,6 +202,10 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged }: { orga
           {pending ? <div className="flex flex-wrap items-center gap-2"><p className="text-xs text-muted-foreground">Результат появится после завершения проверки.</p><Button size="sm" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>Обновить состояние</Button></div> : <Button size="sm" variant="outline" className="h-auto min-h-9 gap-2 whitespace-normal" disabled={!workspace.access.can_manage || !bank.can_manual_check || check.isPending} onClick={() => check.mutate(bank.source_id)}>{check.isPending && check.variables === bank.source_id ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <RefreshCw className="h-4 w-4 shrink-0" />}Проверить обновления сейчас</Button>}
         </div>;
       })}
+      <div className="space-y-3 border-t border-border pt-4"><h4 className="text-sm font-medium">Актуальность нормативной базы</h4><p className="text-xs text-muted-foreground">Проверяется отдельно от файла вопросов. Изменения оснований требуют предметной проверки; ошибка связи не подтверждает актуальность.</p>{banks.map(bank => <RtnNormativeStatus key={bank.id} organizationId={organizationId} bank={bank} canManage={workspace.access.can_manage} pending={!!pendingNormative[bank.id] && !pendingNormative[bank.id].timedOut} timedOut={pendingNormative[bank.id]?.timedOut} refresh={() => void query.refetch()} onQueued={receipt => {
+        setPendingNormative(previous => ({ ...previous, [bank.id]: { id: receipt.run_id, until: Date.now() + 90000, timedOut: false } }));
+        void query.refetch();
+      }} />)}</div>
     </section>}
     {panel === "settings" && <SettingsPanel organizationId={organizationId} initial={workspace.settings} canManage={workspace.access.can_manage} onSaved={() => void query.refetch()} />}
     <Dialog open={!!detail} onOpenChange={open => { if (!open) setDetail(null); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle className="break-words pr-4">{detail?.code} {detail?.title}</DialogTitle><DialogDescription>Источник вопросов, готовность учебной редакции и история выпусков.</DialogDescription></DialogHeader>{detail && <div className="space-y-4 text-sm"><p>{keyLabel(detail)}</p><dl className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Вопросов в программе</dt><dd>{detail.question_count ?? 0}</dd></div><div><dt className="text-muted-foreground">Источник утверждён</dt><dd>{rtnDate(detail.approved_on)}</dd></div><div><dt className="text-muted-foreground">Применение с</dt><dd>{rtnDate(detail.effective_from)}</dd></div><div><dt className="text-muted-foreground">Последняя успешная проверка</dt><dd>{rtnDate(detail.last_success_at, true)}</dd></div></dl>{workspace.settings.show_archived_releases && <ReleaseHistory bankId={detail.id} releases={workspace.archived_releases || []} />}{officialSource(detail.source_url) && <a className="inline-flex items-center gap-2 text-primary underline underline-offset-4" href={officialSource(detail.source_url)!} rel="noopener noreferrer" target="_blank">Открыть официальный источник<ExternalLink className="h-4 w-4" /></a>}<p className="text-muted-foreground">Официальная публикация вопросов не подтверждает правильные ответы. К обучению допускается только выпущенная редакция с проверенными ключами.</p><Button disabled={!workspace.access.can_assign || !canAssignRtnBank(detail)} onClick={() => { openAssign(detail); setDetail(null); }}>Назначить обучение</Button></div>}</DialogContent></Dialog>
