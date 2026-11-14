@@ -10,7 +10,7 @@ export function canonicalDraft(answers: RtnAnswers): RtnAnswers {
 }
 
 export function useRtnDraftSync(input: {
-  initial: RtnAttempt; answers: RtnAnswers; enabled: boolean;
+  initial: RtnAttempt; answers: RtnAnswers; enabled: boolean; finalized: boolean;
   onReplace: (attempt: RtnAttempt) => void; onSubmitted: (attempt: RtnAttempt) => void;
 }) {
   const callbacks = useRef(input);
@@ -30,11 +30,11 @@ export function useRtnDraftSync(input: {
   const dirty = value !== confirmed.current;
 
   useEffect(() => {
-    if (!input.enabled || (!dirty && state !== "saving" && state !== "error" && state !== "conflict")) return;
+    if (input.finalized || (!dirty && state !== "saving" && state !== "error" && state !== "conflict")) return;
     const protect = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [input.enabled, dirty, state]);
+  }, [input.finalized, dirty, state]);
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 

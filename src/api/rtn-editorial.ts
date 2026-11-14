@@ -6,7 +6,7 @@ export interface EditorialWorkspace {
   banks: { id: string; source_id: string; code: string; title: string; parent_bank_id: string | null }[];
   source_revisions: { id: string; source_id: string; sha256: string; captured_at: string; normalization_required: boolean }[];
   bank_revisions: { id: string; bank_id: string; source_revision_id: string; question_count: number; created_at: string; normalization_version?: number }[];
-  key_sets: { id: string; bank_id: string; bank_revision_id: string; question_count: number; material_count: number; reviewed_at: string }[];
+  key_sets: { id: string; bank_id: string; bank_revision_id: string; question_count: number; material_count: number; reviewed_at: string; normative_status?: 'current' | 'review_required'; normative_cutoff_at?: string | null; editorial_review_before?: string | null }[];
   releases: { id: string; key_set_id: string; effective_from: string }[];
 }
 

@@ -16,6 +16,8 @@ export interface RtnBank {
   question_count: number;
   release_id: string | null;
   key_status: RtnKeyStatus;
+  normative_status?: "current" | "review_required";
+  normative_cutoff_at?: string | null;
   available_for_training: boolean;
   can_manual_check: boolean;
   last_checked_at: string | null;
@@ -113,7 +115,8 @@ export interface RtnCheckResult {
 }
 
 export function canAssignRtnBank(bank: RtnBank): boolean {
-  return bank.available_for_training === true && bank.key_status === "released" && !!bank.release_id;
+  return bank.available_for_training === true && bank.key_status === "released"
+    && bank.normative_status === "current" && !!bank.release_id;
 }
 
 export interface RtnStudentAssignment {
@@ -126,6 +129,9 @@ export interface RtnStudentAssignment {
   status: string;
   assigned_at: string;
   access_allowed: boolean;
+  can_start?: boolean;
+  normative_status?: "current" | "review_required";
+  normative_cutoff_at?: string | null;
   last_attempt_id: string | null;
   last_score: number | null;
   last_passed: boolean | null;
@@ -194,7 +200,7 @@ export interface RtnMaterial {
 }
 
 export interface RtnAssignmentDetail {
-  assignment: { id: string; organization_id: string; bank_id: string; code: string; title: string; status: string };
+  assignment: { id: string; organization_id: string; bank_id: string; code: string; title: string; status: string; can_start?: boolean; normative_status?: "current" | "review_required"; normative_cutoff_at?: string | null };
   release: { id: string; effective_from: string; question_count: number };
   source: { page_url: string; document_url: string; approved_on: string | null };
   materials: RtnMaterial[];

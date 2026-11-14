@@ -57,6 +57,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
       if (action === 'publish') {
         if (!keyId || !/^\d{4}-\d{2}-\d{2}$/.test(effective) || note.trim().length < 10) throw new Error('Выберите проверенный набор, дату применения и пояснение выпуска.');
         if (!query.data?.key_sets.some(item => item.id === keyId) || query.data.releases.some(item => item.key_set_id === keyId)) throw new Error('Обновите список: этот набор уже выпущен или недоступен.');
+        if (query.data.key_sets.find(item => item.id === keyId)?.normative_status !== 'current') throw new Error('Нужна повторная нормативная проверка с явным сроком следующей сверки. Сохраните проверенный пакет новой редакцией перед выпуском.');
         const result = await publishRtnModule(keyId, effective, note);
         return `Учебная редакция выпущена: ${result.release_id}. Старые попытки сохраняют прежнюю редакцию.`;
       }
@@ -135,7 +136,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
         <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => { setText(event.target.value); setPackageError(''); }} /></label>
         <Button disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов</option>)}</select></label>
+          <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов · {item.normative_status === "current" ? `повторная сверка до ${item.editorial_review_before || item.normative_cutoff_at || "уточняется"}` : "нужна нормативная проверка"}</option>)}</select></label>
           <label className="space-y-1 text-sm">Применять с<input type="date" className={field} value={effective} onChange={event => setEffective(event.target.value)} /></label>
         </div>
         <label className="block space-y-1 text-sm">Основание выпуска<input className={field} value={note} onChange={event => setNote(event.target.value)} /></label>

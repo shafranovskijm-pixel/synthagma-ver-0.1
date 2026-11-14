@@ -7,6 +7,7 @@ on:
       - supabase/tests/rtn-quota/**
       - supabase/tests/rtn-drafts/**
       - supabase/tests/rtn-account-erasure/**
+      - supabase/tests/rtn-freshness/**
       - scripts/test-rtn*.py
       - .github/workflows/rtn-managed.yml
       - src/api/rostechnadzor*
@@ -197,5 +198,41 @@ jobs:
         with:
           name: rtn-erasure-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-erasure-native/
+          if-no-files-found: error
+          retention-days: 14
+  freshness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_freshness_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_freshness_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_freshness_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_freshness_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_freshness_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Normative deadlines immutable history and after-lock edition races
+        run: python scripts/test-rtn-freshness-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-freshness-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-freshness-native/
           if-no-files-found: error
           retention-days: 14

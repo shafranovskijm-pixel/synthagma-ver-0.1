@@ -9,7 +9,7 @@ import type { RtnAnswers, RtnAttempt, RtnMaterial, RtnStudentAssignment, RtnSubm
 import { useRtnDraftSync } from "./useRtnDraftSync";
 
 type OpenTraining = { assignment: RtnStudentAssignment; mode: "start" | "resume" | "result" };
-type EntryProps = { opened: OpenTraining; onUpdated: () => void; onCloseReadiness: (ready: boolean) => void };
+type EntryProps = { opened: OpenTraining; onUpdated: () => void; onCloseReadiness: (ready: boolean) => void; accessConfirmed: boolean; accessChecking: boolean; onRecheckAccess: () => void };
 
 function requestError(error: unknown) {
   return error instanceof Error ? error.message : "Не удалось связаться с сервером. Повторите попытку.";
@@ -33,20 +33,26 @@ function StudentRtnWorkspace({ userId, organizationId }: { userId: string; organ
   const assignments = query.data?.assignments.filter(item => item.organization_id === organizationId) || [];
 
   if (query.isPending) return <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Проверяем назначенные программы Ростехнадзора…</div>;
-  if (query.isError) return <div role="alert" className="space-y-3 rounded-xl border border-border bg-card p-4"><p className="flex items-start gap-2 text-sm"><AlertCircle className="h-4 w-4 shrink-0" />Не удалось загрузить назначенные программы Ростехнадзора. {requestError(query.error)}</p><Button size="sm" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()} className="gap-2"><RefreshCw className="h-4 w-4" />Повторить</Button></div>;
-  if (!query.data?.access.allowed) return <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">Сервер не подтвердил доступ к назначенным программам Ростехнадзора. Обратитесь в учебный центр.</div>;
-  if (!assignments.length) return null;
+  if (query.isError && (!query.data || !opened)) return <div role="alert" className="space-y-3 rounded-xl border border-border bg-card p-4"><p className="flex items-start gap-2 text-sm"><AlertCircle className="h-4 w-4 shrink-0" />Не удалось загрузить назначенные программы Ростехнадзора. {requestError(query.error)}</p><Button size="sm" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()} className="gap-2"><RefreshCw className="h-4 w-4" />Повторить</Button></div>;
+  if (!query.data?.access.allowed && !opened) return <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">Сервер не подтвердил доступ к назначенным программам Ростехнадзора. Обратитесь в учебный центр.</div>;
+  if (!assignments.length && !opened) return null;
+  const accessConfirmed = !query.isError && query.data?.access.allowed === true
+    && (!opened || assignments.some(item => item.id === opened.assignment.id && item.access_allowed));
+  const accessChecking = query.isFetching;
+  const onRecheckAccess = () => { void query.refetch(); };
 
   return <section className="min-w-0 space-y-3" aria-label="Назначенные программы Ростехнадзора">
     <div><h2 className="text-lg font-semibold">Назначено: Ростехнадзор</h2><p className="text-sm text-muted-foreground">Учебные модули по официальным вопросам с проверенными учебными ответами</p></div>
-    <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">{assignments.map(assignment => <article key={assignment.id} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+    {accessConfirmed && <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">{assignments.map(assignment => <article key={assignment.id} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-start gap-3"><div className="rounded-xl bg-primary/10 p-3 text-primary"><BookOpen className="h-5 w-5" /></div><h3 className="min-w-0 break-words font-semibold">{assignment.code} {assignment.title}</h3></div>
+      {assignment.normative_status === "review_required" && <p className="text-sm text-muted-foreground">Редакция проходит повторную нормативную проверку. Новые попытки временно не открываются; начатые попытки и результаты сохранены.</p>}
       {typeof assignment.last_score === "number" && <p className="text-sm text-muted-foreground">Последняя попытка: {assignment.last_score}%{typeof assignment.last_passed === "boolean" ? assignment.last_passed ? " · Зачтено" : " · Не зачтено" : ""}</p>}
       {!assignment.access_allowed ? <p className="text-sm text-muted-foreground">Доступ к обучению сейчас не подтверждён. Обратитесь в учебный центр.</p> : <div className="mt-auto flex flex-wrap gap-2">
-        {assignment.last_attempt_id && assignment.status === "completed" ? <><Button size="sm" variant="outline" onClick={() => setOpened({ assignment, mode: "result" })}>Результат</Button><Button size="sm" onClick={() => setOpened({ assignment, mode: "start" })}>Пройти ещё раз</Button></> : <Button size="sm" onClick={() => setOpened({ assignment, mode: assignment.last_attempt_id ? "resume" : "start" })}>{assignment.last_attempt_id ? "Продолжить" : "Открыть обучение"}</Button>}
+        {assignment.last_attempt_id && assignment.status === "completed" ? <><Button size="sm" variant="outline" onClick={() => setOpened({ assignment, mode: "result" })}>Результат</Button><Button size="sm" disabled={assignment.can_start !== true} onClick={() => setOpened({ assignment, mode: "start" })}>Пройти ещё раз</Button></> : <Button size="sm" disabled={!assignment.last_attempt_id && assignment.can_start !== true} onClick={() => setOpened({ assignment, mode: assignment.last_attempt_id ? "resume" : "start" })}>{assignment.last_attempt_id ? "Продолжить" : "Открыть обучение"}</Button>}
       </div>}
-    </article>)}</div>
-    <Dialog open={!!opened} onOpenChange={open => { if (!open) { if (closeReady.current) setOpened(null); else setCloseBlocked(true); } }}><DialogContent className="max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-3xl overflow-y-auto p-4 sm:p-6"><DialogHeader><DialogTitle className="break-words pr-5">{opened?.assignment.code} {opened?.assignment.title}</DialogTitle><DialogDescription>Учебный тренажёр. Не заменяет официальную аттестацию Ростехнадзора.</DialogDescription></DialogHeader>{closeBlocked && <p role="alert" className="text-sm text-destructive">Ответы ещё не сохранены на сервере. Дождитесь синхронизации или повторите сохранение перед закрытием.</p>}{opened && <TrainingEntry onCloseReadiness={onCloseReadiness} key={`${opened.assignment.id}:${opened.mode}`} opened={opened} onUpdated={() => void client.invalidateQueries({ queryKey })} />}</DialogContent></Dialog>
+    </article>)}</div>}
+    {!accessConfirmed && <p role="alert" className="text-sm text-muted-foreground">Не удалось подтвердить доступ. Открытая попытка сохранена в этом окне; действия приостановлены до повторной проверки. <button className="text-primary underline" disabled={query.isFetching} onClick={() => void query.refetch()}>Проверить доступ</button></p>}
+    <Dialog open={!!opened} onOpenChange={open => { if (!open) { if (closeReady.current) setOpened(null); else setCloseBlocked(true); } }}><DialogContent className="max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-3xl overflow-y-auto p-4 sm:p-6"><DialogHeader><DialogTitle className="break-words pr-5">{opened?.assignment.code} {opened?.assignment.title}</DialogTitle><DialogDescription>Учебный тренажёр. Не заменяет официальную аттестацию Ростехнадзора.</DialogDescription></DialogHeader>{closeBlocked && <p role="alert" className="text-sm text-destructive">Сохранение ответов или отправка результата ещё не подтверждены. Дождитесь подтверждения или повторите действие перед закрытием.</p>}{opened && <TrainingEntry accessConfirmed={accessConfirmed} accessChecking={accessChecking} onRecheckAccess={onRecheckAccess} onCloseReadiness={onCloseReadiness} key={`${opened.assignment.id}:${opened.mode}`} opened={opened} onUpdated={() => void client.invalidateQueries({ queryKey })} />}</DialogContent></Dialog>
   </section>;
 }
 
@@ -63,9 +69,13 @@ function CourseMaterials({ materials }: { materials: RtnMaterial[] }) {
   return <section className="min-w-0 space-y-4" aria-label="Учебные материалы"><h4 className="font-semibold">Учебные материалы</h4>{materials.map(material => <article key={material.id} className="min-w-0 space-y-3 rounded-xl border border-border p-3 sm:p-4"><h5 className="break-words font-medium">{material.title}</h5><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{material.body}</p>{material.source_refs.length > 0 && <ul className="space-y-2 text-xs text-muted-foreground">{material.source_refs.map((reference, index) => <li key={`${reference.url}:${index}`} className="break-words">{httpsLink(reference.url) ? <a href={httpsLink(reference.url)!} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">{reference.citation}</a> : reference.citation}</li>)}</ul>}</article>)}</section>;
 }
 
-function TrainingEntry({ opened, onUpdated, onCloseReadiness }: EntryProps) {
-  if (opened.mode !== "start") return <RtnTrainer opened={opened} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} />;
-  return <TrainingIntroduction opened={opened} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} />;
+function AccessRetry({ checking, onRetry }: { checking: boolean; onRetry: () => void }) {
+  return <div role="alert" className="space-y-3 text-sm text-muted-foreground"><p>Доступ к обучению перепроверяется. Выбранные ответы и состояние отправки остаются в этом окне.</p><Button variant="outline" disabled={checking} onClick={onRetry}>Проверить доступ</Button></div>;
+}
+
+function TrainingEntry({ opened, onUpdated, onCloseReadiness, accessConfirmed, accessChecking, onRecheckAccess }: EntryProps) {
+  if (opened.mode !== "start") return <RtnTrainer opened={opened} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} accessConfirmed={accessConfirmed} accessChecking={accessChecking} onRecheckAccess={onRecheckAccess} />;
+  return <TrainingIntroduction opened={opened} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} accessConfirmed={accessConfirmed} accessChecking={accessChecking} onRecheckAccess={onRecheckAccess} />;
 }
 
 // Mounted only after a learner explicitly opens and receives real materials.
@@ -82,14 +92,15 @@ function MaterialActivity({ assignmentId, releaseId }: { assignmentId: string; r
   return error ? <p role="status" className="text-xs text-muted-foreground">Не удалось синхронизировать открытие материалов. <button className="text-primary underline" onClick={() => setRetry(value => value + 1)}>Повторить синхронизацию</button></p> : null;
 }
 
-function TrainingIntroduction({ opened, onUpdated, onCloseReadiness }: EntryProps) {
+function TrainingIntroduction({ opened, onUpdated, onCloseReadiness, accessConfirmed, accessChecking, onRecheckAccess }: EntryProps) {
   const query = useQuery({ queryKey: ["rtn-assignment-materials", opened.assignment.organization_id, opened.assignment.id], queryFn: () => getRtnAssignment(opened.assignment.id), retry: false, staleTime: 0 });
   const start = useMutation({ mutationFn: async () => hydrateRtnAttempt(await startRtnAttempt(opened.assignment.id)), onSuccess: onUpdated });
-  if (start.isSuccess) return <RtnTrainer key={start.data.attempt_id} opened={opened} initialAttempt={start.data} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} />;
+  if (start.isSuccess) return <RtnTrainer key={start.data.attempt_id} opened={opened} initialAttempt={start.data} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} accessConfirmed={accessConfirmed} accessChecking={accessChecking} onRecheckAccess={onRecheckAccess} />;
   if (query.isPending) return <p role="status" className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Загружаем учебные материалы…</p>;
   if (query.isError || !query.data) return <div role="alert" className="space-y-3"><p className="text-sm">{requestError(query.error)}</p><Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>Повторить загрузку</Button></div>;
   const detail = query.data;
-  return <div className="min-w-0 space-y-5"><p className="text-sm text-muted-foreground">Сначала изучите материалы модуля, затем пройдите учебные вопросы. В этой редакции: {detail.release.question_count} вопросов.</p><p className="break-all text-xs text-muted-foreground">Редакция: {detail.release.id}</p>{httpsLink(detail.source.page_url) && <a href={httpsLink(detail.source.page_url)!} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-primary underline underline-offset-4">Официальный источник вопросов Ростехнадзора</a>}{detail.materials.length ? <><CourseMaterials materials={detail.materials} /><MaterialActivity assignmentId={opened.assignment.id} releaseId={detail.release.id} /></> : <p role="alert" className="text-sm text-muted-foreground">Учебные материалы этой редакции пока не доступны. Обратитесь к преподавателю.</p>}{start.isError && <p role="alert" className="text-sm text-destructive">{requestError(start.error)}</p>}<Button disabled={!detail.materials.length || start.isPending || query.isFetching} className="h-auto min-h-10 gap-2 whitespace-normal" onClick={() => start.mutate()}>{start.isPending ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <ClipboardCheck className="h-4 w-4 shrink-0" />}{start.isError ? "Повторить открытие учебных вопросов" : "Перейти к учебным вопросам"}</Button><p className="text-xs text-muted-foreground">Начатая попытка закрепляется за редакцией. Обновления банка не меняют её вопросы и результат.</p></div>;
+  if (!accessConfirmed) return <AccessRetry checking={accessChecking} onRetry={onRecheckAccess} />;
+  return <div className="min-w-0 space-y-5"><p className="text-sm text-muted-foreground">Сначала изучите материалы модуля, затем пройдите учебные вопросы. В этой редакции: {detail.release.question_count} вопросов.</p><p className="break-all text-xs text-muted-foreground">Редакция: {detail.release.id}</p>{httpsLink(detail.source.page_url) && <a href={httpsLink(detail.source.page_url)!} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-primary underline underline-offset-4">Официальный источник вопросов Ростехнадзора</a>}{detail.materials.length ? <><CourseMaterials materials={detail.materials} /><MaterialActivity assignmentId={opened.assignment.id} releaseId={detail.release.id} /></> : <p role="alert" className="text-sm text-muted-foreground">Учебные материалы этой редакции пока не доступны. Обратитесь к преподавателю.</p>}{detail.assignment.normative_status === "review_required" && <p role="status" className="text-sm text-muted-foreground">Нужна повторная нормативная проверка этой редакции. Новая попытка откроется после выпуска проверенного обновления.</p>}{start.isError && <p role="alert" className="text-sm text-destructive">{requestError(start.error)}</p>}<Button disabled={detail.assignment.can_start !== true || !detail.materials.length || start.isPending || query.isFetching} className="h-auto min-h-10 gap-2 whitespace-normal" onClick={() => start.mutate()}>{start.isPending ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <ClipboardCheck className="h-4 w-4 shrink-0" />}{start.isError ? "Повторить открытие учебных вопросов" : "Перейти к учебным вопросам"}</Button><p className="text-xs text-muted-foreground">Начатая попытка закрепляется за редакцией. Обновления банка не меняют её вопросы и результат.</p></div>;
 }
 
 function initialAnswers(attempt: RtnAttempt): RtnAnswers {
@@ -102,7 +113,7 @@ function initialAnswers(attempt: RtnAttempt): RtnAnswers {
   return answers;
 }
 
-function RtnTrainer({ opened, onUpdated, initialAttempt, onCloseReadiness }: EntryProps & { initialAttempt?: RtnAttempt }) {
+function RtnTrainer({ opened, onUpdated, initialAttempt, onCloseReadiness, accessConfirmed, accessChecking, onRecheckAccess }: EntryProps & { initialAttempt?: RtnAttempt }) {
   const { assignment, mode } = opened;
   const openInstance = useId();
   const query = useQuery({
@@ -114,10 +125,10 @@ function RtnTrainer({ opened, onUpdated, initialAttempt, onCloseReadiness }: Ent
   const current = initialAttempt || query.data;
   if (query.isPending && !initialAttempt) return <p role="status" className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Открываем учебную попытку…</p>;
   if ((query.isError && !initialAttempt) || !current) return <div role="alert" className="space-y-3"><p className="text-sm">{requestError(query.error)}</p><Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>Повторить загрузку</Button></div>;
-  return <RtnAttemptSession key={current.attempt_id} opened={opened} initialAttempt={current} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} />;
+  return <RtnAttemptSession key={current.attempt_id} opened={opened} initialAttempt={current} onUpdated={onUpdated} onCloseReadiness={onCloseReadiness} accessConfirmed={accessConfirmed} accessChecking={accessChecking} onRecheckAccess={onRecheckAccess} />;
 }
 
-function RtnAttemptSession({ opened, onUpdated, initialAttempt, onCloseReadiness }: EntryProps & { initialAttempt: RtnAttempt }) {
+function RtnAttemptSession({ opened, onUpdated, initialAttempt, onCloseReadiness, accessConfirmed, accessChecking, onRecheckAccess }: EntryProps & { initialAttempt: RtnAttempt }) {
   const { assignment } = opened;
   const [attempt, setAttempt] = useState<RtnAttempt>(initialAttempt);
   const [answers, setAnswers] = useState<RtnAnswers>(() => initialAnswers(initialAttempt));
@@ -155,20 +166,28 @@ function RtnAttemptSession({ opened, onUpdated, initialAttempt, onCloseReadiness
   const feedback = useQuery({
     queryKey: ["rtn-attempt-feedback", assignment.organization_id, finalResult?.attempt_id],
     queryFn: () => getRtnAttempt(finalResult!.attempt_id),
-    enabled: !!finalResult && !current?.feedback, retry: false,
+    enabled: accessConfirmed && !!finalResult && !current?.feedback, retry: false,
   });
   const reviewedAttempt = current?.status === "submitted" ? current : feedback.data?.status === "submitted" ? feedback.data : null;
   const reviewedAnswers = reviewedAttempt ? initialAnswers(reviewedAttempt) : {};
 
   const draft = useRtnDraftSync({
-    initial: initialAttempt, answers: currentAnswers, enabled: !finalResult && !frozenAnswers,
+    initial: initialAttempt, answers: currentAnswers, enabled: accessConfirmed && !finalResult && !frozenAnswers, finalized: !!finalResult,
     onReplace: loaded => { setAttempt(loaded); setAnswers(initialAnswers(loaded)); },
     onSubmitted: loaded => { setAttempt(loaded); setAnswers(initialAnswers(loaded)); setResult(loaded as RtnSubmission); onUpdated(); },
   });
+  const awaitingSubmission = !!frozenAnswers && !finalResult;
   useEffect(() => {
-    onCloseReadiness(!!finalResult || (!draft.dirty && draft.state === "saved"));
-  }, [draft.dirty, draft.state, !!finalResult, onCloseReadiness]);
+    if (!awaitingSubmission) return;
+    const protect = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", protect);
+    return () => window.removeEventListener("beforeunload", protect);
+  }, [awaitingSubmission]);
+  useEffect(() => {
+    onCloseReadiness(!!finalResult || (!awaitingSubmission && !submit.isPending && !verify.isPending && !draft.dirty && draft.state === "saved"));
+  }, [draft.dirty, draft.state, !!finalResult, awaitingSubmission, submit.isPending, verify.isPending, onCloseReadiness]);
   useEffect(() => () => onCloseReadiness(true), [onCloseReadiness]);
+  if (!accessConfirmed) return <AccessRetry checking={accessChecking} onRetry={onRecheckAccess} />;
   const answered = current.questions.filter(question => question.expected_correct_count ? currentAnswers[question.id]?.length === question.expected_correct_count : currentAnswers[question.id]?.length > 0).length;
   const busy = submit.isPending || verify.isPending;
   const locked = busy || draft.state === "conflict" || !!frozenAnswers || !!finalResult;

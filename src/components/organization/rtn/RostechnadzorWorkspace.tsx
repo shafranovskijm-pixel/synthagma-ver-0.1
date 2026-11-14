@@ -12,12 +12,12 @@ type Panel = "assign" | "results" | "updates" | "settings";
 const controlClass = "flex min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const boxClass = "min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5";
 
-export function rtnDate(value: string | null | undefined, time = false): string {
+export function rtnDate(value: string | null | undefined, time = false, timeZone?: string): string {
   if (!value) return "Не подтверждено";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Не подтверждено";
   return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit", month: "2-digit", year: "numeric", ...(time ? { hour: "2-digit", minute: "2-digit" } as const : {}),
+    day: "2-digit", month: "2-digit", year: "numeric", ...(time ? { hour: "2-digit", minute: "2-digit" } as const : {}), ...(timeZone ? { timeZone } : {}),
   }).format(date);
 }
 
@@ -46,6 +46,7 @@ function checkLabel(status: RtnCheckStatus | null | undefined): string {
 }
 
 function keyLabel(bank: RtnBank): string {
+  if (bank.key_status === "released" && bank.normative_status !== "current") return "Нужна повторная нормативная проверка";
   if (canAssignRtnBank(bank)) return "Проверенные учебные ответы";
   if (bank.key_status === "reviewed") return "Ключи проверены · редакция готовится к выпуску";
   if (bank.key_status === "released") return "Редакция временно не доступна для назначения";
@@ -151,6 +152,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged }: { orga
       const ready = canAssignRtnBank(bank);
       return <article key={bank.id} className={`${boxClass} flex flex-col gap-4`}>
         <div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{/энерг|электр/i.test(`${bank.domain} ${bank.title}`) ? <Zap className="h-6 w-6" /> : <Factory className="h-6 w-6" />}</div><div className="min-w-0 space-y-2"><h3 className="break-words font-semibold">{bank.code ? `${bank.code}. ` : ""}{bank.title}</h3><p className="text-xs text-muted-foreground">{bank.question_count ?? 0} вопросов · применяется с {rtnDate(bank.effective_from)}</p><span className={`inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-xs ${ready ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>{ready ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <Clock3 className="h-3.5 w-3.5 shrink-0" />}{keyLabel(bank)}</span></div></div>
+        {bank.normative_cutoff_at && <p className="text-xs text-muted-foreground">Контроль актуальности редакции: до {rtnDate(bank.normative_cutoff_at, true, 'Europe/Moscow')} МСК.</p>}
         {ready && bank.pending_source_revision_id && <p className={workspace.settings.notify_updates ? "text-xs font-medium text-amber-800 dark:text-amber-300" : "text-xs text-muted-foreground"}>Источник обновился. Новая редакция проходит проверку; обучение продолжается по выпущенной редакции.</p>}
         <div className="mt-auto flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => setDetail(bank)} className="gap-2"><BookOpen className="h-4 w-4" />Посмотреть состав</Button>{ready && <Button size="sm" disabled={!workspace.access.can_assign} onClick={() => openAssign(bank)}>Назначить обучение</Button>}</div>
       </article>;

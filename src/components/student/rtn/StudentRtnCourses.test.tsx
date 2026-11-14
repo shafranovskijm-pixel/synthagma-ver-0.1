@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RtnApiError } from "@/api/rostechnadzor";
@@ -13,6 +13,7 @@ const assignment: RtnStudentAssignment = {
   id: "assignment-a", assignment_id: "assignment-a", organization_id: "org-a", bank_id: "bank-a", code: "А.1-116-ФЗ",
   title: "Основы безопасности · учебный модуль", status: "assigned", assigned_at: "2026-11-14T09:00:00Z",
   access_allowed: true, last_attempt_id: null, last_score: null, last_passed: null,
+  can_start: true, normative_status: "current", normative_cutoff_at: "2026-11-21T00:00:00+03:00",
 };
 const material = { id: "section-a", title: "Обязанности эксплуатирующей организации", body: "Организация обязана соблюдать требования промышленной безопасности.", source_refs: [{ url: "http://publication.pravo.gov.ru/document/116", citation: "Федеральный закон №116-ФЗ, статья 9" }] };
 const detail: RtnAssignmentDetail = { assignment, release: { id: "release-a", effective_from: "2026-11-14", question_count: 2 }, source: { page_url: "https://www.gosnadzor.ru/industrial/", document_url: "https://www.gosnadzor.ru/industrial/questions.pdf", approved_on: null }, materials: [material] };
@@ -27,7 +28,7 @@ const submitted = { ...attempt, status: "submitted" as const, score: 50, correct
 
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<StudentRtnCourses userId="user-a" organizationId="org-a" />, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  return { ...render(<StudentRtnCourses userId="user-a" organizationId="org-a" />, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> }), client };
 }
 async function openQuestions() {
   fireEvent.click(await screen.findByRole("button", { name: "Открыть обучение" }));
@@ -60,6 +61,53 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("assigned RTN learner course", () => {
+  it("preserves unsaved choices through a background workspace error and pauses new actions until recovery", async () => {
+    const view = mount(); await openQuestions();
+    fireEvent.click(screen.getByLabelText("Соблюдать требования"));
+    api.getRtnStudentWorkspace.mockRejectedValue(new Error("Background network outage"));
+    await act(async () => { await view.client.refetchQueries({ queryKey: ["rtn-student-workspace", "user-a", "org-a"] }); });
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByText(/Выбранные ответы и состояние отправки остаются в этом окне/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Соблюдать требования")).not.toBeInTheDocument();
+    const unloading = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unloading); expect(unloading.defaultPrevented).toBe(true);
+    api.getRtnStudentWorkspace.mockResolvedValue({ access: { allowed: true }, assignments: [assignment] });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Проверить доступ" }));
+    expect(await screen.findByLabelText("Соблюдать требования")).toBeChecked();
+    await waitFor(() => expect(api.saveRtnAttemptDraft).toHaveBeenCalledWith("attempt-a", { q1: ["a"] }, 0));
+    expect(api.startRtnAttempt).toHaveBeenCalledTimes(1);
+  });
+
+  it("protects frozen answers while final submission is pending or its outcome is uncertain", async () => {
+    let finish: (value: unknown) => void = () => {};
+    api.submitRtnAttempt.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    mount(); await openQuestions(); answerAll();
+    fireEvent.click(screen.getByRole("button", { name: "Завершить и отправить результат" }));
+    await waitFor(() => expect(api.submitRtnAttempt).toHaveBeenCalled());
+    const unloading = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unloading);
+    expect(unloading.defaultPrevented).toBe(true);
+    fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    finish(submitted);
+    await screen.findByText("50% · 1 из 2");
+    const afterFinal = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(afterFinal); expect(afterFinal.defaultPrevented).toBe(false);
+    fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("blocks new attempts awaiting normative review while preserving access to a previous result", async () => {
+    api.getRtnStudentWorkspace.mockResolvedValue({ access: { allowed: true }, assignments: [{ ...assignment, status: "completed", last_attempt_id: "attempt-old", can_start: false, normative_status: "review_required" }] });
+    api.getRtnAttempt.mockResolvedValue({ ...submitted, attempt_id: "attempt-old", answers: { q1: ["a"], q2: ["c"] } });
+    mount();
+    expect(await screen.findByRole("button", { name: "Пройти ещё раз" })).toBeDisabled();
+    expect(screen.getByText(/начатые попытки и результаты сохранены/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Результат" }));
+    expect(await screen.findByText("50% · 1 из 2")).toBeInTheDocument();
+    expect(api.startRtnAttempt).not.toHaveBeenCalled();
+  });
+
   it("keeps an unsaved attempt open when Escape is pressed and permits closing after save", async () => {
     let finish: (value: unknown) => void = () => {};
     api.saveRtnAttemptDraft.mockReturnValue(new Promise(resolve => { finish = resolve; }));
@@ -67,7 +115,7 @@ describe("assigned RTN learner course", () => {
     fireEvent.click(screen.getByLabelText("Соблюдать требования"));
     fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(await screen.findByText(/Дождитесь синхронизации или повторите сохранение перед закрытием/)).toBeInTheDocument();
+    expect(await screen.findByText(/Дождитесь подтверждения или повторите действие перед закрытием/)).toBeInTheDocument();
     await waitFor(() => expect(api.saveRtnAttemptDraft).toHaveBeenCalled());
     finish({ attempt_id: "attempt-a", status: "active", revision: 1, answers: { q1: ["a"] }, saved_at: "now" });
     await screen.findByText("Ответы сохранены на сервере. Можно продолжить на другом устройстве.");

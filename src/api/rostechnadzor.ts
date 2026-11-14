@@ -16,6 +16,9 @@ function apiError(error: unknown): RtnApiError {
   const message = String(record.message || "");
   const context = record.context && typeof record.context === "object" ? record.context as Record<string, unknown> : {};
   const status = record.status || context.status;
+  if (message === "rtn_normative_review_required") {
+    return new RtnApiError("unknown", "Для этой редакции нужна повторная нормативная проверка. Начатые попытки и прежние результаты сохранены; новые попытки откроются после выпуска проверенной редакции.");
+  }
   if (record.code === "40001" && message === "rtn_draft_revision_conflict") {
     return new RtnApiError("conflict", "Ответы этой попытки изменились на другом устройстве. Загрузите сохранённую версию перед продолжением.");
   }
@@ -72,6 +75,8 @@ export async function getRtnWorkspace(organizationId: string): Promise<RtnWorksp
   if (!banks.every(bank => record(bank) && typeof bank.id === "string" && typeof bank.title === "string"
     && typeof bank.code === "string" && typeof bank.domain === "string"
     && typeof bank.source_id === "string" && typeof bank.available_for_training === "boolean"
+    && ["current", "review_required"].includes(String(bank.normative_status))
+    && (bank.normative_cutoff_at === null || typeof bank.normative_cutoff_at === "string")
     && typeof bank.can_manual_check === "boolean" && ["unreviewed", "reviewed", "released"].includes(String(bank.key_status)))) invalidResponse();
   if (!(data.students as unknown[]).every(student => record(student) && ["id", "user_id"].every(key => typeof student[key] === "string") && (typeof student.full_name === "string" || student.full_name === null))
     || !(data.groups as unknown[]).every(group => record(group) && typeof group.id === "string" && typeof group.name === "string")
@@ -122,7 +127,9 @@ export async function assignRtnTraining(input: {
 export async function getRtnStudentWorkspace(): Promise<RtnStudentWorkspace> {
   const data = await call("get_rtn_student_workspace", {});
   if (!record(data) || !record(data.access) || typeof data.access.allowed !== "boolean" || !Array.isArray(data.assignments)
-    || !data.assignments.every(item => record(item) && ["id", "assignment_id", "organization_id", "bank_id", "code", "title", "status"].every(key => typeof item[key] === "string") && typeof item.access_allowed === "boolean")) invalidResponse();
+    || !data.assignments.every(item => record(item) && ["id", "assignment_id", "organization_id", "bank_id", "code", "title", "status"].every(key => typeof item[key] === "string") && typeof item.access_allowed === "boolean"
+      && typeof item.can_start === "boolean" && ["current", "review_required"].includes(String(item.normative_status))
+      && (item.normative_cutoff_at === null || typeof item.normative_cutoff_at === "string"))) invalidResponse();
   return data as unknown as RtnStudentWorkspace;
 }
 
@@ -151,6 +158,7 @@ function materials(data: unknown): RtnMaterial[] {
 export async function getRtnAssignment(assignmentId: string): Promise<RtnAssignmentDetail> {
   const data = await call("get_rtn_assignment", { p_assignment_id: assignmentId });
   if (!record(data) || !record(data.assignment) || typeof data.assignment.id !== "string"
+    || typeof data.assignment.can_start !== "boolean" || !["current", "review_required"].includes(String(data.assignment.normative_status))
     || !record(data.release) || typeof data.release.id !== "string" || typeof data.release.question_count !== "number"
     || !record(data.source) || typeof data.source.page_url !== "string" || typeof data.source.document_url !== "string") invalidResponse();
   materials(data.materials);

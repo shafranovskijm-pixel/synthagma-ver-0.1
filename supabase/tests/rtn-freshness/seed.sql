@@ -1,0 +1,35 @@
+-- ISOLATED LAB ONLY. Real product RPCs with synthetic auth and source bodies.
+SET ROLE postgres;
+SELECT lab.keep('old_data',(SELECT jsonb_build_array((SELECT jsonb_agg(x)FROM public.courses x),(SELECT jsonb_agg(x)FROM public.test_attempts x),(SELECT jsonb_agg(x)FROM public.subscription_invoices x))));
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role','authenticated',false);
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT public.set_rtn_rollout_stage('paid',0,gen_random_uuid(),'Synthetic accepted quota privacy freshness fixture','{"qa_acceptance_receipt":"Synthetic lab only","technoservice_acceptance_receipt":"Synthetic lab only"}');
+SET ROLE service_role;
+SELECT set_config('request.jwt.claim.role','service_role',false);
+SELECT lab.keep('source',public.register_rtn_source('{"code":"normative-lab-a1","title":"Synthetic normative source","page_url":"https://www.gosnadzor.ru/service/list/normative-lab/","document_url":"https://www.gosnadzor.ru/service/list/normative-lab/a1.pdf","trusted_anchor_rule":"a1","parser":"industrial-pdf","banks":[{"code":"A.1","title":"Synthetic normative source 2 questions","domain":"industrial-safety"}]}'));
+SELECT lab.keep('bank_id',lab.ctx('source')->'bank_ids'->0->'id');
+SELECT lab.keep('due',public.enqueue_due_rtn_checks());
+SELECT lab.keep('claim',public.claim_rtn_check((lab.ctx('due')->'run_ids'->>0)::uuid));
+SELECT lab.keep('normalized','[{"code":"A.1","questions":[{"id":"q1","number":1,"text":"Synthetic official question one","options":[]},{"id":"q2","number":2,"text":"Synthetic official question two","options":[{"id":"yes","text":"Yes"},{"id":"no","text":"No"}]}]}]');
+SELECT lab.keep('completed',public.complete_rtn_check((lab.ctx('claim')->>'run_id')::uuid,(lab.ctx('claim')->>'lease_token')::uuid,
+ jsonb_build_object('status','changed','sha256',repeat('a',64),'original_path',(lab.ctx('source')->>'source_id')||'/'||repeat('a',64)||'.pdf','media_type','application/pdf','byte_size',1234,'document_url','https://www.gosnadzor.ru/service/list/normative-lab/a1.pdf','metadata',jsonb_build_object('approved_on','2026-08-10','effective_from','2026-09-01'),'normalized_banks',lab.ctx('normalized'))));
+SET ROLE postgres;
+SELECT lab.keep('bank_revision_id',to_jsonb((SELECT id FROM rtn_private.bank_revisions WHERE bank_id=(lab.ctx('bank_id')#>>'{}')::uuid)));
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role','authenticated',false);
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT lab.keep('keys','[{"id":"q1","number":1,"text":"Synthetic official question one","options_origin":"authorial_training","options":[{"id":"a","text":"Authorial A"},{"id":"b","text":"Authorial B"}],"correct_option_ids":["a"],"evidence":[{"url":"https://www.gosnadzor.ru/service/list/normative-lab/norm","citation":"Synthetic test evidence"}]},{"id":"q2","number":2,"text":"Synthetic official question two","options":[{"id":"yes","text":"Yes"},{"id":"no","text":"No"}],"correct_option_ids":["yes"],"evidence":[{"url":"https://www.gosnadzor.ru/service/list/normative-lab/norm","citation":"Synthetic test evidence"}]}]');
+SELECT lab.keep('module','{"kind":"full_bank","title":"Synthetic normative training","materials":[{"id":"lecture","title":"Synthetic chapter","body":"Synthetic learning material; no production content.","source_refs":[{"url":"https://www.gosnadzor.ru/service/list/normative-lab/norm","citation":"Synthetic fixture source"}]}]}');
+SELECT lab.keep('old_review',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic review predating normative policy',lab.ctx('module')));
+SELECT lab.keep('old_release',public.publish_rtn_release((lab.ctx('old_review')->>'key_set_id')::uuid,(now()AT TIME ZONE'Europe/Moscow')::date-2,'Synthetic historical released version'));
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000001',false);
+SELECT lab.keep('assigned',public.assign_rtn_training('11111111-1111-4111-8111-111111111111',(lab.ctx('bank_id')#>>'{}')::uuid,ARRAY['71000000-0000-4000-8000-000000000101']::uuid[]));
+SELECT lab.keep('assignment_id',lab.ctx('assigned')->'assignments'->0->'id');
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000101',false);
+SELECT lab.keep('old_start',public.start_rtn_attempt((lab.ctx('assignment_id')#>>'{}')::uuid));
+SET ROLE postgres;
+SELECT lab.keep('old_attempt',(SELECT to_jsonb(t)FROM rtn_private.attempts t WHERE id=(lab.ctx('old_start')->>'attempt_id')::uuid));
+SELECT lab.keep('old_key',(SELECT to_jsonb(k)FROM rtn_private.key_sets k WHERE id=(lab.ctx('old_review')->>'key_set_id')::uuid));
+SELECT lab.keep('old_release_row',(SELECT to_jsonb(r)FROM rtn_private.releases r WHERE id=(lab.ctx('old_release')->>'release_id')::uuid));
+SELECT lab.keep('unrelated_proc',(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_proc p WHERE p.oid IN('public.submit_rtn_attempt(uuid,jsonb)'::regprocedure,'public.get_rtn_attempt(uuid)'::regprocedure,'public.account_deletion_erase_data(uuid,text)'::regprocedure,'rtn_private.reject_mutation()'::regprocedure,'rtn_private.freeze_attempt()'::regprocedure)));

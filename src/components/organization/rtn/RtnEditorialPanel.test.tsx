@@ -21,7 +21,7 @@ const data: EditorialWorkspace = {
     { id: "parent-revision", bank_id: "parent-bank", source_revision_id: "source-revision", question_count: 211, created_at: "2026-11-14T09:00:00Z" },
     { id: "child-revision", bank_id: "child-bank", source_revision_id: "source-revision", question_count: 10, created_at: "2026-11-14T09:00:00Z" },
   ],
-  key_sets: [{ id: "key-a", bank_id: "child-bank", bank_revision_id: "child-revision", question_count: 10, material_count: 3, reviewed_at: "2026-11-14T10:00:00Z" }],
+  key_sets: [{ id: "key-a", bank_id: "child-bank", bank_revision_id: "child-revision", question_count: 10, material_count: 3, reviewed_at: "2026-11-14T10:00:00Z", normative_status: "current", normative_cutoff_at: "2026-11-21T00:00:00+03:00", editorial_review_before: "2026-11-21" }],
   releases: [],
 };
 

@@ -13,6 +13,7 @@ const bank: RtnBank = {
   source_id: "source-a", source_revision_id: "source-rev-a", source_url: "https://www.gosnadzor.ru/industrial/",
   approved_on: "2026-08-10", effective_from: "2026-09-01", question_count: 211,
   release_id: "release-a", key_status: "released", available_for_training: true, can_manual_check: true,
+  normative_status: "current", normative_cutoff_at: "2026-11-21T00:00:00+03:00",
   last_checked_at: null, last_success_at: null, check_status: null,
 };
 
@@ -35,6 +36,21 @@ beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(wor
 afterEach(cleanup);
 
 describe("RTN organization workspace", () => {
+  it("prevents a released but no longer normatively current bank from being assigned", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, available_for_training: true, normative_status: "review_required" }] }));
+    mount();
+    expect(await screen.findByText("Нужна повторная нормативная проверка")).toBeInTheDocument();
+    const card = screen.getByRole("heading", { name: `А.1. ${bank.title}` }).closest("article")!;
+    expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Назначить обучение" }));
+    const panel = screen.getByRole("region", { name: "Назначение обучения" });
+    expect(within(panel).getByRole("combobox", { name: "Программа" }).querySelector('option[value="bank-a"]')).toBeDisabled();
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Программа" }), { target: { value: "bank-a" } });
+    fireEvent.click(within(panel).getByLabelText("Тестовый ученик"));
+    expect(within(panel).getByRole("button", { name: "Назначить выбранным (1)" })).toBeDisabled();
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
   it("fails closed on an unknown connection state and retries without claiming a tariff restriction", async () => {
     api.getRtnWorkspace.mockRejectedValueOnce(new Error("Не удалось связаться с сервером"));
     mount();
