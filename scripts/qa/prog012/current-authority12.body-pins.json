@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_REVIEWED_NATIVE_MODEL_INPUT_ONLY_NOT_RUNTIME_OR_CLOUD_ACCEPTANCE",
+  "sourceReviewedReady": true,
+  "metadataReady": true,
+  "functionBodyPins": {
+    "public.pcc_v2_current_rights_keys(text,uuid[],boolean)": "d8fa5cf9de8220eea9e35eb77b338822572efa385a767fdbd08efa9f3e019394",
+    "public.pcc_v2_asset_authority_before()": "0fd69e387ae7e0027f388b7c1dd2e15ca3dcb60e2962727b9c46b843901dfbd5",
+    "public.pcc_v2_source_resource_fences(uuid,uuid,uuid,uuid)": "0912544852bd7a7f0b0d5f7d6c4636b82d4ebd5d5590c991d8da9eef900f6fd1",
+    "public.pcc_v2_enrollment_authority_before()": "988281195f4a2a0ef521a9d05004faeb4e0facbe1f65ba4ce7bdb63a5c6546a4",
+    "public.pcc_v2_copy_course_fences(uuid,text)": "b3f99fdfab5b76e3466ab866e2c6e069207f02b1faa79714443376d75fcb21f5",
+    "public.pcc_v1_authorized_reference(uuid,text,uuid,text,text)": "971549e1919c5e0fabc1d59fdd3187a688ef4cefe375e36db310688535d8c634",
+    "public.read_course_exact_file_delivery_mode(uuid,text)": "9948fdf4790e1f01f8abff9ef5f96832a0d258bebf27d48881fbcb79aefe0a42",
+    "public.pcc_v1_copy_binding_payload(uuid,jsonb)": "31e47de059caed8a80d7e08a3e638064d48ef366a19dc9125cad679bf5d97ecb"
+  },
+  "sourceProduct": {
+    "bytes": 52726,
+    "sha256": "67262f0cd621d3e2df6a1157b503b967721bb1c645d456ad43530a2c10698fb7",
+    "bodyPinsUnchangedFromR1": true
+  },
+  "metadataReceipts": [
+    {
+      "path": "../prog012-current-authority-writer-fences-r1-source-only-20261029/ACTUAL_FOUR_LEARNER_TABLES_METADATA_READONLY_20261029.json",
+      "bytes": 107445,
+      "sha256": "c59e835be3656faaa1ca34ecb0205d111cc946506e502eabbfdc200ba43294e8"
+    },
+    {
+      "path": "../prog012-current-authority-writer-fences-r1-source-only-20261029/ACTUAL_STAFF_ROLE_METADATA_READONLY_20261029.json",
+      "bytes": 32021,
+      "sha256": "5c97f2fa25f4bfdbfdbb8acf76af00bc4d21d832644ca8be7f701c8cdf63e924"
+    }
+  ],
+  "capabilitiesMustRemainFalse": true,
+  "fullSealedDeliveryAccepted": false,
+  "ordinaryCloudAuthAccepted": false,
+  "notes": [
+    "Flag authorizes only reviewed source for the guarded isolated native model; root must independently review before dispatch. No capability flag changes.",
+    "Four ordinary zero-reference learner groups and eight private resource-lock components, not full sealed-byte rights acceptance."
+  ]
+}

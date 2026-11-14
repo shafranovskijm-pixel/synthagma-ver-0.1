@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_ORIGINAL_READ13_DATABASE_GUARD_ONLY_NOT_RUN",
+  "files": [
+    {
+      "path": "run_read_stage.py",
+      "bytes": 6674,
+      "sha256": "d2a552e3269c1d4bd192e776b80fed146b763a5e64c8a6b3dafa4f44c24407e4"
+    },
+    {
+      "path": "persisted-review-context.candidate.sql",
+      "bytes": 9086,
+      "sha256": "d2b1b29ae7cf83b1d46c400174f46e74256b0b3da1124240912811c5d1df1039"
+    },
+    {
+      "path": "persisted-review-context-regression.sql",
+      "bytes": 8441,
+      "sha256": "df1c703f9145ac6a28de950771e4fda6e05683cbd189d9d9eff05d6080f184a6"
+    }
+  ],
+  "originalRead13SHA256": "fae9cdd3926de180aae5be7db7ffa0856c90297b77f15f3d429a11ac413e9026",
+  "originalCaseBodiesUnchanged": true,
+  "order": "core48 -> read13 -> file16",
+  "newAuthOrFixtureSeeds": 0,
+  "production": false
+}
