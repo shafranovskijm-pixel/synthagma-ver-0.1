@@ -15,6 +15,7 @@ CREATE TEMP TABLE rtn_erasure_old_functions ON COMMIT DROP AS
   to_regprocedure('public.save_rtn_settings(uuid,boolean,boolean)'),to_regprocedure('public.request_rtn_source_check(uuid,uuid)'),
   to_regprocedure('public.set_rtn_rollout_stage(text,integer,uuid,text,jsonb)'),to_regprocedure('public.assign_rtn_training(uuid,uuid,uuid[],uuid)'));
 DO $preimage$ DECLARE expected record;actual pg_proc%ROWTYPE;BEGIN
+ IF current_user<>'postgres' THEN RAISE EXCEPTION 'RTN_ERASURE_REQUIRES_EXISTING_POSTGRES_OWNER';END IF;
  FOR expected IN SELECT * FROM(VALUES
   ('public.account_deletion_erase_data(uuid,text)','a13f74f6687fff498ac1628830458560','a496bbcd2154d994c9e83888313a84a3','v','search_path=pg_catalog, public, storage','{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}'),
   ('public.account_deletion_snapshot(uuid)','c6e55ea2001e24e7849875210d44baad','aaa5cc6d382e87fd1b513f0632f7ea2f','s','search_path=pg_catalog, public, storage','{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}'),

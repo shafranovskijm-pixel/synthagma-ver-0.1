@@ -1,9 +1,6 @@
 -- ISOLATED LAB ONLY: empty shape adapters for unrelated legacy erasure domains.
 -- The actual captured erase/snapshot/count function bodies remain unchanged.
 -- No production account, credential, storage file or erasure request is used.
-DO $$BEGIN
- IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='sandbox_exec_atxwvjxbqjgkbjlhsdch')THEN CREATE ROLE sandbox_exec_atxwvjxbqjgkbjlhsdch NOLOGIN;END IF;
-END;$$;
 CREATE TABLE public.account_deletion_jobs(id uuid PRIMARY KEY,user_id uuid NOT NULL,receipt_hash text NOT NULL,state text NOT NULL,consent_version text,files jsonb NOT NULL DEFAULT '[]',snapshot jsonb NOT NULL DEFAULT '{}',data_erased boolean NOT NULL DEFAULT false);
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 ALTER TABLE storage.objects ADD COLUMN IF NOT EXISTS owner uuid,ADD COLUMN IF NOT EXISTS owner_id text;

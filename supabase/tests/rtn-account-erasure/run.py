@@ -140,6 +140,10 @@ def build_setup():
         elif name.startswith('uc_') or name == 'account_deletion_files':
             funcs.append(f"CREATE FUNCTION public.{name}(uuid) RETURNS jsonb LANGUAGE sql STABLE AS $$SELECT '[]'::jsonb$$;")
     return '\n'.join([
+        # Create the captured provider-role name using the disposable cluster's
+        # actual bootstrap role BEFORE the shared fixture SET ROLE postgres
+        # switches to its intentionally non-superuser function owner.
+        "DO $$BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='sandbox_exec_atxwvjxbqjgkbjlhsdch')THEN CREATE ROLE sandbox_exec_atxwvjxbqjgkbjlhsdch NOLOGIN;END IF;END;$$;",
         (base / 'fixture.sql').read_text(encoding='utf-8').replace('DATABASE rtn_lab_ci', 'DATABASE rtn_erasure_lab_ci'),
         (base / 'released-guards.sql').read_text(encoding='utf-8'),
         (base / 'quota-fixture.sql').read_text(encoding='utf-8'),
@@ -165,13 +169,13 @@ if __name__ == '__main__':
     # A drifted actual entrypoint must reject the whole migration and leave the
     # paid rollout closed. Restore from the same captured source afterwards.
     drift = run("ALTER FUNCTION public.account_deletion_erase_data(uuid,text) SET search_path=public;")
-    refused = run(migration)
+    refused = run('SET ROLE postgres;\n' + migration)
     if drift.returncode or not refused.returncode or 'RTN_ERASURE_LIVE_PREIMAGE_OR_AUTHORITY_CHANGED' not in refused.stderr:
         raise SystemExit('FAIL: erasure live preimage drift was not rejected: ' + refused.stderr)
     verify = run("SELECT lab.check('drift rollback leaves privacy readiness closed',to_regclass('rtn_private.erasure_contexts') IS NULL AND NOT(SELECT privacy_integration_ready FROM rtn_private.rollout_state));ALTER FUNCTION public.account_deletion_erase_data(uuid,text) SET search_path='pg_catalog','public','storage';")
     if verify.returncode:
         raise SystemExit(verify.stderr)
-    result = run(migration + '\n' + (HERE / 'acceptance.sql').read_text(encoding='utf-8'))
+    result = run('SET ROLE postgres;\n' + migration + '\n' + (HERE / 'acceptance.sql').read_text(encoding='utf-8'))
     with (OUT / 'native.stdout.txt').open('a',encoding='utf-8') as log:
         log.write(result.stdout)
     with (OUT / 'native.stderr.txt').open('a',encoding='utf-8') as log:

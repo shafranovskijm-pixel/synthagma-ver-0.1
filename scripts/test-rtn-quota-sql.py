@@ -152,14 +152,20 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=2)as pool:
     try:
         if not pool.submit(marker,'RTN_ERASURE_SUBJECT_HELD').result(timeout=10):raise AssertionError('erasure fixture subject lock unavailable')
         pending=pool.submit(raw,"SET application_name='rtn_submit_erasure_race';"+session(learner(3))+f"SELECT public.submit_rtn_attempt('{erase_attempt['attempt_id']}','{{\"q1\":[\"b\"],\"q2\":[\"yes\"]}}');")
-        waiting=False;deadline=time.monotonic()+8
+        waiting=False;deadline=time.monotonic()+8;observed_wait=[]
         while time.monotonic()<deadline:
-            if scalar("SELECT count(*)FROM pg_stat_activity WHERE application_name='rtn_submit_erasure_race' AND wait_event_type='Lock' AND wait_event='advisory';")=='1':waiting=True;break
+            # Observe through the fixture bootstrap login. SET ROLE postgres
+            # intentionally has NOSUPERUSER and cannot inspect another login's
+            # pg_stat_activity wait events, even though its BYPASSRLS is valid
+            # for the application-table assertions elsewhere in this runner.
+            observed_wait=json.loads(run("SELECT coalesce(jsonb_agg(jsonb_build_object('wait_event_type',wait_event_type,'wait_event',wait_event)),'[]'::jsonb)FROM pg_stat_activity WHERE application_name='rtn_submit_erasure_race';"))
+            if any(row['wait_event_type']=='Lock' and row['wait_event']=='advisory'for row in observed_wait):waiting=True;break
             time.sleep(.02)
         blocker.stdin.write(f"SELECT id FROM rtn_private.attempts WHERE id='{erase_attempt['attempt_id']}'FOR UPDATE;SELECT 'RTN_ERASURE_ATTEMPT_HELD';\n");blocker.stdin.flush()
         acquired=pool.submit(marker,'RTN_ERASURE_ATTEMPT_HELD').result(timeout=10)
         blocker.stdin.write('COMMIT;\n\\q\n');blocker.stdin.flush();_,block_error=blocker.communicate(timeout=10)
         rejected=pending.result(timeout=10)
+        (OUT/'submit-erasure-lock-observation.json').write_text(json.dumps({'observer':'fixture_bootstrap_login','observed_wait':observed_wait,'advisory_wait_observed':waiting,'erasure_attempt_row_lock_acquired':acquired,'erasure_exit_code':blocker.returncode,'submit_exit_code':rejected.returncode,'submit_rejected_after_revocation':'rtn_learner_assignment_required'in rejected.stderr},indent=2),encoding='utf-8')
         check('submit erasure lock order has no attempt subject inversion',waiting and acquired and not blocker.returncode and rejected.returncode!=0 and'rtn_learner_assignment_required'in rejected.stderr)
     finally:
         if blocker.poll()is None:blocker.kill();blocker.wait(timeout=5)
