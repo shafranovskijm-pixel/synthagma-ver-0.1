@@ -1,19 +1,19 @@
 import { createRef } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const preview = vi.hoisted(() => ({ content: null as string | null, kind:'homework', legacy:false, loading:false, blocks:vi.fn() }));
+const preview = vi.hoisted(() => ({ content: null as string | null, kind:'homework', legacy:false, loading:false, blocks:vi.fn(), lessons:null as any[]|null,go:vi.fn() }));
 vi.mock("@/hooks/useCoursePreview", () => ({
   useCoursePreview: () => ({
     course: { id: "course-a", title: "Курс", is_published: false },
-    lessons: [{ id: "homework-a", title: "Самостоятельная работа С1", type: preview.kind }],
+    lessons: preview.lessons || [{ id: "homework-a", title: "Самостоятельная работа С1", type: preview.kind }],
     currentLesson: { id: "homework-a", title: "Самостоятельная работа С1", type: preview.kind, content: preview.content },
     legacyEmbeddedMediaAllowed:preview.legacy, lessonContentLoading:preview.loading,
     currentLessonIndex: 0, loading: false, isTransitioning: false,
     testQuestions: [], selectedAnswers: {}, lessonAttachments: {}, courseDocuments: [],
     showDocumentsView: false, previewFile: null, contentRef: createRef(), fromStore: false,
-    goToNextLesson: vi.fn(), goToPrevLesson: vi.fn(), goToLesson: vi.fn(), goToDocumentsView: vi.fn(),
+    goToNextLesson: vi.fn(), goToPrevLesson: vi.fn(), goToLesson: preview.go, goToDocumentsView: vi.fn(),
     navigateBack: vi.fn(), navigateToEditor: vi.fn(), fetchTestQuestions: vi.fn(),
   }),
 }));
@@ -25,10 +25,16 @@ vi.mock('@/components/course-builder/block-editor',async importOriginal=>{
 
 import { CoursePreviewView } from "../CoursePreviewView";
 
-beforeEach(() => { vi.clearAllMocks();preview.content = null;preview.kind='homework';preview.legacy=false;preview.loading=false; });
+beforeEach(() => { vi.clearAllMocks();preview.content = null;preview.kind='homework';preview.legacy=false;preview.loading=false;preview.lessons=null; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("homework in read-only course preview", () => {
+  it('shows saved module boundaries in the author outline without changing navigation indexes',()=>{
+    preview.lessons=[{id:'one',title:'Первый урок',type:'text',module_id:'m1',module_title:'Введение'},{id:'two',title:'Второй урок',type:'text',module_id:'m1',module_title:'Введение'},{id:'three',title:'Третий урок',type:'text',module_id:'m2',module_title:'Практические работы'}];
+    render(<MemoryRouter><CoursePreviewView embedded /></MemoryRouter>);
+    expect(screen.getAllByRole('heading',{name:'Введение'})).toHaveLength(1);expect(screen.getByRole('heading',{name:'Практические работы'})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:/Третий урок/}));expect(preview.go).toHaveBeenCalledExactlyOnceWith(2);
+  });
   it('renders authored practice blocks in preview without creating submission controls',()=>{
     preview.kind='practice';preview.legacy=true;preview.content=JSON.stringify([{id:'instruction',type:'paragraph',content:'Постройте учебную модель'}]);
     const view=render(<MemoryRouter><CoursePreviewView embedded /></MemoryRouter>);
