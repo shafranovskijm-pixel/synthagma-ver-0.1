@@ -1,0 +1,114 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { getRtnEditorial, publishRtnModule, reviewRtnModule, rtnEditorialWorker } from '@/api/rtn-editorial';
+
+const field = 'min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm';
+const errorText = (error: unknown) => error instanceof Error ? error.message : 'Не удалось выполнить действие.';
+function parsePackage(text: string): Record<string, unknown> {
+  if (text.length > 2_000_000) throw new Error('Пакет слишком большой.');
+  try { const data = JSON.parse(text); if (!data || typeof data !== 'object') throw new Error(); return data; }
+  catch { throw new Error('Проверьте формат JSON-пакета.'); }
+}
+
+/** Editorial publishing is a separate, actual-admin RPC, never organization entitlement. */
+export function RtnEditorialPanel({ organizationId }: { organizationId: string }) {
+  const { user, userRole, authError } = useAuth();
+  if (!user || userRole !== 'admin' || authError) return null;
+  return <RtnEditorialContent key={`${user.id}:${organizationId}`} actorId={user.id} />;
+}
+
+function RtnEditorialContent({ actorId }: { actorId: string }) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<'normalize' | 'correct' | 'review'>('normalize');
+  const [selection, setSelection] = useState('');
+  const [text, setText] = useState('');
+  const [keyId, setKeyId] = useState('');
+  const [effective, setEffective] = useState('');
+  const [note, setNote] = useState('');
+  const [correctionNote, setCorrectionNote] = useState('');
+  const [notice, setNotice] = useState('');
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ['rtn-editorial', actorId], queryFn: getRtnEditorial, enabled: open, retry: false, staleTime: 0 });
+  async function refresh() { await client.invalidateQueries({ queryKey: ['rtn-editorial'] }); await client.invalidateQueries({ queryKey: ['rtn-workspace'] }); }
+  const mutation = useMutation({
+    mutationFn: async (action: 'bootstrap' | 'save' | 'publish') => {
+      setNotice('');
+      if (action === 'bootstrap') {
+        await rtnEditorialWorker({ operation: 'bootstrap' });
+        return 'Официальные источники зарегистрированы. Проверка поставлена в очередь.';
+      }
+      if (action === 'publish') {
+        if (!keyId || !/^\d{4}-\d{2}-\d{2}$/.test(effective) || note.trim().length < 10) throw new Error('Выберите проверенный набор, дату применения и пояснение выпуска.');
+        if (!query.data?.key_sets.some(item => item.id === keyId) || query.data.releases.some(item => item.key_set_id === keyId)) throw new Error('Обновите список: этот набор уже выпущен или недоступен.');
+        const result = await publishRtnModule(keyId, effective, note);
+        return `Учебная редакция выпущена: ${result.release_id}. Старые попытки сохраняют прежнюю редакцию.`;
+      }
+      if (!selection) throw new Error('Выберите редакцию исходного документа.');
+      const payload = parsePackage(text);
+      if (mode === 'normalize' || mode === 'correct') {
+        const source = query.data?.source_revisions.find(item => item.id === selection);
+        if (!source) throw new Error('Обновите список исходных редакций.');
+        const banks = Array.isArray(payload) ? [{ code: 'A.1', questions: payload }] : payload.normalized_banks;
+        if (!Array.isArray(banks) || !banks.length) throw new Error('Нужен массив формулировок А.1 или normalized_banks.');
+        const body: Record<string, unknown> = { operation: 'normalize', sourceRevisionId: source.id, normalizedBanks: banks };
+        if (mode === 'correct') {
+          if (correctionNote.trim().length < 10) throw new Error('Укажите основание исправления формулировок.');
+          const previous: Record<string, string> = {};
+          for (const item of banks) {
+            const bank = query.data?.banks.find(b => b.code === item.code && b.source_id === source.source_id && !b.parent_bank_id);
+            const latest = query.data?.bank_revisions.filter(r => r.bank_id === bank?.id && r.source_revision_id === source.id)
+              .sort((a, b) => (b.normalization_version || 1) - (a.normalization_version || 1) || b.created_at.localeCompare(a.created_at))[0];
+            if (!latest) throw new Error('Не найдена предыдущая редакция. Обновите данные.');
+            previous[item.code] = latest.id;
+          }
+          body.previousRevisionIds = previous; body.correctionNote = correctionNote;
+        }
+        await rtnEditorialWorker(body);
+        return 'Формулировки сохранены отдельной неизменяемой редакцией. Ответы ещё не утверждены.';
+      }
+      const revision = query.data?.bank_revisions.find(item => item.id === selection);
+      if (!revision) throw new Error('Обновите список редакций вопросов.');
+      const result = await reviewRtnModule(revision.bank_id, revision.id, payload);
+      setKeyId(result.key_set_id);
+      return 'Материалы и учебные ответы сохранены после проверки. Перед выпуском задайте дату применения.';
+    },
+    onSuccess: async (message, action) => {
+      if (action === 'publish') { setKeyId(''); setEffective(''); setNote(''); }
+      setNotice(message); await refresh();
+    },
+  });
+  const data = query.data;
+  const busy = mutation.isPending || query.isFetching;
+  return <section className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5">
+    <Button variant="ghost" aria-expanded={open} onClick={() => setOpen(v => !v)}>Редакции и предметная проверка · администратор</Button>
+    {open && <div className="mt-4 min-w-0 space-y-4">
+      <p className="text-sm text-muted-foreground">Оригинал, извлечённые формулировки, проверенные учебные ответы и выпуск сохраняются отдельно. Непроверенные ключи не включаются в обучение. Клиентские курсы не изменяются.</p>
+      {query.isPending && <p role="status">Загружаем редакции…</p>}
+      {query.error && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{errorText(query.error)}</p><Button variant="outline" disabled={query.isFetching} onClick={() => query.refetch()}>Повторить загрузку редакций</Button></div>}
+      {data && !query.error && <>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => mutation.mutate('bootstrap')}>Проверить подключение источников</Button><Button variant="ghost" disabled={busy} onClick={() => query.refetch()}>Обновить данные</Button></div>
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          <label className="space-y-1 text-sm">Этап<select className={field} value={mode} onChange={event => { setMode(event.target.value as typeof mode); setSelection(''); setNotice(''); }}><option value="normalize">Сохранить формулировки из оригинала</option><option value="correct">Исправить извлечение из оригинала</option><option value="review">Утвердить материалы и учебные ответы</option></select></label>
+          <label className="min-w-0 space-y-1 text-sm">Исходная редакция<select className={field} value={selection} onChange={event => setSelection(event.target.value)}><option value="">Выберите редакцию</option>
+            {mode !== 'review' ? data.source_revisions.filter(item => mode === 'correct' ? !item.normalization_required : item.normalization_required).map(item => <option key={item.id} value={item.id}>{data.sources.find(s => s.id === item.source_id)?.title} · {item.sha256.slice(0, 12)}</option>)
+              : data.bank_revisions.filter(item => data.banks.some(bank => bank.id === item.bank_id && !bank.parent_bank_id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов · {item.created_at.slice(0, 10)}</option>)}
+          </select></label>
+        </div>
+        {mode === 'correct' && <label className="block space-y-1 text-sm">Основание исправления<input className={field} value={correctionNote} onChange={event => setCorrectionNote(event.target.value)} /><span className="block text-xs text-muted-foreground">Создаётся новая редакция извлечения. Старые формулировки, выпуски и результаты сохраняются.</span></label>}
+        <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => setText(event.target.value)} /></label>
+        <Button disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов</option>)}</select></label>
+          <label className="space-y-1 text-sm">Применять с<input type="date" className={field} value={effective} onChange={event => setEffective(event.target.value)} /></label>
+        </div>
+        <label className="block space-y-1 text-sm">Основание выпуска<input className={field} value={note} onChange={event => setNote(event.target.value)} /></label>
+        <Button disabled={busy || !keyId || !effective || note.trim().length < 10} onClick={() => mutation.mutate('publish')}>Выпустить проверенную учебную редакцию</Button>
+      </>}
+      {mutation.error && <p role="alert" className="break-words text-sm text-destructive">{errorText(mutation.error)}</p>}
+      {notice && <p role="status" className="break-words text-sm">{notice}</p>}
+      {busy && <p role="status" className="text-sm text-muted-foreground">Сохраняем. Дождитесь результата запроса…</p>}
+    </div>}
+  </section>;
+}

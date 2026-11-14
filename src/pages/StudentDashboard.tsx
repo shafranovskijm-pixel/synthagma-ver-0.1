@@ -39,6 +39,7 @@ import { CreditCard, ClipboardCheck } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 import { CourseReviewDashboardGate } from "@/components/course-reviewer/CourseReviewDashboardGate";
+import { StudentRtnCourses } from "@/components/student/rtn/StudentRtnCourses";
 
 // T-Bank SDK loader
 let tbankSdkPromise: Promise<void> | null = null;
@@ -518,6 +519,7 @@ function LearnerDashboard() {
 
               {currentTab === "catalog" && !!user?.id && !isAdminView && !isPreviewMode && !isAdminViewFromStorage && effectiveStudentId === user?.id && profile?.organization_id && <RetainedResultsButton
                 organizationId={profile.organization_id} userId={user.id} courseLabels={Object.fromEntries(courses.map(course => [course.id, course.title]))} />}
+              {currentTab === "catalog" && userRole === "student" && !!user?.id && !isAdminView && !isPreviewMode && !isAdminViewFromStorage && !isDemoStudent && !loadError && !offlineCopy && effectiveStudentId === user?.id && profile?.organization_id && <StudentRtnCourses userId={user.id} organizationId={profile.organization_id} />}
               {currentTab === "catalog" && (
                 <CatalogContent
                   catalogCourses={isNativeLearner || dashboardSettings.catalogMode === "assigned" ? [] : catalogCourses}

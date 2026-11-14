@@ -1,5 +1,10 @@
 project_id = "atxwvjxbqjgkbjlhsdch"
 
+# Manual requests authenticate genuine users in the handler; the scheduler has
+# its own Vault-backed secret and never impersonates an administrator.
+[functions.rtn-source-check]
+verify_jwt = false
+
 [functions.register-student]
 verify_jwt = false
 
