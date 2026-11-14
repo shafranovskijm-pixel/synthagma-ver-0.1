@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { HomeworkAttachmentLink } from '@/components/course-learning/HomeworkAttachmentLink';
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -121,12 +122,7 @@ export function HomeworkReviewDialog({ submission, open, onOpenChange, onUpdated
             {Array.isArray(submission.attachments) && submission.attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {submission.attachments.map((att: any, i: number) => (
-                  <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs hover:bg-secondary/50 transition-colors">
-                    <Paperclip className="w-3 h-3" />
-                    {att.name}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <HomeworkAttachmentLink key={i} attachment={att} />
                 ))}
               </div>
             )}

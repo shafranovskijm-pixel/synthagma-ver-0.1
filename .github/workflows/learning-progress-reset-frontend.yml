@@ -47,6 +47,8 @@ jobs:
           node node_modules/vitest/vitest.mjs run
           src/hooks/course-learning
           src/components/course-learning/__tests__/HomeworkSubmission.test.tsx
+          src/api/__tests__/homeworkFiles.test.ts
+          src/components/course-learning/__tests__/HomeworkAttachmentLink.test.tsx
           src/utils/__tests__/testAnswerQueue.progressReset.test.ts
           src/utils/__tests__/testAnswerQueue.attempts.test.ts
           src/utils/__tests__/offlineSync.privacy.test.ts
@@ -69,6 +71,8 @@ jobs:
           2>&1 | tee outputs/learning-progress-reset-frontend/tests.stdout.txt
       - name: Build production application
         run: npm run build 2>&1 | tee outputs/learning-progress-reset-frontend/build.stdout.txt
+      - name: Private homework file SQL boundary checks with synthetic authority adapters
+        run: node supabase/tests/homework-files/private-files.test.mjs 2>&1 | tee outputs/learning-progress-reset-frontend/homework-files-sql.stdout.txt
       - name: Upload bounded frontend verification
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
