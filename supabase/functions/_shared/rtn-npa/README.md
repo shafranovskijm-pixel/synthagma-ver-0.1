@@ -42,9 +42,9 @@ Deno2.1.4 with the pinned actual SDK (use a private `DENO_DIR` cache):
 deno check --no-config --no-lock --node-modules-dir=none \
   supabase/functions/rtn-npa-check/index.ts \
   supabase/functions/rtn-npa-cron/index.ts \
-  supabase/functions/_shared/rtn-npa/tests/deno-import.test.ts
+  supabase/functions/_shared/rtn-npa/tests/deno-import.deno.ts
 deno test --no-config --no-lock --node-modules-dir=none --deny-env --deny-net \
-  supabase/functions/_shared/rtn-npa/tests/deno-import.test.ts
+  supabase/functions/_shared/rtn-npa/tests/deno-import.deno.ts
 ```
 
 The145 Node cases use explicit synthetic adapters and offline public-law/

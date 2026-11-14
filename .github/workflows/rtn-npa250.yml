@@ -64,9 +64,9 @@ jobs:
         with:
           deno-version: '2.1.4'
       - name: Actual Deno graph and pinned SDK2.90.1 types
-        run: deno check --no-config --no-lock --node-modules-dir=none supabase/functions/rtn-npa-check/index.ts supabase/functions/rtn-npa-cron/index.ts supabase/functions/_shared/rtn-npa/tests/deno-import.test.ts
+        run: deno check --no-config --no-lock --node-modules-dir=none supabase/functions/rtn-npa-check/index.ts supabase/functions/rtn-npa-cron/index.ts supabase/functions/_shared/rtn-npa/tests/deno-import.deno.ts
       - name: Actual SDK auth RPC and private PDF transport without live credentials
-        run: deno test --no-config --no-lock --node-modules-dir=none --deny-env --deny-net supabase/functions/_shared/rtn-npa/tests/deno-import.test.ts
+        run: deno test --no-config --no-lock --node-modules-dir=none --deny-env --deny-net supabase/functions/_shared/rtn-npa/tests/deno-import.deno.ts
   native:
     runs-on: ubuntu-24.04
     timeout-minutes: 12

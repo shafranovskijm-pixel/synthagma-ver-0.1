@@ -59,11 +59,27 @@ test('off-origin redirects and a text masquerading as PDF cannot be stored', asy
     assert.equal(h.writes.length, 0);
   });
 });
-test('source operation deadline really aborts a stalled upload', async () => {
-  let aborted = false;
-  const h = sourceFixture({ put: (_input, signal) => new Promise((_resolve, reject) => signal.addEventListener('abort', () => { aborted = true; reject(new Error('synthetic upload aborted')); }, { once: true })) }), c = claim();
-  await assert.rejects(() => createQuestionSourceVerifier(c, { ...dependencies(h), operationTimeoutMs: 15 })(c.question_source), /QUESTION_SOURCE_VERIFICATION_TIMEOUT|QUESTION_SOURCE_ABORTED/);
-  assert.equal(aborted, true);
+test('source operation deadline really aborts a stalled upload', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let enteredUpload, uploadSignal, abortCount = 0, returned = false;
+  const uploaded = new Promise(resolve => { enteredUpload = resolve; });
+  const h = sourceFixture({ put: (_input, signal) => new Promise((_resolve, reject) => {
+    uploadSignal = signal;
+    signal.addEventListener('abort', () => { abortCount++; reject(new Error('synthetic upload aborted')); }, { once: true });
+    enteredUpload();
+  }) }), c = claim();
+  const verification = createQuestionSourceVerifier(c, { ...dependencies(h), operationTimeoutMs: 15 })(c.question_source).then(result => { returned = true; return result; });
+  // Do not spend the operation deadline while the fixture is still fetching/hash-reading.
+  await Promise.race([uploaded, verification.then(() => assert.fail('verification returned before the stalled upload'), error => { throw error; })]);
+  assert.equal(uploadSignal.aborted, false);
+  assert.equal(abortCount, 0);
+  const rejected = assert.rejects(verification, /QUESTION_SOURCE_VERIFICATION_TIMEOUT|QUESTION_SOURCE_ABORTED/);
+  t.mock.timers.tick(15);
+  await rejected;
+  assert.equal(uploadSignal.aborted, true);
+  assert.equal(abortCount, 1);
+  assert.equal(returned, false);
+  assert.equal(h.writes.length, 0);
 });
 test('private upload keeps its own shorter cap inside a longer source operation', async () => {
   let aborted = false;
