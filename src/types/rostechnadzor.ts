@@ -18,6 +18,10 @@ export interface RtnBank {
   key_status: RtnKeyStatus;
   normative_status?: "current" | "review_required";
   normative_cutoff_at?: string | null;
+  admission_basis?: "manual_review" | "automatic_attestation" | "blocked";
+  latest_check_status?: "queued" | "running" | "unchanged" | "needs_subject_review" | "unknown" | "partial_coverage" | "error" | null;
+  latest_check_run_id?: string | null;
+  latest_check_at?: string | null;
   available_for_training: boolean;
   can_manual_check: boolean;
   last_checked_at: string | null;

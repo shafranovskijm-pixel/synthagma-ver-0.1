@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RostechnadzorWorkspace } from "./RostechnadzorWorkspace";
@@ -7,6 +7,8 @@ import type { RtnBank, RtnWorkspace } from "@/types/rostechnadzor";
 
 const api = vi.hoisted(() => ({ getRtnWorkspace: vi.fn(), checkRtnSource: vi.fn(), assignRtnTraining: vi.fn(), saveRtnSettings: vi.fn() }));
 vi.mock("@/api/rostechnadzor", () => api);
+const normativeApi = vi.hoisted(() => ({ checkRtnNormativeBasis: vi.fn() }));
+vi.mock("@/api/rtn-npa-staff", () => normativeApi);
 
 const bank: RtnBank = {
   id: "bank-a", code: "А.1", title: "Основы промышленной безопасности", domain: "Промышленная безопасность",
@@ -33,9 +35,53 @@ function mount(organizationId = "org-a") {
 }
 
 beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(workspace()); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("RTN organization workspace", () => {
+  it("does not mistake a late old run for completion of the newly queued normative check", async () => {
+    const previous = { ...bank, admission_basis: "manual_review" as const, latest_check_run_id: "old-run", latest_check_status: "unchanged" as const };
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [previous] }));
+    normativeApi.checkRtnNormativeBasis.mockResolvedValue({ run_id: "new-run", status: "queued", queued_at: "2026-11-15T02:00:00Z" });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Обновления" }));
+    fireEvent.click(screen.getByRole("button", { name: "Проверить нормативные основания" }));
+    expect(await screen.findByText(/Ожидаем результат запрошенной проверки/)).toBeInTheDocument();
+    await waitFor(() => expect(api.getRtnWorkspace).toHaveBeenCalledTimes(2));
+    expect(screen.getByText(/Ожидаем результат запрошенной проверки/)).toBeInTheDocument();
+    expect(screen.queryByText(/Последняя проверка: подтверждённых изменений нет/)).not.toBeInTheDocument();
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...previous, latest_check_run_id: "new-run", latest_check_status: "unknown" }] }));
+    fireEvent.click(screen.getByRole("button", { name: "Обновить результат проверки" }));
+    expect(await screen.findByText("Актуальность не удалось подтвердить")).toBeInTheDocument();
+    expect(screen.queryByText(/Ожидаем результат запрошенной проверки/)).not.toBeInTheDocument();
+    expect(normativeApi.checkRtnNormativeBasis).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends bounded waiting with an explicit uncertain timeout and permits status refresh without requeueing", async () => {
+    const previous = { ...bank, admission_basis: "manual_review" as const, latest_check_run_id: "old-run", latest_check_status: "unchanged" as const };
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [previous] }));
+    normativeApi.checkRtnNormativeBasis.mockResolvedValue({ run_id: "new-run", status: "queued", queued_at: "2026-11-15T02:00:00Z" });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Обновления" }));
+    let deadline: (() => void) | undefined;
+    const originalTimeout = window.setTimeout.bind(window);
+    vi.spyOn(window, "setTimeout").mockImplementation(((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      if (typeof handler === "function" && delay && delay >= 89000 && delay <= 90000) { deadline = handler as () => void; return 999991; }
+      return originalTimeout(handler, delay, ...args);
+    }) as typeof window.setTimeout);
+    fireEvent.click(screen.getByRole("button", { name: "Проверить нормативные основания" }));
+    await screen.findByText(/Ожидаем результат запрошенной проверки/);
+    await waitFor(() => expect(deadline).toBeDefined());
+    const future = Date.now() + 91000;
+    vi.spyOn(Date, "now").mockReturnValue(future);
+    act(() => deadline!());
+    expect(screen.getByText(/Время ожидания истекло/)).toBeInTheDocument();
+    expect(screen.getByText(/Результат запрошенной проверки ещё не получен/)).toBeInTheDocument();
+    expect(screen.queryByText(/Ожидаем результат запрошенной проверки/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Обновить результат проверки" }));
+    await waitFor(() => expect(api.getRtnWorkspace.mock.calls.length).toBeGreaterThanOrEqual(3));
+    expect(normativeApi.checkRtnNormativeBasis).toHaveBeenCalledTimes(1);
+  });
+
   it("prevents a released but no longer normatively current bank from being assigned", async () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, available_for_training: true, normative_status: "review_required" }] }));
     mount();

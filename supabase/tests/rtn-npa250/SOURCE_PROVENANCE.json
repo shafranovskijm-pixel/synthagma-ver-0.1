@@ -1,0 +1,104 @@
+{
+  "frozen_migration": {
+    "path": "supabase/migrations/20261114125000_rtn_normative_attestations.sql",
+    "sha256": "01e85d16bcc8d1c94be059274d23e27c20bc9b92913750cf457e490edcba31dc"
+  },
+  "baseline_git": "8cff5617c576cd2268e6e8b0eb9169105896f6ef",
+  "integration_base_git": "2ee76621278091e6c4939cd5495dc45757376d19",
+  "fixture_sources": [
+    {
+      "file": "20261114123000_rtn_account_erasure.sql",
+      "sha256": "cdfc61118bd1af078c73a5519ea5a1d89414a6f05564cf8f4217dffd56684d76"
+    },
+    {
+      "file": "20261114124000_rtn_normative_review_admission.sql",
+      "sha256": "630d4d8a1d7f34a0eb815881cf14962b19cfac326133a7594f1b3feab719a0e6"
+    },
+    {
+      "file": "base-setup.sql",
+      "sha256": "df108f2e28aba9a4e2e6c78ace1e35eee1cfe899bb55ee8eb4cb7780a710dfa0"
+    },
+    {
+      "file": "npa-advanced.sql",
+      "sha256": "30880e3a93203c2f8c83bb7a057f0fcdd2e24f04b1710f6b2883590cced12838"
+    },
+    {
+      "file": "npa-cases.sql",
+      "sha256": "9977b12a321859243c58a86d3ee4bf217aecf9eb8d9ca6da7973398288ed5bc7"
+    },
+    {
+      "file": "npa-contract-negatives.sql",
+      "sha256": "11755d2e075af19394480570f2acefee658c81781b199221ef2c05046c48c058"
+    },
+    {
+      "file": "npa-exhaustion.sql",
+      "sha256": "fbc78d91c323f12235f1e1e52e0a41de8a8d8bbcd556c2b6b0dedba36e31f176"
+    },
+    {
+      "file": "npa-privacy.sql",
+      "sha256": "4c0eee4a3031d88ad217b6cef447eed7b9acc06c9536d595165570f693d621ec"
+    },
+    {
+      "file": "npa-seed.sql",
+      "sha256": "b71b24382844c81177551759aa736cfdd4dcd3c59e786c5127bee64ecf00b651"
+    },
+    {
+      "file": "npa-source-cases.sql",
+      "sha256": "1f7d89460927d0a2548e917e8d13cc8514946473b293ea502e66cea3d6f86566"
+    },
+    {
+      "file": "npa-unsupported-federal-law.sql",
+      "sha256": "ee1930366742aac5b5b05b0e7687a5513c34f3ed5787a6aa8045e3d047404b98"
+    },
+    {
+      "file": "seed.sql",
+      "sha256": "6971051d356ab825bd299229c2a5d0fcbc18fbc552dd7c643ab74eb481df958b"
+    }
+  ],
+  "fixture_scope": "Disposable synthetic PostgreSQL cluster only. No customer records/credentials. Captured privacy function code is not a production erasure invocation.",
+  "historical_local_result": "Windows PostgreSQL17.11,308 assertions PASS; not a Linux CI result.",
+  "foundation_files": [
+    {
+      "path": "supabase/migrations/20261114120000_rtn_managed_training.sql",
+      "canonical_lf_sha256": "17f5d155a1e8e5b729c8a276a5542f1bac1594269271306c5a44b53914c84e25"
+    },
+    {
+      "path": "supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql",
+      "canonical_lf_sha256": "13749c9f54464bd1c5bedb9ba53da21afbf830c95f8ea40ccc6b052641a47c2c"
+    },
+    {
+      "path": "supabase/migrations/20261114122000_rtn_quota_activity_integration.sql",
+      "canonical_lf_sha256": "f0430fcaa4fb417acd4c79ccf425e68406e8564525030756c01caac7e532b2cb"
+    },
+    {
+      "path": "supabase/migrations/20261114122500_rtn_attempt_drafts.sql",
+      "canonical_lf_sha256": "9f193d2e18b17f691dcfc54933795038a4cfac19451aa9a7870b6897a41c1d21"
+    },
+    {
+      "path": "supabase/migrations/20261114123000_rtn_account_erasure.sql",
+      "canonical_lf_sha256": "cdfc61118bd1af078c73a5519ea5a1d89414a6f05564cf8f4217dffd56684d76"
+    },
+    {
+      "path": "supabase/migrations/20261114124000_rtn_normative_review_admission.sql",
+      "canonical_lf_sha256": "630d4d8a1d7f34a0eb815881cf14962b19cfac326133a7594f1b3feab719a0e6"
+    },
+    {
+      "path": "supabase/tests/rtn-managed/released-guards.sql",
+      "canonical_lf_sha256": "40226af8994ef470e4e44f5df10ca593dd89922dd2bf136a4eca82b3b46ae9b9"
+    },
+    {
+      "path": "supabase/tests/rtn-managed/released-quota-sources.sql",
+      "canonical_lf_sha256": "a44476ddba932d73409304c43c92da079dd1f83ff4ca41eb2396bda6b50f096a"
+    },
+    {
+      "path": "supabase/tests/rtn-account-erasure/live-erasure-sources.sql",
+      "canonical_lf_sha256": "1440b5050a7c1d6d8172ab1aa3f2ac92bdded818a22b4e74bfcfc8d63066e01e"
+    }
+  ],
+  "revision_note": "Omitted FederalLaw docid is unsupported declaration; supplied any-kind IDs remain strict JSON positive integer1..13digits. Previous6b926/312 andZIP08903 preserved historical. Original312 plus31new actual WindowsPG17 PASS before updating these source pins; new Linux CI remains required.",
+  "previous_preserved_prototype_revision": {
+    "sha256": "dd80331659c20e34b6a841066dbae54d04c83878c24bcf1b5a37d0f9dddf3a7f",
+    "assertions": 308,
+    "scope": "Historical Windows prototype result, not current integrated Linux result"
+  }
+}

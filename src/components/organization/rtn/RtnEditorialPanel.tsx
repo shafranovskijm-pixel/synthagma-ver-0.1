@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { getRtnEditorial, openRtnPaidRollout, publishRtnModule, reviewRtnModule, rtnEditorialWorker, type RtnRolloutRequest } from '@/api/rtn-editorial';
+import { RtnNormativeEditorialPanel } from './RtnNormativeEditorialPanel';
 
 const field = 'min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm';
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Не удалось выполнить действие.';
@@ -16,10 +17,10 @@ function parsePackage(text: string): Record<string, unknown> {
 export function RtnEditorialPanel({ organizationId }: { organizationId: string }) {
   const { user, userRole, authError } = useAuth();
   if (!user || userRole !== 'admin' || authError) return null;
-  return <RtnEditorialContent key={`${user.id}:${organizationId}`} actorId={user.id} />;
+  return <RtnEditorialContent key={`${user.id}:${organizationId}`} actorId={user.id} organizationId={organizationId} />;
 }
 
-function RtnEditorialContent({ actorId }: { actorId: string }) {
+function RtnEditorialContent({ actorId, organizationId }: { actorId: string; organizationId: string }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'normalize' | 'correct' | 'review'>('normalize');
   const [selection, setSelection] = useState('');
@@ -34,6 +35,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
   const [techReceipt, setTechReceipt] = useState('');
   const [rolloutReason, setRolloutReason] = useState('');
   const [rolloutRequest, setRolloutRequest] = useState<RtnRolloutRequest | null>(null);
+  const [npaInteractionLocked, setNpaInteractionLocked] = useState(false);
   const client = useQueryClient();
   const query = useQuery({ queryKey: ['rtn-editorial', actorId], queryFn: getRtnEditorial, enabled: open, retry: false, staleTime: 0 });
   async function refresh() { await client.invalidateQueries({ queryKey: ['rtn-editorial'] }); await client.invalidateQueries({ queryKey: ['rtn-workspace'] }); }
@@ -97,9 +99,9 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
     },
   });
   const data = query.data;
-  const busy = mutation.isPending || query.isFetching;
+  const busy = mutation.isPending || query.isFetching || npaInteractionLocked;
   return <section className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5">
-    <Button variant="ghost" aria-expanded={open} onClick={() => setOpen(v => !v)}>Редакции и предметная проверка · администратор</Button>
+    <Button variant="ghost" aria-expanded={open} disabled={npaInteractionLocked} onClick={() => setOpen(v => !v)}>Редакции и предметная проверка · администратор</Button>
     {open && <div className="mt-4 min-w-0 space-y-4">
       <p className="text-sm text-muted-foreground">Оригинал, извлечённые формулировки, проверенные учебные ответы и выпуск сохраняются отдельно. Непроверенные ключи не включаются в обучение. Клиентские курсы не изменяются.</p>
       {query.isPending && <p role="status">Загружаем редакции…</p>}
@@ -142,9 +144,10 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
         <label className="block space-y-1 text-sm">Основание выпуска<input className={field} value={note} onChange={event => setNote(event.target.value)} /></label>
         <Button disabled={busy || !keyId || !effective || note.trim().length < 10} onClick={() => mutation.mutate('publish')}>Выпустить проверенную учебную редакцию</Button>
       </>}
+      <RtnNormativeEditorialPanel organizationId={organizationId} onInteractionLockChange={setNpaInteractionLocked} />
       {mutation.error && <p role="alert" className="break-words text-sm text-destructive">{errorText(mutation.error)}</p>}
       {notice && <p role="status" className="break-words text-sm">{notice}</p>}
-      {busy && <p role="status" className="text-sm text-muted-foreground">Сохраняем. Дождитесь результата запроса…</p>}
+      {(mutation.isPending || query.isFetching) && <p role="status" className="text-sm text-muted-foreground">Сохраняем. Дождитесь результата запроса…</p>}
     </div>}
   </section>;
 }

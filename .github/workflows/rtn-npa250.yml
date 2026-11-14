@@ -1,0 +1,137 @@
+name: RTN normative attestations
+on:
+  pull_request:
+    paths:
+      - supabase/migrations/*rtn*.sql
+      - supabase/tests/rtn-npa250/**
+      - supabase/tests/rtn-managed/**
+      - supabase/tests/rtn-quota/**
+      - supabase/tests/rtn-account-erasure/**
+      - supabase/tests/rtn-freshness/**
+      - .github/workflows/rtn-npa250.yml
+      - src/api/rostechnadzor*
+      - src/api/rtn-npa*
+      - src/types/rostechnadzor.ts
+      - src/types/rtn-npa.ts
+      - src/components/organization/rtn/**
+      - supabase/functions/_shared/rtn-npa/**
+      - supabase/functions/_shared/cron-auth.ts
+      - supabase/functions/rtn-npa-check/**
+      - supabase/functions/rtn-npa-cron/**
+      - supabase/config.toml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Genuine session editorial CAS and exact staff run correlation
+        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rtn-npa-staff.test.ts src/api/rtn-npa.test.ts src/components/organization/rtn --maxWorkers=1
+      - run: npm run build
+  worker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+      - name: Offline official-source worker and single completion regressions
+        run: node supabase/functions/_shared/rtn-npa/tests/run-node-tests.mjs
+  edge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: '2.1.4'
+      - name: Actual Deno graph and pinned SDK2.90.1 types
+        run: deno check --no-config --no-lock --node-modules-dir=none supabase/functions/rtn-npa-check/index.ts supabase/functions/rtn-npa-cron/index.ts supabase/functions/_shared/rtn-npa/tests/deno-import.deno.ts
+      - name: Actual SDK auth RPC and private PDF transport without live credentials
+        run: deno test --no-config --no-lock --node-modules-dir=none --deny-env --deny-net supabase/functions/_shared/rtn-npa/tests/deno-import.deno.ts
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Verify reviewed SQL and synthetic fixture source bytes
+        run: python supabase/tests/rtn-npa250/run_native.py --verify-only
+      - name: Start dedicated loopback PostgreSQL17 with identical absolute PGDATA
+        shell: bash
+        run: |
+          set -euo pipefail
+          workspace="$(pwd -P)"
+          lab_dir="$(realpath supabase/tests/rtn-npa250)"
+          container="rtn-npa250-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$lab_dir/artifacts"
+          docker run --detach --name "$container" \
+            --env POSTGRES_USER=lab_bootstrap \
+            --env POSTGRES_DB=postgres \
+            --env POSTGRES_HOST_AUTH_METHOD=trust \
+            --env "PGDATA=$lab_dir/native-pgdata" \
+            --publish 127.0.0.1:54852:54852 \
+            --mount "type=bind,source=$workspace,target=$workspace" \
+            postgres:17.11-bookworm -c port=54852 -c listen_addresses='*'
+          for attempt in $(seq 1 60); do
+            if docker exec "$container" pg_isready -h 127.0.0.1 -p 54852 -U lab_bootstrap -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container"
+          exit 1
+      - name: Native permissions proof coverage erasure and real concurrent CAS
+        run: python supabase/tests/rtn-npa250/run_native.py
+      - name: Require exact reviewed migration and all343 assertions
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('supabase/tests/rtn-npa250/artifacts/NATIVE_RESULT.json').read_text())
+          assert result['passed'] is True and result['assertion_calls']==343, result
+          assert result['migration_sha256']=='01e85d16bcc8d1c94be059274d23e27c20bc9b92913750cf457e490edcba31dc', result
+          assert result['engine'].startswith('PostgreSQL 17.'), result
+          print(result['engine'], result['assertion_calls'], 'assertions passed')
+          PY
+      - name: Preserve synthetic server log and stop only this test container
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p supabase/tests/rtn-npa250/artifacts
+          container="rtn-npa250-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if docker inspect "$container" >/dev/null 2>&1; then
+            docker stop --time 30 "$container" >/dev/null || true
+            docker logs "$container" > supabase/tests/rtn-npa250/artifacts/postgres.log 2>&1 || true
+            docker rm "$container" >/dev/null || true
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-npa250-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: supabase/tests/rtn-npa250/artifacts/
+          if-no-files-found: error
+          retention-days: 14
