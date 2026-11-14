@@ -65,6 +65,7 @@ export interface RtnResult {
   student_id: string;
   bank_id: string;
   release_id: string;
+  title?: string;
   score?: number | null;
   correct?: number | null;
   total?: number | null;
@@ -74,7 +75,7 @@ export interface RtnResult {
 }
 
 export interface RtnWorkspace {
-  access: { allowed: boolean; reason: string | null; can_manage: boolean; can_assign: boolean; can_view_results: boolean; pilot: boolean };
+  access: { allowed: boolean; reason: string | null; can_manage: boolean; can_assign: boolean; can_view_results: boolean; pilot: boolean; pilot_kind?: 'technoservice' | 'technical_qa' | null };
   banks: RtnBank[];
   settings: RtnSettings;
   checks: RtnSourceCheck[];
@@ -86,6 +87,7 @@ export interface RtnWorkspace {
 }
 
 export interface RtnReleaseMetadata {
+  title?: string;
   bank_id: string;
   bank_code: string;
   release_id: string;
@@ -149,6 +151,8 @@ export interface RtnAttempt {
   attempt_id: string;
   assignment_id?: string;
   release_id: string;
+  title?: string;
+  code?: string;
   status: "active" | "submitted";
   questions: RtnPublicQuestion[];
   materials?: RtnMaterial[];

@@ -36,6 +36,9 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON storage.objects TO anon,authenticated,servi
 -- must protect the new bucket without editing this policy or other buckets.
 CREATE POLICY lab_broad_storage ON storage.objects FOR ALL TO anon,authenticated USING(true) WITH CHECK(true);
 INSERT INTO storage.buckets VALUES('other-public','other-public',true,52428800);
+-- Model the release prerequisite performed by the provider's Storage API.
+-- This is fixture setup, never bucket creation in the product migration.
+INSERT INTO storage.buckets VALUES('rtn-sources','rtn-sources',false,NULL);
 INSERT INTO storage.objects(bucket_id,name) VALUES('other-public','existing-other-object'),('rtn-sources','synthetic-private-original');
 -- Existing unrelated synthetic learning and financial data: migration must not
 -- touch these sentinel bytes or any released helper definitions/ACLs.
@@ -63,7 +66,9 @@ INSERT INTO public.organizations VALUES
  ('33333333-3333-4333-8333-333333333333','Free',false,NULL,'free'),
  ('44444444-4444-4444-8444-444444444444','Postpaid',false,NULL,'free'),
  ('55555555-5555-4555-8555-555555555555','Expired',true,now()-interval '1 second','start'),
- ('cdd87239-1b04-47c9-8cd6-7ad57af4c54b','Technical pilot',false,NULL,'free');
+ ('cdd87239-1b04-47c9-8cd6-7ad57af4c54b','Technical pilot',false,NULL,'free'),
+ ('0e29e728-bcc5-46e6-a339-066fb1e9c726','QA A technical exception',false,NULL,'free'),
+ ('f7701297-2c10-4f8e-8123-4016cee9984f','QA B technical exception',false,NULL,'free');
 INSERT INTO public.organization_billing_agreements VALUES(gen_random_uuid(),'44444444-4444-4444-8444-444444444444',current_date-5,NULL);
 INSERT INTO public.profiles(id,user_id,organization_id,full_name) VALUES
  ('71000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000001','11111111-1111-4111-8111-111111111111','Owner A'),

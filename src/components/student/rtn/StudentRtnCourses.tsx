@@ -141,6 +141,7 @@ function RtnTrainer({ opened, onUpdated, initialAttempt }: { opened: OpenTrainin
   const locked = busy || !!frozenAnswers || !!finalResult;
 
   return <div className="min-w-0 space-y-5">
+    <h4 className="break-words font-semibold">{current.title || assignment.title}</h4>
     <p className="text-sm text-muted-foreground">В модуле {current.questions.length} вопросов. Это полный состав этой учебной редакции; отдельный модуль может охватывать часть официального перечня. У вопроса может быть несколько правильных вариантов.</p>
     <p className="break-all text-xs text-muted-foreground">Редакция: {current.release_id}</p>
     {!!current.materials?.length && <CourseMaterials materials={current.materials} />}

@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,13 +38,84 @@ SELECT lab.keep('old_data',(SELECT jsonb_build_array((SELECT jsonb_agg(c)FROM pu
 SELECT lab.keep('guard_metadata',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='billing_access_private' OR(n.nspname='public' AND p.proname IN('account_deletion_access_allowed','can_access_organization','has_role','is_student_profile','has_org_staff_permission','get_org_staff_permissions','normalize_org_staff_permission','org_role_default_permissions','has_active_postpaid_agreement','postpaid_is_admin'))));
 SELECT lab.keep('storage_policy_metadata',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_policy p WHERE polrelid='storage.objects'::regclass));
 """
-sql = fixture + '\n' + guards + '\n' + baseline + '\n' + migration + '\n' + acceptance
-result = run(sql)
+result = run(fixture + '\n' + guards + '\n' + baseline)
 (OUT / 'native.stdout.txt').write_text(result.stdout, encoding='utf-8')
 (OUT / 'native.stderr.txt').write_text(result.stderr, encoding='utf-8')
 if result.returncode:
+    raise SystemExit(result.stderr[-5000:])
+# The production provider owns bucket creation via its Storage API. Exercise
+# real full-migration failures instead of allowing SQL to create/repair buckets.
+for case, prepare, preserved in [
+    ('missing', "DELETE FROM storage.buckets WHERE id='rtn-sources';", "NOT EXISTS(SELECT 1 FROM storage.buckets WHERE id='rtn-sources')"),
+    ('public', "INSERT INTO storage.buckets VALUES('rtn-sources','rtn-sources',true,NULL);", "(SELECT public IS TRUE FROM storage.buckets WHERE id='rtn-sources')"),
+    ('unsupported limit', "UPDATE storage.buckets SET public=false,file_size_limit=1048576 WHERE id='rtn-sources';", "(SELECT file_size_limit=1048576 FROM storage.buckets WHERE id='rtn-sources')"),
+]:
+    prepared = run('SET ROLE postgres;' + prepare)
+    if prepared.returncode:
+        raise SystemExit(prepared.stderr)
+    refused = run('SET ROLE postgres;\n' + migration)
+    if not refused.returncode or 'rtn_private_source_bucket_precondition_required' not in refused.stderr:
+        raise SystemExit(f'Bucket {case} precondition failed to reject: ' + refused.stderr)
+    verified = run("SET ROLE postgres;SELECT lab.check('bucket " + case + " precondition rolls back without repair',to_regnamespace('rtn_private') IS NULL AND to_regprocedure('public.get_rtn_workspace(uuid)') IS NULL AND " + preserved + ');')
+    if verified.returncode:
+        raise SystemExit(verified.stderr)
+restore = run("SET ROLE postgres;UPDATE storage.buckets SET public=false,file_size_limit=NULL WHERE id='rtn-sources';")
+if restore.returncode:
+    raise SystemExit(restore.stderr)
+result = run('SET ROLE postgres;\n' + migration + '\n' + acceptance)
+with (OUT / 'native.stdout.txt').open('a', encoding='utf-8') as log:
+    log.write(result.stdout)
+with (OUT / 'native.stderr.txt').open('a', encoding='utf-8') as log:
+    log.write(result.stderr)
+if result.returncode:
     print(result.stderr[-5000:])
     raise SystemExit(result.returncode)
+# Hold a real source/normalization transaction open. A second authenticated
+# publisher must wait for that source lock and then reject its stale review.
+normalizer = subprocess.Popen([PSQL, '-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
+normalizer.stdin.write("""SET ROLE service_role;
+SELECT set_config('request.jwt.claim.role','service_role',false);
+BEGIN;
+SELECT public.normalize_rtn_revision((lab.ctx('completed')->>'revision_id')::uuid,lab.ctx('race_normalized'),jsonb_build_object('A.1',lab.ctx('bank_revision_id')#>>'{}'),'Synthetic concurrent correction verified against original');
+SELECT 'RTN_CORRECTION_LOCK_HELD';
+""")
+normalizer.stdin.flush()
+def wait_marker():
+    for line in normalizer.stdout:
+        if line.strip() == 'RTN_CORRECTION_LOCK_HELD':
+            return True
+    return False
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    marker = pool.submit(wait_marker)
+    try:
+        if not marker.result(timeout=10):
+            raise AssertionError('normalization transaction did not acquire source lock')
+        publisher = pool.submit(run, """SET application_name='rtn_publish_race';SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role','authenticated',false);
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT public.publish_rtn_release((lab.ctx('race_review')->>'key_set_id')::uuid,current_date,'Synthetic concurrent stale publication');
+""")
+        blocked = False
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            waiting = run("SELECT count(*) FROM pg_stat_activity WHERE application_name='rtn_publish_race' AND wait_event_type='Lock';")
+            if not waiting.returncode and waiting.stdout.strip() == '1':
+                blocked = True
+                break
+            time.sleep(.02)
+        normalizer.stdin.write('COMMIT;\n\\q\n')
+        normalizer.stdin.flush()
+        normalizer_output, normalizer_error = normalizer.communicate(timeout=10)
+        refused_publish = publisher.result(timeout=10)
+        if not blocked or normalizer.returncode or not refused_publish.returncode or 'rtn_release_normalization_is_not_current' not in refused_publish.stderr:
+            raise AssertionError('source-lock publication/correction race failed: ' + normalizer_error + refused_publish.stderr)
+    finally:
+        if normalizer.poll() is None:
+            normalizer.kill()
+            normalizer.wait(timeout=5)
+race_guard = run("SET ROLE postgres;SELECT lab.check('publisher waits for correction source lock and rejects stale review',true);")
+if race_guard.returncode:
+    raise RuntimeError(race_guard.stderr)
 # Independent connections contend through the real assignment advisory lock
 # and attempt FOR UPDATE lock. No in-process mocked RPC or transaction API.
 student_session = """SET ROLE authenticated;
@@ -74,6 +146,6 @@ if summary.returncode:
 receipt = json.loads(summary.stdout)
 receipt['complete'] = True
 receipt['server_version'] = probe.stdout.strip().split('|')[-1]
-receipt['concurrency'] = {'independent_start_connections': 8, 'independent_submit_connections': 6}
+receipt['concurrency'] = {'independent_start_connections': 8, 'independent_submit_connections': 6, 'source_correction_publish_lock_observed': True}
 (OUT / 'result.json').write_text(json.dumps(receipt, indent=2, ensure_ascii=False), encoding='utf-8')
 print(f"RTN native PostgreSQL17: {receipt['passed']} PASS / 0 FAIL")

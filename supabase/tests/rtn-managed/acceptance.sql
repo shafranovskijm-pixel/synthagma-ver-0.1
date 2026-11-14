@@ -6,6 +6,7 @@ SELECT lab.check('keys no direct reads',NOT has_table_privilege('authenticated',
 SELECT lab.check('all private tables RLS enabled',NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='rtn_private' AND c.relkind='r' AND NOT c.relrowsecurity));
 SELECT lab.check('bare and www official HTTPS paths accepted',rtn_private.official_url('https://gosnadzor.ru/energy/test.xlsx') AND rtn_private.official_url('https://www.gosnadzor.ru/upload/iblock/test.pdf') AND NOT rtn_private.official_url('https://gosnadzor.ru.evil.invalid/upload/test.pdf') AND NOT rtn_private.official_url('http://gosnadzor.ru/energy/test.xlsx'));
 SELECT lab.check('source originals private',(SELECT NOT public FROM storage.buckets WHERE id='rtn-sources'));
+SELECT lab.check('provider bucket configuration unchanged',(SELECT id='rtn-sources' AND name='rtn-sources' AND public IS FALSE AND file_size_limit IS NULL FROM storage.buckets WHERE id='rtn-sources'));
 SELECT lab.check('existing Storage policy ABI owner roles expressions unchanged',lab.ctx('storage_policy_metadata')=(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_policy p WHERE polrelid='storage.objects'::regclass AND polname<>'rtn_source_originals_private_fence'));
 SELECT lab.check('least privilege worker ACL',has_function_privilege('service_role','public.claim_rtn_check(uuid)','EXECUTE') AND NOT has_function_privilege('authenticated','public.claim_rtn_check(uuid)','EXECUTE') AND NOT has_function_privilege('anon','public.get_rtn_workspace(uuid)','EXECUTE'));
 SELECT lab.check('least privilege reviewed keys ACL',has_function_privilege('authenticated','public.review_rtn_keys(uuid,uuid,jsonb,text,jsonb)','EXECUTE') AND NOT has_function_privilege('service_role','public.review_rtn_keys(uuid,uuid,jsonb,text,jsonb)','EXECUTE'));
@@ -53,6 +54,8 @@ SELECT lab.check('original normalized without keys',NOT(lab.ctx('completed')->>'
 SET ROLE postgres;
 SELECT lab.check('original provenance retained',(SELECT questions->0->'provenance'->>'page'='1' FROM rtn_private.bank_revisions LIMIT 1));
 SELECT lab.check('pilot only registered bank',rtn_private.entitled('cdd87239-1b04-47c9-8cd6-7ad57af4c54b',(lab.ctx('bank_id')#>>'{}')::uuid) AND NOT rtn_private.entitled('cdd87239-1b04-47c9-8cd6-7ad57af4c54b',gen_random_uuid()));
+SELECT lab.check('only fixed QA tenants get bounded free testing exception',rtn_private.entitled('0e29e728-bcc5-46e6-a339-066fb1e9c726',(lab.ctx('bank_id')#>>'{}')::uuid) AND rtn_private.entitled('f7701297-2c10-4f8e-8123-4016cee9984f',(lab.ctx('bank_id')#>>'{}')::uuid) AND NOT rtn_private.entitled('33333333-3333-4333-8333-333333333333',(lab.ctx('bank_id')#>>'{}')::uuid));
+SELECT lab.denied('arbitrary free tenant pilot grant refused',format('INSERT INTO rtn_private.pilot_grants(organization_id,bank_id)VALUES(''33333333-3333-4333-8333-333333333333'',%L)',lab.ctx('bank_id')#>>'{}'),'23514');
 SELECT lab.denied('immutable original cannot change','UPDATE rtn_private.source_revisions SET sha256=repeat(''b'',64)');
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
@@ -63,12 +66,16 @@ SELECT lab.keep('bank_revision_id',lab.ctx('workspace')->'banks'->0->'bank_revis
 SELECT lab.check('unreviewed cannot assign',NOT(lab.ctx('workspace')->'banks'->0->>'available_for_training')::boolean);
 SELECT lab.denied('unreleased assignment denied',format('SELECT public.assign_rtn_training(''11111111-1111-4111-8111-111111111111'',%L,ARRAY[''71000000-0000-4000-8000-000000000101'']::uuid[])',lab.ctx('bank_id')#>>'{}'),'22023');
 SELECT lab.keep('keys','[{"id":"q1","number":1,"text":"Synthetic official question one","options_origin":"authorial_training","options":[{"id":"a","text":"Authorial A"},{"id":"b","text":"Authorial B"}],"correct_option_ids":["a"],"evidence":[{"url":"https://www.gosnadzor.ru/service/list/lab/norm","citation":"Synthetic test evidence"}]},{"id":"q2","number":2,"text":"Synthetic official question two","options":[{"id":"yes","text":"Yes"},{"id":"no","text":"No"}],"correct_option_ids":["yes"],"evidence":[{"url":"https://www.gosnadzor.ru/service/list/lab/norm","citation":"Synthetic test evidence"}]}]');
+SELECT lab.keep('full_review','{"kind":"full_bank","title":"Synthetic source training 2 questions","materials":[{"id":"full-lecture","title":"Synthetic learning chapter","body":"Synthetic training material for an isolated fixture.","source_refs":[{"url":"https://www.gosnadzor.ru/service/list/lab/norm","citation":"Synthetic fixture source"}]}]}');
 SELECT lab.denied('review needs complete coverage',format('SELECT public.review_rtn_keys(%L,%L,%L,''Synthetic incomplete review'')',lab.ctx('bank_id')#>>'{}',lab.ctx('bank_revision_id')#>>'{}',jsonb_build_array(lab.ctx('keys')->0)),'22023');
 SELECT lab.denied('authorial options explicitly identified',format('SELECT public.review_rtn_keys(%L,%L,%L,''Synthetic implicit review'')',lab.ctx('bank_id')#>>'{}',lab.ctx('bank_revision_id')#>>'{}',jsonb_set(lab.ctx('keys'),'{0,options_origin}','"official"')),'22023');
 SELECT lab.denied('official options immutable',format('SELECT public.review_rtn_keys(%L,%L,%L,''Synthetic replaced options review'')',lab.ctx('bank_id')#>>'{}',lab.ctx('bank_revision_id')#>>'{}',jsonb_set(lab.ctx('keys'),'{1,options,0,text}','"Replaced answer"')),'22023');
-SELECT lab.keep('review',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic full two-question verified review'));
+SELECT lab.keep('no_materials_review',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic quiz-only review without lectures'));
+SELECT lab.denied('quiz-only keys cannot become training release',format('SELECT public.publish_rtn_release(%L,current_date,''Synthetic invalid quiz-only release'')',lab.ctx('no_materials_review')->>'key_set_id'),'22023');
+SELECT lab.keep('review',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic full two-question verified review',lab.ctx('full_review')));
 SELECT lab.keep('release',public.publish_rtn_release((lab.ctx('review')->>'key_set_id')::uuid,current_date,'Synthetic first released version'));
-SELECT lab.check('review timeout retry idempotent',(public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic full two-question verified review')->>'key_set_id')=lab.ctx('review')->>'key_set_id');
+SELECT lab.check('review timeout retry idempotent',(public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic full two-question verified review',lab.ctx('full_review'))->>'key_set_id')=lab.ctx('review')->>'key_set_id');
+SELECT lab.keep('unreleased_old_sha',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic reviewed but not released old SHA',lab.ctx('full_review')));
 SELECT lab.check('publication timeout retry idempotent',(public.publish_rtn_release((lab.ctx('review')->>'key_set_id')::uuid,current_date,'Synthetic first released version')->>'release_id')=lab.ctx('release')->>'release_id');
 SELECT lab.denied('publication retry payload conflict',format('SELECT public.publish_rtn_release(%L,current_date,''Different synthetic release note'')',lab.ctx('review')->>'key_set_id'),'40001');
 SELECT lab.keep('module',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,jsonb_build_array(lab.ctx('keys')->0),'Synthetic reviewed limited module','{"code":"A.1-LAB-MODULE","title":"Synthetic module 1 of 2 questions","domain":"industrial-safety","materials":[{"id":"section1","title":"Synthetic chapter","body":"Synthetic training material, never actual legal guidance.","source_refs":[{"url":"https://www.gosnadzor.ru/service/list/lab/norm","citation":"Synthetic fixture source"}]}]}'));
@@ -76,6 +83,7 @@ SELECT lab.check('subset module separately identified',lab.ctx('module')->>'bank
 SELECT lab.keep('module_release',public.publish_rtn_release((lab.ctx('module')->>'key_set_id')::uuid,current_date,'Synthetic module first released version'));
 SELECT lab.check('release archive hidden by default',public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'archived_releases'='[]'::jsonb);
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000001',false);
+SELECT lab.denied('both entitled QA tenants still require membership','SELECT public.get_rtn_workspace(''f7701297-2c10-4f8e-8123-4016cee9984f'')');
 SELECT lab.check('tenant settings persist',public.save_rtn_settings('11111111-1111-4111-8111-111111111111',false,true)='{"notify_updates":false,"show_archived_releases":true}'::jsonb);
 SELECT lab.check('verified setting reveals metadata history only',jsonb_array_length(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'archived_releases')=2 AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'archived_releases')r WHERE r ?| ARRAY['questions','correct_option_ids','answers']));
 SELECT lab.denied('foreign learner refused',format('SELECT public.assign_rtn_training(''11111111-1111-4111-8111-111111111111'',%L,ARRAY[''71000000-0000-4000-8000-000000000102'']::uuid[])',lab.ctx('bank_id')#>>'{}'));
@@ -135,11 +143,16 @@ SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
 SELECT lab.keep('new_br',(SELECT b->'pending_bank_revision_id' FROM jsonb_array_elements(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'banks')b WHERE b->>'code'='A.1'));
-SELECT lab.keep('review2',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('new_br')#>>'{}')::uuid,jsonb_set(lab.ctx('keys'),'{0,correct_option_ids}','["b"]'),'Synthetic corrected normative key second review'));
+SELECT lab.denied('old official SHA unreleased keys cannot publish',format('SELECT public.publish_rtn_release(%L,current_date,''Synthetic refused old source release'')',lab.ctx('unreleased_old_sha')->>'key_set_id'),'40001');
+SELECT lab.check('already published old source exact retry remains immutable',(public.publish_rtn_release((lab.ctx('review')->>'key_set_id')::uuid,current_date,'Synthetic first released version')->>'release_id')=lab.ctx('release')->>'release_id');
+SELECT lab.keep('review2',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('new_br')#>>'{}')::uuid,jsonb_set(lab.ctx('keys'),'{0,correct_option_ids}','["b"]'),'Synthetic corrected normative key second review',jsonb_set(lab.ctx('full_review'),'{title}','"Synthetic revised training 2 questions"')));
+SELECT lab.keep('unreleased_old_normalization',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('new_br')#>>'{}')::uuid,jsonb_set(lab.ctx('keys'),'{0,correct_option_ids}','["b"]'),'Synthetic reviewed but not released older normalization',lab.ctx('full_review')));
 SELECT lab.keep('release2',public.publish_rtn_release((lab.ctx('review2')->>'key_set_id')::uuid,current_date,'Synthetic second released version'));
+SELECT lab.check('current display title comes from immutable released version',EXISTS(SELECT 1 FROM jsonb_array_elements(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'banks')b WHERE b->>'code'='A.1' AND b->>'title'='Synthetic revised training 2 questions'));
 SELECT lab.check('old release archive links exact old original',EXISTS(SELECT 1 FROM jsonb_array_elements(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'archived_releases')r WHERE r->>'release_id'=lab.ctx('release')->>'release_id' AND r->>'state'='archived' AND NOT(r->>'is_current')::boolean AND r->>'document_url'='https://www.gosnadzor.ru/service/list/lab/a1.pdf'));
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000101',false);
 SELECT lab.check('active attempt retains old version',public.start_rtn_attempt((lab.ctx('assignment_id')#>>'{}')::uuid)=lab.ctx('attempt'));
+SELECT lab.check('old attempt title snapshot retained',public.get_rtn_attempt((lab.ctx('attempt')->>'attempt_id')::uuid)->>'title'='Synthetic source training 2 questions');
 SELECT lab.keep('submitted',public.submit_rtn_attempt((lab.ctx('attempt')->>'attempt_id')::uuid,'{"q1":["a"],"q2":["yes"]}'));
 SELECT lab.check('server grades frozen old key',(lab.ctx('submitted')->>'score')::numeric=100 AND(lab.ctx('submitted')->>'passed')::boolean);
 SELECT lab.check('submitted attempt gets normative explanation sources',jsonb_array_length(public.get_rtn_attempt((lab.ctx('attempt')->>'attempt_id')::uuid)->'feedback'->0->'evidence')=1);
@@ -176,6 +189,7 @@ SELECT lab.check('old attempt unchanged after normalization correction',(SELECT 
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT lab.denied('older normalization unreleased keys cannot publish',format('SELECT public.publish_rtn_release(%L,current_date,''Synthetic refused old OCR release'')',lab.ctx('unreleased_old_normalization')->>'key_set_id'),'40001');
 SELECT lab.check('same PDF OCR correction remains pending until key review',EXISTS(SELECT 1 FROM jsonb_array_elements(public.get_rtn_workspace('11111111-1111-4111-8111-111111111111')->'banks')b WHERE b->>'code'='A.1' AND b->>'release_id'=lab.ctx('release2')->>'release_id' AND b->>'pending_source_revision_id'=lab.ctx('stage')->>'revision_id' AND b->>'pending_bank_revision_id'=lab.ctx('corrected_br')#>>'{}' AND b->>'pending_key_status'='unreviewed'));
 SET ROLE postgres;
 -- A manual check immediately before the weekly deadline must never starve
@@ -192,6 +206,33 @@ SELECT lab.keep('unchanged_full',public.complete_rtn_check((lab.ctx('weekly_clai
 SET ROLE postgres;
 SELECT lab.check('unchanged weekly preserves catalog retrieval evidence',EXISTS(SELECT 1 FROM rtn_private.check_runs WHERE id=(lab.ctx('weekly_claim')->>'run_id')::uuid AND jsonb_array_length(result_metadata->'observations')=1 AND NOT result_metadata ? 'authorization'));
 SELECT lab.check('resolved source discovery retained',(SELECT last_resolved_page_url='https://gosnadzor.ru/service/list/lab/new-catalog/' AND last_document_url='https://gosnadzor.ru/service/list/lab/a1-new.pdf' FROM rtn_private.sources LIMIT 1));
+-- Official bytes can actually return to a formerly seen hash. Reuse the
+-- immutable original, advance the current observation generation only once,
+-- and never replace old training attempts or falsely keep pointer B.
+UPDATE rtn_private.sources SET last_checked_at=now()-interval '2 days';
+SET ROLE service_role;
+SELECT set_config('request.jwt.claim.role','service_role',false);
+SELECT lab.keep('return_a_due',public.enqueue_due_rtn_checks());
+SELECT lab.keep('return_a_claim',public.claim_rtn_check((lab.ctx('return_a_due')->'run_ids'->>0)::uuid));
+SELECT lab.keep('return_a',public.complete_rtn_check((lab.ctx('return_a_claim')->>'run_id')::uuid,(lab.ctx('return_a_claim')->>'lease_token')::uuid,jsonb_build_object('status','changed','sha256',repeat('a',64),'document_url','https://www.gosnadzor.ru/service/list/lab/a1.pdf','http_status',200)));
+SET ROLE postgres;
+SELECT lab.check('A B A current pointer returns to same immutable original',lab.ctx('return_a')->>'revision_id'=lab.ctx('completed')->>'revision_id' AND NOT(lab.ctx('return_a')->>'new_revision')::boolean AND(SELECT last_sha256=repeat('a',64) AND source_generation=3 FROM rtn_private.sources LIMIT 1));
+UPDATE rtn_private.sources SET last_checked_at=now()-interval '2 days';
+SET ROLE service_role;
+SELECT set_config('request.jwt.claim.role','service_role',false);
+SELECT lab.keep('same_a_due',public.enqueue_due_rtn_checks());
+SELECT lab.keep('same_a_claim',public.claim_rtn_check((lab.ctx('same_a_due')->'run_ids'->>0)::uuid));
+SELECT lab.keep('same_a',public.complete_rtn_check((lab.ctx('same_a_claim')->>'run_id')::uuid,(lab.ctx('same_a_claim')->>'lease_token')::uuid,jsonb_build_object('status','unchanged','sha256',repeat('a',64),'document_url','https://www.gosnadzor.ru/service/list/lab/a1.pdf','http_status',200)));
+SET ROLE postgres;
+SELECT lab.check('A B A A unchanged replay preserves generation and originals',lab.ctx('same_a')->>'status'='unchanged' AND(SELECT source_generation=3 FROM rtn_private.sources LIMIT 1) AND(SELECT count(*)=2 FROM rtn_private.source_revisions));
+SELECT lab.check('A B A A preserves old attempt snapshots',(SELECT to_jsonb(md5(question_snapshot::text||key_snapshot::text))=lab.ctx('attempt_hash') FROM rtn_private.attempts WHERE id=(lab.ctx('attempt')->>'attempt_id')::uuid));
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role','authenticated',false);
+SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000999',false);
+SELECT lab.denied('returned SHA does not revive stale unreleased review generation',format('SELECT public.publish_rtn_release(%L,current_date,''Synthetic stale returned-source release'')',lab.ctx('unreleased_old_sha')->>'key_set_id'),'40001');
+SELECT lab.keep('race_review',public.review_rtn_keys((lab.ctx('bank_id')#>>'{}')::uuid,(lab.ctx('bank_revision_id')#>>'{}')::uuid,lab.ctx('keys'),'Synthetic current generation review before correction race',lab.ctx('full_review')));
+SELECT lab.keep('race_normalized',jsonb_set(lab.ctx('normalized'),'{0,questions,1,text}','"Synthetic official question two concurrent OCR correction"'));
+SET ROLE postgres;
 UPDATE public.profiles SET archived_at=now() WHERE user_id='81000000-0000-4000-8000-000000000001';
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',false);

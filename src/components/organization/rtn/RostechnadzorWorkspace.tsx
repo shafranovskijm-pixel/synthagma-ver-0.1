@@ -52,6 +52,10 @@ function keyLabel(bank: RtnBank): string {
   return "Ответы проходят предметную проверку";
 }
 
+function domainLabel(value: string): string {
+  return ({ 'industrial-safety': 'Промышленная безопасность', energy_supervision_knowledge_check: 'Энергонадзор · проверка знаний' } as Record<string, string>)[value] || 'Другое направление';
+}
+
 function ErrorBox({ message, retry, busy = false }: { message: string; retry?: () => void; busy?: boolean }) {
   return <div role="alert" className={`${boxClass} flex items-start gap-3`}>
     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -140,9 +144,9 @@ function RtnWorkspaceContent({ organizationId, actorId }: { organizationId: stri
   return <section className="min-w-0 space-y-5" aria-label="Программы Ростехнадзора">
     <div className={`${boxClass} flex flex-col gap-3 sm:flex-row`}>
       <label className="relative min-w-0 flex-1"><Search aria-hidden="true" className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><span className="sr-only">Поиск программы</span><input className={`${controlClass} pl-9`} placeholder="Поиск программы…" value={search} onChange={event => setSearch(event.target.value)} /></label>
-      <label className="min-w-0 sm:w-64"><span className="sr-only">Направление</span><select className={controlClass} value={domain} onChange={event => setDomain(event.target.value)}><option value="">Все направления</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+      <label className="min-w-0 sm:w-64"><span className="sr-only">Направление</span><select className={controlClass} value={domain} onChange={event => setDomain(event.target.value)}><option value="">Все направления</option>{domains.map(value => <option key={value} value={value}>{domainLabel(value)}</option>)}</select></label>
     </div>
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold sm:text-2xl">Ростехнадзор</h2><p className="mt-1 text-sm text-muted-foreground">Подготовка по официальным вопросам</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{workspace.access.pilot ? "Пилот Техносервиса" : "Включено в доступ организации"}</span></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold sm:text-2xl">Ростехнадзор</h2><p className="mt-1 text-sm text-muted-foreground">Подготовка по официальным вопросам</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{workspace.access.pilot ? "Бесплатный пилот" : "Включено в доступ организации"}</span></div>
     {visibleBanks.length ? <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">{visibleBanks.map(bank => {
       const ready = canAssignRtnBank(bank);
       return <article key={bank.id} className={`${boxClass} flex flex-col gap-4`}>
@@ -213,7 +217,7 @@ function ResultsPanel({ workspace }: { workspace: RtnWorkspace }) {
   return <section className={`${boxClass} space-y-4`} aria-label="Результаты обучения"><h3 className="font-semibold">Результаты обучения</h3>{!workspace.access.can_view_results ? <p className="text-sm text-muted-foreground">Для просмотра результатов нужны права на курсы и учеников организации.</p> : !workspace.results.length && <p className="text-sm text-muted-foreground">Завершённых попыток пока нет. После сдачи теста результат ученика появится здесь.</p>}{workspace.access.can_view_results && workspace.results.map(result => {
     const bank = workspace.banks.find(item => item.id === result.bank_id);
     const student = workspace.students.find(item => item.id === result.student_id);
-    return <article key={result.attempt_id} className="min-w-0 space-y-2 border-t border-border pt-3"><h4 className="break-words text-sm font-medium">{result.student_name || student?.full_name || "Ученик"}</h4><p className="break-words text-sm">{bank ? `${bank.code} ${bank.title}` : "Программа"}</p><p className="text-sm text-muted-foreground">{typeof result.score === "number" ? `Результат: ${result.score}%${typeof result.correct === "number" && typeof result.total === "number" ? ` · ${result.correct} из ${result.total}` : ""}` : "Оценка не указана"}{typeof result.passed === "boolean" ? result.passed ? " · Зачтено" : " · Не зачтено" : ""}</p><p className="break-all text-xs text-muted-foreground">Редакция: {result.release_id || "не указана"} · {rtnDate(result.submitted_at, true)}</p></article>;
+    return <article key={result.attempt_id} className="min-w-0 space-y-2 border-t border-border pt-3"><h4 className="break-words text-sm font-medium">{result.student_name || student?.full_name || "Ученик"}</h4><p className="break-words text-sm">{result.title || (bank ? `${bank.code} ${bank.title}` : "Программа")}</p><p className="text-sm text-muted-foreground">{typeof result.score === "number" ? `Результат: ${result.score}%${typeof result.correct === "number" && typeof result.total === "number" ? ` · ${result.correct} из ${result.total}` : ""}` : "Оценка не указана"}{typeof result.passed === "boolean" ? result.passed ? " · Зачтено" : " · Не зачтено" : ""}</p><p className="break-all text-xs text-muted-foreground">Редакция: {result.release_id || "не указана"} · {rtnDate(result.submitted_at, true)}</p></article>;
   })}{workspace.assignments.length > 0 && <p className="text-xs text-muted-foreground">Назначений: {workspace.assignments.length}. Каждая попытка закрепляется за своей редакцией.</p>}</section>;
 }
 
