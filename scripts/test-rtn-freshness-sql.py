@@ -100,9 +100,10 @@ for kind in('assignment','attempt'):
         if blocker.poll()is None:blocker.kill();blocker.wait(timeout=5)
         pool.shutdown(wait=True,cancel_futures=True)
 
+run((HERE/'reviewer-erasure.sql').read_text(encoding='utf-8'))
 receipt=json.loads(run("SELECT jsonb_build_object('passed',count(*),'failed',0,'checks',jsonb_agg(name ORDER BY name))FROM lab.results;"))
 receipt.update({'complete':True,'scope':SCOPE})
 (OUT/'result.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
-manifest={str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()for p in[ROOT/'supabase/migrations/20261114124000_rtn_normative_review_admission.sql',Path(__file__).resolve(),HERE/'seed.sql',HERE/'acceptance.sql']}
+manifest={str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()for p in[ROOT/'supabase/migrations/20261114124000_rtn_normative_review_admission.sql',Path(__file__).resolve(),HERE/'seed.sql',HERE/'acceptance.sql',HERE/'reviewer-erasure.sql']}
 (OUT/'source-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
 print(f"{receipt['passed']} PASS: {SCOPE}; actual post-lock edition races PASS")

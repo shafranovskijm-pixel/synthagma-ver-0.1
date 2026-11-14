@@ -26,7 +26,12 @@ BEGIN
  IF p_secret IS NULL OR p_secret !~ '^[a-f0-9]{64}$' THEN RETURN false;END IF;
  RETURN EXISTS(SELECT 1 FROM vault.decrypted_secrets WHERE name='sintagma_rtn_cron_secret' AND decrypted_secret=p_secret);
 END;$fn$;
-REVOKE ALL ON FUNCTION public.verify_rtn_cron_secret(text) FROM PUBLIC,anon,authenticated;
+DO $acl$ DECLARE f record;g record;BEGIN
+ SELECT p.oid,p.proowner,p.oid::regprocedure signature INTO STRICT f FROM pg_proc p WHERE p.oid='public.verify_rtn_cron_secret(text)'::regprocedure;
+ FOR g IN SELECT DISTINCT grantee FROM aclexplode(coalesce((SELECT proacl FROM pg_proc WHERE oid=f.oid),acldefault('f',f.proowner))) WHERE grantee<>f.proowner LOOP
+  EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %s',f.signature,CASE WHEN g.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(g.grantee)) END);
+ END LOOP;
+END;$acl$;
 GRANT EXECUTE ON FUNCTION public.verify_rtn_cron_secret(text) TO service_role;
 
 -- The queue, rather than cron frequency, enforces daily checks / weekly full

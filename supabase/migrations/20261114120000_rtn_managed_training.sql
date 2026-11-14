@@ -10,6 +10,10 @@ DO $bucket_precondition$ BEGIN
   AND public IS FALSE AND(file_size_limit IS NULL OR file_size_limit=52428800))
  THEN RAISE EXCEPTION 'rtn_private_source_bucket_precondition_required';END IF;
 END;$bucket_precondition$;
+-- Record the pre-existing catalog before creating any RTN function. Provider
+-- default grants are scrubbed only on this migration's new objects, never on
+-- a pre-existing public overload or an unrelated existing helper.
+CREATE TEMP TABLE rtn_core_existing_function_oids ON COMMIT DROP AS SELECT oid FROM pg_proc;
 CREATE SCHEMA rtn_private AUTHORIZATION postgres;
 REVOKE ALL ON SCHEMA rtn_private FROM PUBLIC,anon,authenticated,service_role;
 CREATE FUNCTION rtn_private.official_url(p_url text) RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path=pg_catalog,public AS $fn$
@@ -741,14 +745,21 @@ FOR ALL TO anon,authenticated
 USING(bucket_id<>'rtn-sources') WITH CHECK(bucket_id<>'rtn-sources');
 
 -- Explicit least-privilege RPC allowlists. Internal helpers remain private.
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA rtn_private FROM PUBLIC,anon,authenticated,service_role;
-DO $acl$ DECLARE f record;BEGIN
- FOR f IN SELECT p.oid::regprocedure signature,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-  WHERE n.nspname='public' AND p.proname=ANY(ARRAY['register_rtn_source','request_rtn_source_check','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision','review_rtn_keys','publish_rtn_release','get_rtn_editorial_workspace','get_rtn_rollout_state','set_rtn_rollout_stage','save_rtn_settings','assign_rtn_training','get_rtn_assignment','start_rtn_attempt','submit_rtn_attempt','get_rtn_attempt','get_rtn_workspace','get_rtn_student_workspace']) LOOP
-  EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);
-  IF f.proname=ANY(ARRAY['register_rtn_source','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision']) THEN
-   EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.signature);
-  ELSE EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',f.signature);END IF;
+-- In this provider the public-schema defaults also grant a sandbox execution
+-- role. A fixed four-role REVOKE is insufficient; enumerate actual grantees.
+-- Do not change the provider's defaults or an existing function's authority.
+DO $acl$ DECLARE f record;g record;BEGIN
+ FOR f IN SELECT p.oid,p.proowner,p.oid::regprocedure signature,p.proname,n.nspname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE NOT EXISTS(SELECT 1 FROM pg_temp.rtn_core_existing_function_oids old WHERE old.oid=p.oid)
+   AND(n.nspname='rtn_private' OR(n.nspname='public' AND p.proname=ANY(ARRAY['register_rtn_source','request_rtn_source_check','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision','review_rtn_keys','publish_rtn_release','get_rtn_editorial_workspace','get_rtn_rollout_state','set_rtn_rollout_stage','save_rtn_settings','assign_rtn_training','get_rtn_assignment','start_rtn_attempt','submit_rtn_attempt','get_rtn_attempt','get_rtn_workspace','get_rtn_student_workspace']))) LOOP
+  FOR g IN SELECT DISTINCT a.grantee FROM aclexplode(coalesce((SELECT proacl FROM pg_proc WHERE oid=f.oid),acldefault('f',f.proowner)))a WHERE a.grantee<>f.proowner LOOP
+   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %s',f.signature,CASE WHEN g.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(g.grantee)) END);
+  END LOOP;
+  IF f.nspname='public' THEN
+   IF f.proname=ANY(ARRAY['register_rtn_source','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision']) THEN
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.signature);
+   ELSE EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',f.signature);END IF;
+  END IF;
  END LOOP;
 END;$acl$;
 COMMIT;

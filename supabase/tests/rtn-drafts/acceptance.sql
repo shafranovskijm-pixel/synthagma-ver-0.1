@@ -6,6 +6,7 @@ SELECT lab.keep('draft_answers',(SELECT jsonb_build_object(q->>'id',jsonb_build_
 SELECT lab.keep('draft_other_answers',(SELECT jsonb_build_object(q->>'id',jsonb_build_array(q->'options'->1->>'id')) FROM rtn_private.attempts t CROSS JOIN LATERAL(SELECT t.question_snapshot->0 q)x WHERE t.id=(lab.ctx('draft_attempt_id')#>>'{}')::uuid));
 SELECT lab.check('draft: no direct table grant',NOT has_table_privilege('authenticated','rtn_private.attempt_drafts','SELECT') AND NOT has_table_privilege('authenticated','rtn_private.attempt_drafts','UPDATE'));
 SELECT lab.check('draft: role ACL denies anon and service',NOT has_function_privilege('anon','public.get_rtn_attempt_draft(uuid)','EXECUTE') AND NOT has_function_privilege('service_role','public.save_rtn_attempt_draft(uuid,jsonb,bigint)','EXECUTE'));
+SELECT lab.check('draft: provider default sandbox execution grants cannot leak through new RPCs',NOT has_function_privilege('sandbox_exec_atxwvjxbqjgkbjlhsdch','public.get_rtn_attempt_draft(uuid)','EXECUTE') AND NOT has_function_privilege('sandbox_exec_atxwvjxbqjgkbjlhsdch','public.save_rtn_attempt_draft(uuid,jsonb,bigint)','EXECUTE'));
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
 SELECT set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000102',false);

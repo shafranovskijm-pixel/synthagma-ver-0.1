@@ -45,6 +45,10 @@ SELECT lab.keep('quota_abi',(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_
 run(setup)
 run('SET ROLE postgres;\n'+(ROOT/'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text())
 run("SET ROLE postgres;SELECT lab.check('quota original trigger helpers ABI sources ACL unchanged',lab.ctx('quota_abi')=(SELECT jsonb_agg(to_jsonb(p)ORDER BY p.oid)FROM pg_proc p WHERE p.oid=ANY(ARRAY['public._organization_monthly_course_limits(uuid)'::regprocedure,'public.enforce_organization_monthly_course_quota()'::regprocedure,'public.get_organization_student_capacity(uuid,integer)'::regprocedure,'public.get_organization_training_capacity(uuid,integer)'::regprocedure])));")
+run("""SET ROLE postgres;
+SELECT lab.check('quota new material RPC removes every provider default grantee',(SELECT proacl::text='{postgres=X/postgres,authenticated=X/postgres}'FROM pg_proc WHERE oid='public.record_rtn_material_open(uuid,uuid)'::regprocedure) AND NOT has_function_privilege('sandbox_exec_atxwvjxbqjgkbjlhsdch','public.record_rtn_material_open(uuid,uuid)','EXECUTE'));
+SELECT lab.check('quota private helpers owner only and provider defaults untouched',NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner)))a WHERE n.nspname='rtn_private'AND a.grantee<>p.proowner)AND lab.ctx('provider_function_defaults')=(SELECT jsonb_agg(to_jsonb(d)ORDER BY d.oid)FROM pg_default_acl d WHERE d.defaclrole='postgres'::regrole)AND lab.ctx('preexisting_rtn_overload')=(SELECT to_jsonb(p)FROM pg_proc p WHERE oid='public.get_rtn_workspace(text,integer)'::regprocedure));
+""")
 A='11111111-1111-4111-8111-111111111111';POST='44444444-4444-4444-8444-444444444444'
 OWNER='81000000-0000-4000-8000-000000000001';ADMIN='81000000-0000-4000-8000-000000000999';ALICE='81000000-0000-4000-8000-000000000101'
 COURSE='93000000-0000-4000-8000-000000000001'

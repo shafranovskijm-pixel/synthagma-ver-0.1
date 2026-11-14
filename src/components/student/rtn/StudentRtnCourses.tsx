@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { getRtnAssignment, getRtnAttempt, getRtnStudentWorkspace, hydrateRtnAttempt, recordRtnMaterialOpen, startRtnAttempt, submitRtnAttempt } from "@/api/rostechnadzor";
 import type { RtnAnswers, RtnAttempt, RtnMaterial, RtnStudentAssignment, RtnSubmission } from "@/types/rostechnadzor";
 import { useRtnDraftSync } from "./useRtnDraftSync";
+import { useRtnNavigationGuard } from "./useRtnNavigationGuard";
 
 type OpenTraining = { assignment: RtnStudentAssignment; mode: "start" | "resume" | "result" };
 type EntryProps = { opened: OpenTraining; onUpdated: () => void; onCloseReadiness: (ready: boolean) => void; accessConfirmed: boolean; accessChecking: boolean; onRecheckAccess: () => void };
@@ -30,6 +31,7 @@ function StudentRtnWorkspace({ userId, organizationId }: { userId: string; organ
     closeReady.current = ready;
     if (ready) setCloseBlocked(false);
   }, []);
+  useRtnNavigationGuard({ open: !!opened, isCloseReadyRef: closeReady, onBlocked: () => setCloseBlocked(true) });
   const assignments = query.data?.assignments.filter(item => item.organization_id === organizationId) || [];
 
   if (query.isPending) return <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Проверяем назначенные программы Ростехнадзора…</div>;

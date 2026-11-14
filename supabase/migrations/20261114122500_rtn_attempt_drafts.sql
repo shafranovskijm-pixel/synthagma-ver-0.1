@@ -72,6 +72,13 @@ DECLARE t rtn_private.attempts;d rtn_private.attempt_drafts;BEGIN
  END IF;
  RETURN jsonb_build_object('attempt_id',t.id,'status',t.status,'revision',d.revision,'answers',d.answers,'saved_at',d.saved_at,'replayed',false);
 END;$fn$;
-REVOKE ALL ON FUNCTION public.get_rtn_attempt_draft(uuid),public.save_rtn_attempt_draft(uuid,jsonb,bigint) FROM PUBLIC,anon,authenticated,service_role;
+DO $acl$ DECLARE f record;g record;BEGIN
+ FOR f IN SELECT p.oid,p.proowner,p.oid::regprocedure signature FROM pg_proc p
+ WHERE p.oid IN('public.get_rtn_attempt_draft(uuid)'::regprocedure,'public.save_rtn_attempt_draft(uuid,jsonb,bigint)'::regprocedure) LOOP
+  FOR g IN SELECT DISTINCT grantee FROM aclexplode(coalesce((SELECT proacl FROM pg_proc WHERE oid=f.oid),acldefault('f',f.proowner))) WHERE grantee<>f.proowner LOOP
+   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %s',f.signature,CASE WHEN g.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(g.grantee)) END);
+  END LOOP;
+ END LOOP;
+END;$acl$;
 GRANT EXECUTE ON FUNCTION public.get_rtn_attempt_draft(uuid),public.save_rtn_attempt_draft(uuid,jsonb,bigint) TO authenticated;
 COMMIT;

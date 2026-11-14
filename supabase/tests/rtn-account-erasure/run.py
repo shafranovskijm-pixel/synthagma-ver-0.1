@@ -151,7 +151,13 @@ def build_setup():
         (ROOT / 'supabase/migrations/20261114120000_rtn_managed_training.sql').read_text(encoding='utf-8'),
         (ROOT / 'supabase/migrations/20261114122000_rtn_quota_activity_integration.sql').read_text(encoding='utf-8'),
         (ROOT / 'supabase/migrations/20261114122500_rtn_attempt_drafts.sql').read_text(encoding='utf-8'),
-        '\n'.join(tables), (HERE / 'fixture.sql').read_text(encoding='utf-8'), '\n'.join(funcs), capture,
+        '\n'.join(tables), (HERE / 'fixture.sql').read_text(encoding='utf-8'), '\n'.join(funcs),
+        # The new-RPC fixture deliberately models provider-default sandbox
+        # grants. This old production source capture has its own exact ACLs;
+        # do not inject a default sandbox ACL before reconstructing those pins.
+        'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM sandbox_exec_atxwvjxbqjgkbjlhsdch;',
+        capture,
+        'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO sandbox_exec_atxwvjxbqjgkbjlhsdch;',
     ])
 
 if __name__ == '__main__':

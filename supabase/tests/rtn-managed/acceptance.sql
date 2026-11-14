@@ -10,6 +10,17 @@ SELECT lab.check('provider bucket configuration unchanged',(SELECT id='rtn-sourc
 SELECT lab.check('existing Storage policy ABI owner roles expressions unchanged',lab.ctx('storage_policy_metadata')=(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_policy p WHERE polrelid='storage.objects'::regclass AND polname<>'rtn_source_originals_private_fence'));
 SELECT lab.check('least privilege worker ACL',has_function_privilege('service_role','public.claim_rtn_check(uuid)','EXECUTE') AND NOT has_function_privilege('authenticated','public.claim_rtn_check(uuid)','EXECUTE') AND NOT has_function_privilege('anon','public.get_rtn_workspace(uuid)','EXECUTE'));
 SELECT lab.check('least privilege reviewed keys ACL',has_function_privilege('authenticated','public.review_rtn_keys(uuid,uuid,jsonb,text,jsonb)','EXECUTE') AND NOT has_function_privilege('service_role','public.review_rtn_keys(uuid,uuid,jsonb,text,jsonb)','EXECUTE'));
+SELECT lab.check('provider sandbox default cannot execute any new RTN browser or worker RPC',NOT EXISTS(
+ SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public'
+  AND p.proname=ANY(ARRAY['register_rtn_source','request_rtn_source_check','enqueue_due_rtn_checks','claim_rtn_check','complete_rtn_check','normalize_rtn_revision','review_rtn_keys','publish_rtn_release','get_rtn_editorial_workspace','get_rtn_rollout_state','set_rtn_rollout_stage','save_rtn_settings','assign_rtn_training','get_rtn_assignment','start_rtn_attempt','submit_rtn_attempt','get_rtn_attempt','get_rtn_workspace','get_rtn_student_workspace'])
+  AND p.oid<>'public.get_rtn_workspace(text,integer)'::regprocedure
+  AND has_function_privilege('sandbox_exec_atxwvjxbqjgkbjlhsdch',p.oid,'EXECUTE')));
+SELECT lab.check('new private core helpers have no inherited provider execution grants',NOT EXISTS(
+ SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner)))a
+ WHERE n.nspname='rtn_private' AND a.grantee<>p.proowner));
+SELECT lab.check('provider defaults unchanged and old same name overload authority preserved',lab.ctx('preexisting_rtn_overload')=(SELECT to_jsonb(p)FROM pg_proc p WHERE oid='public.get_rtn_workspace(text,integer)'::regprocedure)
+ AND has_function_privilege('sandbox_exec_atxwvjxbqjgkbjlhsdch','public.get_rtn_workspace(text,integer)','EXECUTE')
+ AND lab.ctx('provider_function_defaults')=(SELECT jsonb_agg(to_jsonb(d)ORDER BY d.oid)FROM pg_default_acl d WHERE d.defaclrole='postgres'::regrole));
 SELECT lab.check('default rollout is pilot and paid users remain blocked',(SELECT stage='pilot' AND revision=0 AND NOT quota_integration_ready AND NOT privacy_integration_ready FROM rtn_private.rollout_state) AND NOT rtn_private.entitled('11111111-1111-4111-8111-111111111111'));
 SELECT lab.check('service worker cannot change paid rollout',NOT has_function_privilege('service_role','public.set_rtn_rollout_stage(text,integer,uuid,text,jsonb)','EXECUTE'));
 SET ROLE authenticated;

@@ -1,6 +1,7 @@
 -- Included managed training shares the existing monthly quotas. This migration
 -- does not modify monetary collectors, prices, agreements, invoices or roles.
 BEGIN;
+CREATE TEMP TABLE rtn_quota_existing_function_oids ON COMMIT DROP AS SELECT oid FROM pg_proc;
 DO $preflight$ DECLARE f record;BEGIN
  IF to_regclass('rtn_private.assignments') IS NULL OR to_regclass('public.organization_monthly_course_usage') IS NULL
  OR to_regclass('public.organization_monthly_student_assignments') IS NULL THEN RAISE EXCEPTION 'rtn_quota_baseline_missing';END IF;
@@ -180,9 +181,16 @@ DO $rtn_hooks$ DECLARE d text;before_text text;BEGIN
  IF d=before_text OR d NOT LIKE '%reserve_monthly_completion(a.id,t.id)%' THEN RAISE EXCEPTION 'rtn_submit_hook_anchor_changed';END IF;EXECUTE d;
 END;$rtn_hooks$;
 
-REVOKE ALL ON FUNCTION public.record_rtn_material_open(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+DO $new_acl$ DECLARE f record;g record;BEGIN
+ FOR f IN SELECT p.oid,p.proowner,p.oid::regprocedure signature FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE NOT EXISTS(SELECT 1 FROM pg_temp.rtn_quota_existing_function_oids old WHERE old.oid=p.oid)
+   AND(n.nspname='rtn_private' OR p.oid='public.record_rtn_material_open(uuid,uuid)'::regprocedure) LOOP
+  FOR g IN SELECT DISTINCT a.grantee FROM aclexplode(coalesce((SELECT proacl FROM pg_proc WHERE oid=f.oid),acldefault('f',f.proowner)))a WHERE a.grantee<>f.proowner LOOP
+   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %s',f.signature,CASE WHEN g.grantee=0 THEN 'PUBLIC' ELSE quote_ident(pg_get_userbyid(g.grantee)) END);
+  END LOOP;
+ END LOOP;
+END;$new_acl$;
 GRANT EXECUTE ON FUNCTION public.record_rtn_material_open(uuid,uuid) TO authenticated;
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA rtn_private FROM PUBLIC,anon,authenticated,service_role;
 -- This reviewed integration marks quota capability only. Privacy and genuine
 -- QA/Tech acceptance are independent gates; wider paid rollout stays OFF.
 UPDATE rtn_private.rollout_state SET quota_integration_ready=true WHERE id=1;

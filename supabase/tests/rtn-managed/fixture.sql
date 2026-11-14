@@ -1,10 +1,14 @@
 -- Disposable loopback PostgreSQL17 fixture only. No live project claims,
 -- accounts, files or keys. Guards are installed from released-guards.sql.
+-- Match the dedicated native CI server session, even when the optional local
+-- PGlite adapter inherits this computer's far-eastern timezone.
+SET TIME ZONE 'UTC';
 DO $$BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='postgres') THEN CREATE ROLE postgres NOLOGIN BYPASSRLS NOSUPERUSER;END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN;END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN;END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS;END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='sandbox_exec_atxwvjxbqjgkbjlhsdch') THEN CREATE ROLE sandbox_exec_atxwvjxbqjgkbjlhsdch NOLOGIN;END IF;
 END;$$;
 GRANT anon,authenticated,service_role TO postgres;
 ALTER SCHEMA public OWNER TO postgres;
@@ -14,6 +18,11 @@ CREATE SCHEMA storage AUTHORIZATION postgres;
 CREATE SCHEMA billing_access_private AUTHORIZATION postgres;
 CREATE SCHEMA lab AUTHORIZATION postgres;
 SET ROLE postgres;
+-- Real provider-specific public-schema function defaults, in addition to
+-- PostgreSQL's ordinary default EXECUTE. Product migrations must revoke every
+-- actual grantee on NEW RTN functions without changing these defaults.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+ GRANT EXECUTE ON FUNCTIONS TO anon,authenticated,service_role,sandbox_exec_atxwvjxbqjgkbjlhsdch;
 GRANT USAGE ON SCHEMA auth,public,lab,storage TO anon,authenticated,service_role;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('request.jwt.claim.role',true),'')$$;
@@ -60,6 +69,11 @@ CREATE FUNCTION lab.ctx(p_name text) RETURNS jsonb LANGUAGE sql STABLE SECURITY 
 CREATE FUNCTION lab.keep(p_name text,p_value jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 BEGIN INSERT INTO lab.context VALUES(p_name,p_value) ON CONFLICT(name) DO UPDATE SET value=excluded.value;RETURN p_value;END;$$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA lab TO authenticated,service_role;
+-- A pre-existing, unrelated overload deliberately shares a new RPC's name.
+-- New-object ACL hardening must leave its full catalog/authority untouched.
+CREATE FUNCTION public.get_rtn_workspace(p_note text,p_number integer) RETURNS text LANGUAGE sql AS $$SELECT p_note||p_number::text$$;
+SELECT lab.keep('preexisting_rtn_overload',(SELECT to_jsonb(p)FROM pg_proc p WHERE oid='public.get_rtn_workspace(text,integer)'::regprocedure));
+SELECT lab.keep('provider_function_defaults',(SELECT jsonb_agg(to_jsonb(d)ORDER BY d.oid)FROM pg_default_acl d WHERE d.defaclrole='postgres'::regrole));
 INSERT INTO public.organizations VALUES
  ('11111111-1111-4111-8111-111111111111','Paid A',true,now()+interval '30 days','start'),
  ('22222222-2222-4222-8222-222222222222','Paid B',true,now()+interval '30 days','start'),
