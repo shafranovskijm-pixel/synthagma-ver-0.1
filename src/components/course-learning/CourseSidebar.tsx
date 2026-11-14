@@ -8,12 +8,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, BookOpen, CheckCircle2, Circle, Lock, Clock, Trophy, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Fragment } from 'react';
 
 interface Lesson {
   id: string;
   title: string;
   type: string;
   locked_until?: string | null;
+  module_id?: string | null;
+  module_title?: string;
 }
 
 interface CourseSidebarProps {
@@ -71,7 +74,9 @@ export function CourseSidebarContent({
             const isCurrent = !isLibraryOpen && index === currentLessonIndex;
             const isAccessible = isLessonAccessible(index);
             return (
-              <button key={lesson.id} onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}
+              <Fragment key={lesson.id}>
+              {lesson.module_id && lesson.module_title && (index===0 || lessons[index-1].module_id!==lesson.module_id) && <h3 className="px-3 pt-4 pb-2 text-xs font-semibold text-muted-foreground">{lesson.module_title}</h3>}
+              <button onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}
                 className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : isAccessible ? "hover:bg-muted" : "opacity-50 cursor-not-allowed")}>
                 {completed && isAccessible ? (
                   <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5 text-sigma-green" /></div>
@@ -84,6 +89,7 @@ export function CourseSidebarContent({
                   <div className="text-sm font-medium line-clamp-2">{lesson.title}</div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                     {lesson.type === 'text' && 'Текст'}
+                    {lesson.type === 'practice' && 'Практика'}
                     {lesson.type === 'video' && 'Видео'}
                     {lesson.type === 'test' && 'Тест'}
                     {lesson.type === 'audio' && 'Аудио'}
@@ -97,6 +103,7 @@ export function CourseSidebarContent({
                   </div>
                 </div>
               </button>
+              </Fragment>
             );
           })}
         </div>

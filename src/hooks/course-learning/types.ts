@@ -6,6 +6,7 @@ export interface Lesson {
   content?: string | null;
   order_index: number;
   module_id?: string | null;
+  module_title?: string;
   is_locked?: boolean;
   locked_until?: string | null;
   ai_avatar_name?: string | null;

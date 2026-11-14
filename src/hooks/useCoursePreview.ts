@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAdminAwareBackPath, getCourseDetailsPath } from "@/lib/utils";
 import { orderCourseLessons } from "@/lib/courseLessonOrder";
+import { withCourseModuleTitles } from '@/lib/courseModuleTitles';
 import { usePlatformHomeworkTaskProof } from "@/hooks/usePlatformHomeworkTaskProof";
 import { useCourseFileDeliveryMode } from "@/hooks/useCourseFileDeliveryMode";
 import type { CourseFilePreviewReference } from "@/lib/courseFileConsumer";
@@ -18,6 +19,7 @@ export interface Lesson {
   content?: string | null;
   order_index: number;
   module_id?: string | null;
+  module_title?: string;
   test_questions_count?: number | null;
   is_locked?: boolean;
 }
@@ -92,7 +94,7 @@ async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewDa
       .eq('course_id', courseId)
       .order('order_index'),
     supabase.from('course_documents').select('*').eq('course_id', courseId).order('created_at'),
-    supabase.from('course_modules').select('id, order_index').eq('course_id', courseId).order('order_index'),
+    supabase.from('course_modules').select('id, course_id, title, order_index').eq('course_id', courseId).order('order_index'),
   ]);
 
   if (courseError) throw courseError;
@@ -100,7 +102,7 @@ async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewDa
   if (docsError) throw docsError;
   if (modulesResult.error) throw modulesResult.error;
 
-  const lessons = orderCourseLessons((lessonsData || []) as Lesson[], modulesResult.data || []);
+  const lessons = withCourseModuleTitles(courseId, orderCourseLessons((lessonsData || []) as Lesson[], modulesResult.data || []), modulesResult.data || []);
   const lessonAttachments: Record<string, CoursePreviewAttachment[]> = {};
 
   if (lessons.length > 0) {

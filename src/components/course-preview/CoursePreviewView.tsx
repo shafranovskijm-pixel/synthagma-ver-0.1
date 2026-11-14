@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -221,13 +221,16 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               const Icon = getLessonIcon(lesson.type);
               const isCurrent = index === currentLessonIndex && !showDocumentsView;
               return (
-                <button key={lesson.id} onClick={() => goToLesson(index)} className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted")}>
+                <Fragment key={lesson.id}>
+                {lesson.module_id && lesson.module_title && (index===0 || lessons[index-1].module_id!==lesson.module_id) && <h3 className="px-3 pt-4 pb-2 text-xs font-semibold text-muted-foreground">{lesson.module_title}</h3>}
+                <button onClick={() => goToLesson(index)} className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted")}>
                   <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isCurrent ? "bg-primary/10" : "bg-muted")}><span className={cn("text-sm font-medium", isCurrent ? "text-primary" : "text-muted-foreground")}>{index + 1}</span></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 text-sm font-medium line-clamp-2">{lesson.title}{lesson.is_locked && <Lock className="w-3.5 h-3.5 shrink-0 text-amber-500" />}</div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1"><Icon className="w-3 h-3" />{getLessonTypeName(lesson.type)}{lesson.is_locked && <span className="ml-1 text-amber-500">• Заблокирован</span>}</div>
                   </div>
                 </button>
+                </Fragment>
               );
             })}
             {courseDocuments.length > 0 && <>
