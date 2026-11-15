@@ -6,5 +6,6 @@ const runtime = createRtnRuntime();
 Deno.serve(createRtnScheduledHandler({
   service: runtime.service,
   normalize: runtime.normalize,
+  withOfficialFetch: runtime.withOfficialFetch,
   authenticate: authenticateCronRequest,
 }));

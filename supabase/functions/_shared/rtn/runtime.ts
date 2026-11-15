@@ -4,6 +4,7 @@ import { validateInflatedXlsx } from './official-source.ts';
 import { normalizeEnergy, type EnergyWorkbook } from './energy-bank.ts';
 import { type Normalizer, type WorkerClient } from './check-worker.ts';
 import a1Questions from './data/a1-69349ffd5013.json' with { type: 'json' };
+import { createWithOfficialFetch } from './official-http-client.ts';
 
 const normalize: Normalizer = async (bytes, hash, source) => {
   if (source.parser === 'industrial-pdf') {
@@ -27,5 +28,9 @@ export function createRtnRuntime() {
     service: createClient(url, key, { auth }) as unknown as WorkerClient,
     user: (authorization: string) => createClient(url, anon, { auth, global: { headers: { Authorization: authorization } } }) as never,
     normalize,
+    withOfficialFetch: createWithOfficialFetch({
+      fetcher: (input, init) => fetch(input, init as RequestInit & { client: Deno.HttpClient }),
+      createHttpClient: typeof Deno.createHttpClient === 'function' ? options => Deno.createHttpClient(options) : undefined,
+    }),
   };
 }
