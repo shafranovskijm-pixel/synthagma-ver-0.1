@@ -1,0 +1,2959 @@
+[
+  {
+    "id": "a1-source-69349ffd5013-q001",
+    "number": 1,
+    "text": "На какое количество классов опасности подразделяются опасные производственные объекты?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q002",
+    "number": 2,
+    "text": "Какая информация не содержится в общем разделе плана мероприятий по локализации и ликвидации последствий аварий на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q003",
+    "number": 3,
+    "text": "Что из перечисленного является объектом обязательного подтверждения соответствия согласно Федеральному закону «О техническом регулировании»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q004",
+    "number": 4,
+    "text": "Что входит в понятие «авария», изложенное в Федеральном законе от 21.07.1997 № 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q005",
+    "number": 5,
+    "text": "Какое определение соответствует понятию «инцидент» в соответствии с Федеральным законом от 21.07.1997 № 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q006",
+    "number": 6,
+    "text": "На какие организации распространяются положения Федерального закона от 21.07.1997 № 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q007",
+    "number": 7,
+    "text": "Что понимается под требованиями промышленной безопасности в соответствии с Федеральным законом от 21.07.1997 № 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      1,
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q008",
+    "number": 8,
+    "text": "Каким способом направляются заявление о предоставлении лицензии и прилагаемые к нему документы соискателем лицензии в лицензирующий орган?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q009",
+    "number": 9,
+    "text": "Какой нормативный правовой акт содержит перечень критериев, по которым производственный объект относится к категории опасных?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q010",
+    "number": 10,
+    "text": "На какие классы опасности подразделяются опасные производственные объекты в зависимости от уровня потенциальной опасности аварий на них для жизненно важных интересов личности и общества?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q011",
+    "number": 11,
+    "text": "Какой из перечисленных выводов может содержаться в заключении экспертизы промышленной безопасности технических устройств?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q012",
+    "number": 12,
+    "text": "Какое определение соответствует понятию «обоснование безопасности опасного производственного объекта», изложенному в Федеральном законе от 21.07.1997 № 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q013",
+    "number": 13,
+    "text": "В каком из перечисленных случаев требования промышленной безопасности к эксплуатации, капитальному ремонту, техническому перевооружению, консервации и ликвидации опасного производственного объекта могут быть установлены в обосновании безопасности опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q014",
+    "number": 14,
+    "text": "Какой процедуре подлежит обоснование безопасности опасного производственного объекта, а также изменения, вносимые в обоснование безопасности опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q015",
+    "number": 15,
+    "text": "В течение какого времени изменения, внесенные в обоснование безопасности зарегистрированного в государственном реестре опасного производственного объекта, направляются организацией, эксплуатирующей такой опасный производственный объект, в федеральный орган исполнительной власти в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q016",
+    "number": 16,
+    "text": "В каком случае иные федеральные органы исполнительной власти помимо Федеральной службы по экологическому, технологическому и атомному надзору, могут быть уполномочены осуществлять специальные разрешительные, контрольные и надзорные функции в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      2,
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q017",
+    "number": 17,
+    "text": "В каком случае страховщик обязан осуществить страховую выплату по договору обязательного страхования опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q018",
+    "number": 18,
+    "text": "Кем указываются такие идентификационные признаки зданий и сооружений, как назначение, принадлежность к опасным производственным объектам, пожарная и взрывопожарная опасность, уровень ответственности согласно Техническому регламенту о безопасности зданий и сооружений?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q019",
+    "number": 19,
+    "text": "Какой экспертизе подлежит проектная документация в соответствии с Градостроительным кодексом Российской Федерации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q020",
+    "number": 20,
+    "text": "Кем устанавливается порядок организации и проведения государственной экспертизы проектной документации и результатов инженерных изысканий?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q021",
+    "number": 21,
+    "text": "В отношении каких из перечисленных объектов капитального строительства государственная экспертиза проектов не проводится, если иное не определено Правительством Российской Федерации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q022",
+    "number": 22,
+    "text": "Какой устанавливается срок проведения государственной экспертизы проектной документации и результатов инженерных изысканий в соответствии с Градостроительным кодексом Российской Федерации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q023",
+    "number": 23,
+    "text": "Кем проводится государственная экспертиза проектной документации особо опасных и технически сложных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q024",
+    "number": 24,
+    "text": "Какими перечисленными полномочиями наделены лицензирующие органы?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q025",
+    "number": 25,
+    "text": "Кем проводится строительный контроль?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q026",
+    "number": 26,
+    "text": "В каких из перечисленных случаях осуществляется внесение изменений в реестр лицензий?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q027",
+    "number": 27,
+    "text": "В каком из перечисленных случаев осуществляется государственный строительный надзор?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      3
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q028",
+    "number": 28,
+    "text": "Соблюдение каких перечисленных требований не является предметом государственного строительного надзора?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q029",
+    "number": 29,
+    "text": "Кто осуществляет федеральный государственный строительный надзор за строительством, реконструкцией объектов капитального строительства, отнесенных Градостроительным кодексом Российской Федерации к особо опасным, технически сложным и уникальным?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q030",
+    "number": 30,
+    "text": "В каких целях эксплуатирующая организация проводит мероприятия в рамках осуществления производственного контроля?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q031",
+    "number": 31,
+    "text": "Какие функции обязано выполнять лицо, осуществлшощее строительство здания или сооружения, в соответствии С законодательством о градостроительной деятельности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q032",
+    "number": 32,
+    "text": "Кем осуществляется производственный контроль за соблюдением требований промышленной безопасности в эксплуатирующей организации?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q033",
+    "number": 33,
+    "text": "Посредством проведения каких мероприятий должна обеспечиваться безопасность здания или сооружения в процессе эксплуатации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q034",
+    "number": 34,
+    "text": "Что не входит в обязанности работника, на которого возложены функции лица, ответственного за осуществление производственного контроля?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q035",
+    "number": 35,
+    "text": "Кем должны быть приняты меры, предупреждающие причинение вреда населению и окружающей среде, при прекращении эксплуатации здания или сооружения согласно Техническому регламенту о безопасности зданий и сооружений?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q036",
+    "number": 36,
+    "text": "В форме какого контроля осуществляется обязательная оценка соответствия зданий и сооружений, а также связанных со зданиями и с сооружениями процессов эксплуатации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q037",
+    "number": 37,
+    "text": "Какими перечисленными документами могут устанавливаться обязательные для применения и исполнения требования к объектам технического регулирования?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      4
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q038",
+    "number": 38,
+    "text": "Какими нормативными правовыми актами утверждаются технические регламенты в соответствии с Федеральным законом от 27.12.2002 184-ФЗ «О техническом регулировании»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q039",
+    "number": 39,
+    "text": "В каких формах осуществляется обязательное подтверждение соответствия, установленное Федеральным законом от 27.12.2002 184-ФЗ «О техническом регулировании»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q040",
+    "number": 40,
+    "text": "Какие из перечисленных нормативных правовых актов должны содержать правила и формы оценки соответствия обязательным требованиям к техническим устройствам, применяемым на опасном производственном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q041",
+    "number": 41,
+    "text": "Кем осуществляется обязательная сертификация технических устройств, применяемых на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q042",
+    "number": 42,
+    "text": "Какой процедуре подлежит техническое устройство, применяемое на опасном производственном объекте, до начала эксплуатации в случае есјш техническим регламентом не установлена иная форма оценки соответствия обязательным требованиям к такому техническому устройству?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q043",
+    "number": 43,
+    "text": "Какой оценке соответствия требованиям Технического регламента Таможенного союза «О безопасности машин и оборудования» не подлежат машины и оборудование, находящиеся в эксплуатации или изготовленные для собственных нужд?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q044",
+    "number": 44,
+    "text": "Кто утверждает заявление о политике эксплуатирующей организации в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q045",
+    "number": 45,
+    "text": "На какие виды машин и (или) оборудования не распространяется Технический регламент Таможенного союза «О безопасности машин и оборудования»?",
+    "options": [],
+    "expected_correct_count": null,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q046",
+    "number": 46,
+    "text": "Какие перечисленные документы содержит в себе документация системы управления промышленной безопасностью?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q047",
+    "number": 47,
+    "text": "Что из перечисленного не устанавливается при разработке (проектировании) машины и (или) оборудования в соответствии с Техническим регламентом Таможенного союза «О безопасности машин и оборудования»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      5
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q048",
+    "number": 48,
+    "text": "Каким нормативным правовым актом устанавливаются виды деятельности, на которые требуются лицензии в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q049",
+    "number": 49,
+    "text": "Какое название носит один из видов деятельности в области промышленной безопасности, на который требуется лицензия в соответствии с Федеральным законом от 04.05.2011 N2 99-ФЗ «О лицензировании отдельных видов деятельности»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q050",
+    "number": 50,
+    "text": "Какой установлен срок действия лицензии Федеральным законом от 04.05.2011 N2 99-ФЗ «О лицензировании отдельных видов деятельности»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q051",
+    "number": 51,
+    "text": "Какие из перечисленных документов не вправе требовать лицензирующий орган у соискателей лицензий на эксплуатацию взрывопожароопасных и химически опасных производственных объектов 1, II и III классов опасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q052",
+    "number": 52,
+    "text": "При каких условиях эксплуатирующая организация вправе разрабатывать единый план мероприятий по локализщии и ликвидации последствий аварий на опасных производственных объектах на несколько опасных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q053",
+    "number": 53,
+    "text": "В какие сроки должны пересматриваться планы мероприятий по локајшзации и ликвидации последствий аварий на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q054",
+    "number": 54,
+    "text": "В какой срок лицензирующий орган принимает решение о предоставлении или об отказе в предоставлении лицензии по заявлениям, поданным на бумажвном носителе?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q055",
+    "number": 55,
+    "text": "Кто осуществляет государственный контроль (надзор) за соблюдением лицензиатом лицензионных требований?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q056",
+    "number": 56,
+    "text": "В каком случае из перечисленных лицензирующие органы могут приостанавливать действие лицензии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q057",
+    "number": 57,
+    "text": "Кто вправе утверждать планы мероприятий по локализации и ликвидации последствий аварий на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q058",
+    "number": 58,
+    "text": "В каком случае на основании рассмотрения заявления лицензирующего органа может быть аннулирована лицензия решением суда?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      6
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q059",
+    "number": 59,
+    "text": "В течение какого срока и на какой период времени лицензирующий орган приостанавливает действие лицензии в случае вынесения решения суда или уполномоченного должностного лица Ростехнадзора о назначении административного наказания в виде административного приостановления деятельности лицензиата?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q060",
+    "number": 60,
+    "text": "Какие действия должен осуществить лицензиат при намерении изменить адрес места осуществления лицензируемого вида деятельности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q061",
+    "number": 61,
+    "text": "Сколько экспертов в области промышленной безопасности должно быть в штате соискателя лицензии по проведению экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q062",
+    "number": 62,
+    "text": "Какие действия должны быть осуществлены эксплуатирующей организацией при проведении идентификации опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q063",
+    "number": 63,
+    "text": "В каких случаях техническое устройство, применяемое на опасном производственном объекте, не подлежит экспертизе промышленной безопасности, если техническим регламентом не установлена иная форма оценки соответствия указанного устройства обязательным требованиям?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q064",
+    "number": 64,
+    "text": "Что является опасным производственным объектом?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q065",
+    "number": 65,
+    "text": "Какие действия обязан осуществить лицензиат при намерении выполнять работы (оказывать услуги), составляющие лицензируемую деятельность, и не указанные в лицензии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q066",
+    "number": 66,
+    "text": "Какие эксперты имеют право участвовать в проведении экспертизы промышленной безопасности в отношении опасных производственных объектов II класса опасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q067",
+    "number": 67,
+    "text": "Какие из перечисленных работ на объектах не включает в себя лицензируемый вид деятельности по эксплуатации взрывопожароопасных и химически опасных производственных объектов I, II и III классов опасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q068",
+    "number": 68,
+    "text": "Кем осуществляется лицензирование эксплуатации взрывопожароопасных и химически опасных производственных объектов I, II и III классов опасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      7
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q069",
+    "number": 69,
+    "text": "Какие из перечисленных лицензионных требований к лицензиату при осуществлении им лицензируемой деятельности по проведению экспертизы промышленной безопасности указаны неверно?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q070",
+    "number": 70,
+    "text": "Кто проводит техническое расследование причин аварии на опасном производственном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q071",
+    "number": 71,
+    "text": "Кто имеет право принимать решение о создании государственной комиссии по техническому расследованию причин аварии и назначать председателя указанной комиссии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q072",
+    "number": 72,
+    "text": "Каким документом устанавливается порядок проведения технического расследования причин аварий на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q073",
+    "number": 73,
+    "text": "При каком условии представители эксплуатирутощей организации принимают участие в техническом расследовании причин аварии в качестве членов комиссии по расследованию?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q074",
+    "number": 74,
+    "text": "В какой орган организация, на объекте которой произошла авария, обязана направить результаты технического расследования причин аварии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q075",
+    "number": 75,
+    "text": "На основании чего назначается специальная комиссия по техническому расследованию причин аварии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q076",
+    "number": 76,
+    "text": "Кто представляет заключение экспертизы промышленной безопасности технических устройств в Ростехнадзор для внесения в реестр согласно Правилам проведения экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q077",
+    "number": 77,
+    "text": "Какие из перечисленных документов включает комплект документов при проведении подтверждения соответствия машин и (или) оборудования техническому регламенту Таможенного союза «О безопасности машин и оборудования», который формирует заявитель?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q078",
+    "number": 78,
+    "text": "Какими документами регламентируются техническое расследование причин инцидентов на опасных производственных объектах, их учет и анализ?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q079",
+    "number": 79,
+    "text": "Кто из перечисленных лиц является страхователями гражданской ответственности за причинение вреда в результате аварии на опасном производственном объекте в соответствии с Федеральным законом от 27.07.2010 N2 225-ФЗ «Об обязательном страховании гражданской ответственности владельцев опасных объектов за причинение вреда в результате аварии на опасном объекте»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      8,
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q080",
+    "number": 80,
+    "text": "Кто из перечисленных лиц является владельцем опасного объекта в соответствии с Федеральным законом от 27.07.2010 N2 225-ФЗ «Об обязательном страховании гражданской ответственности владельцев опасных объектов за причинение вреда в результате аварии на опасном объекте»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q081",
+    "number": 81,
+    "text": "Владельцы каких перечисленных опасных объектов не обязаны осуществлять обязательное страхование в отношении этих объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q082",
+    "number": 82,
+    "text": "На кого возлагается обязанность страховать свою ответственность за причинение вреда в результате аварии на опасном объекте в соответствии с Федеральным законом от 27.07.2010 N9 225-ФЗ «Об обязательном страховании гражданской ответственности владельца опасного объекта за причинение вреда в результате аварии на опасном объекте»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q083",
+    "number": 83,
+    "text": "Какой размер страховой выплаты за вред, причиненный здоровью каждого потерпевшего в результате аварии на опасном производственном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q084",
+    "number": 84,
+    "text": "В отношении каких перечисленных опасных объектов должен быть заключен договор обязательного страхования?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q085",
+    "number": 85,
+    "text": "На какой минимальный срок должен быть заключен договор обязательного страхования гражданской ответственности за причинение вреда в результате аварии или инцидента на опасном производственном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q086",
+    "number": 86,
+    "text": "Кто осуществляет контроль за исполнением владельцем опасного производственного объекта обязанности по обязательному страхованию гражданской ответственности за причинение вреда в результате аварии на опасном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q087",
+    "number": 87,
+    "text": "Какой из перечисленных случаев признается страховым?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q088",
+    "number": 88,
+    "text": "Кем осуществляется регистрация объектов в государственном реестре опасных производственных объектов и ведение этого реестра?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      9
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q089",
+    "number": 89,
+    "text": "Какой нормативный правовой акт устанавливает критерии классификации опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q090",
+    "number": 90,
+    "text": "Кем представляются сведения, необходимые для формирования и ведения государственного реестра опасных производственных объектов, в Ростехнадзор?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q091",
+    "number": 91,
+    "text": "В течение какого времени эксплуатирующие организации и индивидуальные предприниматели представляют в регистрирующий орган сведения, характеризующие опасные производственные объекты?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q092",
+    "number": 92,
+    "text": "В течение какого времени опасные производственные объекты, вводимые в эксплуатацию, подлежат регистрации в государственном реестре?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q093",
+    "number": 93,
+    "text": "Что из перечисленного не является основанием для исключения объекта из государственного реестра опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q094",
+    "number": 94,
+    "text": "В какой момент осуществляется присвоение класса опасности опасному производственному объекту?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q095",
+    "number": 95,
+    "text": "В каком из перечисленных случаев объекту присваивается иной регистрационный номер при внесении изменений в государственный реестр?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q096",
+    "number": 96,
+    "text": "Что из перечисленного является основаниями для внесения изменений в сведения, содержащиеся в государственном реестре?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q097",
+    "number": 97,
+    "text": "Какие из перечисленных изменений должны быть внесены в государственный реестр в срок, не превышающий 10 (десяти) рабочих дней с даты регистрации заявления о внесении изменений?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q098",
+    "number": 98,
+    "text": "В какой срок производится внесение в государственный реестр сведений, связанных с исключением опасного производственного объекта в связи со сменой эксплуатирующей организации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q099",
+    "number": 99,
+    "text": "В какой срок производится внесение в государственный реестр сведений, связанных с изменением адреса места нахождения опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      10
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q100",
+    "number": 100,
+    "text": "Какие из перечисленных задач не входят в обязанности организации, эксплуатирующей опасный производственный объект, в соответствии с Федеральным законом от 21.07.1997 № 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q101",
+    "number": 101,
+    "text": "Какой нормативный правовой акт устанавливает обязательность проведения подготовки и аттестации работников, эксплуатирующих опасные производственные объекты, в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q102",
+    "number": 102,
+    "text": "Каким законодательством устанавливается порядок ввода в эксплуатацию опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q103",
+    "number": 103,
+    "text": "В отношении каких объектов предусмотрена разработка планов мероприятий по локализации и ликвидации последствий аварий на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q104",
+    "number": 104,
+    "text": "Какая продолжительность действия планов мероприятий по локализации и ликвидации последствий аварий для объектов I класса опасности (за исключением объектов, на которых ведутся горные работы)?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q105",
+    "number": 105,
+    "text": "Какая продолжительность действия планов мероприятий по локализации и ликвидации последствий аварий для объектов II класса опасности (за исключением объектов, на которых ведутся горные работы)?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q106",
+    "number": 106,
+    "text": "Какая продолжительность действия планов мероприятий по локализации и ликвидации последствий аварий для объектов III класса опасности (за исключением объектов, на которых ведутся горные работы)?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q107",
+    "number": 107,
+    "text": "Для каких организаций создание системы управления промышленной безопасностью является обязательным требованием?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q108",
+    "number": 108,
+    "text": "Кто утверждает положение о системе управления промышленной безопасностью?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q109",
+    "number": 109,
+    "text": "Какой организацией осуществляется авторский надзор в процессе капитального ремонта или технического перевооружения опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      11
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q110",
+    "number": 110,
+    "text": "Кем устанавливаются требования к документационному обеспечению систем управления промышленной безопасностью?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q111",
+    "number": 111,
+    "text": "Кем устанавливаются требования по организации и осуществлению производственного контроля за соблюдением требований промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q112",
+    "number": 112,
+    "text": "Что из перечисленного не является основной задачей производственного контроля за соблюдением требований промышленной безопасности на опасном производственном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q113",
+    "number": 113,
+    "text": "После каких действий план мероприятий по локализации и ликвидщии последствий аварий является принятым?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q114",
+    "number": 114,
+    "text": "Какие из перечисленных обязанностей работника, на которого возложены функции ответственного за осуществление производственного контроля, указаны неверно?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q115",
+    "number": 115,
+    "text": "Кем должно разрабатываться положение о производственном контроле?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q116",
+    "number": 116,
+    "text": "После каких действий положение о производственном контроле является принятым?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q117",
+    "number": 117,
+    "text": "Кем устанавливаются требования к форме предоставления сведений об организации производственного контроля за соблюдением требований промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q118",
+    "number": 118,
+    "text": "Какой документ устанавливает состав сведений об организации производственного контроля за соблюдением требований промышленной безопасности, направляемых эксплуатирующей организацией в Ростехнадзор?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q119",
+    "number": 119,
+    "text": "При каком условии юридическое лицо признается виновным в совершении административного правонарушения?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q120",
+    "number": 120,
+    "text": "Какая мера ответственности предусматривается законодательством Российской Федерации за нарушение должностными лицами требований промышленной безопасности или лицензионных требований на осуществление видов деятельности в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      12
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q121",
+    "number": 121,
+    "text": "Что понимается под грубым нарушением требований промышленной безопасности в соответствии с Кодексом Российской Федерации об административных правонарушениях?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q122",
+    "number": 122,
+    "text": "В какой форме представляются сведения об организации производственного контроля за соблюдением требований промышленной безопасности в Ростехнадзор?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q123",
+    "number": 123,
+    "text": "В каком виде допускается представлять сведения об организации производственного контроля организацией, эксплуатирующей несколько опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q124",
+    "number": 124,
+    "text": "В каком формате должны формироваться файлы электронных документов при подготовке отчета о производственном контроле?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q125",
+    "number": 125,
+    "text": "В течение какого времени проводится первичная аттестация работников в области промышленной безопасности при переводе на другую работу, если при исполнении трудовых обязанностей на этой работе требуется проведение аттестации по другим областям аттестации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q126",
+    "number": 126,
+    "text": "Кто устанавливает порядок проведения аттестации в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q127",
+    "number": 127,
+    "text": "Что из перечисленного не подлежит экспертизе промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q128",
+    "number": 128,
+    "text": "Что из перечисленного подлежит экспертизе промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q129",
+    "number": 129,
+    "text": "Какой организацией проводится экспертиза промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": true,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q130",
+    "number": 130,
+    "text": "В каком случае эксперту запрещается участвовать в проведении экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q131",
+    "number": 131,
+    "text": "Каким нормативным правовым актом устанавливаются требования к оформлению заключения экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q132",
+    "number": 132,
+    "text": "На каком этапе заключение экспертизы промышленной безопасности может быть использовано в целях, установленных Федеральным законом от 21.07.1997 N2 116-ФЗ «О промышленной безопасности опасных производственных объектов»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      13
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q133",
+    "number": 133,
+    "text": "Кем ведется реестр заключений экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q134",
+    "number": 134,
+    "text": "Какой документ является результатом проведения экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q135",
+    "number": 135,
+    "text": "Какой нормативной правовой документацией установлен перечень сведений, содержащихся в декларации промышленной безопасности, и порядок ее оформления?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q136",
+    "number": 136,
+    "text": "Какие опасные производственные объекты обязаны разработать декларацию промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q137",
+    "number": 137,
+    "text": "По истечении какого срока со дня внесения в реестр последней декларации промышленной безопасности для действующих опасных производственных объектов декларация должна быть разработана вновь?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q138",
+    "number": 138,
+    "text": "В каком из перечисленных случаев не требуется разработка декларации промышленной безопасности для действующих опасных вновь производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q139",
+    "number": 139,
+    "text": "Кем утверждается декларация промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q140",
+    "number": 140,
+    "text": "Кто осуществляет ведение реестра деклараций промышленной безопасности опасных производственных объектов, за исключением деклараций промышленной безопасности в области обороны, обеспечения безопасности, внешней разведки, в сфере государственной охраны, мобилизационной подготовки и мобилизации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q141",
+    "number": 141,
+    "text": "Какой процедуре подвергается декларация промышленной безопасности, разрабатываемая в составе документации на техническое перевооружение опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q142",
+    "number": 142,
+    "text": "В каком из перечисленных случаев не требуется разработка декларации безопасности промышленной вновь для действующих опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q143",
+    "number": 143,
+    "text": "Какие требования предъявляются к работникам, ответственным за осуществление производственного контроля на опасных производственных объектах I-III классов опасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      14
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q144",
+    "number": 144,
+    "text": "Какие из перечисленных требований не могут быть отнесены к лицензионным требованиям?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q145",
+    "number": 145,
+    "text": "Каким квалификационным требованиям должен соответствовать эксперт второй категории в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q146",
+    "number": 146,
+    "text": "После выполнения каких действий экспертная организация приступает к проведению экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q147",
+    "number": 147,
+    "text": "Какие сведения содержит заключение экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q148",
+    "number": 148,
+    "text": "Кем обеспечивается деятельность по организации и осуществлению производственного контроля на подведомственных эксплуатирующих организациях?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q149",
+    "number": 149,
+    "text": "Какая документация определяет обязанности и права работников, на которых возложены функции лиц, ответственных за организацию и осуществление производственного контроля?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q150",
+    "number": 150,
+    "text": "Какие из перечисленных категорий работников не обязаны проходить аттестацию в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q151",
+    "number": 151,
+    "text": "Какие из перечисленных аттестационных комиссий могут проводить аттестацию?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q152",
+    "number": 152,
+    "text": "Кем осуществляется расчет вреда (экономического и экологического ущерба) от аварии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q153",
+    "number": 153,
+    "text": "Кто устанавливает перечень сведений, содержащихся в декларации и информационном листе (приложении к декларации), и порядок их оформления?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q154",
+    "number": 154,
+    "text": "В каком случае руководитель или иное уполномоченное лицо организации, эксплуатирующей опасный производственный объект, должен представлять утвержденный в Федеральную службу экземпляр декларации по экологическому, технологическому и атомному надзору?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q155",
+    "number": 155,
+    "text": "Где хранятся оригиналы декларации промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      15
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q156",
+    "number": 156,
+    "text": "Какие из перечисленных документов не предусматриваются в рамках обеспечения организации документационного систем управления промышленной безопасностью?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q157",
+    "number": 157,
+    "text": "Как часто результаты анализа функционирования системы управления безопасностью оформляются промышленной документально в эксплуатирующих организациях?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q158",
+    "number": 158,
+    "text": "Кем осуществляется финансирование расходов на техническое расследование причин аварий?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q159",
+    "number": 159,
+    "text": "В какой срок с даты подписания правового акта о назначении комиссии проводится техническое расследование причин аварии комиссией по техническому расследованию?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q160",
+    "number": 160,
+    "text": "Как часто организация, эксплуатирующая опасные производственные объекты, обязана направлять информацию об инцидентах, происшедших на опасных производственных объектах, в территориальный орган Ростехнадзора?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q161",
+    "number": 161,
+    "text": "В какие сроки эксплуатирующая организация представляет в Ростехнадзор или его территориальные органы сведения об организщии производственного контроля за соблюдением требований промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q162",
+    "number": 162,
+    "text": "Куда обязана предоставить сведения об организации производственного контроля за соблюдением требований промышленной безопасности организация, эксплуатирующая опасный производственный объект?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q163",
+    "number": 163,
+    "text": "Какие опасные производственные объекты относятся к особо опасным и технически сложным объектам?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q164",
+    "number": 164,
+    "text": "Какой установлен срок проведения экспертизы промышленной безопасности в соответствии с федеральными нормами и правилами «Правила проведения экспертизы промышленной безопасности»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q165",
+    "number": 165,
+    "text": "Какой нормативный правовой акт устанавливает порядок принятия решений лицензирующим органом о предоставлении и о внесении изменений в реестр лицензий на деятельность по проведению экспертизы промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      16
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q166",
+    "number": 166,
+    "text": "Что из перечисленного является грубым нарушением лицензионных требований при осуществлении лицензируемого вида деятельности?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q167",
+    "number": 167,
+    "text": "В каком случае права и обязанности страхователя по договору обязательного страхования переходят к новому владельцу опасного объекта при смене владельца опасного объекта в период действия данного договора?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q168",
+    "number": 168,
+    "text": "Какие цели преследует техническое расследование причин аварии на опасном производственном объекте, аварии гидротехнического сооружения?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q169",
+    "number": 169,
+    "text": "Для реализации каких целей разрабатываются планы мероприятий по локализации и ликвидации последствий аварий на опасных производственных объектах?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q170",
+    "number": 170,
+    "text": "Какой устанавливается срок действия для единого плана мероприятий по локализации и ликвидации последствий аварий на опасных производственных объектах, расположенных на одном земельном участке или на смежных земельных участках?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q171",
+    "number": 171,
+    "text": "Какой федеральный закон регулирует отношения, связанные с обязательным страхованием гражданской ответственности владельца опасного объекта за причинение вреда в результате аварии на опасном объекте?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q172",
+    "number": 172,
+    "text": "Какие требования к договору обязательного страхования гражданской ответственности владельца опасного объекта указаны неверно?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q173",
+    "number": 173,
+    "text": "Анализ какой документации осуществляет эксплуатирующая организация при проведении идентификации опасного производственного объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q174",
+    "number": 174,
+    "text": "В течение какого времени после дня внесения записи о предоставлении лицензии в реестр лицензий лицензирующий орган направляет лицензиату уведомление о предоставлении лицензии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q175",
+    "number": 175,
+    "text": "В какой форме проводится оценка соблюдения соискателем лицензии, лицензиатом лицензионных требований?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q176",
+    "number": 176,
+    "text": "Кто осуществляет оценку соответствия зданий и сооружений, а таюке связанных со зданиями и с сооружениями процессов эксплуатации в форме эксплуатационного контроля?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      17
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q177",
+    "number": 177,
+    "text": "Кто устанавливает порядок проведения строительного контроля в процессе строительства, реконструкции, капитапьного ремонта объектов капитального строительства?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q178",
+    "number": 178,
+    "text": "Кого привлекает орган по сертификации для проведения работ по обязательной сертификации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q179",
+    "number": 179,
+    "text": "Какая мера ответственности предусматривается законодательством Российской Федерщии для должностных лиц за невыполнение в установленный срок или ненадлежащее выполнение законного предписания органа исполнительной власти, осуществляющего федеральный государственный надзор в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q180",
+    "number": 180,
+    "text": "Какое из перечисленных профилактических мероприятий проводится при осуществлении федерального государственного надзора в области промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q181",
+    "number": 181,
+    "text": "С какой периодичностью осуществляется проведение плановых выездных проверок в отношении опасных производственных объектов I или II класса опасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q182",
+    "number": 182,
+    "text": "Куда представляется утвержденный экземпляр декларации промышленной безопасности опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q183",
+    "number": 183,
+    "text": "В каком из перечисленных случаев положение о производственном контроле разрабатывается вновь или подлежит изменению?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q184",
+    "number": 184,
+    "text": "Какие действия из перечисленных имеет право выполнять работник, на которого возложены функции лица, ответственного за осуществление производственного контроля?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q185",
+    "number": 185,
+    "text": "На какой срок может быть продлен срок технического расследования причин аварии на опасном производственном объекте в зависимости от характера аварии и при проведении дополнительных исследований и экспертиз?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q186",
+    "number": 186,
+    "text": "На основании какого распорядительного акта создается комиссия для технического расследования причин инцидентов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      18
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q187",
+    "number": 187,
+    "text": "Какие из перечисленных требований не устанавливают федеральные нормы и правила в области промышленной безопасности «Правила проведения экспертизы промышленной безопасности»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q188",
+    "number": 188,
+    "text": "Кто присваивает опасному производственному объекту типовое наименование (именной код) по результатам идентификации для дальнейшей его регистрации в государственном реестре опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q189",
+    "number": 189,
+    "text": "В течение какого времени со дня начала эксплуатации опасного производственного объекта эксплуатирующая организация представляет в регистрирующий орган документы, необходимые для формирования и ведения государственного реестра, для регистрации объекта в государственном реестре опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q190",
+    "number": 190,
+    "text": "Из каких перечисленных структурных элементов должна состоять декларация промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q191",
+    "number": 191,
+    "text": "Какая перечисленная информация не содержится в данных об организации- разработчике декларации промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q192",
+    "number": 192,
+    "text": "Какой раздел декларации промышленной безопасности включает информацию о численности работников на декларируемом объекте с указанием их размещения на составляющих декларируемого объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q193",
+    "number": 193,
+    "text": "Какой раздел декларации промышленной безопасности включает сведения о блок-схеме основных технологических потоков с указанием наименования опасных веществ и направления их перемещения в технологической схеме декларируемого объекта?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q194",
+    "number": 194,
+    "text": "Какие из перечисленных сведений включаются в раздел «Обеспечение требований промышленной безопасности» декларации промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q195",
+    "number": 195,
+    "text": "Каким документом определяются сроки аттестации работников в аттестационных комиссиях организаций?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q196",
+    "number": 196,
+    "text": "В течение какого времени заявитель вправе обжаловать решения, действия (бездействие) территориальных аттестационных комиссий?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      19
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q197",
+    "number": 197,
+    "text": "Кем принимается решение о возможности эксплуатации зданий и сооружений на опасном производственном объекте, предназначенных для осуществления технологических процессов, хранения сырья или продукции, перемещения людей и грузов, локализации и ликвидации последствий аварий, после истечения срока эксплуатации указанных зданий и сооружений, установленного проектной или технической документацией, на основании положительного заключения экспертизы промышленной безопасности зданий и сооружений?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q198",
+    "number": 198,
+    "text": "В каком случае могут быть разработаны декларации промышленной безопасности опасных производственных объектов III и IV классов опасности при строительстве, реконструкции, эксплуатации, техническом перевооружении, консервации и ликвидации таких опасных производственных объектов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q199",
+    "number": 199,
+    "text": "При каком минимальном фактическом сроке службы технического устройства (при отсутствии в технической документации данных о сроке службы такого технического устройства) оно подлежит экспертизе промышленной безопасности?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q200",
+    "number": 200,
+    "text": "В каком документе и кем указываются такие идентификационные признаки зданий и сооружений, как назначение, принадлежность к опасным производственным объектам, пожарная и взрывопожарная опасность, уровень ответственности согласно Техническому регламенту о безопасности зданий и сооружений?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q201",
+    "number": 201,
+    "text": "В течение какого срока с момента получения информации о несоответствии продукции требованиям технических регламентов, если необходимость установления более длительного срока не следует из существа проводимых мероприятий, изготовитель (продавец, лицо, выполняющее функции иностранного изготовителя) обязан провести проверку достоверности полученной информации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q202",
+    "number": 202,
+    "text": "В течение какого срока изготовитель (продавец, лицо, выполняющее функции иностранного изготовителя) обязан разработать программу мероприятий по предотвращению причинения вреда при подтверждении достоверности информации о несоответствии продукции требованиям технических регламентов с момента подтверждения достоверности такой информации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q203",
+    "number": 203,
+    "text": "Что из перечисленного должна включать в себя программа мероприятий по предотвращению причинения вреда при подтверждении достоверности информации о несоответствии продукции требованиям технических регламентов?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      20
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q204",
+    "number": 204,
+    "text": "Что из перечисленного может являться объектами добровольного подтверждения соответствия?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q205",
+    "number": 205,
+    "text": "В течение какого срока осуществляется регистрация системы добровольной сертификации с момента предоставления документов для регистрации системы добровольной сертификации в федеральный орган исполнительной власти по техническому регулированию?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q206",
+    "number": 206,
+    "text": "Каким образом определяется срок действия декларации о соответствии?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q207",
+    "number": 207,
+    "text": "По какой из перечисленных схем может осуществляться декларирование соответствия?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q208",
+    "number": 208,
+    "text": "Какое из перечисленных требований к обязательной сертификации указано верно?",
+    "options": [],
+    "expected_correct_count": 2,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q209",
+    "number": 209,
+    "text": "Какие события из числа перечисленных относятся к понятию «авария на опасном объекте»?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q210",
+    "number": 210,
+    "text": "В каком случае экспертиза проектной документации по решению застройщика может не проводиться в отношении изменений, внесенных в проектную документацию, получившую положительное заключение экспертизы проектной документации?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  },
+  {
+    "id": "a1-source-69349ffd5013-q211",
+    "number": 211,
+    "text": "Какие требования законодательства Российской Федерщии к эксплуатации зданий, сооруж-ений указаны неверно?",
+    "options": [],
+    "expected_correct_count": 1,
+    "source_pdf_sha256": "69349ffd501308449e68a7f46caf416808faec2795ae72f8f424f7eea9d49bcc",
+    "source_pages": [
+      21
+    ],
+    "question_text_reviewed": false,
+    "answer_reviewed": false,
+    "official_options_present": false
+  }
+]

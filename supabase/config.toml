@@ -1,5 +1,12 @@
 project_id = "atxwvjxbqjgkbjlhsdch"
 
+# Manual checks authenticate genuine users; managed cron has its own endpoint.
+[functions.rtn-source-check]
+verify_jwt = false
+
+[functions.rtn-source-cron]
+verify_jwt = false
+
 [functions.register-student]
 verify_jwt = false
 
