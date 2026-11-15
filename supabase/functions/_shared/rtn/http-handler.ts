@@ -1,8 +1,9 @@
 import { executeCheck, rpcValue, type CheckClaim, type Normalizer, type WorkerClient } from './check-worker.ts';
 import { INITIAL_RTN_SOURCES } from './source-catalog.ts';
+import type { WithOfficialFetch } from './official-http-client.ts';
 
 type UserClient = Pick<WorkerClient, 'rpc'> & { auth: { getUser(): PromiseLike<{ data: { user: unknown }; error: unknown }> } };
-type Dependencies = { service: WorkerClient; user(authorization: string): UserClient; normalize: Normalizer; fetcher?: typeof fetch };
+type Dependencies = { service: WorkerClient; user(authorization: string): UserClient; normalize: Normalizer; fetcher?: typeof fetch; withOfficialFetch?: WithOfficialFetch };
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Cache-Control': 'no-store' };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -75,7 +76,8 @@ export function createRtnHandler(deps: Dependencies) {
       // ticks. A terminated invocation never silently becomes a successful check.
       const claim = await rpcValue<CheckClaim | null>(service, 'claim_rtn_check', { p_run_id: runId });
       if (!claim) return json({ run_id: runId, status: 'queued' });
-      return json(await executeCheck(service, claim, deps.normalize, deps.fetcher));
+      const execute = (fetcher: typeof fetch) => executeCheck(service, claim, deps.normalize, fetcher);
+      return json(await (deps.withOfficialFetch ? deps.withOfficialFetch(execute) : execute(deps.fetcher || fetch)));
     } catch { return json({ error: 'RTN_CHECK_UNAVAILABLE' }, 503); }
   };
 }

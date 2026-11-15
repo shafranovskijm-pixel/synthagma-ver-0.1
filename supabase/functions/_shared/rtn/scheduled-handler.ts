@@ -1,4 +1,5 @@
 import { executeCheck, rpcValue, type CheckClaim, type Normalizer, type WorkerClient } from './check-worker.ts';
+import type { WithOfficialFetch } from './official-http-client.ts';
 
 type Dependencies = {
   service: WorkerClient;
@@ -7,6 +8,7 @@ type Dependencies = {
   authenticate(request: Request): Response | null | PromiseLike<Response | null>;
   normalize: Normalizer;
   fetcher?: typeof fetch;
+  withOfficialFetch?: WithOfficialFetch;
 };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
   status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -49,7 +51,8 @@ export function createRtnScheduledHandler(deps: Dependencies) {
       // One durable lease per tick keeps work bounded and crash-recoverable.
       const claim = await rpcValue<CheckClaim | null>(deps.service, 'claim_rtn_check', { p_run_id: null });
       if (!claim) return json({ status: 'idle' });
-      const result = await executeCheck(deps.service, claim, deps.normalize, deps.fetcher);
+      const execute = (fetcher: typeof fetch) => executeCheck(deps.service, claim, deps.normalize, fetcher);
+      const result = await (deps.withOfficialFetch ? deps.withOfficialFetch(execute) : execute(deps.fetcher || fetch));
       if (!result || !['changed', 'unchanged', 'error'].includes(result.status)) return json({ error: 'RTN_CHECK_UNAVAILABLE' }, 503);
       return json(result, result.status === 'error' ? 503 : 200);
     } catch {
