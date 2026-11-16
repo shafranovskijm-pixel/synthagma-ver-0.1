@@ -30,6 +30,7 @@ import {
   type ProofStatus,
 } from "@/lib/groups/releaseReadiness";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
+import { groupNextActions, type GroupNextAction } from "@/lib/groups/nextActions";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath, type GroupContextParams } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
@@ -715,6 +716,33 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     }
   };
 
+  const nextActionsScopeIsCurrent = group.id === groupId && orgInfo?.id === organizationId && !permissionsLoading;
+  const nextActions = nextActionsScopeIsCurrent ? groupNextActions({
+    participants: participantsReadiness,
+    learning: learningReadiness,
+    courseId: resolvedCourseId,
+    missingOrganizationFields: missingOrganizationDocFields,
+    missingGroupFields: missingDocFields.filter(field => !missingOrganizationDocFields.includes(field)),
+    permissions: {
+      members: can("students.read"),
+      settings: can("students.write"),
+      requisites: canSeeOrgTab("documents") && can("documents.read") && canSeeOrgTab("settings") && can("settings.write"),
+      journals: canSeeOrgTab("journals") && can("journals.read"),
+      documents: can("documents.read"),
+    },
+  }) : [];
+  const openNextAction = (action: GroupNextAction) => {
+    if (!nextActionsScopeIsCurrent || !action.enabled) return;
+    switch (action.target) {
+      case "members": setShowMembers(true); return;
+      case "settings": setSettingsOpen(true); return;
+      case "requisites": navigate("/organization?tab=documents&documentView=constructor"); return;
+      case "journals": navigate(groupContextPath("journals", { groupId, courseId: resolvedCourseId })); return;
+      case "documents": focusWorkspace("docs"); return;
+      case "refresh": void refreshCounts(); setReloadKey(key => key + 1); return;
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Breadcrumbs */}
@@ -780,6 +808,18 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </div>
         </div>
       </Card>
+
+      {nextActions.length > 0 && <Card role="region" className="rounded-2xl border-border p-4" aria-labelledby="group-next-actions-title">
+        <h2 id="group-next-actions-title" className="font-semibold">Что сделать дальше</h2>
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          {nextActions.map(action => <div key={action.target} className="flex min-w-0 flex-col items-start gap-2 rounded-xl border border-border p-3">
+            <h3 className="text-sm font-medium">{action.title}</h3>
+            <p className="text-xs leading-relaxed text-muted-foreground">{action.reason}</p>
+            {action.unavailableReason && <p id={`group-next-${action.target}-reason`} className="text-xs leading-relaxed text-muted-foreground">{action.unavailableReason}</p>}
+            <Button variant="outline" size="sm" className="mt-auto h-auto min-h-9 max-w-full whitespace-normal rounded-xl text-left" disabled={!action.enabled} aria-describedby={action.unavailableReason ? `group-next-${action.target}-reason` : undefined} onClick={() => openNextAction(action)}>{action.label}</Button>
+          </div>)}
+        </div>
+      </Card>}
 
       <GroupProgramFactsPanel organizationId={organizationId} groupId={groupId} courseId={resolvedCourseId} courseTitle={courseInfo?.title}
         students={students} resource={groupProgram} canConfigure={!permissionsLoading && can("documents.write")} />

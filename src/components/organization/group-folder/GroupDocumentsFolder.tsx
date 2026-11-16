@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateDocument, generatePackage, downloadHtml } from "@/lib/group-docs/generate";
 import { reserveGroupDocumentNumbers, typesRequiringReservation } from "@/lib/group-docs/documentNumbers";
 import { GROUP_DOCUMENT_TYPES } from "@/lib/groupDocuments";
+import { documentPreparationReason } from "@/lib/groups/nextActions";
 import {
   PACKAGE_DOC_TYPES,
   describePackagePlan,
@@ -230,6 +231,19 @@ function GroupDocumentsFolderView({
     if(!educationEnabled||!education.snapshotValue||!ctx)return null;
     try{return withEducationArtifact(ctx,education.snapshotValue,exactGoreltechDocuments?'four_date_word':'generic_html');}catch{return null;}
   },[educationEnabled,education.snapshotValue,ctx,exactGoreltechDocuments]);
+  const snapshotPreparationReason = documentPreparationReason({
+    kind: 'snapshot', busy: education.busy, pending: education.pending,
+    sourceKnown: !!education.envelope?.state, canCapture: !!education.envelope?.state?.capabilities.can_capture_snapshot,
+    hasSource: !!education.calendarValue?.calendar, hasReason: !!educationReason,
+    prerequisites: education.envelope?.prerequisites.map(p => p.label),
+  });
+  const draftsPreparationReason = documentPreparationReason({
+    kind: 'drafts', busy: busy || education.busy, pending: education.pending,
+    sourceKnown: !!education.envelope?.state, canCapture: !!education.envelope?.state?.capabilities.can_capture_snapshot,
+    hasSource: !!retainedContext,
+    missingDateNames: GENERIC_EDUCATION_DRAFT_TYPES.filter(type => !educationDates[type]).map(type => typeTitle.get(type) ?? type),
+    prerequisites: education.envelope?.prerequisites.map(p => p.label),
+  });
 
   const packageRequirements = useMemo(
     () => missingPackageRequirements(PACKAGE_DOC_TYPES, reqSource, mode, requirementProfile),
@@ -638,14 +652,15 @@ function GroupDocumentsFolderView({
           <Input aria-label="Момент состава для документов" disabled={busy||education.busy||education.pending||!!education.snapshotValue} value={educationAt} onChange={v=>updateSourceDraft({at:v.target.value})} placeholder="Пусто — текущий момент; иначе ISO с часовым смещением"/>
           <Input aria-label="Основание фиксации состава" disabled={busy||education.busy||education.pending} value={educationReason} onChange={v=>updateSourceDraft({reason:v.target.value})} placeholder="Основание фиксации состава"/>
           {education.envelope?.prerequisites.map((p,i)=><p key={i} className="text-sm">{p.label}</p>)}
-          <Button variant="outline" disabled={education.busy||education.pending||!educationReason||!education.envelope?.state?.capabilities.can_capture_snapshot||!education.calendarValue?.calendar} onClick={async()=>{const state=education.envelope!.state!,cal=education.calendarValue!.calendar!;const result=await education.mutate({action:'capture_roster_snapshot',as_of:educationAt?{kind:'at',at:educationAt,timezone:state.timezone}:{kind:'current'},knowledge_revision:state.revision,calendar_version_id:cal.id,expected_calendar_hash:cal.content_hash,expected_program_ref:state.program_ref,purpose:'document_batch',reason:educationReason});if(result&&result.receipt.snapshot_id)await education.snapshot(result.receipt.snapshot_id);}}>Подтвердить снимок для пакета</Button>
+          <Button variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal rounded-xl text-left" disabled={education.busy||education.pending||!educationReason||!education.envelope?.state?.capabilities.can_capture_snapshot||!education.calendarValue?.calendar} onClick={async()=>{const state=education.envelope!.state!,cal=education.calendarValue!.calendar!;const result=await education.mutate({action:'capture_roster_snapshot',as_of:educationAt?{kind:'at',at:educationAt,timezone:state.timezone}:{kind:'current'},knowledge_revision:state.revision,calendar_version_id:cal.id,expected_calendar_hash:cal.content_hash,expected_program_ref:state.program_ref,purpose:'document_batch',reason:educationReason});if(result&&result.receipt.snapshot_id)await education.snapshot(result.receipt.snapshot_id);}}>Подтвердить снимок для пакета</Button>
+          {snapshotPreparationReason && <p role="status" className="text-xs leading-relaxed text-muted-foreground">{snapshotPreparationReason}</p>}
           {education.pending&&<Button variant="outline" onClick={()=>void education.retry()}>Повторить тот же запрос фиксации</Button>}
           {education.error&&<p role="alert" className="text-sm text-destructive">Подтверждённый источник недоступен. Обновите сведения группы.</p>}
           {education.snapshotValue&&<p className="text-sm">Подтверждено участников: {education.snapshotValue.header.row_count}; состав на {education.snapshotValue.header.as_of}.</p>}
-          <div className="grid grid-cols-2 gap-2">{PACKAGE_DOC_TYPES.map(type=><label className="text-xs" key={type}>{typeTitle.get(type)??type}<Input type="date" disabled={busy||education.busy||education.pending} aria-label={`Дата документа ${type}`} value={educationDates[type]??''} onChange={v=>updateSourceDraft({dates:{...educationDates,[type]:v.target.value}})}/></label>)}</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{PACKAGE_DOC_TYPES.map(type=><label className="text-xs" key={type}>{typeTitle.get(type)??type}<Input type="date" disabled={busy||education.busy||education.pending} aria-label={`Дата документа ${type}`} value={educationDates[type]??''} onChange={v=>updateSourceDraft({dates:{...educationDates,[type]:v.target.value}})}/></label>)}</div>
         </>}
       </Card>
-      {educationEnabled&&!exactGoreltechDocuments&&<Card className="p-4 rounded-2xl space-y-2"><Button variant="outline" className="rounded-xl" disabled={busy||education.busy||education.pending||!retainedContext||!education.envelope?.state?.capabilities.can_capture_snapshot||GENERIC_EDUCATION_DRAFT_TYPES.some(type=>!educationDates[type])} onClick={()=>void run([...GENERIC_EDUCATION_DRAFT_TYPES],undefined,undefined,false,true)}>Подготовить 3 черновика из одного состава</Button><p className="text-xs text-muted-foreground">Приказ о зачислении, журнал и итоговая ведомость: одна партия и один снимок. Официальные номера и подписи не проставляются. План не подтверждает посещение или результаты.</p>{ctx&&genericDraftMissingRequisites(ctx).length>0&&<p className="text-xs text-amber-700">Реквизиты для проверки: {genericDraftMissingRequisites(ctx).join(', ')}. В черновиках пропуски помечены «Не указано».</p>}{genericBatchNote&&<p role="status" className="text-xs">{genericBatchNote}</p>}</Card>}
+      {educationEnabled&&!exactGoreltechDocuments&&<Card className="p-4 rounded-2xl space-y-2"><Button variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal rounded-xl text-left" disabled={busy||education.busy||education.pending||!retainedContext||!education.envelope?.state?.capabilities.can_capture_snapshot||GENERIC_EDUCATION_DRAFT_TYPES.some(type=>!educationDates[type])} onClick={()=>void run([...GENERIC_EDUCATION_DRAFT_TYPES],undefined,undefined,false,true)}>Подготовить 3 черновика из одного состава</Button>{draftsPreparationReason&&<p role="status" className="text-xs leading-relaxed text-muted-foreground">{draftsPreparationReason}</p>}<p className="text-xs text-muted-foreground">Приказ о зачислении, журнал и итоговая ведомость: одна партия и один снимок. Официальные номера и подписи не проставляются. План не подтверждает посещение или результаты.</p>{ctx&&genericDraftMissingRequisites(ctx).length>0&&<p className="text-xs text-amber-700">Реквизиты для проверки: {genericDraftMissingRequisites(ctx).join(', ')}. В черновиках пропуски помечены «Не указано».</p>}{genericBatchNote&&<p role="status" className="text-xs">{genericBatchNote}</p>}</Card>}
       <div className="flex flex-wrap items-center gap-2">
         <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}

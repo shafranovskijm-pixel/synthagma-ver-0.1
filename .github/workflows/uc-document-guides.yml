@@ -1,4 +1,4 @@
-name: UC document quick start
+name: UC document guidance
 on:
   pull_request:
     paths:
@@ -7,6 +7,11 @@ on:
       - src/hooks/educationDocumentsHelpers.ts
       - src/components/organization/__tests__/DocumentsTab.workspaceNavigation.test.tsx
       - src/components/organization/__tests__/groupJournalsListSafety.test.tsx
+      - src/components/organization/tabs/GroupFolderTab.tsx
+      - src/components/organization/group-folder/GroupDocumentsFolder.tsx
+      - src/components/organization/__tests__/GroupFolderTab.*
+      - src/components/organization/group-folder/__tests__/GroupDocumentsFolder.package.test.tsx
+      - src/lib/groups/nextActions*
       - public/guides/**
       - .github/workflows/uc-document-guides.yml
 permissions:
@@ -31,4 +36,6 @@ jobs:
         run: node node_modules/vitest/vitest.mjs run src/components/organization/__tests__/DocumentsTab.workspaceNavigation.test.tsx src/components/organization/__tests__/groupJournalsListSafety.test.tsx src/components/organization/__tests__/JournalsManager.copiesScope.test.tsx --maxWorkers=1
       - name: Public guides are PDF documents
         run: node --input-type=module -e "import{readFileSync}from'node:fs';for(const n of['uc-checklist','uc-orders','uc-issuance']){if(readFileSync('public/guides/'+n+'.pdf').subarray(0,5).toString()!=='%PDF-')throw Error(n)}"
+      - name: Group next actions and existing document prerequisites
+        run: node node_modules/vitest/vitest.mjs run src/lib/groups/nextActions.test.ts src/components/organization/__tests__/GroupFolderTab.departmentFilter.test.tsx src/components/organization/__tests__/GroupFolderTab.scope.test.tsx src/components/organization/__tests__/GroupFolderTab.workflow.test.ts src/components/organization/group-folder/__tests__/GroupDocumentsFolder.package.test.tsx src/lib/groups/__tests__/releaseReadiness.test.ts --maxWorkers=1
       - run: npm run build
