@@ -7,6 +7,7 @@ const db = vi.hoisted(() => ({
   rows: {} as Record<string, Array<Record<string, unknown>>>,
   errors: {} as Record<string, unknown>,
   refresh: vi.fn(),
+  denied: new Set<string>(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: (table: string) => {
@@ -35,12 +36,13 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
 } }));
 vi.mock("@/contexts/OrgDashboardContext", () => ({ useOrgDashboard: () => ({}) }));
 vi.mock("@/hooks/useStaffPermissions", () => ({
-  useStaffPermissions: () => ({ can: () => true, canSeeOrgTab: () => true, loading: false }),
+  useStaffPermissions: () => ({ can: (permission: string) => !db.denied.has(permission), canSeeOrgTab: () => true, loading: false }),
 }));
 vi.mock("@/hooks/useGroupFolderCounts", () => ({
   useGroupFolderCounts: () => ({ counts: {}, refresh: db.refresh }),
 }));
 vi.mock("@/components/organization/group-folder/ContractsFolder", () => ({ ContractsFolder: () => null }));
+vi.mock("@/components/organization/groups/GroupEducationFactsPanel", () => ({ GroupEducationFactsPanel: () => null }));
 vi.mock("@/components/organization/GroupSettingsDialog", () => ({ GroupSettingsDialog: () => null }));
 vi.mock("@/components/organization/groups/AddStudentsToGroupDialog", () => ({ AddStudentsToGroupDialog: () => null }));
 vi.mock("@/components/organization/group-folder/GroupDocumentsFolder", () => ({
@@ -86,6 +88,7 @@ const originalScrollIntoView = Object.getOwnPropertyDescriptor(HTMLElement.proto
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
   db.errors = {};
+  db.denied = new Set();
   db.rows = {
     student_groups: [{ id: "group-1", organization_id: "org-1", name: "Учебный центр", course_id: null }],
     organizations: [{ id: "org-1", name: "Организация" }],
@@ -110,6 +113,46 @@ afterEach(() => {
 });
 
 describe("group participants department filter", () => {
+  it("does not offer the requisites route through a denied Documents workspace", async () => {
+    db.denied.add("documents.read");
+    render(tree());
+    const actions = await screen.findByRole("region", { name: "Что сделать дальше" });
+    expect(within(actions).getByRole("button", { name: "Открыть реквизиты" })).toBeDisabled();
+    expect(within(actions).getAllByText("Нет доступа к этому действию. Обратитесь к администратору центра.").length).toBeGreaterThan(0);
+  });
+
+  it("opens the existing requisites constructor only with its full permission conjunction", async () => {
+    render(<MemoryRouter initialEntries={["/organization?tab=group-folder&groupId=group-1"]}><RoutedGroups /></MemoryRouter>);
+    const actions = await screen.findByRole("region", { name: "Что сделать дальше" });
+    fireEvent.click(within(actions).getByRole("button", { name: "Открыть реквизиты" }));
+    const params = new URLSearchParams(screen.getByTestId("group-route").textContent!);
+    expect(params.get("tab")).toBe("documents");
+    expect(params.get("documentView")).toBe("constructor");
+  });
+
+  it("explains a disabled next action without changing its permission or opening settings", async () => {
+    db.denied.add("students.write");
+    render(tree());
+    const actions = await screen.findByRole("region", { name: "Что сделать дальше" });
+    expect(within(actions).getAllByRole("button").length).toBeLessThanOrEqual(3);
+    expect(within(actions).getByRole("button", { name: "Настройки группы" })).toBeDisabled();
+    expect(within(actions).getByText("Нет доступа к этому действию. Обратитесь к администратору центра.")).toBeInTheDocument();
+  });
+
+  it("keeps the current group and course in an allowed next-action journal link", async () => {
+    db.rows.student_groups[0].course_id = "course-a";
+    db.rows.courses = [{ id: "course-a", organization_id: "org-1", title: "Программа группы", duration: 16, frdo_duration_hours: 16 }];
+    db.rows.organizations[0] = { id: "org-1", name: "Организация", inn: "SYN_INN", director_name: "SYN_DIRECTOR", director_position: "SYN_POSITION" };
+    render(<MemoryRouter initialEntries={["/organization?tab=group-folder&groupId=group-1"]}><RoutedGroups /></MemoryRouter>);
+    const actions = await screen.findByRole("region", { name: "Что сделать дальше" });
+    fireEvent.click(within(actions).getByRole("button", { name: "Журналы этой группы" }));
+    const params = new URLSearchParams(screen.getByTestId("group-route").textContent!);
+    expect(params.get("tab")).toBe("journals");
+    expect(params.get("groupId")).toBe("group-1");
+    expect(params.get("courseId")).toBe("course-a");
+    expect(params.get("returnToGroupId")).toBe("group-1");
+  });
+
   it("restores each group's own filters on Back/Forward and carries them into a student link", async () => {
     db.rows.student_groups.push({ id: "group-2", organization_id: "org-1", name: "Другая группа", course_id: null });
     db.rows.profiles.push(profile("s7", "Новый ученик", "Новый участок", { student_group_id: "group-2" }));
