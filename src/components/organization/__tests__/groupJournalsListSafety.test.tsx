@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" }, userRole: "organization", loading: false }) }));
@@ -84,6 +84,10 @@ describe("JournalsManager without group context", () => {
     expect(localStorage.getItem("custom_journals_org-1")).toContain("Мой журнал");
     expect(screen.getAllByText("Пользовательские журналы").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("group-journals-scope-notice")).not.toBeInTheDocument();
+    expect(screen.getByText("Состав журналов определяется видом обучения и локальными актами центра.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Основные журналы 6 журналов/ }));
+    expect(screen.queryByText("Обязательный")).not.toBeInTheDocument();
+    expect(screen.queryByText(/обязательных:/)).not.toBeInTheDocument();
   });
 });
 
@@ -108,9 +112,15 @@ describe("JournalsManager in group context", () => {
     expect(screen.queryByText("Мой журнал")).not.toBeInTheDocument();
     expect(screen.queryAllByText("Пользовательские журналы")).toHaveLength(0);
     expect(screen.getByTestId("group-banner")).toBeInTheDocument();
-    // unsupported journal categories/types are omitted from the list entirely
-    expect(screen.queryByText("Часто требуемые журналы")).not.toBeInTheDocument();
-    expect(screen.getByText("Обязательные журналы", { selector: "h3" })).toBeInTheDocument();
+    // The server-backed copies registry supports an exact group scope; the
+    // remaining manually scoped journal types must still be omitted.
+    fireEvent.click(screen.getByRole("button", { name: /Часто требуемые журналы/ }));
+    expect(screen.getByText("Журнал учёта выдачи копий / дубликатов документов")).toBeInTheDocument();
+    expect(screen.queryByText("Журнал учёта результатов входного контроля")).not.toBeInTheDocument();
+    expect(screen.queryByText("Журнал (реестр) индивидуальных учебных планов")).not.toBeInTheDocument();
+    expect(screen.queryByText("Журнал стажировки / практики")).not.toBeInTheDocument();
+    expect(screen.queryByText("Журнал учёта инструктажей по технике безопасности")).not.toBeInTheDocument();
+    expect(screen.getByText("Основные журналы", { selector: "h3" })).toBeInTheDocument();
     // 6 required journals minus the unsupported "бланки строгой отчётности"
     expect(screen.getByText(/^5 журналов/)).toBeInTheDocument();
   });

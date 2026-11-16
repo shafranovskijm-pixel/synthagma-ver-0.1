@@ -30,3 +30,6 @@ supabase/tests/fixtures/uc-full-cycle-collect-stage51-metadata.sql text eol=lf
 supabase/tests/fixtures/uc-full-cycle-legacy-journal-live.json text eol=lf
 supabase/tests/fixtures/uc016-private-file-source-metadata.json text eol=lf
 supabase/tests/fixtures/uc016-legacy101-conflicts.json text eol=lf
+
+# PDF cross-reference offsets require byte-exact public guide assets.
+public/guides/*.pdf -text -diff

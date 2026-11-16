@@ -1,0 +1,34 @@
+name: UC document quick start
+on:
+  pull_request:
+    paths:
+      - src/components/organization/tabs/DocumentsTab.tsx
+      - src/components/organization/JournalsManager.tsx
+      - src/hooks/educationDocumentsHelpers.ts
+      - src/components/organization/__tests__/DocumentsTab.workspaceNavigation.test.tsx
+      - src/components/organization/__tests__/groupJournalsListSafety.test.tsx
+      - public/guides/**
+      - .github/workflows/uc-document-guides.yml
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Navigation and existing journal permissions
+        run: node node_modules/vitest/vitest.mjs run src/components/organization/__tests__/DocumentsTab.workspaceNavigation.test.tsx src/components/organization/__tests__/groupJournalsListSafety.test.tsx src/components/organization/__tests__/JournalsManager.copiesScope.test.tsx --maxWorkers=1
+      - name: Public guides are PDF documents
+        run: node --input-type=module -e "import{readFileSync}from'node:fs';for(const n of['uc-checklist','uc-orders','uc-issuance']){if(readFileSync('public/guides/'+n+'.pdf').subarray(0,5).toString()!=='%PDF-')throw Error(n)}"
+      - run: npm run build
