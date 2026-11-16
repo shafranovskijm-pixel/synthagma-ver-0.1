@@ -45,7 +45,7 @@ export const PROGRAM_TYPE_TO_DOC_TYPE: Record<string, string> = {
 export const DOCUMENT_TYPES = [
   { value: "certificate", label: "Удостоверение" },
   { value: "diploma", label: "Диплом" },
-  { value: "qualification", label: "Свидетельство о квалификации" },
+  { value: "qualification", label: "Свидетельство о профессии рабочего, должности служащего" },
 ];
 
 export const DELIVERY_METHODS = [
@@ -114,8 +114,8 @@ export function getJournalTitle(documentTypeFilter?: string) {
 export function getJournalSubtitle(documentTypeFilter?: string) {
   if (documentTypeFilter === "certificate") return "Учёт выданных удостоверений о повышении квалификации";
   if (documentTypeFilter === "diploma") return "Учёт выданных дипломов о профессиональной переподготовке";
-  if (documentTypeFilter === "qualification") return "Учёт выданных свидетельств о профессии/квалификации";
-  return "Учёт выданных удостоверений, дипломов и свидетельств о квалификации";
+  if (documentTypeFilter === "qualification") return "Учёт выданных свидетельств о профессии рабочего, должности служащего";
+  return "Учёт выданных удостоверений, дипломов и свидетельств о профессии рабочего, должности служащего";
 }
 
 export function buildExportData(records: EducationDocumentRecord[]) {

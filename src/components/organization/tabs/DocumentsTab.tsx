@@ -91,7 +91,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   protocols: "Протоколы аттестационной комиссии",
   certificates: "Журнал выданных удостоверений о повышении квалификации",
   diplomas: "Журнал выданных дипломов о профессиональной переподготовке",
-  testimonials: "Журнал выданных свидетельств о квалификации",
+  testimonials: "Журнал выданных свидетельств о профессии рабочего, должности служащего",
   programs: "Управление образовательными программами",
   journals: "Журналы учёта обучения",
   frdo: "Выгрузка данных в ФИС ФРДО",
@@ -304,12 +304,13 @@ function DocumentsTabContent({
     return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
   }
 
-  const openWorkspace = (tab: DocumentSubTab | "students") => {
+  const openWorkspace = (tab: DocumentSubTab | "students", studentsView?: "groups") => {
     if (tab === "students") {
       if (!canReadStudents) return;
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.set("tab", "students");
+        if (studentsView) next.set("studentsView", studentsView);
         next.delete("documentView");
         next.delete("counterpartyView");
         return clearEducationDocumentsJournalFocusParams(next);
@@ -347,7 +348,7 @@ function DocumentsTabContent({
       {
         id: "journals" as const,
         title: "Журналы",
-        description: "Обязательные, автоматические и собственные журналы организации",
+        description: "Журналы обучения, учёта документов и собственные журналы организации",
         icon: ClipboardList,
         visible: canReadJournals,
       },
@@ -388,6 +389,33 @@ function DocumentsTabContent({
             <BarChart3 className="h-4 w-4" /> Сводка документооборота
           </Button>
         </div>
+
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="documents-quick-start-title">
+          <h2 id="documents-quick-start-title" className="font-display text-base font-semibold">С чего начать</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="flex flex-col items-start gap-2">
+              <Button variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal rounded-xl gap-2 text-left" onClick={() => openWorkspace("org")}>
+                <ClipboardList className="h-4 w-4 shrink-0" /> Чек-лист центра
+              </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">Документы и задачи по профилю вашего центра.</p>
+              <a href="/guides/uc-checklist.pdf" className="mt-auto text-xs text-primary underline underline-offset-4" aria-label="Памятка PDF: чек-лист центра">Памятка PDF</a>
+            </div>
+            {canReadStudents && isOrdersEnabled && <div className="flex flex-col items-start gap-2">
+              <Button variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal rounded-xl gap-2 text-left" onClick={() => openWorkspace("students", "groups")}>
+                <ScrollText className="h-4 w-4 shrink-0" /> Подготовить приказ
+              </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">Выберите группу и откройте её документы.</p>
+              <a href="/guides/uc-orders.pdf" className="mt-auto text-xs text-primary underline underline-offset-4" aria-label="Памятка PDF: приказы о зачислении и отчислении">Памятка PDF</a>
+            </div>}
+            {canReadJournals && <div className="flex flex-col items-start gap-2">
+              <Button variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal rounded-xl gap-2 text-left" onClick={() => openWorkspace("testimonials")}>
+                <FileCheck className="h-4 w-4 shrink-0" /> Книга выдачи свидетельств
+              </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">Учёт свидетельств, проверка выдачи и выгрузка.</p>
+              <a href="/guides/uc-issuance.pdf" className="mt-auto text-xs text-primary underline underline-offset-4" aria-label="Памятка PDF: книга выдачи свидетельств">Памятка PDF</a>
+            </div>}
+          </div>
+        </section>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {primaryWorkspaces.map((workspace) => {

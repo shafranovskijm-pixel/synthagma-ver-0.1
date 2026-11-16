@@ -48,7 +48,7 @@ interface JournalCategory { id: string; title: string; icon: React.ElementType; 
 
 const JOURNAL_CATEGORIES: JournalCategory[] = [
   {
-    id: "required", title: "Обязательные журналы", icon: ClipboardCheck, color: "text-red-500", bgColor: "bg-red-500/10",
+    id: "required", title: "Основные журналы", icon: ClipboardCheck, color: "text-red-500", bgColor: "bg-red-500/10",
     journals: [
       { id: "attendance", title: "Журнал учёта посещаемости занятий", description: "Автоматически — завершённые уроки. Ручные записи ведутся отдельно", required: true },
       { id: "current_control", title: "Журнал текущего контроля успеваемости и промежуточной аттестации", description: "Оценки, зачёты, тесты, практические задания по модулям / дисциплинам", required: true },
@@ -277,7 +277,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-6 h-6 text-primary" /></div>
-              <div><h2 className="text-xl font-bold">Полная система учёта для организаций ДПО</h2><p className="text-sm text-muted-foreground mt-1">Электронные журналы с автоматическим заполнением, экспортом и шаблонами</p></div>
+              <div><h2 className="text-xl font-bold">Журналы учебного центра</h2><p className="text-sm text-muted-foreground mt-1">Состав журналов определяется видом обучения и локальными актами центра.</p></div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {groupId && <Button variant="outline" onClick={()=>navigateJournal('group-facts','group-facts')} className="rounded-xl">Состав и календарь группы</Button>}
@@ -299,7 +299,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
-              { icon: ClipboardCheck, title: "Обязательные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов" },
+              { icon: ClipboardCheck, title: "Основные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов" },
               { icon: BarChart3, title: "Автоматическое заполнение", desc: "Данные из курсов подтягиваются автоматически" },
               { icon: BookOpen, title: "Электронные журналы онлайн", desc: "Ведите учёт прямо в браузере с еженедельной сеткой" },
               { icon: Download, title: "Экспорт данных", desc: "Выгрузка доступна в открытом журнале, если предусмотрена его режимом" },
@@ -331,7 +331,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
                   <div className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-lg ${category.bgColor} flex items-center justify-center`}><CategoryIcon className={`w-5 h-5 ${category.color}`} /></div>
-                      <div className="text-left"><h3 className="font-semibold">{category.title}</h3><p className="text-sm text-muted-foreground">{category.journals.length} журналов{category.journals.filter(j => j.required).length > 0 && <span className="ml-2">(обязательных: {category.journals.filter(j => j.required).length})</span>}</p></div>
+                      <div className="text-left"><h3 className="font-semibold">{category.title}</h3><p className="text-sm text-muted-foreground">{category.journals.length} журналов</p></div>
                     </div>
                     {isExpanded ? <ChevronDown className="w-5 h-5 text-muted-foreground" /> : <ChevronRight className="w-5 h-5 text-muted-foreground" />}
                   </div>
@@ -375,7 +375,7 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
           {journal.required ? <AlertCircle className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-amber-500" />}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{journal.title}</span>{journal.required && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex-shrink-0">Обязательный</span>}</div>
+          <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{journal.title}</span></div>
           <p className="text-sm text-muted-foreground mt-1">{journal.description}</p>
         </div>
       </div>
