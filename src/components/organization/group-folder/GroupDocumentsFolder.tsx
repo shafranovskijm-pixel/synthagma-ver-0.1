@@ -648,7 +648,7 @@ function GroupDocumentsFolderView({
       {/* Toolbar */}
       <Card className="p-4 space-y-3 rounded-2xl">
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={educationEnabled} disabled={busy} onChange={v=>setEducationEnabled(v.target.checked)}/>Использовать подтверждённый состав и календарь</label>
-        {educationEnabled&&<><p className="text-xs text-muted-foreground">{exactGoreltechDocuments?EDUCATION_ARTIFACT_NOTICE:EDUCATION_GENERIC_ARTIFACT_NOTICE} Все документы этого источника сохраняются как черновики без официальных номеров. Даты документов задаются отдельно.</p>
+        {educationEnabled&&<><p className="text-xs text-muted-foreground">{retainedContext?(exactGoreltechDocuments?EDUCATION_ARTIFACT_NOTICE:EDUCATION_GENERIC_ARTIFACT_NOTICE):'Для этого режима нужны подтверждённый состав и поурочный план. Проверьте источник ниже.'} Все документы этого источника сохраняются как черновики без официальных номеров. Даты документов задаются отдельно.</p>
           <Input aria-label="Момент состава для документов" disabled={busy||education.busy||education.pending||!!education.snapshotValue} value={educationAt} onChange={v=>updateSourceDraft({at:v.target.value})} placeholder="Пусто — текущий момент; иначе ISO с часовым смещением"/>
           <Input aria-label="Основание фиксации состава" disabled={busy||education.busy||education.pending} value={educationReason} onChange={v=>updateSourceDraft({reason:v.target.value})} placeholder="Основание фиксации состава"/>
           {education.envelope?.prerequisites.map((p,i)=><p key={i} className="text-sm">{p.label}</p>)}
@@ -662,10 +662,10 @@ function GroupDocumentsFolderView({
       </Card>
       {educationEnabled&&!exactGoreltechDocuments&&<Card className="p-4 rounded-2xl space-y-2"><Button variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal rounded-xl text-left" disabled={busy||education.busy||education.pending||!retainedContext||!education.envelope?.state?.capabilities.can_capture_snapshot||GENERIC_EDUCATION_DRAFT_TYPES.some(type=>!educationDates[type])} onClick={()=>void run([...GENERIC_EDUCATION_DRAFT_TYPES],undefined,undefined,false,true)}>Подготовить 3 черновика из одного состава</Button>{draftsPreparationReason&&<p role="status" className="text-xs leading-relaxed text-muted-foreground">{draftsPreparationReason}</p>}<p className="text-xs text-muted-foreground">Приказ о зачислении, журнал и итоговая ведомость: одна партия и один снимок. Официальные номера и подписи не проставляются. План не подтверждает посещение или результаты.</p>{ctx&&genericDraftMissingRequisites(ctx).length>0&&<p className="text-xs text-amber-700">Реквизиты для проверки: {genericDraftMissingRequisites(ctx).join(', ')}. В черновиках пропуски помечены «Не указано».</p>}{genericBatchNote&&<p role="status" className="text-xs">{genericBatchNote}</p>}</Card>}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
+        <Button className="h-auto min-h-10 max-w-full whitespace-normal gap-1.5 rounded-xl text-left" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}
         </Button>
-        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("individual")}>
+        <Button variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal gap-1.5 rounded-xl text-left" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("individual")}>
           <User className="w-4 h-4" /> Пакет физлица
         </Button>
         {exactGoreltechDocuments && (

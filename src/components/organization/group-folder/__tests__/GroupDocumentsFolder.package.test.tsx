@@ -6,6 +6,7 @@ import { emptyFactualData } from "@/lib/group-docs/factualData";
 import { PACKAGE_DOC_TYPES } from "@/lib/group-docs/packageTypes";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
 import {compatibleArtifactSnapshot,envelope,id} from '@/lib/groupEducationFacts/__tests__/fixtures';
+import { EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE } from '../../../../../supabase/functions/_shared/group-education-artifact';
 vi.mock('@/hooks/useGroupEducationFacts',()=>({useGroupEducationFacts:()=>mocks.education}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:mocks.actor},loading:false})}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineActor:()=>mocks.accessRevision}));
@@ -710,6 +711,41 @@ describe("GroupDocumentsFolder package contract routing", () => {
 
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledWith(docxRow.id));
     expect(mocks.onDataChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('source notice requires a valid retained snapshot (Word layout: %s)', exact => {
+    const ctx = exact ? goreltechContext() : structuredClone(SAMPLE_CONTEXT);
+    ctx.organization.id = exact ? GORELTECH_ORGANIZATION_ID : id(1);
+    ctx.group.id = id(2);
+    const source = compatibleArtifactSnapshot();
+    source.header.scope.organization_id = ctx.organization.id;
+    source.projection.scope.organization_id = ctx.organization.id;
+    source.projection.calendar.scope.organization_id = ctx.organization.id;
+    source.projection.program_facts.organization_id = ctx.organization.id;
+    mocks.education = { ...mocks.education, envelope: envelope(), scopeCurrent: () => true };
+    const props = { organizationId: ctx.organization.id, groupId: id(2), groupName: 'Учебная группа', students: ctx.students, ctx };
+    const view = render(<GroupDocumentsFolder {...props}/>);
+    const neutral = 'Для этого режима нужны подтверждённый состав и поурочный план. Проверьте источник ниже';
+    const expectedNotice = exact ? EDUCATION_ARTIFACT_NOTICE : EDUCATION_GENERIC_ARTIFACT_NOTICE;
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Использовать подтверждённый состав и календарь' }));
+    expect(screen.getByText(neutral, { exact: false })).toBeInTheDocument();
+    for (const notice of [EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE]) {
+      expect(screen.queryByText(notice, { exact: false })).not.toBeInTheDocument();
+    }
+
+    const invalid = structuredClone(source);
+    invalid.header.source_hash = 'b'.repeat(64);
+    mocks.education = { ...mocks.education, snapshotValue: invalid };
+    view.rerender(<GroupDocumentsFolder {...props}/>);
+    expect(screen.getByText(neutral, { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText(expectedNotice, { exact: false })).not.toBeInTheDocument();
+
+    mocks.education = { ...mocks.education, snapshotValue: source };
+    view.rerender(<GroupDocumentsFolder {...props}/>);
+    expect(screen.queryByText(neutral, { exact: false })).not.toBeInTheDocument();
+    expect(screen.getByText(expectedNotice, { exact: false })).toBeInTheDocument();
+    expect(mocks.saveEducation).not.toHaveBeenCalled();
+    expect(mocks.generatePackage).not.toHaveBeenCalled();
   });
 
   it('explicit source selection sends only canonical retained participants, pinned bearer and separate dates',async()=>{
