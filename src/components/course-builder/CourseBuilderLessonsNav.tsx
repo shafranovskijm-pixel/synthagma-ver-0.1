@@ -30,6 +30,7 @@ const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
   { type: "text", icon: FileText, label: "Текст", description: "Форматированный текст с видео, аудио и изображениями. Прикрепляйте файлы для скачивания.", iconClass: "text-primary bg-primary/10" },
   { type: "video", icon: Video, label: "Видео", description: "Видеоурок с плеером Kinescope или прямой ссылкой. Защита от скачивания и адаптивное качество.", iconClass: "text-rose-500 bg-rose-500/10" },
   { type: "test", icon: CheckSquare, label: "Тест", description: "Проверка знаний с вариантами ответов, изображениями и пояснениями. Настраиваемый проходной балл.", iconClass: "text-sigma-orange bg-sigma-orange/10" },
+  { type: "practice", icon: lessonIcons.practice, label: "Практика", description: "Практическое занятие с текстом, изображениями и файлами. Добавляйте материалы в редакторе урока.", iconClass: lessonColors.practice },
   { type: "slider", icon: Presentation, label: "Слайды", description: "Презентация с переключаемыми слайдами. Удобно для пошагового объяснения материала.", iconClass: "text-amber-500 bg-amber-500/10" },
   { type: "audio", icon: Headphones, label: "Аудио", description: "Аудиоурок: подкаст, лекция или интервью. Поддержка фоновой обложки и описания.", iconClass: "text-green-500 bg-green-500/10" },
   { type: "feedback", icon: MessageSquare, label: "Обратная связь", description: "Студент отправляет текстовый ответ — он попадает в чат организации. Урок засчитывается автоматически.", iconClass: "text-blue-500 bg-blue-500/10" },
@@ -159,7 +160,7 @@ function AddLessonButton({
         </Button>
       )}
 
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Выберите тип занятия</DialogTitle>
           <DialogDescription>
