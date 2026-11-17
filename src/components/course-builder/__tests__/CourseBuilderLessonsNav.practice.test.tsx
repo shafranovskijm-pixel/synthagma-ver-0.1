@@ -42,30 +42,30 @@ describe("practice authoring through the lesson type dialog", () => {
     [1, "module-b"],
   ] as const)("adds practice to the selected module (%s)", (buttonIndex, moduleId) => {
     const { lessons, modules, before, onAddLesson, onLessonClick } = show();
-    fireEvent.click(screen.getAllByRole("button", { name: "Занятие", exact: true })[buttonIndex]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Занятие" })[buttonIndex]);
     const dialog = screen.getByRole("dialog", { name: "Выберите тип занятия" });
-    const practice = within(dialog).getByRole("button", { name: "Практика", exact: true });
+    const practice = within(dialog).getByRole("button", { name: "Практика" });
     expect(practice).toBeEnabled();
     fireEvent.click(practice);
     expect(within(dialog).getByText("Практическое занятие с текстом, изображениями и файлами. Добавляйте материалы в редакторе урока.")).toBeInTheDocument();
     expect(onAddLesson).not.toHaveBeenCalled();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Далее", exact: true }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Далее" }));
 
     expect(onAddLesson).toHaveBeenCalledExactlyOnceWith("practice", moduleId);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onLessonClick).not.toHaveBeenCalled();
     expect(JSON.stringify({ lessons, modules })).toBe(before);
-    expect(screen.getByRole("button", { name: "Сохранённая теория", exact: true })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Сохранённая практика", exact: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Сохранённая теория" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Сохранённая практика" })).toBeInTheDocument();
   });
 
   it("cancels a practice selection without creating or changing any lesson", () => {
     const { lessons, modules, before, onAddLesson, onLessonClick } = show();
-    fireEvent.click(screen.getAllByRole("button", { name: "Занятие", exact: true })[1]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Занятие" })[1]);
     const dialog = screen.getByRole("dialog", { name: "Выберите тип занятия" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Практика", exact: true }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Отмена", exact: true }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Практика" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Отмена" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onAddLesson).not.toHaveBeenCalled();
@@ -75,8 +75,8 @@ describe("practice authoring through the lesson type dialog", () => {
 
   it("keeps the existing default text lesson choice and module argument", () => {
     const { lessons, modules, before, onAddLesson } = show();
-    fireEvent.click(screen.getAllByRole("button", { name: "Занятие", exact: true })[1]);
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Далее", exact: true }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Занятие" })[1]);
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Далее" }));
 
     expect(onAddLesson).toHaveBeenCalledExactlyOnceWith("text", "module-b");
     expect(JSON.stringify({ lessons, modules })).toBe(before);
