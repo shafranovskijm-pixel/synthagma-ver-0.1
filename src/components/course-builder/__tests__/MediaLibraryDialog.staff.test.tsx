@@ -4,7 +4,7 @@ import { MediaLibraryDialog } from "../MediaLibraryDialog";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), profile: vi.fn(), memberships: vi.fn(),
-  courses: vi.fn(), lessons: vi.fn(), list: vi.fn(), invoke: vi.fn(), remove: vi.fn(),
+  courses: vi.fn(), usage: vi.fn(), list: vi.fn(), invoke: vi.fn(), remove: vi.fn(),
   success: vi.fn(), error: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
@@ -31,9 +31,12 @@ beforeEach(() => {
   mocks.profile.mockResolvedValue({ data: { organization_id: null }, error: null });
   mocks.memberships.mockResolvedValue({ data: [{ organization_id: "staff-school", role: "admin", sections_access: [], expires_at: null }], error: null });
   mocks.courses.mockImplementation(async (org: string) => ({ data: [{ id: `course-${org}`, title: `Course ${org}` }], error: null }));
-  mocks.lessons.mockResolvedValue({ data: [], error: null });
+  mocks.usage.mockImplementation(async (args: { p_file_names: string[] }) => ({
+    data: args.p_file_names.map(file_name => ({ file_name, is_used: false, lesson_title: null })), error: null,
+  }));
   mocks.invoke.mockResolvedValue({ data: { configured: false }, error: null });
-  mocks.rpc.mockResolvedValue({ data: false, error: null });
+  mocks.rpc.mockImplementation((name: string, args: unknown) => name === "get_media_library_usage_metadata"
+    ? mocks.usage(args) : Promise.resolve({ data: false, error: null }));
   mocks.list.mockImplementation(async (bucket: string, prefix: string) => ({
     data: bucket === "course-files" && prefix.startsWith("course-") ? [videoFile()] : [], error: null,
   }));
@@ -43,9 +46,9 @@ beforeEach(() => {
       eq: (_column: string, value: string) => table === "courses" ? mocks.courses(value) : query,
       maybeSingle: () => mocks.profile(),
       or: () => mocks.memberships(),
-      in: () => mocks.lessons(),
     };
-    if (!["profiles", "org_staff", "courses", "lessons"].includes(table)) throw new Error(`Unexpected table ${table}`);
+    // Any browser-side lesson-content request is a regression, including '*'.
+    if (!["profiles", "org_staff", "courses"].includes(table)) throw new Error(`Unexpected table ${table}`);
     return query;
   });
 });
@@ -59,6 +62,8 @@ describe("MediaLibraryDialog staff workspace", () => {
 
     expect(mocks.courses).toHaveBeenCalledWith("staff-school");
     expect(mocks.list).toHaveBeenCalledWith("course-files", "course-staff-school");
+    expect(mocks.usage).toHaveBeenCalledWith({ p_organization_id: "staff-school", p_file_names: ["staff-lesson.mp4"] });
+    expect(mocks.from).not.toHaveBeenCalledWith("lessons");
     expect(defaultProps.onSelect).toHaveBeenCalledWith(expect.stringContaining("/course-files/course-staff-school/staff-lesson.mp4"));
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
@@ -141,6 +146,89 @@ describe("MediaLibraryDialog staff workspace", () => {
     await screen.findByText("staff-lesson.mp4");
     await act(async () => { oldRead.resolve({ data: null, error: { code: "old-failure" } }); });
 
+    expect(screen.getByText("staff-lesson.mp4")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps usage labels and the existing lesson warning using metadata only", async () => {
+    mocks.usage.mockResolvedValue({ data: [
+      { file_name: "staff-lesson.mp4", is_used: true, lesson_title: "Existing lesson" },
+    ], error: null });
+    render(<MediaLibraryDialog {...defaultProps} organizationId="staff-school" />);
+    fireEvent.click(await screen.findByText("staff-lesson.mp4"));
+    expect(screen.getByText("Existing lesson")).toBeInTheDocument();
+    expect(screen.getByText("Используется", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("1 не используется")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Удалить файл" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Этот файл используется в уроке «Existing lesson»");
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalledWith("lessons");
+  });
+
+  it("reports a usage metadata error and retries without marking files unused", async () => {
+    mocks.usage.mockResolvedValueOnce({ data: null, error: { code: "42501" } });
+    render(<MediaLibraryDialog {...defaultProps} organizationId="staff-school" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("не удалось проверить их использование");
+    expect(screen.queryByText("Не используется", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("В хранилище пока нет файлов")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Выбрать$/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить загрузку" }));
+    expect(await screen.findByText("staff-lesson.mp4")).toBeInTheDocument();
+    expect(mocks.from).not.toHaveBeenCalledWith("lessons");
+  });
+
+  it.each([
+    ["missing row", []],
+    ["wrong filename", [{ file_name: "different.mp4", is_used: false, lesson_title: null }]],
+    ["invalid usage flag", [{ file_name: "staff-lesson.mp4", is_used: null, lesson_title: null }]],
+  ])("rejects incomplete or invalid usage metadata: %s", async (_name, data) => {
+    mocks.usage.mockResolvedValue({ data, error: null });
+    render(<MediaLibraryDialog {...defaultProps} organizationId="staff-school" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("не удалось проверить их использование");
+    expect(screen.queryByText("Не используется", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Выбрать$/ })).toBeDisabled();
+    expect(mocks.from).not.toHaveBeenCalledWith("lessons");
+  });
+
+  it("batches every unique filename without limiting the accessible files", async () => {
+    mocks.list.mockImplementation(async (bucket: string, prefix: string) => ({
+      data: bucket === "course-files" && prefix.startsWith("course-")
+        ? Array.from({ length: 101 }, (_, i) => videoFile(`file-${i}.mp4`)) : [], error: null,
+    }));
+    render(<MediaLibraryDialog {...defaultProps} organizationId="staff-school" />);
+    expect(await screen.findByText("file-100.mp4")).toBeInTheDocument();
+    expect(mocks.usage).toHaveBeenCalledTimes(2);
+    expect(mocks.usage.mock.calls.map(([args]) => args.p_file_names.length)).toEqual([100, 1]);
+    expect(mocks.usage.mock.calls.flatMap(([args]) => args.p_file_names)).toEqual(
+      Array.from({ length: 101 }, (_, i) => `file-${i}.mp4`),
+    );
+    expect(screen.getByText("101 не используется")).toBeInTheDocument();
+  });
+
+  it("ignores late usage metadata from a previous organization", async () => {
+    const oldUsage = deferred<{ data: { file_name: string; is_used: boolean; lesson_title: string }[]; error: null }>();
+    mocks.usage.mockReturnValueOnce(oldUsage.promise);
+    const { rerender } = render(<MediaLibraryDialog {...defaultProps} organizationId="old-school" />);
+    await waitFor(() => expect(mocks.usage).toHaveBeenCalledTimes(1));
+    rerender(<MediaLibraryDialog {...defaultProps} organizationId="new-school" />);
+    fireEvent.click(await screen.findByText("staff-lesson.mp4"));
+    await act(async () => { oldUsage.resolve({ data: [
+      { file_name: "staff-lesson.mp4", is_used: true, lesson_title: "Old school lesson" },
+    ], error: null }); });
+    expect(screen.queryByText("Old school lesson")).not.toBeInTheDocument();
+    expect(screen.getByText("Не используется в уроках")).toBeInTheDocument();
+    expect(mocks.usage).toHaveBeenLastCalledWith({ p_organization_id: "new-school", p_file_names: ["staff-lesson.mp4"] });
+  });
+
+  it("ignores a late usage failure after closing and reopening", async () => {
+    const oldUsage = deferred<{ data: null; error: { code: string } }>();
+    mocks.usage.mockReturnValueOnce(oldUsage.promise);
+    const { rerender } = render(<MediaLibraryDialog {...defaultProps} organizationId="staff-school" />);
+    await waitFor(() => expect(mocks.usage).toHaveBeenCalledTimes(1));
+    rerender(<MediaLibraryDialog {...defaultProps} open={false} organizationId="staff-school" />);
+    rerender(<MediaLibraryDialog {...defaultProps} open organizationId="staff-school" />);
+    await screen.findByText("staff-lesson.mp4");
+    await act(async () => { oldUsage.resolve({ data: null, error: { code: "old-failure" } }); });
     expect(screen.getByText("staff-lesson.mp4")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
