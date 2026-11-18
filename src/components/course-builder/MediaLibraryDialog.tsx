@@ -332,22 +332,33 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
         }
       } catch { incomplete = true; }
 
-      // 3. Lightweight enrichment: mark files used in lessons (org-scoped)
+      // 3. Match file references on the server. Lesson bodies can contain large
+      // inline slides; only usage metadata may cross the network for this list.
       if (allFiles.length > 0 && courseIds.length > 0) {
-        const { data: lessons, error: lessonsError } = await supabase
-          .from("lessons").select("title, content, course_id")
-          .in("course_id", courseIds);
-        if (!isCurrent()) return;
-        if (lessonsError) throw new Error("Файлы найдены, но не удалось проверить их использование в уроках. Повторите загрузку.");
-        const lessonsArr = lessons || [];
-        for (const file of allFiles) {
-          const match = lessonsArr.find(l => l.content && file.url && (l.content as string).includes(file.name));
-          if (match) {
-            file.isUsed = true;
-            file.lessonTitle = match.title;
-          } else {
-            file.isUsed = false;
+        const names = [...new Set(allFiles.map(file => file.name))];
+        const usage = new Map<string, { is_used: boolean; lesson_title: string | null }>();
+        const usageError = () => new Error("Файлы найдены, но не удалось проверить их использование в уроках. Повторите загрузку.");
+        for (let offset = 0; offset < names.length; offset += 100) {
+          if (!isCurrent()) return;
+          const batch = names.slice(offset, offset + 100);
+          const { data, error } = await supabase.rpc("get_media_library_usage_metadata", {
+            p_organization_id: orgId,
+            p_file_names: batch,
+          });
+          if (!isCurrent()) return;
+          if (error || !Array.isArray(data) || data.length !== batch.length) throw usageError();
+          const expected = new Set(batch);
+          for (const row of data) {
+            if (!row || !expected.delete(row.file_name) || typeof row.is_used !== "boolean"
+              || (row.lesson_title !== null && typeof row.lesson_title !== "string")) throw usageError();
+            usage.set(row.file_name, row);
           }
+          if (expected.size > 0) throw usageError();
+        }
+        for (const file of allFiles) {
+          const match = usage.get(file.name)!;
+          file.isUsed = match.is_used;
+          file.lessonTitle = match.lesson_title || undefined;
         }
       }
       if (isCurrent()) {

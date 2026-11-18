@@ -25294,6 +25294,20 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_media_library_usage_metadata: {
+        Args: { p_organization_id: string; p_file_names: string[] }
+        Returns: { file_name: string; is_used: boolean; lesson_title: string | null }[]
+      }
+      list_slider_lesson_metadata: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          lesson_id: string
+          lesson_title: string
+          course_title: string
+          slides_count: number
+          created_at: string
+        }[]
+      }
       get_user_storage_files: {
         Args: { bucket_name: string }
         Returns: {
