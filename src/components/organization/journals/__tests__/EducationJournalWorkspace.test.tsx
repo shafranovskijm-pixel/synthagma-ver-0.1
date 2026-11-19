@@ -5,6 +5,7 @@ import { EducationJournalWorkspace } from '../EducationJournalWorkspace';
 import { StudentJournalLinks } from '../../student-detail/StudentJournalLinks';
 import { StudentEducationJournals } from '@/components/student/StudentEducationJournals';
 import { ids, page, scope, summary } from '@/lib/educationJournalWorkspace/__tests__/fixtures';
+import { journalLabels, journalTypes } from '@/lib/educationJournalWorkspace/contract';
 const mock = vi.hoisted(() => ({ actor: '', can: vi.fn(), read: vi.fn(), model: {} as any }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: mock.actor }, loading: false }) }));
 vi.mock('@/hooks/useStaffPermissions', () => ({ useStaffPermissions: () => ({ loading: false, error: null, organizationId: 'org', orgRole: 'teacher', adminRole: null, isOrgOwner: false, can: mock.can }) }));
@@ -12,6 +13,7 @@ vi.mock('@/hooks/useEducationJournalWorkspace', () => ({ useEducationJournalWork
 vi.mock('@/components/organization/documents/AdmissionDocumentSettingsPanel', () => ({ AdmissionDocumentSettingsPanel: (props: any) => <div data-testid="admission-settings">{props.scope.kind}</div>, StudentAdmissionAutomationCard: () => <div data-testid="admission-settings">enrollment</div> }));
 function Location() { const route = useLocation(); return <output data-testid="location">{route.pathname}{route.search}</output>; }
 const mount = (child: React.ReactNode, url = '/organization') => render(<MemoryRouter initialEntries={[url]}>{child}<Location /></MemoryRouter>);
+const allJournals = () => journalTypes.map((journal_type, index) => ({ ...summary().journals[0], journal_type, title: journalLabels[journal_type], record_count: index + 1, source_label: `Источник ${journal_type}` }));
 beforeEach(() => {
   mock.actor = ids.actor; mock.can.mockReset().mockReturnValue(true); mock.read.mockClear();
   mock.model = { summary: summary(), page: null, loading: false, error: null, exportBusy: false, exportError: null, exportExtract: vi.fn(), refresh: vi.fn(), loadMore: vi.fn() };
@@ -34,9 +36,9 @@ describe('journal UI and cross-routes', () => {
   it('keeps an unknown source distinct from zero and disables export/open', () => {
     mock.model.summary.journals[0] = { ...mock.model.summary.journals[0], state: 'unavailable', record_count: null, exportable: false, reason: 'Критерии не подтверждены' };
     mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="activity" origin={{ kind: 'student', studentId: ids.student }} />);
-    expect(screen.getByRole('button', { name: 'Открыть записи' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Открыть записи' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Скачать выписку HTML' })).toBeDisabled();
-    expect(screen.getByText('—')).toBeInTheDocument(); expect(screen.getAllByText('Критерии не подтверждены')).toHaveLength(2);
+    expect(screen.getByRole('option')).toHaveTextContent('недоступно'); expect(screen.getByText('Критерии не подтверждены')).toBeInTheDocument();
   });
   it('shows partial-source caveats even when known rows are available', () => {
     mock.model.summary.journals[0].reason = 'Для части обучений критерии не подтверждены';
@@ -107,5 +109,47 @@ describe('journal UI and cross-routes', () => {
     expect(mock.read).not.toHaveBeenCalled(); view.unmount(); mock.actor = ids.student;
     mount(<StudentEducationJournals organizationId={ids.org} userId={ids.student} />, '/student?ownJournal=wrong');
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось определить выбранный журнал'); expect(mock.read).not.toHaveBeenCalled();
+  });
+  it('places selected records after one compact selector while retaining nine cards in the overview', () => {
+    mock.model.summary.journals = allJournals(); mock.model.page = page();
+    const view = mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="activity" origin={{ kind: 'student', studentId: ids.student }} />);
+    expect(screen.queryByTestId('journal-overview')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('option')).toHaveLength(9); expect(screen.getByLabelText('Журнал')).toHaveValue('activity');
+    expect(screen.queryByRole('button', { name: 'Открыть записи' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('journal-selector').compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId('journal-scope-banner')).toHaveTextContent('Новые завершения уроков сохраняются в хронологии; прежние отметки показывают текущее состояние');
+    view.unmount(); mock.model.page = null;
+    mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType={null} origin={{ kind: 'student', studentId: ids.student }} />);
+    expect(screen.getByTestId('journal-overview')).toBeInTheDocument(); expect(screen.getAllByRole('button', { name: 'Открыть записи' })).toHaveLength(9);
+    expect(screen.queryByLabelText('Журнал')).not.toBeInTheDocument();
+  });
+  it('switches the compact staff journal without losing the subject, enrollment, group or return filters', () => {
+    mock.model.summary.journals = allJournals();
+    mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="activity" origin={{ kind: 'student', studentId: ids.student, enrollmentId: ids.enrollment, groupId: ids.group, department: 'Цех', participantSearch: 'Иванов' }} />);
+    fireEvent.change(screen.getByLabelText('Журнал'), { target: { value: 'conducted_sessions' } });
+    const route = new URLSearchParams(screen.getByTestId('location').textContent!.split('?')[1]);
+    expect(route.get('journalType')).toBe('conducted_sessions'); expect(route.get('journalStudentId')).toBe(ids.student); expect(route.get('journalEnrollmentId')).toBe(ids.enrollment); expect(route.get('groupId')).toBe(ids.group);
+    expect(route.get('journalReturnStudentId')).toBe(ids.student); expect(route.get('journalReturnDepartment')).toBe('Цех'); expect(route.get('journalReturnSearch')).toBe('Иванов');
+  });
+  it('keeps an unavailable selected source and its explanation visible without inventing an empty table', () => {
+    mock.model.summary.journals = allJournals();
+    mock.model.summary.journals[2] = { ...mock.model.summary.journals[2], state: 'unavailable', record_count: null, exportable: false, reason: 'Критерии итогового контроля не подтверждены. Попытки доступны в текущем контроле.' };
+    mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="final_tests" origin={{ kind: 'student', studentId: ids.student }} />);
+    expect(screen.getByText('Источник final_tests')).toBeInTheDocument(); expect(screen.getByText('Критерии итогового контроля не подтверждены. Попытки доступны в текущем контроле.')).toHaveAttribute('role', 'status');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Скачать выписку HTML' })).toBeDisabled();
+    expect(screen.getByRole('option', { name: 'Итоговые тесты · недоступно' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Журнал'), { target: { value: 'current_control' } });
+    expect(screen.getByTestId('location')).toHaveTextContent('journalType=current_control'); expect(screen.getByTestId('location')).toHaveTextContent(`journalStudentId=${ids.student}`);
+  });
+  it('switches a selected own journal within the learner cabinet and returns to its overview', () => {
+    mock.actor = ids.student; mock.can.mockReturnValue(false); mock.model.summary.journals = allJournals();
+    mount(<StudentEducationJournals organizationId={ids.org} userId={ids.student} />, '/student?tab=profile&section=documents&ownJournal=activity');
+    expect(screen.queryByTestId('journal-overview')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Журнал'), { target: { value: 'current_control' } });
+    expect(screen.getByTestId('location').textContent).toBe('/student?tab=profile&section=documents&ownJournal=current_control');
+    expect(mock.read.mock.calls.at(-1)?.[1]).toEqual({ kind: 'student', student_user_id: ids.student, enrollment_id: null, group_id: null });
+    expect(mock.read.mock.calls.at(-1)?.[2]).toBe('current_control'); expect(screen.queryByTestId('admission-settings')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'К моим журналам' }));
+    expect(screen.getByTestId('location').textContent).toBe('/student?tab=profile&section=documents'); expect(screen.getByTestId('journal-overview')).toBeInTheDocument();
   });
 });
