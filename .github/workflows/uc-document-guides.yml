@@ -12,6 +12,12 @@ on:
       - src/components/organization/__tests__/GroupFolderTab.*
       - src/components/organization/group-folder/__tests__/GroupDocumentsFolder.package.test.tsx
       - src/lib/groups/nextActions*
+      - src/lib/groups/batchedReads.ts
+      - src/lib/groups/folderCounts.ts
+      - src/lib/groups/batchedReads.test.ts
+      - src/lib/groups/__tests__/folderCounts.test.ts
+      - src/hooks/useGroupFolderCounts.ts
+      - src/hooks/__tests__/useGroupFolderCounts.test.tsx
       - public/guides/**
       - .github/workflows/uc-document-guides.yml
 permissions:
@@ -38,4 +44,6 @@ jobs:
         run: node --input-type=module -e "import{readFileSync}from'node:fs';for(const n of['uc-checklist','uc-orders','uc-issuance']){if(readFileSync('public/guides/'+n+'.pdf').subarray(0,5).toString()!=='%PDF-')throw Error(n)}"
       - name: Group next actions and existing document prerequisites
         run: node node_modules/vitest/vitest.mjs run src/lib/groups/nextActions.test.ts src/components/organization/__tests__/GroupFolderTab.departmentFilter.test.tsx src/components/organization/__tests__/GroupFolderTab.scope.test.tsx src/components/organization/__tests__/GroupFolderTab.workflow.test.ts src/components/organization/group-folder/__tests__/GroupDocumentsFolder.package.test.tsx src/lib/groups/__tests__/releaseReadiness.test.ts --maxWorkers=1
+      - name: Large groups load completely with bounded requests
+        run: node node_modules/vitest/vitest.mjs run src/components/organization/__tests__/GroupFolderTab.membersLoading.test.tsx src/lib/groups/batchedReads.test.ts src/lib/groups/__tests__/folderCounts.test.ts src/hooks/__tests__/useGroupFolderCounts.test.tsx --maxWorkers=1
       - run: npm run build

@@ -38,6 +38,7 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
 import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddStudentsToGroupDialog";
 import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
+import { fetchRowsByIdBatches } from "@/lib/groups/batchedReads";
 import { useGroupProgramFacts } from "@/hooks/useProgramFacts";
 import { GroupProgramFactsPanel } from "@/components/organization/programs/GroupProgramFactsPanel";
 import { GroupEducationFactsPanel } from '@/components/organization/groups/GroupEducationFactsPanel';
@@ -158,6 +159,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   };
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadDiagnostic, setLoadDiagnostic] = useState<{ stage: string; code: string; category: string } | null>(null);
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -269,9 +271,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
   useEffect(() => {
     let cancelled = false;
+    let loadStage = "group";
     (async () => {
       setLoading(true);
       setLoadError(null);
+      setLoadDiagnostic(null);
       setGroup(null);
       setOrgInfo(null);
       setCourseInfo(null);
@@ -291,6 +295,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         if (!groupData) return;
         setGroup(groupData as any as GroupData | null);
 
+        loadStage = "organization";
         const { data: orgRow, error: organizationError } = await supabase
           .from("organizations")
           .select("id, name, inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
@@ -302,6 +307,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         // Курс группы: явная привязка, иначе — общий курс по зачислениям учеников
         const linkedCourseId = (groupData as any)?.course_id as string | null;
 
+        loadStage = "participants";
         const groupProfiles = await fetchEffectiveGroupProfiles<{
           user_id: string; full_name: string | null; email: string | null;
           login: string | null; phone: string | null; archived_at: string | null; department: string | null;
@@ -320,19 +326,28 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
         let resolvedCourseId: string | null = linkedCourseId;
         if (!resolvedCourseId && userIds.length > 0) {
-          const { data: enrollments } = await (supabase as any)
-            .from("enrollments")
-            .select("course_id, user_id")
-            .in("user_id", userIds);
-          resolvedCourseId = resolveUniqueCommonCourseId((enrollments as any[]) || [], userIds);
+          loadStage = "course-links";
+          const enrollments = await fetchRowsByIdBatches<{ course_id: string | null; user_id: string }>(
+            userIds, (batch, { from, to }) => (supabase as any)
+              .from("enrollments")
+              .select("course_id, user_id")
+              .in("user_id", batch)
+              .order("id")
+              .range(from, to),
+          );
+          if (cancelled) return;
+          resolvedCourseId = resolveUniqueCommonCourseId(enrollments, userIds);
         }
         if (resolvedCourseId) {
-          const { data: courseRow } = await supabase
+          loadStage = "course";
+          const { data: courseRow, error: courseError } = await supabase
             .from("courses")
             .select("id, title, duration, frdo_duration_hours, training_form")
             .eq("id", resolvedCourseId)
             .eq("organization_id", organizationId)
             .maybeSingle();
+          if (cancelled) return;
+          if (courseError) throw courseError;
           if (!courseRow) {
             resolvedCourseId = null;
             if (!cancelled) setCourseInfo(null);
@@ -340,15 +355,29 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             setCourseInfo(courseRow as any);
           }
           if (resolvedCourseId && userIds.length > 0) {
-            const { data: enrollmentRows, error: enrollmentError } = await (supabase as any)
-              .from("enrollments")
-              .select("user_id, status, progress, completed_at")
-              .eq("course_id", resolvedCourseId)
-              .in("user_id", userIds);
-            if (!cancelled) {
-              setCourseEnrollmentEvidenceError(Boolean(enrollmentError));
-              setCourseEnrollments(enrollmentError ? [] : (enrollmentRows || []) as EnrollmentEvidence[]);
+            // A failed learning-status read stays unknown, as before; it cannot
+            // certify completion or prevent the confirmed roster from loading.
+            try {
+              const enrollmentRows = await fetchRowsByIdBatches<EnrollmentEvidence>(
+                userIds, (batch, { from, to }) => (supabase as any)
+                  .from("enrollments")
+                  .select("user_id, status, progress, completed_at")
+                  .eq("course_id", resolvedCourseId)
+                  .in("user_id", batch)
+                  .order("id")
+                  .range(from, to),
+              );
+              if (!cancelled) {
+                setCourseEnrollmentEvidenceError(false);
+                setCourseEnrollments(enrollmentRows);
+              }
+            } catch {
+              if (!cancelled) {
+                setCourseEnrollmentEvidenceError(true);
+                setCourseEnrollments([]);
+              }
             }
+            if (cancelled) return;
           }
         } else if (!cancelled) {
           setCourseInfo(null);
@@ -359,45 +388,50 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           return;
         }
 
-        const [docsRes, contractsRes, attemptsRes, frdoRes] = await Promise.all([
-          (supabase as any)
+        loadStage = "participant-details";
+        const readDetails = async <T,>(stage: string, read: () => Promise<T>): Promise<T> => {
+          try { return await read(); }
+          catch (cause) { throw { groupLoadStage: stage, cause }; }
+        };
+        const [docsRows, contractsRows, attemptsRows, frdoRows] = await Promise.all([
+          readDetails("identity-documents", () => fetchRowsByIdBatches<any>(userIds, (batch, { from, to }) => (supabase as any)
             .from("student_identity_documents")
             .select("user_id, type")
-            .in("user_id", userIds),
-          (supabase as any)
+            .in("user_id", batch).order("id").range(from, to))),
+          readDetails("contracts", () => fetchRowsByIdBatches<any>(userIds, (batch, { from, to }) => (supabase as any)
             .from("org_contracts")
             .select("id, student_user_id")
             .eq("organization_id", organizationId)
-            .in("student_user_id", userIds),
-          (supabase as any)
+            .in("student_user_id", batch).order("id").range(from, to))),
+          readDetails("test-attempts", () => fetchRowsByIdBatches<any>(userIds, (batch, { from, to }) => (supabase as any)
             .from("test_attempts")
             .select("id, user_id")
-            .in("user_id", userIds),
-          (supabase as any)
+            .in("user_id", batch).order("id").range(from, to))),
+          readDetails("frdo-data", () => fetchRowsByIdBatches<any>(userIds, (batch, { from, to }) => (supabase as any)
             .from("student_frdo_data")
             .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, citizenship_code, education_level, passport_series, passport_number")
             .eq("organization_id", organizationId)
-            .in("user_id", userIds),
+            .in("user_id", batch).order("id").range(from, to))),
         ]);
-
+        if (cancelled) return;
 
         const docsByUser = new Map<string, { passport: number; snils: number }>();
-        for (const row of (docsRes.data as any[]) || []) {
+        for (const row of docsRows) {
           const cur = docsByUser.get(row.user_id) || { passport: 0, snils: 0 };
           if (row.type === "passport") cur.passport += 1;
           if (row.type === "snils") cur.snils += 1;
           docsByUser.set(row.user_id, cur);
         }
         const contractsByUser = new Map<string, number>();
-        for (const row of (contractsRes.data as any[]) || []) {
+        for (const row of contractsRows) {
           contractsByUser.set(row.student_user_id, (contractsByUser.get(row.student_user_id) || 0) + 1);
         }
         const attemptsByUser = new Map<string, number>();
-        for (const row of (attemptsRes.data as any[]) || []) {
+        for (const row of attemptsRows) {
           attemptsByUser.set(row.user_id, (attemptsByUser.get(row.user_id) || 0) + 1);
         }
         const frdoByUser = new Map<string, any>();
-        for (const row of (frdoRes.data as any[]) || []) {
+        for (const row of frdoRows) {
           frdoByUser.set(row.user_id, row);
         }
 
@@ -414,8 +448,20 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           test_attempts_count: attemptsByUser.get(p.user_id) || 0,
         }));
         if (!cancelled) setStudents(rows);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          const failed = error as { groupLoadStage?: string; cause?: unknown; code?: unknown } | null;
+          const rawCode = (failed?.cause ?? error) as { code?: unknown } | null;
+          const code = typeof rawCode?.code === "string" && /^[A-Z0-9_]{1,24}$/.test(rawCode.code)
+            ? rawCode.code : "UNKNOWN";
+          const cause = failed?.cause ?? error;
+          const category = cause instanceof TypeError ? "TypeError"
+            : cause instanceof Error ? "Error" : "DatabaseError";
+          const diagnostic = { stage: failed?.groupLoadStage ?? loadStage, code, category };
+          // Only a fixed stage and technical code: never log learner data, query
+          // URLs, tokens or server messages containing private record values.
+          console.error("[GroupFolderTab.load]", diagnostic);
+          setLoadDiagnostic(diagnostic);
           setLoadError("Не удалось загрузить данные группы. Проверьте соединение и повторите попытку.");
         }
       } finally {
@@ -425,13 +471,21 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     return () => { cancelled = true; };
   }, [organizationId, groupId, reloadKey]);
 
-  // Счётчики папок читаются из тех же таблиц, что и содержимое папок.
-  const { counts, refresh: refreshCounts } = useGroupFolderCounts(organizationId, groupId);
-
-  // Возврат «К папкам» → пересчитать счётчики (после генерации/удаления внутри папки).
+  // Start auxiliary counts only after the confirmed group roster loaded.
+  // The hook refreshes its own initial scope; returning from a folder is the
+  // only extra refresh, so opening a group cannot launch three roster reads.
+  const countsEnabled = !loading && !loadError && group?.id === groupId;
+  const { counts, loading: countsLoading, error: countsError, refresh: refreshCounts } = useGroupFolderCounts(
+    countsEnabled ? organizationId : null, countsEnabled ? groupId : null,
+  );
+  const countsUnavailable = Boolean(countsLoading || countsError);
+  const previousFolderRef = useRef({ organizationId, groupId, folder: openFolder });
   useEffect(() => {
-    if (!openFolder) refreshCounts();
-  }, [openFolder, refreshCounts]);
+    const previous = previousFolderRef.current;
+    previousFolderRef.current = { organizationId, groupId, folder: openFolder };
+    if (countsEnabled && previous.organizationId === organizationId && previous.groupId === groupId
+        && previous.folder && !openFolder) refreshCounts();
+  }, [organizationId, groupId, openFolder, countsEnabled, refreshCounts]);
 
   // Only read the programme after the group was loaded under this tenant.
   const groupProgram = useGroupProgramFacts(organizationId, !loading && group?.id === groupId ? groupId : null, null, !permissionsLoading && can("documents.write"));
@@ -555,7 +609,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     enrollments: courseEnrollments,
     evidenceError: courseEnrollmentEvidenceError,
   });
-  const documentsReadiness = resolveDocumentsReadiness({
+  const documentsReadiness = countsUnavailable
+    ? { status: "unknown" as const, detail: countsError ? "Не удалось подтвердить документы группы" : "Проверяем документы группы" }
+    : resolveDocumentsReadiness({
     missingFieldCount: missingDocFields.length,
     documentCount: Number(counts.docs) || 0,
     contractCount: Number(counts.contracts) || 0,
@@ -607,7 +663,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         <Button variant="ghost" size="sm" onClick={() => backToStudentsGroups()} className="gap-1.5 rounded-xl">
           <ArrowLeft className="w-4 h-4" /> К ученикам
         </Button>
-        <div role="alert" className="rounded-xl border border-destructive/30 p-4">
+        <div role="alert" data-load-stage={loadDiagnostic?.stage} data-load-code={loadDiagnostic?.code} data-load-category={loadDiagnostic?.category} className="rounded-xl border border-destructive/30 p-4">
           <p>{loadError}</p>
           <Button variant="outline" className="mt-3 gap-1.5" onClick={() => setReloadKey(key => key + 1)}>
             <RefreshCw className="h-4 w-4" /> Повторить загрузку
@@ -627,12 +683,12 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     );
   }
 
-  const folderCards: Array<{ key: FolderKey; count: number }> = [
-    { key: "contracts", count: counts.contracts },
-    { key: "passports", count: counts.passports },
-    { key: "snils", count: counts.snils },
-    { key: "exams", count: counts.exams },
-    { key: "docs", count: counts.docs },
+  const folderCards: Array<{ key: FolderKey; count: number | string }> = [
+    { key: "contracts", count: countsUnavailable ? "—" : counts.contracts },
+    { key: "passports", count: countsUnavailable ? "—" : counts.passports },
+    { key: "snils", count: countsUnavailable ? "—" : counts.snils },
+    { key: "exams", count: countsUnavailable ? "—" : counts.exams },
+    { key: "docs", count: countsUnavailable ? "—" : counts.docs },
   ];
   const currentFolderTitle = openFolder ? FOLDER_META[openFolder].title : "Все папки";
   const currentFolderCount = openFolder
@@ -808,6 +864,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </div>
         </div>
       </Card>
+
+      {countsError && <div role="status" className="rounded-xl border border-border p-4">
+        <p className="text-sm text-muted-foreground">Не удалось подтвердить счётчики папок. Данные группы сохранены.</p>
+        <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => refreshCounts()}>
+          <RefreshCw className="h-4 w-4" /> Повторить проверку папок
+        </Button>
+      </div>}
 
       {nextActions.length > 0 && <Card role="region" className="rounded-2xl border-border p-4" aria-labelledby="group-next-actions-title">
         <h2 id="group-next-actions-title" className="font-semibold">Что сделать дальше</h2>
@@ -1263,7 +1326,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   );
 }
 
-function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: FolderKey; count: number }>; viewMode: ViewMode; onOpen: (k: FolderKey) => void }) {
+function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: FolderKey; count: number | string }>; viewMode: ViewMode; onOpen: (k: FolderKey) => void }) {
   if (viewMode === "grid") {
     return (
       <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-2">

@@ -9,6 +9,8 @@
  */
 
 import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
+import { fetchAllRows } from "@/utils/retryFetch";
+import { fetchRowsByIdBatches } from "./batchedReads";
 
 export interface GroupFolderCounts {
   contracts: number;
@@ -57,43 +59,36 @@ export async function fetchGroupFolderCounts(
   const profiles = await fetchEffectiveGroupProfiles<{ user_id: string }>(client, organizationId, groupId, { activeOnly: true, select: "user_id" });
   const userIds: string[] = ((profiles as any[]) || []).map(p => p.user_id).filter(Boolean);
 
-  let contractsQuery = client
-    .from("org_contracts")
-    .select("id")
-    .eq("organization_id", organizationId);
-  contractsQuery = userIds.length > 0
-    ? contractsQuery.or(`student_group_id.eq.${groupId},student_user_id.in.(${userIds.join(",")})`)
-    : contractsQuery.eq("student_group_id", groupId);
-
-  const docsQuery = client
-    .from("group_documents")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("group_id", groupId)
-    .eq("status", "active");
-
-  const identityQuery = userIds.length > 0
-    ? client.from("student_identity_documents").select("user_id, type").in("user_id", userIds)
-    : Promise.resolve({ data: [] });
-
-  const attemptsQuery = userIds.length > 0
-    ? client.from("test_attempts").select("id").in("user_id", userIds)
-    : Promise.resolve({ data: [] });
-
-  const [contractsRes, docsRes, identityRes, attemptsRes] = await Promise.all([
-    contractsQuery,
-    docsQuery,
-    identityQuery,
-    attemptsQuery,
+  // Separate the two sides of the old OR: putting every group member in one
+  // URL fails for large groups. Both sides retain caller RLS and tenant scope.
+  const [groupContracts, studentContracts, documents, identityRows, attempts] = await Promise.all([
+    fetchAllRows<{ id: string }>(({ from, to }) => client
+      .from("org_contracts").select("id")
+      .eq("organization_id", organizationId).eq("student_group_id", groupId)
+      .order("id").range(from, to)),
+    fetchRowsByIdBatches<{ id: string }>(userIds, (batch, { from, to }) => client
+      .from("org_contracts").select("id")
+      .eq("organization_id", organizationId).in("student_user_id", batch)
+      .order("id").range(from, to)),
+    fetchAllRows<{ id: string }>(({ from, to }) => client
+      .from("group_documents").select("id")
+      .eq("organization_id", organizationId).eq("group_id", groupId).eq("status", "active")
+      .order("id").range(from, to)),
+    fetchRowsByIdBatches<{ type: string }>(userIds, (batch, { from, to }) => client
+      .from("student_identity_documents").select("type")
+      .eq("organization_id", organizationId).in("user_id", batch).order("id").range(from, to)),
+    fetchRowsByIdBatches<{ id: string }>(userIds, (batch, { from, to }) => client
+      .from("test_attempts").select("id")
+      .in("user_id", batch).order("id").range(from, to)),
   ]);
 
-  const identity = countIdentityDocs(identityRes?.data as any[]);
+  const identity = countIdentityDocs(identityRows);
 
   return {
-    contracts: countUniqueContracts(contractsRes?.data as any[]),
-    docs: ((docsRes?.data as any[]) || []).length,
+    contracts: countUniqueContracts([...groupContracts, ...studentContracts]),
+    docs: documents.length,
     passports: identity.passports,
     snils: identity.snils,
-    exams: ((attemptsRes?.data as any[]) || []).length,
+    exams: attempts.length,
   };
 }
