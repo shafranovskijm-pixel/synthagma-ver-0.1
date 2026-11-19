@@ -379,7 +379,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
 
         {/* Content: sidebar menu + tab content */}
         <div className="flex-1 max-w-[1400px] w-full mx-auto px-4 lg:px-6 py-6">
-          <div className="flex gap-6">
+          <div className="flex min-w-0 flex-col gap-6 md:flex-row">
             {/* Vertical sidebar menu */}
             <nav className="hidden md:flex flex-col w-56 shrink-0 space-y-1">
               {TABS.map(tab => {
@@ -403,7 +403,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
             </nav>
 
             {/* Mobile horizontal tabs */}
-            <div className="md:hidden flex overflow-x-auto gap-1 pb-4 -mx-4 px-4 scrollbar-hide">
+            <div className="md:hidden flex min-w-0 max-w-full shrink-0 overflow-x-auto gap-1 px-1 pb-4 scrollbar-hide">
               {TABS.map(tab => {
                 const Icon = tab.icon;
                 const isActive = h.activeTab === tab.key;
@@ -411,13 +411,13 @@ function StudentPageInner({ studentId }: { studentId: string }) {
                   <button
                     key={tab.key}
                     onClick={() => h.setActiveTab(tab.key)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all
+                    className={`flex shrink-0 items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary
                       ${isActive
                         ? 'bg-primary/15 text-primary'
                         : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
                       }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
                     {tab.label}
                   </button>
                 );
@@ -425,7 +425,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
             </div>
 
             {/* Tab content */}
-            <div className="flex-1 min-w-0">
+            <div className="w-full flex-1 min-w-0 md:w-auto">
               {activeTabNeedsStudentData && h.isLoading ? (
                 <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
               ) : activeTabNeedsStudentData && h.dataLoadError ? (
