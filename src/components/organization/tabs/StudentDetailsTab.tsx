@@ -379,7 +379,7 @@ export function StudentDetailsTab() {
         </Button>
       )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2 [&>button]:h-auto [&>button]:min-h-8 [&>button]:max-w-full [&>button]:whitespace-normal">
           <Button
             variant="outline"
             size="sm"
@@ -432,23 +432,23 @@ export function StudentDetailsTab() {
 
       {/* Student info header */}
       <div className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center relative">
+        <div className="w-12 h-12 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center relative">
           <User className="w-6 h-6 text-primary" />
           <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background ${isOnline ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
         </div>
-        <div>
-          <div className="text-lg font-semibold flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="text-lg font-semibold flex flex-wrap items-center gap-2">
             {student.name}
             <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${isOnline ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
               {isOnline ? 'онлайн' : student.last_visit_at ? `был(а) ${formatTimeAgo(new Date(student.last_visit_at))}` : 'не заходил(а)'}
             </span>
           </div>
-          <div className="text-sm text-muted-foreground">{student.email}</div>
+          <div className="break-all text-sm text-muted-foreground">{student.email}</div>
         </div>
       </div>
 
       {/* Content: sidebar menu + tab content */}
-      <div className="flex gap-6">
+      <div className="flex min-w-0 flex-col gap-6 md:flex-row">
         {/* Vertical sidebar menu */}
         <nav className="hidden md:flex flex-col w-56 shrink-0 space-y-1">
           {visibleTabs.map(tab => {
@@ -469,7 +469,7 @@ export function StudentDetailsTab() {
         </nav>
 
         {/* Mobile horizontal tabs */}
-        <div className="md:hidden flex overflow-x-auto gap-1 pb-4 -mx-4 px-4 scrollbar-hide">
+        <div className="md:hidden flex min-w-0 max-w-full shrink-0 overflow-x-auto gap-1 px-1 pb-4 scrollbar-hide">
           {visibleTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = h.activeTab === tab.key;
@@ -477,10 +477,10 @@ export function StudentDetailsTab() {
               <button
                 key={tab.key}
                 onClick={() => h.setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all
+                className={`flex shrink-0 items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary
                   ${isActive ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className="w-3.5 h-3.5 shrink-0" />
                 {tab.label}
               </button>
             );
@@ -488,7 +488,7 @@ export function StudentDetailsTab() {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 min-w-0">
+        <div className="w-full flex-1 min-w-0 md:w-auto">
           <AdmissionCaseCard
             key={`${organizationId}:${student.user_id}`}
             organizationId={organizationId}

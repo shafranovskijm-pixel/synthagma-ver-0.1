@@ -352,7 +352,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   return (
     <TooltipProvider delayDuration={200}>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden p-0 gap-0">
+        <DialogContent className="min-w-0 grid-cols-[minmax(0,1fr)] max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden p-0 gap-0">
           <DialogHeader className="shrink-0 border-b border-border p-6 py-4">
             <DialogTitle>Настройки группы</DialogTitle>
             <DialogDescription className="sr-only">Обучение, доступ, общение и подготовка документов для выбранной группы.</DialogDescription>
@@ -383,9 +383,9 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
               </div>
             </div>
           ) : (
-            <div className="flex min-h-0 max-h-[calc(100vh-6.5rem)] flex-col sm:flex-row">
+            <div className="flex min-h-0 min-w-0 max-w-full max-h-[calc(100vh-6.5rem)] flex-col sm:flex-row">
               {/* Sidebar tabs */}
-              <div className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border p-3 sm:block sm:w-48 sm:space-y-1 sm:overflow-y-auto sm:border-b-0 sm:border-r">
+              <div className="flex w-full min-w-0 max-w-full shrink-0 gap-1 overflow-x-auto border-b border-border p-3 sm:block sm:w-48 sm:space-y-1 sm:overflow-y-auto sm:border-b-0 sm:border-r">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
@@ -405,7 +405,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
               {/* Content */}
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <div className="flex-1 space-y-5 overflow-y-auto p-6">
+                <div className="min-w-0 flex-1 space-y-5 overflow-y-auto p-6">
                   {activeTab === "general" && (
                     <>
                       <div>
