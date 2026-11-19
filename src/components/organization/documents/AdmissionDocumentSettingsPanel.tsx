@@ -75,7 +75,10 @@ function AdmissionDocumentSettingsPanelView({ organizationId, scope, onChanged }
     // The normalized key owns scope and selection; object identity must not refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextKey,reload]);
-  const update = (patch: Partial<AdmissionDocumentPreferences>) => setForm({ key: contextKey,value: { ...preferences,...patch } });
+  const update = (patch: Partial<AdmissionDocumentPreferences>) => setForm(previous => {
+    if (!isCurrent(contextKey)) return previous;
+    return { key: contextKey,value: { ...(previous.key === contextKey ? previous.value : initialPreferences),...patch } };
+  });
   const perform = async (command: AdmissionDocumentCommand, retry?: Pending) => {
     if (!data || loading || busyRef.current || pendingRequest && !retry) return;
     const key = contextKey; busyRef.current = true; setBusy(true);

@@ -694,7 +694,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                     </>
                   )}
 
-                  {activeTab === "documents" && <AdmissionDocumentSettingsPanel organizationId={organizationId} scope={{kind:"group",groupId}} onChanged={onUpdated} />}
+                  {activeTab === "documents" && <AdmissionDocumentSettingsPanel organizationId={organizationId} scope={{kind:"group",groupId}} />}
 
                   {activeTab === "chat" && (
                     <>

@@ -1,6 +1,6 @@
 import { journalScopeSchema, journalTypeSchema, journalUuid, type EducationJournalScope, type EducationJournalType } from './contract';
 
-export interface JournalOrigin { kind: 'organization' | 'group' | 'student'; studentId?: string | null; groupId?: string | null; enrollmentId?: string | null; department?: string | null; participantSearch?: string | null }
+export interface JournalOrigin { kind: 'organization' | 'group' | 'student'; studentId?: string | null; groupId?: string | null; studentGroupId?: string | null; enrollmentId?: string | null; department?: string | null; participantSearch?: string | null }
 const uuid = (value: string | null | undefined) => value && journalUuid.safeParse(value).success ? value : null;
 const KEYS = ['journalScope', 'journalStudentId', 'journalEnrollmentId', 'journalOrigin', 'journalReturnStudentId', 'journalReturnGroupId', 'journalReturnEnrollmentId', 'journalReturnDepartment', 'journalReturnSearch'] as const;
 export function clearEducationJournalWorkspaceParams(params: URLSearchParams) {
@@ -43,13 +43,14 @@ export function readEducationJournalWorkspaceRoute(params: URLSearchParams): Wor
   if (student && !uuid(student) || backGroup && !uuid(backGroup) || originKind === 'student' && (!uuid(student) || parsed.data.kind === 'student' && student !== parsed.data.student_user_id)
     || originKind === 'group' && !uuid(backGroup) || enrollment && !uuid(enrollment)) return { state: 'invalid' };
   return { state: 'ready', scope: parsed.data, journalType: type?.success ? type.data : null,
-    origin: { kind: originKind as JournalOrigin['kind'], studentId: student, groupId: backGroup, enrollmentId: enrollment, department: params.get('journalReturnDepartment'), participantSearch: params.get('journalReturnSearch') } };
+    origin: { kind: originKind as JournalOrigin['kind'], studentId: student, groupId: backGroup, studentGroupId: parsed.data.kind === 'student' ? parsed.data.group_id : null, enrollmentId: enrollment, department: params.get('journalReturnDepartment'), participantSearch: params.get('journalReturnSearch') } };
 }
 export function educationJournalReturnPath(origin: JournalOrigin): string {
   if (origin.kind === 'student' && uuid(origin.studentId)) {
     const params = new URLSearchParams({ tab: 'student-details', studentId: origin.studentId!, studentSection: 'documents' });
     if (uuid(origin.groupId)) params.set('returnToGroupId', origin.groupId!);
     if (uuid(origin.enrollmentId)) params.set('studentJournalEnrollmentId', origin.enrollmentId!);
+    if (uuid(origin.studentGroupId)) params.set('studentJournalGroupId', origin.studentGroupId!);
     if (origin.department) params.set('returnDepartment', origin.department);
     if (origin.participantSearch) params.set('returnParticipantSearch', origin.participantSearch);
     return '/organization?' + params.toString();

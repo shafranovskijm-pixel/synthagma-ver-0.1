@@ -43,6 +43,20 @@ describe('admission document ordinary-session client',()=>{
  it('does not open another selected group draft',async()=>{
   const d=draft();d.group_id=ids.peer;await expect(readAutomaticAdmissionDraft(capture(),d)).rejects.toMatchObject({code:'INVALID_INPUT'});expect(m.rpc).not.toHaveBeenCalled();
  });
+ it('logs only static validation stages/codes/schema paths without response PII, identifiers or authentication',async()=>{
+  const warn=vi.spyOn(console,'warn').mockImplementation(()=>{});
+  const privateValue='PRIVATE-STUDENT-Иванов-private@example.test-Bearer-secret-session';
+  try{
+   m.data={schema_version:1,request_id:privateValue,replayed:false,processed:0,next_after_enrollment_id:null,state:{...settings(),groups:[{id:privateValue,name:privateValue}],[privateValue]:privateValue},authorization:privateValue};
+   await expect(applyAdmissionDocumentSettings(capture(),0,ids.peer,{action:'reset',reason:'inherit_reset'})).rejects.toMatchObject({code:'DEPENDENCY_UNAVAILABLE'});
+   m.error={code:'PRIVATE_RAW_CODE',message:privateValue,details:{authorization:privateValue,student_id:ids.learner}};
+   await expect(readAdmissionDocumentSettings(capture())).rejects.toMatchObject({code:'DEPENDENCY_UNAVAILABLE'});
+   const serialized=JSON.stringify(warn.mock.calls);
+   expect(serialized).toContain('mutation.response');expect(serialized).toContain('rpc.error');expect(serialized).toContain('invalid_string');
+   for(const secret of [privateValue,'PRIVATE_RAW_CODE',ids.actor,ids.learner,ids.enrollment,ids.peer,'existing-session'])expect(serialized).not.toContain(secret);
+   for(const call of warn.mock.calls){expect(call[0]).toBe('[AdmissionDocuments]');expect(Object.keys(call[1] as object).every(key=>['stage','code','issues'].includes(key))).toBe(true);}
+  }finally{warn.mockRestore();}
+ });
  it('escapes source text and retains explicit draft, date, signature and missing-fact notices',()=>{
   const data=exported();data.student_name='<img src=x onerror=alert(1)>';const html=renderAdmissionDraft(data);
   expect(html).toContain('&lt;img');expect(html).not.toContain('<img');expect(html).toContain('НЕ ПОДПИСАН, НОМЕР НЕ ПРИСВОЕН');expect(html).toContain('19.11.2026');expect(html).toContain('18.11.2026');expect(html).toContain('Подтвердите программу обучения');expect(html).not.toContain('Другой ученик');

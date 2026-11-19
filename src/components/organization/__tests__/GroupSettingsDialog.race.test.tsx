@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 vi.mock('@/components/organization/groups/GroupEducationFactsPanel',()=>({GroupEducationFactsPanel:()=>null}));
-vi.mock('@/components/organization/documents/AdmissionDocumentSettingsPanel',()=>({AdmissionDocumentSettingsPanel:({organizationId,scope}:any)=><output data-testid="group-admission-scope">{organizationId}:{scope.kind}:{scope.groupId}</output>}));
+vi.mock('@/components/organization/documents/AdmissionDocumentSettingsPanel',()=>({AdmissionDocumentSettingsPanel:({organizationId,scope,onChanged}:any)=><><output data-testid="group-admission-scope">{organizationId}:{scope.kind}:{scope.groupId}</output><button type="button" onClick={()=>onChanged?.()}>Сохранить самостоятельные настройки документов</button></>}));
 
 type QueryResult = { data: Record<string, unknown> | null; error: unknown };
 
@@ -190,6 +190,15 @@ describe("GroupSettingsDialog request ordering", () => {
     fireEvent.click(await screen.findByRole('button',{name:'Документы'}));
     expect(screen.getByTestId('group-admission-scope')).toHaveTextContent('org-docs:group:group-docs');
     expect(screen.queryByRole('button',{name:/^Сохранить$/})).not.toBeInTheDocument();
+  });
+  it('keeps document settings open without reporting an unrelated legacy group-row update',async()=>{
+    const request=deferred<QueryResult>();groupRequests.set('group-docs-save',request);const onUpdated=vi.fn();
+    render(<GroupSettingsDialog open groupId="group-docs-save" organizationId="org-docs" onUpdated={onUpdated} onOpenChange={vi.fn()}/>);
+    await act(async()=>{request.resolve({data:group('group-docs-save','Группа документов'),error:null});await request.promise;});
+    fireEvent.click(await screen.findByRole('button',{name:'Документы'}));
+    fireEvent.click(screen.getByRole('button',{name:'Сохранить самостоятельные настройки документов'}));
+    expect(onUpdated).not.toHaveBeenCalled();
+    expect(screen.getByTestId('group-admission-scope')).toHaveTextContent('org-docs:group:group-docs-save');
   });
 
 });
