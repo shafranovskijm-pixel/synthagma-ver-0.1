@@ -15,7 +15,7 @@ function Location() { const route = useLocation(); return <output data-testid="l
 const mount = (child: React.ReactNode, url = '/organization') => render(<MemoryRouter initialEntries={[url]}>{child}<Location /></MemoryRouter>);
 const allJournals = () => journalTypes.map((journal_type, index) => ({ ...summary().journals[0], journal_type, title: journalLabels[journal_type], record_count: index + 1, source_label: `Источник ${journal_type}` }));
 beforeEach(() => {
-  mock.actor = ids.actor; mock.can.mockReset().mockReturnValue(true); mock.read.mockClear();
+  mock.actor = ids.actor; mock.can.mockReset().mockReturnValue(true); mock.read.mockReset();
   mock.model = { summary: summary(), page: null, loading: false, error: null, exportBusy: false, exportError: null, exportExtract: vi.fn(), refresh: vi.fn(), loadMore: vi.fn() };
 });
 afterEach(cleanup);
@@ -74,7 +74,7 @@ describe('journal UI and cross-routes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Иванов Иван' }));
     const route = new URLSearchParams(screen.getByTestId('location').textContent!.split('?')[1]);
     expect(route.get('studentId')).toBe(ids.student); expect(route.get('studentJournalEnrollmentId')).toBe(ids.enrollment);
-    expect(route.get('returnToGroupId')).toBe(ids.group); expect(route.get('returnDepartment')).toBe('Цех'); expect(route.get('returnParticipantSearch')).toBe('Иванов');
+    expect(route.get('returnToGroupId')).toBe(ids.group); expect(route.get('studentJournalGroupId')).toBe(ids.group); expect(route.get('returnDepartment')).toBe('Цех'); expect(route.get('returnParticipantSearch')).toBe('Иванов');
   });
   it('loads organization order settings only after explicit opening', () => {
     mount(<EducationJournalWorkspace organizationId={ids.org} scope={{ kind: 'organization' }} journalType={null} origin={{ kind: 'organization' }} />);
@@ -84,9 +84,9 @@ describe('journal UI and cross-routes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Настройки приказов' }));
     expect(screen.queryByTestId('admission-settings')).not.toBeInTheDocument();
   });
-  it('preserves the group scope in a student card and activates date settings only for a confirmed enrollment', () => {
+  it('treats a group return path as navigation and activates date settings only for a confirmed enrollment', () => {
     mount(<StudentJournalLinks organizationId={ids.org} studentUserId={ids.student} enrollments={[{ id: ids.enrollment, course_id: ids.course, course_title: 'Программа' }]} />, `/organization?tab=student-details&studentId=${ids.student}&returnToGroupId=${ids.group}`);
-    expect(mock.read.mock.calls.at(-1)?.[1]).toMatchObject({ student_user_id: ids.student, group_id: ids.group, enrollment_id: null });
+    expect(mock.read.mock.calls.at(-1)?.[1]).toMatchObject({ student_user_id: ids.student, group_id: null, enrollment_id: null });
     expect(screen.queryByTestId('admission-settings')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Обучение'), { target: { value: ids.enrollment } });
     expect(mock.read.mock.calls.at(-1)?.[1]).toMatchObject({ enrollment_id: ids.enrollment });
@@ -109,6 +109,36 @@ describe('journal UI and cross-routes', () => {
     expect(mock.read).not.toHaveBeenCalled(); view.unmount(); mock.actor = ids.student;
     mount(<StudentEducationJournals organizationId={ids.org} userId={ids.student} />, '/student?ownJournal=wrong');
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось определить выбранный журнал'); expect(mock.read).not.toHaveBeenCalled();
+  });
+  it('opens a newly assigned unrelated course despite the previous group return path', () => {
+    const newer = '10000000-0000-4000-8000-000000000008';
+    mock.model.summary.context.enrollment = { id: newer, course_id: ids.peer, course_label: 'Новый QA-курс' }; mock.model.summary.context.group = null;
+    mock.read.mockImplementation((_org: string, target: any) => { mock.model.error = target.group_id ? 'Ученик, обучение или журнал не найдены' : null; });
+    mount(<StudentJournalLinks organizationId={ids.org} studentUserId={ids.student} enrollments={[{ id: ids.enrollment, course_id: ids.course, course_title: 'Программа группы' }, { id: newer, course_id: ids.peer, course_title: 'Новый QA-курс' }]} />, `/organization?tab=student-details&studentId=${ids.student}&returnToGroupId=${ids.group}&studentJournalEnrollmentId=${newer}`);
+    expect(mock.read.mock.calls.at(-1)?.[1]).toEqual({ kind: 'student', student_user_id: ids.student, enrollment_id: newer, group_id: null });
+    expect(screen.queryByText('Ученик, обучение или журнал не найдены')).not.toBeInTheDocument(); expect(screen.getByTestId('admission-settings')).toBeInTheDocument();
+    expect(screen.getByText('Все группы выбранного обучения')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть журналы ученика' }));
+    const route = new URLSearchParams(screen.getByTestId('location').textContent!.split('?')[1]);
+    expect(route.get('groupId')).toBeNull(); expect(route.get('journalReturnGroupId')).toBe(ids.group);
+    mock.read.mockReset();
+  });
+  it('preserves an explicit source group until the operator chooses another enrollment', () => {
+    const newer = '10000000-0000-4000-8000-000000000008';
+    mount(<StudentJournalLinks organizationId={ids.org} studentUserId={ids.student} enrollments={[{ id: ids.enrollment, course_id: ids.course, course_title: 'Программа группы' }, { id: newer, course_id: ids.peer, course_title: 'Другой курс' }]} />, `/organization?tab=student-details&studentId=${ids.student}&returnToGroupId=${ids.group}&studentJournalGroupId=${ids.group}&studentJournalEnrollmentId=${ids.enrollment}`);
+    expect(mock.read.mock.calls.at(-1)?.[1]).toMatchObject({ group_id: ids.group, enrollment_id: ids.enrollment });
+    expect(screen.getByRole('button', { name: 'Все группы обучения' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Обучение'), { target: { value: newer } });
+    expect(mock.read.mock.calls.at(-1)?.[1]).toMatchObject({ group_id: null, enrollment_id: newer });
+    const route = new URLSearchParams(screen.getByTestId('location').textContent!.split('?')[1]);
+    expect(route.has('studentJournalGroupId')).toBe(false); expect(route.get('returnToGroupId')).toBe(ids.group);
+  });
+  it('does not silently broaden an invalid explicit source group and allows an explicit all-groups choice', () => {
+    mount(<StudentJournalLinks organizationId={ids.org} studentUserId={ids.student} />, `/organization?tab=student-details&studentId=${ids.student}&studentJournalGroupId=wrong&returnToGroupId=${ids.group}`);
+    expect(mock.read.mock.calls.at(-1)?.[3]).toBe(false); expect(screen.getByRole('alert')).toHaveTextContent('группу источника');
+    fireEvent.click(screen.getByRole('button', { name: 'Все группы обучения' }));
+    expect(mock.read.mock.calls.at(-1)?.[3]).toBe(true); expect(mock.read.mock.calls.at(-1)?.[1]).toMatchObject({ group_id: null });
+    expect(screen.getByTestId('location')).toHaveTextContent(`returnToGroupId=${ids.group}`);
   });
   it('places selected records after one compact selector while retaining nine cards in the overview', () => {
     mock.model.summary.journals = allJournals(); mock.model.page = page();

@@ -129,7 +129,7 @@ export function useTabNavigation({
   const openStudentDetails = useCallback((studentId: string) => {
     setSearchParams((prev) => {
       const next = resolveTabParams(prev, "student-details");
-      if (next.get("studentId") !== studentId) { next.delete("studentSection"); next.delete('studentJournalEnrollmentId'); }
+      if (next.get("studentId") !== studentId) { next.delete("studentSection"); next.delete('studentJournalEnrollmentId'); next.delete('studentJournalGroupId'); }
       next.set("studentId", studentId);
       return next;
     });

@@ -41,4 +41,19 @@ describe('journal cross-routes', () => {
     const params = new URLSearchParams(url.split('?')[1]);
     expect(params.get('department')).toBe('Цех'); expect(params.get('participantSearch')).toBe('Иванов');
   });
+  it('keeps an exact journal source group separate from the navigation return group', () => {
+    const path = educationJournalWorkspacePath(scope, 'current_control', { kind: 'student', studentId: ids.student, enrollmentId: ids.enrollment, groupId: ids.peer });
+    const route = readEducationJournalWorkspaceRoute(new URLSearchParams(path.split('?')[1]));
+    expect(route.state).toBe('ready'); if (route.state !== 'ready') throw Error('route');
+    const back = new URLSearchParams(educationJournalReturnPath(route.origin).split('?')[1]);
+    expect(back.get('studentJournalGroupId')).toBe(ids.group); expect(back.get('returnToGroupId')).toBe(ids.peer);
+  });
+  it('does not turn a navigation return group into a filter for another enrollment', () => {
+    const target = { ...scope, group_id: null };
+    const route = readEducationJournalWorkspaceRoute(new URLSearchParams(educationJournalWorkspacePath(target, 'current_control', { kind: 'student', studentId: ids.student, enrollmentId: ids.enrollment, groupId: ids.group }).split('?')[1]));
+    expect(route).toMatchObject({ state: 'ready', scope: target }); if (route.state !== 'ready') throw Error('route');
+    const back = new URLSearchParams(educationJournalReturnPath(route.origin).split('?')[1]);
+    expect(back.get('returnToGroupId')).toBe(ids.group); expect(back.has('studentJournalGroupId')).toBe(false);
+    expect(resolveTabParams(back, 'courses').has('studentJournalGroupId')).toBe(false);
+  });
 });
