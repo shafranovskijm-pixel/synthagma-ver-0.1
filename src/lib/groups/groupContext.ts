@@ -109,6 +109,10 @@ export function resolveTabParams(
   tab: string | null | undefined,
 ): URLSearchParams {
   const next = new URLSearchParams(typeof prev === "string" ? prev : prev.toString());
+  if (tab !== 'journals') {
+    ['journalScope', 'journalStudentId', 'journalEnrollmentId', 'journalOrigin', 'journalReturnStudentId', 'journalReturnGroupId', 'journalReturnEnrollmentId', 'journalReturnDepartment', 'journalReturnSearch'].forEach(key => next.delete(key));
+    if (next.get('journalView') === 'workspace') { next.delete('journalView'); next.delete('journalType'); }
+  }
   if (!tab || tab === "home") next.delete("tab");
   else next.set("tab", tab);
 
@@ -135,6 +139,7 @@ export function resolveTabParams(
   }
   if (tab !== "student-details") {
     next.delete("studentSection");
+    next.delete('studentJournalEnrollmentId');
     next.delete("returnDepartment");
     next.delete("returnParticipantSearch");
   }
@@ -164,9 +169,10 @@ export function resolveTabParams(
     next.delete("educationEnrollmentId");
   }
 
+  const keepJournalWorkspace = tab === 'journals' && next.get('journalView') === 'workspace';
   const keepGroupContext = isGroupContextTab(tab) && !!next.get("returnToGroupId") && !!next.get("groupId");
 
-  if (keepGroupContext) {
+  if (keepGroupContext || keepJournalWorkspace) {
     // groupId / courseId / returnToGroupId остаются как есть
     next.delete("studentId");
     next.delete("folder");

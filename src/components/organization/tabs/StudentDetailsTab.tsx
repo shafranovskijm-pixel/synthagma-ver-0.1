@@ -548,6 +548,9 @@ export function StudentDetailsTab() {
                   organizationId={organizationId}
                   studentUserId={student.user_id === studentId ? studentId : null}
                   actorUserId={user?.id ?? null}
+                  journalEnrollments={enrollments}
+                  journalEnrollmentsLoading={enrollmentsLoading}
+                  journalEnrollmentsError={enrollmentsError}
                   laborSafetyXml={{
                     organizationId,
                     student: {

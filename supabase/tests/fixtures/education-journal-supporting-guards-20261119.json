@@ -1,0 +1,38 @@
+{
+  "captured_date": "2026-11-19",
+  "source": "Read-only production pg_get_functiondef, no customer rows",
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_staff_permissions(_user_id uuid, _organization_id uuid)\n RETURNS text[]\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  staff_role text;\n  base_perms text[];\n  override_perms text[];\nBEGIN\n  SELECT role,\n         COALESCE(\n           ARRAY(SELECT jsonb_array_elements_text(sections_access)),\n           ARRAY[]::text[]\n         )\n    INTO staff_role, override_perms\n    FROM public.org_staff\n   WHERE user_id = _user_id AND organization_id = _organization_id\n   LIMIT 1;\n\n  IF staff_role IS NULL THEN\n    RETURN ARRAY[]::text[];\n  END IF;\n\n  base_perms := public.org_role_default_permissions(staff_role);\n\n  -- merge: union of base + overrides (overrides могут только добавлять права)\n  RETURN ARRAY(\n    SELECT DISTINCT unnest(base_perms || override_perms)\n  );\nEND;\n$function$\n",
+      "proname": "get_org_staff_permissions"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT billing_access_private.target_allowed(_organization_id,_user_id) AND EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+      "proname": "has_org_staff_permission"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN billing_access_private.actor_allowed(_user_id) AND EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "proname": "has_role"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT billing_access_private.actor_allowed(_user_id) AND EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "proname": "has_role"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.is_org_owner(_user_id uuid, _organization_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT billing_access_private.target_allowed(_organization_id,_user_id) AND EXISTS (\n    SELECT 1\n    FROM public.user_roles ur\n    JOIN public.profiles p ON p.user_id = ur.user_id\n    WHERE ur.user_id = _user_id\n      AND ur.role = 'organization'::public.app_role\n      AND p.organization_id = _organization_id\n      AND NOT EXISTS (\n        SELECT 1\n        FROM public.org_staff os\n        WHERE os.user_id = _user_id\n          AND os.organization_id = _organization_id\n      )\n  )\n$function$\n",
+      "proname": "is_org_owner"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.is_student_profile(_target_user_id uuid, _org_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _target_user_id IS NOT NULL\n    AND _org_id IS NOT NULL\n    AND NOT EXISTS (\n      SELECT 1 FROM public.user_roles\n      WHERE user_id = _target_user_id\n        AND role IN ('admin', 'organization', 'company', 'sales_manager')\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.org_staff\n      WHERE user_id = _target_user_id\n        AND organization_id = _org_id\n        AND (expires_at IS NULL OR expires_at > now())\n    );\n$function$\n",
+      "proname": "is_student_profile"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_org_staff_permission(_permission text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN _permission IS NULL THEN NULL\n    WHEN _permission LIKE '%.view'   THEN regexp_replace(_permission, '\\.view$',   '.read')\n    WHEN _permission LIKE '%.manage' THEN regexp_replace(_permission, '\\.manage$', '.write')\n    ELSE _permission\n  END\n$function$\n",
+      "proname": "normalize_org_staff_permission"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_has_action(p_org uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_platform_document_action_allowed(auth.uid(),p_action)\n  AND public.account_deletion_access_allowed()\n  AND p_org IS NOT NULL AND p_action IN ('read','write','sign','issue')\n  AND coalesce(public.can_access_organization(p_org,'documents.'||p_action),false)\n$function$\n",
+      "proname": "uc_document_has_action"
+    }
+  ]
+}

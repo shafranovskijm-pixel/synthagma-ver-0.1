@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +51,8 @@ vi.mock("@/components/ui/alert-dialog", () => {
 vi.mock('@/hooks/useScopedCustomJournals',()=>({useScopedCustomJournals:(_org:string,context:any)=>({contextKey:'SYN_SCOPED',context,scopeCurrent:()=>true,refresh:0,journals:[],next:null,loading:false,error:null,canRead:true,canWrite:true,saving:false,pending:false,mutationError:null,read:vi.fn(),reload:vi.fn(),loadMore:vi.fn(),mutate:vi.fn(),retry:vi.fn()})}));
 vi.mock("@/components/organization/ServerCopiesDuplicatesJournal", () => ({ ServerCopiesDuplicatesJournal: ({ organizationId, registryScope }: any) => <div data-testid="server-copy-registry">{JSON.stringify({ organizationId, registryScope })}</div> }));
 import { JournalsManager } from "../JournalsManager";
+const render = (ui: ReactNode) => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
+vi.mock('@/components/organization/journals/EducationJournalWorkspace', () => ({ EducationJournalWorkspace: (props: any) => <div data-testid="factual-journal-workspace">{JSON.stringify(props)}</div> }));
 
 const key = (org: string) => `copies_duplicates_${org}`;
 const raw = JSON.stringify([{ id: "copy-row", reg_number: "КОП-2026/009", recipient_name: "Synthetic recipient", original_document_type: "certificate", original_document_number: "original-1", original_issue_date: "2026-01-01", copy_type: "copy", issue_date: "2026-02-02", issue_reason: "lost", notes: null }], null, 2);
@@ -78,7 +81,7 @@ describe("copy journal production routing preserves historical browser bytes", (
     localStorage.setItem(key("org-a"), "{unreadable");
     const read = vi.spyOn(Storage.prototype, "getItem"), remove = vi.spyOn(Storage.prototype, "removeItem");
     render(<JournalsManager organizationId="org-a" />); await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: /Часто требуемые журналы/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Журналы по виду обучения/ }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     const label = screen.getByText("Журнал учёта выдачи копий / дубликатов документов");
     expect(label.closest("div.border-b")?.querySelector('button[title="Удалить журнал"]')).toBeFalsy();
@@ -100,5 +103,19 @@ describe('document registration production routing', () => {
     mocks.params = new URLSearchParams({ journalType: 'document_registration', journalView: 'auto' });
     render(<JournalsManager organizationId="org-a" groupId="invalid-group" courseId={null} />); await act(async () => {});
     expect(screen.getByTestId('server-document-registry')).toHaveTextContent(JSON.stringify({ organizationId: 'org-a', registryScope: { kind: 'group', group_id: 'invalid-group' } }));
+  });
+});
+describe('previous automatic journal links', () => {
+  it.each([['attendance', 'activity'], ['current_control', 'current_control'], ['final_attestation', 'final_tests']])('opens %s with factual records preserving the group', async (old, current) => {
+    const group = '00000000-0000-4000-8000-000000000002';
+    mocks.params = new URLSearchParams({ journalView: 'auto', journalType: old, groupId: group });
+    render(<JournalsManager organizationId="org-a" />); await act(async () => {});
+    expect(screen.getByTestId('factual-journal-workspace')).toHaveTextContent(JSON.stringify({ organizationId: 'org-a', scope: { kind: 'group', group_id: group }, journalType: current, origin: { kind: 'group', groupId: group } }));
+  });
+  it('does not broaden an invalid legacy group link to organization scope', () => {
+    mocks.params = new URLSearchParams({ journalView: 'auto', journalType: 'current_control', groupId: 'wrong' });
+    render(<JournalsManager organizationId="org-a" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Записи организации вместо неё не показываются');
+    expect(screen.queryByTestId('factual-journal-workspace')).not.toBeInTheDocument();
   });
 });

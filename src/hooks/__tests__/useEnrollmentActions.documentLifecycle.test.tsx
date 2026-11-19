@@ -11,14 +11,14 @@ vi.mock('@/lib/customJournals/client', () => ({ captureCustomJournalScope: (orga
 vi.mock('sonner', () => ({ toast: { error: mock.error, info: mock.info, success: mock.success, warning: vi.fn() } }));
 import { useEnrollmentActions } from '../useEnrollmentActions';
 let rows: any[];
-beforeEach(() => { vi.clearAllMocks(); mock.current = true; rows = [{ id: uid(7), user_id: pupil, course_id: uid(8), status: 'active', progress: 100, courses: { title: 'Фактический курс', organization_id: org } }]; mock.fetch.mockResolvedValue({ students: [{ user_id: pupil, name: 'Подтверждённый ученик' }] }); mock.insert.mockResolvedValue([{ id: uid(7), user_id: pupil, course_id: uid(8) }]); mock.from.mockImplementation(() => { let columns = ''; const chain: any = { select: vi.fn((value: string) => { columns = value; return chain; }), eq: vi.fn(() => chain), in: vi.fn(async () => ({ data: columns === 'user_id' ? [] : rows, error: null })), delete: mock.delete, update: mock.update }; return chain; }); });
+beforeEach(() => { vi.clearAllMocks(); mock.current = true; rows = [{ id: uid(7), user_id: pupil, course_id: uid(8), status: 'active', progress: 100, courses: { title: 'Фактический курс', organization_id: org } }]; mock.fetch.mockResolvedValue({ students: [{ user_id: pupil, name: 'Подтверждённый ученик' }] }); mock.insert.mockResolvedValue([{ id: uid(7), user_id: pupil, course_id: uid(8) }]); mock.from.mockImplementation(() => { let columns = ''; const chain: any = { select: vi.fn((value: string) => { columns = value; return chain; }), eq: vi.fn(() => chain), in: vi.fn(async () => ({ data: columns === 'user_id, status' ? [] : rows, error: null })), delete: mock.delete, update: mock.update }; return chain; }); });
 afterEach(cleanup);
 describe('enrollment facts are distinct from document issuance', () => {
   it('confirms actual enrollment persistence and clearly reports that no automatic numbered order was created', async () => {
     const changed = vi.fn(), hook = renderHook(() => useEnrollmentActions(org, 'QA организация', changed, vi.fn()));
     await act(async () => expect(await hook.result.current.bulkEnroll(uid(8), [pupil], [{ id: uid(8), title: 'Курс' }] as any)).toBe(true));
     expect(mock.insert).toHaveBeenCalledWith([{ user_id: pupil, course_id: uid(8), status: 'active', progress: 0 }]); expect(mock.generate).not.toHaveBeenCalled(); expect(mock.from).not.toHaveBeenCalledWith('org_documents'); expect(mock.from).not.toHaveBeenCalledWith('organizations');
-    expect(mock.info).toHaveBeenCalledWith(expect.stringContaining('Приказ автоматически не оформлен')); expect(changed).toHaveBeenCalledOnce();
+    expect(mock.info).toHaveBeenCalledWith(expect.stringContaining('Проверьте проект приказа в документах ученика')); expect(mock.info).toHaveBeenCalledWith(expect.stringContaining('подпись и регистрация оформляются отдельно')); expect(changed).toHaveBeenCalledOnce();
   });
   it('prepares exact enrollment/user/course facts without deleting, changing status/progress or claiming an expulsion', async () => {
     const changed = vi.fn(), hook = renderHook(() => useEnrollmentActions(org, 'QA', changed, vi.fn()));

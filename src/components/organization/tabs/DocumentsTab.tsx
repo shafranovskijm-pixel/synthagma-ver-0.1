@@ -588,7 +588,7 @@ function DocumentsTabContent({
           {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} canConfigure={canWriteDocuments} />}
-          {h.activeTab === "journals" && canReadJournals && <JournalsManager organizationId={organizationId!} />}
+          {h.activeTab === "journals" && canReadJournals && <JournalsManager organizationId={organizationId!} groupId={searchParams.get('groupId')} courseId={searchParams.get('courseId')} returnToGroupId={searchParams.get('returnToGroupId')} />}
           {h.activeTab === "frdo" && canReadFrdo && <FRDOManager organizationId={organizationId!} />}
           {h.activeTab === "archive_cases" && organizationId && <Suspense fallback={<p className="text-sm text-muted-foreground">Загрузка архивных дел…</p>}><ArchivePanel organizationId={organizationId}/></Suspense>}
           {h.activeTab === "signatures" && (

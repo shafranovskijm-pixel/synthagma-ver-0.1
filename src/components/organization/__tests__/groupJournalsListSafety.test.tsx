@@ -114,7 +114,7 @@ describe("JournalsManager in group context", () => {
     expect(screen.getByTestId("group-banner")).toBeInTheDocument();
     // The server-backed copies registry supports an exact group scope; the
     // remaining manually scoped journal types must still be omitted.
-    fireEvent.click(screen.getByRole("button", { name: /Часто требуемые журналы/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Журналы по виду обучения/ }));
     expect(screen.getByText("Журнал учёта выдачи копий / дубликатов документов")).toBeInTheDocument();
     expect(screen.queryByText("Журнал учёта результатов входного контроля")).not.toBeInTheDocument();
     expect(screen.queryByText("Журнал (реестр) индивидуальных учебных планов")).not.toBeInTheDocument();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AdmissionDocumentSettingsPanel } from './documents/AdmissionDocumentSettingsPanel';
 import { GroupEducationFactsPanel } from './groups/GroupEducationFactsPanel';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AlertTriangle, CalendarDays, HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
@@ -71,6 +72,7 @@ const tabs = [
   { id: "learning", label: "Обучение", icon: BookOpen },
   { id: "access", label: "Доступ", icon: Eye },
   { id: "chat", label: "Чат", icon: MessageCircle },
+  { id: "documents", label: "Документы", icon: FileText },
 ] as const;
 
 type TabId = typeof tabs[number]["id"];
@@ -353,6 +355,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
         <DialogContent className="max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden p-0 gap-0">
           <DialogHeader className="shrink-0 border-b border-border p-6 py-4">
             <DialogTitle>Настройки группы</DialogTitle>
+            <DialogDescription className="sr-only">Обучение, доступ, общение и подготовка документов для выбранной группы.</DialogDescription>
           </DialogHeader>
 
           {loading || (!settings && !loadError) ? (
@@ -691,6 +694,8 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                     </>
                   )}
 
+                  {activeTab === "documents" && <AdmissionDocumentSettingsPanel organizationId={organizationId} scope={{kind:"group",groupId}} onChanged={onUpdated} />}
+
                   {activeTab === "chat" && (
                     <>
                       <SettingRow
@@ -715,12 +720,12 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                   )}
                 </div>
 
-                <div className="flex shrink-0 justify-end border-t border-border bg-background p-4">
+                {activeTab !== "documents" && <div className="flex shrink-0 justify-end border-t border-border bg-background p-4">
                   <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
                     {saving && <SigmaSpinner size="sm" />}
                     Сохранить
                   </Button>
-                </div>
+                </div>}
               </div>
             </div>
           )}

@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { useCopiesJournalScope } from "@/hooks/useCopiesJournalScope";
 import { Button } from "@/components/ui/button";
@@ -39,33 +40,36 @@ import {
   clearEducationDocumentsJournalFocusParams,
   readEducationDocumentsJournalFocus,
 } from "@/lib/organization/documentWorkspaceNavigation";
+import { EducationJournalWorkspace } from './journals/EducationJournalWorkspace';
+import { educationJournalWorkspacePath, readEducationJournalWorkspaceRoute } from '@/lib/educationJournalWorkspace/navigation';
+import type { EducationJournalType } from '@/lib/educationJournalWorkspace/contract';
 
 
 // ── Types & Constants ──
 
-interface JournalItem { id: string; title: string; description: string; required: boolean; }
+interface JournalItem { id: string; title: string; description: string; protectedTemplate: boolean; }
 interface JournalCategory { id: string; title: string; icon: React.ElementType; color: string; bgColor: string; journals: JournalItem[]; }
 
 const JOURNAL_CATEGORIES: JournalCategory[] = [
   {
     id: "required", title: "Основные журналы", icon: ClipboardCheck, color: "text-red-500", bgColor: "bg-red-500/10",
     journals: [
-      { id: "attendance", title: "Журнал учёта посещаемости занятий", description: "Автоматически — завершённые уроки. Ручные записи ведутся отдельно", required: true },
-      { id: "current_control", title: "Журнал текущего контроля успеваемости и промежуточной аттестации", description: "Оценки, зачёты, тесты, практические задания по модулям / дисциплинам", required: true },
-      { id: "final_attestation", title: "Журнал итоговой аттестации", description: "Результаты экзаменов, зачётов, защиты проектов, состав комиссии", required: true },
-      { id: "document_registration", title: "Журнал регистрации входящих и исходящих документов", description: "Фиксация заявлений, договоров, приказов о зачислении/отчислении", required: true },
-      { id: "strict_forms", title: "Журнал учёта выдачи бланков строгой отчётности", description: "Приход-расход бланков удостоверений / дипломов", required: true },
-      { id: "education_documents", title: "Журнал регистрации документов об образовании", description: "Учёт выданных удостоверений, дипломов, свидетельств", required: true },
+      { id: "attendance", title: "Журнал учёта посещаемости занятий", description: "Автоматически — завершённые уроки. Ручные записи ведутся отдельно", protectedTemplate: true },
+      { id: "current_control", title: "Журнал текущего контроля успеваемости и промежуточной аттестации", description: "Оценки, зачёты, тесты, практические задания по модулям / дисциплинам", protectedTemplate: true },
+      { id: "final_attestation", title: "Журнал итоговой аттестации", description: "Результаты экзаменов, зачётов, защиты проектов, состав комиссии", protectedTemplate: true },
+      { id: "document_registration", title: "Журнал регистрации входящих и исходящих документов", description: "Фиксация заявлений, договоров, приказов о зачислении/отчислении", protectedTemplate: true },
+      { id: "strict_forms", title: "Журнал учёта выдачи бланков строгой отчётности", description: "Приход-расход бланков удостоверений / дипломов", protectedTemplate: true },
+      { id: "education_documents", title: "Журнал регистрации документов об образовании", description: "Учёт выданных удостоверений, дипломов, свидетельств", protectedTemplate: true },
     ],
   },
   {
-    id: "often_required", title: "Часто требуемые журналы", icon: ClipboardList, color: "text-amber-500", bgColor: "bg-amber-500/10",
+    id: "often_required", title: "Журналы по виду обучения", icon: ClipboardList, color: "text-amber-500", bgColor: "bg-amber-500/10",
     journals: [
-      { id: "copies_duplicates", title: "Журнал учёта выдачи копий / дубликатов документов", description: "Учёт выдачи копий и дубликатов документов об образовании", required: false },
-      { id: "entry_control", title: "Журнал учёта результатов входного контроля", description: "Входное тестирование / собеседование / проверка базового образования", required: false },
-      { id: "individual_plans", title: "Журнал (реестр) индивидуальных учебных планов", description: "Зачёт ранее полученных компетенций / НОК / сокращённое обучение", required: false },
-      { id: "internship", title: "Журнал стажировки / практики", description: "Практика / стажировка на рабочем месте", required: false },
-      { id: "safety_instructions", title: "Журнал учёта инструктажей по технике безопасности", description: "Для ПО рабочих профессий с практическими занятиями", required: false },
+      { id: "copies_duplicates", title: "Журнал учёта выдачи копий / дубликатов документов", description: "Учёт выдачи копий и дубликатов документов об образовании", protectedTemplate: false },
+      { id: "entry_control", title: "Журнал учёта результатов входного контроля", description: "Входное тестирование / собеседование / проверка базового образования", protectedTemplate: false },
+      { id: "individual_plans", title: "Журнал (реестр) индивидуальных учебных планов", description: "Зачёт ранее полученных компетенций / НОК / сокращённое обучение", protectedTemplate: false },
+      { id: "internship", title: "Журнал стажировки / практики", description: "Практика / стажировка на рабочем месте", protectedTemplate: false },
+      { id: "safety_instructions", title: "Журнал учёта инструктажей по технике безопасности", description: "Для ПО рабочих профессий с практическими занятиями", protectedTemplate: false },
     ],
   },
 ];
@@ -87,7 +91,23 @@ interface JournalsManagerProps {
   returnToGroupId?: string | null;
 }
 
-export function JournalsManager({ organizationId, groupId, courseId, returnToGroupId }: JournalsManagerProps) {
+export function JournalsManager(props: JournalsManagerProps) {
+  const { params } = useUrlNavigation();
+  const navigate = useNavigate();
+  const route = readEducationJournalWorkspaceRoute(params);
+  if (route.state === 'invalid') return <div role="alert" className="rounded-2xl border border-destructive/30 bg-card p-5"><p>Не удалось определить выбранную область журнала. Записи организации вместо неё не показываются.</p><Button variant="outline" className="mt-3 rounded-xl" onClick={() => navigate('/organization?tab=documents&documentView=journals')}>К журналам</Button></div>;
+  if (route.state === 'ready') return <EducationJournalWorkspace organizationId={props.organizationId} scope={route.scope} journalType={route.journalType} origin={route.origin} />;
+  const oldType: Record<string, EducationJournalType> = { attendance: 'activity', current_control: 'current_control', final_attestation: 'final_tests' };
+  if (params.get('journalView') === 'auto' && oldType[params.get('journalType') || '']) {
+    const group = params.get('groupId') || props.groupId || props.returnToGroupId;
+    if (group && !journalUuid.safeParse(group).success) return <p role="alert">Не удалось определить группу. Записи организации вместо неё не показываются.</p>;
+    return <EducationJournalWorkspace organizationId={props.organizationId} scope={group ? { kind: 'group', group_id: group } : { kind: 'organization' }} journalType={oldType[params.get('journalType')!]} origin={group ? { kind: 'group', groupId: group } : { kind: 'organization' }} />;
+  }
+  return <LegacyJournalsManager {...props} />;
+}
+
+function LegacyJournalsManager({ organizationId, groupId, courseId, returnToGroupId }: JournalsManagerProps) {
+  const navigate = useNavigate();
   const { scope: copyScope, isCurrent: isCurrentCopyScope } = useCopiesJournalScope(organizationId, JSON.stringify([groupId ?? null, returnToGroupId ?? null]));
   const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
   const educationDocumentFocus = readEducationDocumentsJournalFocus(searchParams);
@@ -96,7 +116,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const hasEducationDocumentFocus = Boolean(focusedEducationEnrollmentId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean } | null>(null);
+  const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isProtectedTemplate: boolean } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
@@ -132,7 +152,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       return next;
     });
   }, [setSearchParams]);
-  const openAutoJournal = (journalId: string) => navigateJournal(journalId, "auto");
+  const openWorkspace = (journalType: EducationJournalType | null = null) => navigate(educationJournalWorkspacePath(
+    scopedGroupId ? { kind: 'group', group_id: scopedGroupId } : { kind: 'organization' }, journalType,
+    scopedGroupId ? { kind: 'group', groupId: returnToGroupId || scopedGroupId } : { kind: 'organization' },
+  ));
+  const openAutoJournal = (journalId: string) => {
+    const factual: Record<string, EducationJournalType> = { attendance: 'activity', current_control: 'current_control', final_attestation: 'final_tests', education_documents: 'education_documents', document_registration: 'document_registration', copies_duplicates: 'copies_duplicates' };
+    if (factual[journalId]) openWorkspace(factual[journalId]);
+    else navigateJournal(journalId, 'auto');
+  };
 
   // Фактические участники группы (не по совпадению курса): нужны для фильтрации авто-журналов.
   // Важно: loading и «нет контекста» — разные состояния, иначе журнал успеет показать всю организацию.
@@ -190,7 +218,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       if (isCurrentCopyScope()) toast.info("Общий реестр не очищается из списка журналов. Отдельные записи можно сохранить в архиве реестра.");
       return;
     }
-    setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required });
+    setDeletingJournal({ type: journal.id, title: journal.title, isProtectedTemplate: journal.protectedTemplate });
   };
 
   const handleDeleteJournals = async () => {
@@ -274,12 +302,13 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       {/* Header */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
+          <div className="flex flex-col items-start justify-between gap-4 xl:flex-row">
+            <div className="flex min-w-0 items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-6 h-6 text-primary" /></div>
               <div><h2 className="text-xl font-bold">Журналы учебного центра</h2><p className="text-sm text-muted-foreground mt-1">Состав журналов определяется видом обучения и локальными актами центра.</p></div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex max-w-full flex-wrap items-center gap-2 [&>button]:h-auto [&>button]:min-h-10 [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:text-left">
+              <Button variant="outline" onClick={() => openWorkspace()} className="h-auto min-h-10 whitespace-normal rounded-xl text-left"><ClipboardList className="mr-2 h-4 w-4 shrink-0" />Автоматические записи и выписки</Button>
               {groupId && <Button variant="outline" onClick={()=>navigateJournal('group-facts','group-facts')} className="rounded-xl">Состав и календарь группы</Button>}
               <Button variant="outline" onClick={() => openAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
               <Button onClick={openCreateWizard} disabled={!scopedModel.canWrite||scopedModel.loading||scopedModel.pending||scopedModel.saving} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />{inGroupContext?'Создать журнал группы':'Создать журнал'}</Button>
@@ -369,17 +398,17 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
   journal: JournalItem; onAutoClick: () => void; onManualClick: () => void; onDeleteClick: () => void; hasAutoMode: boolean; isSpecial: boolean; inGroupContext?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between p-4 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
+    <div className="flex flex-col items-start justify-between gap-3 p-4 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors xl:flex-row">
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${journal.required ? "bg-red-500/10" : "bg-amber-500/10"}`}>
-          {journal.required ? <AlertCircle className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-amber-500" />}
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${journal.protectedTemplate ? "bg-red-500/10" : "bg-amber-500/10"}`}>
+          {journal.protectedTemplate ? <AlertCircle className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-amber-500" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{journal.title}</span></div>
           <p className="text-sm text-muted-foreground mt-1">{journal.description}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+      <div className="flex max-w-full flex-wrap items-center gap-2 [&>button]:h-auto [&>button]:min-h-9 [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:text-left xl:ml-4">
         {hasAutoMode ? (
           <>
             <Button variant="default" size="sm" className="rounded-lg" onClick={onAutoClick}><BarChart3 className="w-4 h-4 mr-2" />{inGroupContext ? "Открыть по группе" : journal.id === "document_registration" ? "Открыть реестр" : "Автоматический"}</Button>
@@ -397,7 +426,7 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
           <Button variant="default" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
         )}
         <span className="text-xs text-muted-foreground">Отдельный шаблон для скачивания пока недоступен.</span>
-        {!journal.required && !inGroupContext && journal.id !== "copies_duplicates" && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
+        {!journal.protectedTemplate && !inGroupContext && journal.id !== "copies_duplicates" && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
       </div>
     </div>
   );

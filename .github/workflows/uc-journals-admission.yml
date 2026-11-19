@@ -1,0 +1,48 @@
+name: UC factual journals and admission drafts
+on:
+  pull_request:
+    paths:
+      - 'src/lib/educationJournalWorkspace/**'
+      - 'src/lib/admissionDocuments/**'
+      - 'src/hooks/useEducationJournalWorkspace.ts'
+      - 'src/hooks/useEnrollmentActions.ts'
+      - 'src/hooks/__tests__/useEnrollmentActions.documentLifecycle.test.tsx'
+      - 'src/hooks/__tests__/useEducationJournalWorkspace.test.tsx'
+      - 'src/components/organization/journals/**'
+      - 'src/components/organization/documents/AdmissionDocumentSettingsPanel*'
+      - 'src/components/organization/student-detail/StudentJournalLinks.tsx'
+      - 'src/components/organization/student-detail/DocumentsTab.tsx'
+      - 'src/components/organization/GroupSettingsDialog.tsx'
+      - 'src/components/student/StudentEducationJournals.tsx'
+      - 'src/components/student/StudentDocumentsTab.tsx'
+      - 'src/pages/OrganizationStudentDetails.tsx'
+      - 'supabase/migrations/20261119*'
+      - 'supabase/tests/edge/education-journal-workspace.sql.test.ts'
+      - 'supabase/tests/edge/admission-document-automation.sql.test.ts'
+      - 'supabase/tests/fixtures/education-journal-*'
+      - '.github/workflows/uc-journals-admission.yml'
+permissions:
+  contents: read
+jobs:
+  journals-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: SQL facts, own-subject privacy, teacher groups, dates and idempotent commands
+        run: node node_modules/vitest/vitest.mjs run supabase/tests/edge/education-journal-workspace.sql.test.ts supabase/tests/edge/admission-document-automation.sql.test.ts --maxWorkers=1
+      - name: Scope races, cross routes, settings and complete exports
+        run: node node_modules/vitest/vitest.mjs run src/lib/educationJournalWorkspace src/lib/admissionDocuments src/hooks/__tests__/useEducationJournalWorkspace.test.tsx src/components/organization/journals src/components/organization/documents/AdmissionDocumentSettingsPanel.test.tsx --maxWorkers=1
+      - name: Existing organization document routes and group prerequisites
+        run: node node_modules/vitest/vitest.mjs run src/components/organization/__tests__/DocumentsTab.workspaceNavigation.test.tsx src/components/organization/__tests__/JournalsManager.copiesScope.test.tsx src/components/organization/__tests__/groupJournalsListSafety.test.tsx src/components/organization/group-folder/__tests__/GroupDocumentsFolder.package.test.tsx src/components/organization/__tests__/GroupSettingsDialog.race.test.tsx src/hooks/__tests__/useEnrollmentActions.documentLifecycle.test.tsx --maxWorkers=1
+      - run: npm run build

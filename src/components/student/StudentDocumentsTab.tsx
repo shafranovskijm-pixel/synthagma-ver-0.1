@@ -31,6 +31,7 @@ import { useSignatureReadScope } from '@/hooks/useSignatureReadScope';
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AdmissionCaseCard } from "@/components/organization/student-detail/AdmissionCaseCard";
+import { StudentEducationJournals } from './StudentEducationJournals';
 
 interface StudentDocumentsTabProps {
   userId: string;
@@ -248,6 +249,7 @@ export function StudentDocumentsTab({
   return (
     <div className="space-y-6">
       <AdmissionCaseCard organizationId={organizationId} studentUserId={userId} enabled={!isAdminView} ownOnly onUploadOwn={() => setShowDocs(true)}/>
+      {!isAdminView && <StudentEducationJournals organizationId={organizationId} userId={userId} />}
       {/* Always-visible quick access to PEP + PD consent */}
       <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardContent className="p-4 sm:p-5">
