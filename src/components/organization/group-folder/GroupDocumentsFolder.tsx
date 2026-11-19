@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,7 @@ import { GENERIC_EDUCATION_DRAFT_TYPES, isGenericEducationDraftType, genericDraf
 import { createRetainedDraftBatchGuard, RetainedDraftBatchError } from '@/lib/group-docs/retainedDraftBatch';
 import { useGroupEducationFacts } from '@/hooks/useGroupEducationFacts';
 import { useAuth } from '@/hooks/useAuth';
+import { captureAdmissionDocumentScope, readAdmissionDocumentSettings, normalizeAdmissionDocumentError, admissionDocumentErrorMessages } from '@/lib/admissionDocuments/client';
 import { captureOfflineActor } from '@/utils/courseCache';
 import { captureEducationScope, educationBearer, educationScopeCurrent, saveEducationDocuments, normalizeEducationError, educationMessages } from '@/lib/groupEducationFacts/client';
 
@@ -163,6 +164,24 @@ function GroupDocumentsFolderView({
   const [sourceDraft,setSourceDraft]=useState<SourceDraft>(blankSourceDraft);
   const scopedDraft=sourceDraft.key===education.scopeKey?sourceDraft:blankSourceDraft();
   const educationAt=scopedDraft.at,educationReason=scopedDraft.reason,educationDates=scopedDraft.dates;
+  const [admissionDateLoading,setAdmissionDateLoading]=useState(false);
+  const dateScopeKey=JSON.stringify([organizationId,groupId]);
+  const dateScopeRef=useRef<string|null>(dateScopeKey);dateScopeRef.current=dateScopeKey;
+  useEffect(()=>()=>{dateScopeRef.current=null;},[]);
+  const prefillAdmissionOrderDate=async()=>{
+    if(admissionDateLoading||busy)return;
+    const key=dateScopeKey;setAdmissionDateLoading(true);
+    try{
+      const scope=captureAdmissionDocumentScope(organizationId,{kind:'group',groupId},()=>dateScopeRef.current===key);
+      const settings=await readAdmissionDocumentSettings(scope);
+      if(dateScopeRef.current!==key)return;
+      if(settings.individual_date_overrides){toast.info('В группе есть индивидуальные даты. Подготовьте проекты в карточках учеников, чтобы сохранить их выбор.');return;}
+      if(!settings.effective.document_date){toast.info('Сначала задайте дату проекта приказа: настройки группы → Документы.');return;}
+      setSourceDraft(previous=>({...previous,key:education.scopeKey,dates:{...(previous.key===education.scopeKey?previous.dates:{}),enrollment_order:settings.effective.document_date!}}));
+      toast.success('Дата подставлена только в новый проект. Проверьте её перед подготовкой.');
+    }catch(error){if(dateScopeRef.current===key)toast.error(admissionDocumentErrorMessages[normalizeAdmissionDocumentError(error).code]);}
+    finally{if(dateScopeRef.current===key)setAdmissionDateLoading(false);}
+  };
   const updateSourceDraft=(change:Partial<SourceDraft>)=>setSourceDraft(previous=>({... (previous.key===education.scopeKey?previous:blankSourceDraft()),...change,key:education.scopeKey}));
   useEffect(()=>{if(education.envelope?.state)void education.calendar({kind:'current',view:'published'});},[education.envelope?.state?.revision]);
   useEffect(() => {
@@ -657,6 +676,7 @@ function GroupDocumentsFolderView({
           {education.pending&&<Button variant="outline" onClick={()=>void education.retry()}>Повторить тот же запрос фиксации</Button>}
           {education.error&&<p role="alert" className="text-sm text-destructive">Подтверждённый источник недоступен. Обновите сведения группы.</p>}
           {education.snapshotValue&&<p className="text-sm">Подтверждено участников: {education.snapshotValue.header.row_count}; состав на {education.snapshotValue.header.as_of}.</p>}
+          <div className="space-y-1"><Button type="button" variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal rounded-xl text-left" disabled={busy||education.busy||education.pending||admissionDateLoading} onClick={()=>void prefillAdmissionOrderDate()}>Подставить дату приказа из настроек группы</Button><p className="text-xs text-muted-foreground">Только для нового проекта. При индивидуальных датах используйте проекты в карточках учеников.</p></div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{PACKAGE_DOC_TYPES.map(type=><label className="text-xs" key={type}>{typeTitle.get(type)??type}<Input type="date" disabled={busy||education.busy||education.pending} aria-label={`Дата документа ${type}`} value={educationDates[type]??''} onChange={v=>updateSourceDraft({dates:{...educationDates,[type]:v.target.value}})}/></label>)}</div>
         </>}
       </Card>

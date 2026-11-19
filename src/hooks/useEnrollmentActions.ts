@@ -194,7 +194,7 @@ export function useEnrollmentActions(
       );
 
       if (options?.canContinue && !options.canContinue()) return false;
-      toast.info("Приказ автоматически не оформлен. Подготовьте документ в рабочем процессе группы и зарегистрируйте точный файл.");
+      toast.info("Проверьте проект приказа в документах ученика. Решение о приёме, подпись и регистрация оформляются отдельно.");
 
       toast.success(`Зачислено ${newUserIds.length} учеников`);
       setShowEnrollDialog(false);

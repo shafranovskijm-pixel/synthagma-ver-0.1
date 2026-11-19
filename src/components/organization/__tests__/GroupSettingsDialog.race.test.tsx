@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 vi.mock('@/components/organization/groups/GroupEducationFactsPanel',()=>({GroupEducationFactsPanel:()=>null}));
+vi.mock('@/components/organization/documents/AdmissionDocumentSettingsPanel',()=>({AdmissionDocumentSettingsPanel:({organizationId,scope}:any)=><output data-testid="group-admission-scope">{organizationId}:{scope.kind}:{scope.groupId}</output>}));
 
 type QueryResult = { data: Record<string, unknown> | null; error: unknown };
 
@@ -182,4 +183,13 @@ describe("GroupSettingsDialog request ordering", () => {
     expect(await screen.findByDisplayValue("Восстановленная группа")).toBeInTheDocument();
     expect(screen.queryByText("Не удалось загрузить настройки группы")).not.toBeInTheDocument();
   });
+  it("opens exact group document controls without the broad legacy save button", async () => {
+    const request=deferred<QueryResult>();groupRequests.set('group-docs',request);
+    render(<GroupSettingsDialog open groupId="group-docs" organizationId="org-docs" onOpenChange={vi.fn()}/>);
+    await act(async()=>{request.resolve({data:group('group-docs','Группа документов'),error:null});await request.promise;});
+    fireEvent.click(await screen.findByRole('button',{name:'Документы'}));
+    expect(screen.getByTestId('group-admission-scope')).toHaveTextContent('org-docs:group:group-docs');
+    expect(screen.queryByRole('button',{name:/^Сохранить$/})).not.toBeInTheDocument();
+  });
+
 });

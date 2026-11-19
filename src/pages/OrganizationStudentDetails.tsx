@@ -449,7 +449,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
                     <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />
                   )}
                   {h.activeTab === "documents" && (
-                    <DocumentsTab h={h} />
+                    <DocumentsTab h={h} organizationId={organizationId} studentUserId={student.user_id} actorUserId={user.id} journalEnrollments={enrollments} />
                   )}
                   {h.activeTab === "activity" && (
                     <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />

@@ -7,13 +7,14 @@ import { PACKAGE_DOC_TYPES } from "@/lib/group-docs/packageTypes";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
 import {compatibleArtifactSnapshot,envelope,id} from '@/lib/groupEducationFacts/__tests__/fixtures';
 import { EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE } from '../../../../../supabase/functions/_shared/group-education-artifact';
+vi.mock('@/lib/admissionDocuments/client',()=>({captureAdmissionDocumentScope:(organizationId:string,scope:unknown,current:()=>boolean)=>({organizationId,scope,current}),readAdmissionDocumentSettings:(...args:any[])=>mocks.readAdmission(...args),normalizeAdmissionDocumentError:()=>({code:'ACCESS_DENIED'}),admissionDocumentErrorMessages:{ACCESS_DENIED:'Недостаточно прав'}}));
 vi.mock('@/hooks/useGroupEducationFacts',()=>({useGroupEducationFacts:()=>mocks.education}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:mocks.actor},loading:false})}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineActor:()=>mocks.accessRevision}));
 vi.mock('@/lib/groupEducationFacts/client',async original=>({...await original<typeof import('@/lib/groupEducationFacts/client')>(),captureEducationScope:vi.fn((organizationId,groupId,current)=>({organizationId,groupId,current,actorId:mocks.actor,accessRevision:mocks.accessRevision})),educationBearer:()=>mocks.bearer(),educationScopeCurrent:(s:any)=>s.actorId===mocks.actor&&s.accessRevision===mocks.accessRevision&&s.current(),saveEducationDocuments:(...args:any[])=>mocks.saveEducation(...args)}));
 
 const mocks = vi.hoisted(() => ({
-  actor:'',accessRevision:1,
+  actor:'',accessRevision:1,readAdmission:vi.fn(),toastInfo:vi.fn(),
   education:{} as any,
   bearer:vi.fn(),
   saveEducation:vi.fn(),
@@ -73,7 +74,7 @@ vi.mock("sonner", () => ({
     error: mocks.toastError,
     success: mocks.toastSuccess,
     warning: vi.fn(),
-    info: vi.fn(),
+    info: mocks.toastInfo,
   },
 }));
 
@@ -772,4 +773,17 @@ describe("GroupDocumentsFolder package contract routing", () => {
     await act(async()=>finish({dryRun:false,version:7,warnings:[]}));expect(mocks.refreshDocuments).not.toHaveBeenCalled();expect(mocks.saveEducation).not.toHaveBeenCalled();expect(mocks.saveGenerated).not.toHaveBeenCalled();expect(mocks.toastSuccess).not.toHaveBeenCalled();expect(mocks.onDataChanged).not.toHaveBeenCalled();
   });
   it('same actor hook authority epoch masks unsaved source fields synchronously',()=>{mocks.education={...mocks.education,scopeCurrent:()=>true};const props={organizationId:id(1),groupId:id(2),groupName:'Учебная группа',students:SAMPLE_CONTEXT.students,ctx:structuredClone(SAMPLE_CONTEXT)};const view=render(<GroupDocumentsFolder {...props}/>);fireEvent.click(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'}));fireEvent.change(screen.getByLabelText('Основание фиксации состава'),{target:{value:'PRIVATE-OLD-EPOCH'}});fireEvent.change(screen.getByLabelText('Дата документа class_journal'),{target:{value:'2026-11-01'}});mocks.education={...mocks.education,scopeKey:'actor-a:new-authority'};view.rerender(<GroupDocumentsFolder {...props}/>);expect(screen.queryByDisplayValue('PRIVATE-OLD-EPOCH')).toBeNull();expect(screen.getByLabelText('Дата документа class_journal')).toHaveValue('');});
+  it.each([0,2])('admission defaults are explicit, preserve saved files, and respect individual dates (%s)',async overrideCount=>{
+    mocks.education={...mocks.education,scopeCurrent:()=>true};mockDocuments([docxRow]);
+    mocks.readAdmission.mockResolvedValue({individual_date_overrides:overrideCount,effective:{document_date:'2026-11-15'}});
+    renderFolder();expect(mocks.readAdmission).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('checkbox',{name:'Использовать подтверждённый состав и календарь'}));
+    fireEvent.click(screen.getByRole('button',{name:'Подставить дату приказа из настроек группы'}));
+    await waitFor(()=>expect(mocks.readAdmission).toHaveBeenCalledOnce());
+    if(overrideCount){expect(mocks.toastInfo).toHaveBeenCalledWith(expect.stringContaining('индивидуальные даты'));expect(screen.getByLabelText('Дата документа enrollment_order')).toHaveValue('');}
+    else await waitFor(()=>expect(screen.getByLabelText('Дата документа enrollment_order')).toHaveValue('2026-11-15'));
+    expect(screen.getByLabelText('Дата документа class_journal')).toHaveValue('');
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();expect(mocks.saveEducation).not.toHaveBeenCalled();expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
 });

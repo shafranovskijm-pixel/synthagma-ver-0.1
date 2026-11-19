@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import type { StudentEnrollment } from "@/types/student";
 import { StudentLaborSafetyXmlCard } from "@/components/organization/student-detail/StudentLaborSafetyXmlCard";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { StudentJournalLinks, type StudentJournalEnrollment } from './StudentJournalLinks';
+import { journalUuid } from '@/lib/educationJournalWorkspace/contract';
 
 interface DocumentsTabProps {
   h: any;
@@ -20,6 +22,9 @@ interface DocumentsTabProps {
   organizationId?: string | null;
   studentUserId?: string | null;
   actorUserId?: string | null;
+  journalEnrollments?: StudentJournalEnrollment[];
+  journalEnrollmentsLoading?: boolean;
+  journalEnrollmentsError?: string | null;
   laborSafetyXml?: {
     organizationId: string;
     student: {
@@ -55,7 +60,7 @@ function matchingFrdoData(h: any, organizationId?: string | null, studentUserId?
   return Object.keys(value).length === 0 || value.user_id === studentUserId && value.organization_id === organizationId ? value : null;
 }
 
-export function DocumentsTab({ h, orgPlan, organizationId, studentUserId, actorUserId, laborSafetyXml }: DocumentsTabProps) {
+export function DocumentsTab({ h, orgPlan, organizationId, studentUserId, actorUserId, laborSafetyXml, journalEnrollments, journalEnrollmentsLoading, journalEnrollmentsError }: DocumentsTabProps) {
   const snilsInputRef = useRef<HTMLInputElement>(null);
   const personalDocumentsBoundaryRef = useRef<HTMLDivElement>(null);
   const personalDocumentsUnavailable = h.isLoading || Boolean(h.dataLoadError);
@@ -68,6 +73,7 @@ export function DocumentsTab({ h, orgPlan, organizationId, studentUserId, actorU
 
   return (
     <div className="space-y-6">
+      {journalUuid.safeParse(organizationId).success && journalUuid.safeParse(studentUserId).success && <StudentJournalLinks key={`${organizationId}:${studentUserId}`} organizationId={organizationId!} studentUserId={studentUserId!} enrollments={journalEnrollments} enrollmentsLoading={journalEnrollmentsLoading} enrollmentsError={journalEnrollmentsError} />}
       {laborSafetyXml && (
         <StudentLaborSafetyXmlCard
           {...laborSafetyXml}
