@@ -11,6 +11,9 @@ const db = vi.hoisted(() => ({
   queries: [] as Array<{ table: string; filters: Array<[string, unknown]>; from: number; to: number; order?: string }>,
   refresh: vi.fn(),
   programme: null as any,
+  maxFilterIds: Infinity,
+  countsLoading: false,
+  countsError: null as string | null,
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
@@ -19,6 +22,9 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
     db.queries.push(query);
     const result = () => {
       if (db.rejectedTables.has(table)) throw new Error("Connection dropped");
+      if (query.filters.some(([, value]) => Array.isArray(value) && value.length > db.maxFilterIds)) {
+        throw new Error("Request URI too long");
+      }
       const error = db.errors[`${table}:${query.from}`] ?? db.errors[table] ?? null;
       const source = table === "student_group_profiles_effective"
         ? (db.rows.profiles ?? []).flatMap(profile => [...new Set([profile.student_group_id,
@@ -58,8 +64,9 @@ vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({ can: () => true, canSeeOrgTab: () => true, loading: false }),
 }));
 vi.mock("@/hooks/useGroupFolderCounts", () => ({
-  useGroupFolderCounts: () => ({ counts: {}, refresh: db.refresh }),
+  useGroupFolderCounts: () => ({ counts: {}, loading: db.countsLoading, error: db.countsError, refresh: db.refresh }),
 }));
+vi.mock("@/components/organization/groups/GroupEducationFactsPanel", () => ({ GroupEducationFactsPanel: () => null }));
 vi.mock("@/components/organization/group-folder/ContractsFolder", () => ({ ContractsFolder: () => null }));
 vi.mock("@/components/organization/GroupSettingsDialog", () => ({ GroupSettingsDialog: () => null }));
 vi.mock("@/components/organization/groups/AddStudentsToGroupDialog", () => ({ AddStudentsToGroupDialog: () => null }));
@@ -87,6 +94,10 @@ beforeEach(() => {
   db.programme = null;
   db.errors = {};
   db.rejectedTables.clear();
+  db.maxFilterIds = Infinity;
+  db.countsLoading = false;
+  db.countsError = null;
+  db.refresh.mockClear();
   db.rows = {
     student_groups: [{ id: "group-1", organization_id: "org-1", name: "Учебный центр", course_id: null }],
     organizations: [{ id: "org-1", name: "Организация" }],
@@ -139,6 +150,61 @@ describe("GroupFolderTab roster loading", () => {
     expect(screen.getAllByText("79 активных учеников").length).toBeGreaterThan(0);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
+  it.each([358, 1276])("loads all %i learners with bounded detail filters", async count => {
+    db.maxFilterIds = 100;
+    db.rows.profiles = Array.from({ length: count }, (_, index) => profile(index));
+    db.rows.student_frdo_data = [{ id: "frdo-last", organization_id: "org-1", user_id: profile(count - 1).user_id, snils: "test-last-learner" }];
+    db.rows.enrollments = Array.from({ length: count }, (_, index) => ({ id: `enrollment-${String(index).padStart(4, "0")}`, user_id: profile(index).user_id, course_id: "course-shared" }));
+    db.rows.courses = [{ id: "course-shared", organization_id: "org-1", title: "Общий курс" }];
+    mount();
+    const loaded = await context();
+    const students = loaded.students;
+    expect(students).toHaveLength(count);
+    expect(students.at(-1).user_id).toBe(profile(count - 1).user_id);
+    expect(students.at(-1).snils).toBe("test-last-learner");
+    expect(loaded.group.program_title).toBe("Общий курс");
+    expect(db.queries.every(query => query.filters.every(([, value]) => !Array.isArray(value) || value.length <= 100))).toBe(true);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("preserves every attempt when one learner has more than 1000 attempts", async () => {
+    db.rows.test_attempts = Array.from({ length: 1037 }, (_, index) => ({ id: `attempt-${String(index).padStart(4, "0")}`, user_id: "student-0001" }));
+    mount();
+    expect((await context()).students).toHaveLength(1);
+    expect(db.queries.filter(query => query.table === "test_attempts").map(query => query.from)).toEqual([0, 1000]);
+  });
+
+  it("keeps failed detail reads explicit and records only a fixed diagnostic stage/code", async () => {
+    db.errors.student_frdo_data = { code: "42501", message: "private-server-message" };
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      mount();
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveAttribute("data-load-stage", "frdo-data");
+      expect(alert).toHaveAttribute("data-load-code", "42501");
+      expect(alert).toHaveAttribute("data-load-category", "DatabaseError");
+      expect(alert).not.toHaveTextContent("private-server-message");
+      expect(log).toHaveBeenCalledWith("[GroupFolderTab.load]", { stage: "frdo-data", code: "42501", category: "DatabaseError" });
+      expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
+    } finally { log.mockRestore(); }
+  });
+
+  it("does not launch an extra counter refresh when the group first opens", async () => {
+    mount();
+    await context();
+    expect(db.refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps failed folder counters unknown and offers a dedicated retry", async () => {
+    db.countsError = "count-unavailable";
+    mount();
+    await context();
+    expect(screen.getByRole("status")).toHaveTextContent("Не удалось подтвердить счётчики папок");
+    expect(screen.getByText("Не удалось подтвердить документы группы")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить проверку папок" }));
+    expect(db.refresh).toHaveBeenCalledTimes(1);
+  });
+
   it("explains an all-archived group instead of implying its 79 learners disappeared", async () => {
     db.rows.profiles = Array.from({ length: 79 }, (_, index) => profile(index, true));
     mount();
