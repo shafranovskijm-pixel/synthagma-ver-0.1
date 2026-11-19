@@ -1,8 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdmissionDocumentSettingsPanel, StudentAdmissionAutomationCard } from './AdmissionDocumentSettingsPanel';
 import { draft, enrollmentScope, exported, ids, settings } from '@/lib/admissionDocuments/__tests__/fixtures';
-const m=vi.hoisted(()=>({actor:'actor',read:vi.fn(),apply:vi.fn(),export:vi.fn(),convert:vi.fn(),download:vi.fn(),success:vi.fn(),current:vi.fn()}));
+const m=vi.hoisted(()=>({actor:'actor',read:vi.fn(),apply:vi.fn(),export:vi.fn(),convert:vi.fn(),download:vi.fn(),success:vi.fn(),current:vi.fn(),inputChanges:new Map<string,(event:any)=>void>()}));
+// Retain the actual Input rendering. Expose its supplied callbacks only to model
+// multiple control updates queued before React renders the next form snapshot.
+vi.mock('@/components/ui/input',async original=>{
+ const actual=await original<typeof import('@/components/ui/input')>();
+ return{...actual,Input:(props:any)=>{m.inputChanges.set(props['aria-label'],props.onChange);return <actual.Input {...props}/>;}};
+});
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:m.actor},loading:false})}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineActor:()=>1}));
 vi.mock('sonner',()=>({toast:{success:(...a:unknown[])=>m.success(...a)}}));
@@ -13,11 +19,32 @@ vi.mock('@/lib/admissionDocuments/client',async()=>{
  assertAdmissionDocumentScopeCurrent:(scope:any)=>{if(!scope.current())throw new actual.AdmissionDocumentError('ACCESS_DENIED');m.current();},
  readAdmissionDocumentSettings:(...a:unknown[])=>m.read(...a),applyAdmissionDocumentSettings:(...a:unknown[])=>m.apply(...a),readAutomaticAdmissionDraft:(...a:unknown[])=>m.export(...a)};
 });
-beforeEach(()=>{m.actor='actor';for(const fn of [m.read,m.apply,m.export,m.convert,m.download,m.success,m.current])fn.mockReset();m.read.mockResolvedValue(settings());m.export.mockResolvedValue(exported());m.convert.mockResolvedValue(new Blob(['docx']));m.apply.mockImplementation(async(_scope:any,_rev:number,requestId:string)=>({schema_version:1,request_id:requestId,replayed:false,processed:0,next_after_enrollment_id:null,state:settings()}));});
+beforeEach(()=>{m.actor='actor';m.inputChanges.clear();for(const fn of [m.read,m.apply,m.export,m.convert,m.download,m.success,m.current])fn.mockReset();m.read.mockResolvedValue(settings());m.export.mockResolvedValue(exported());m.convert.mockResolvedValue(new Blob(['docx']));m.apply.mockImplementation(async(_scope:any,_rev:number,requestId:string)=>({schema_version:1,request_id:requestId,replayed:false,processed:0,next_after_enrollment_id:null,state:settings()}));});
 afterEach(cleanup);
 const mount=(scope:typeof enrollmentScope|{kind:'group';groupId:string}=enrollmentScope)=>render(<AdmissionDocumentSettingsPanel organizationId={ids.org} scope={scope}/>);
 const loaded=()=>screen.findByRole('button',{name:'Сохранить настройки приказа'});
 describe('admission settings usable, scoped controls',()=>{
+ it('preserves both dates and enabled mode when controls change before the next render',async()=>{
+  m.apply.mockImplementation(async(_scope:any,_revision:number,requestId:string,command:any)=>{
+   const state=settings();state.revision=1;state.preferences={enabled:command.enabled,document_date:command.document_date,effective_admission_date:command.effective_admission_date,timezone:command.timezone};
+   return{schema_version:1,request_id:requestId,replayed:false,processed:0,next_after_enrollment_id:null,state};
+  });
+  mount();await loaded();
+  const changeDocumentDate=m.inputChanges.get('Дата проекта приказа')!;
+  const changeAdmissionDate=m.inputChanges.get('Зачислить с даты')!;
+  act(()=>{
+   changeDocumentDate({target:{value:'2026-11-18'}});
+   changeAdmissionDate({target:{value:'2026-11-17'}});
+   fireEvent.change(screen.getByLabelText('Готовить проекты приказов автоматически'),{target:{value:'on'}});
+  });
+  expect(screen.getByLabelText('Дата проекта приказа')).toHaveValue('2026-11-18');
+  expect(screen.getByLabelText('Зачислить с даты')).toHaveValue('2026-11-17');
+  fireEvent.click(screen.getByRole('button',{name:'Сохранить настройки приказа'}));
+  await waitFor(()=>expect(m.apply).toHaveBeenCalledOnce());
+  expect(m.apply.mock.calls[0][3]).toMatchObject({action:'save',enabled:true,document_date:'2026-11-18',effective_admission_date:'2026-11-17'});
+  await waitFor(()=>expect(screen.getByLabelText('Дата проекта приказа')).toHaveValue('2026-11-18'));
+  expect(screen.getByLabelText('Зачислить с даты')).toHaveValue('2026-11-17');
+ });
  it('lets an authorized operator edit and clear two independent dates; editing alone performs no write',async()=>{
   mount();await loaded();fireEvent.change(screen.getByLabelText('Дата проекта приказа'),{target:{value:'2026-11-15'}});fireEvent.change(screen.getByLabelText('Зачислить с даты'),{target:{value:'2026-11-14'}});expect(m.apply).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button',{name:'Сохранить настройки приказа'}));await waitFor(()=>expect(m.apply).toHaveBeenCalledOnce());

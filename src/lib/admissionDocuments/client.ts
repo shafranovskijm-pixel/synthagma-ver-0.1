@@ -6,6 +6,23 @@ export type AdmissionDocumentErrorCode = 'ACCESS_DENIED' | 'INVALID_INPUT' | 'RE
 export class AdmissionDocumentError extends Error {
   constructor(public readonly code: AdmissionDocumentErrorCode = 'DEPENDENCY_UNAVAILABLE') { super(code); this.name = 'AdmissionDocumentError'; }
 }
+type DiagnosticStage = 'rpc.error' | 'rpc.transport' | 'settings.response' | 'mutation.response' | 'draft.response'
+  | 'settings.organization' | 'settings.scope' | 'settings.groups_unique' | 'settings.draft_binding'
+  | 'mutation.request' | 'mutation.revision' | 'mutation.cursor_kind' | 'mutation.cursor_repeat' | 'draft.binding';
+const diagnosticFields = new Set(('schema_version organization_id scope revision preferences effective groups draft individual_date_overrides capabilities can_read can_write can_prepare can_apply_current kind group_id enrollment_id enabled document_date effective_admission_date timezone sources policy_revisions organization group enrollment id name course_id user_id observed_group_id recorded_at updated_at status preparation_mode missing_facts source_revision program_ref stale registered_locked live_missing_facts enrollment_snapshot_id binding_id binding_revision version_id snapshot_hash facts_hash file_document_id file_version_id file_review_id request_id replayed processed next_after_enrollment_id state draft_id organization_name student_name course_title group_name program_title').split(' '));
+const diagnosticIssueCodes = new Set(('invalid_type invalid_literal custom invalid_union invalid_union_discriminator invalid_enum_value unrecognized_keys invalid_arguments invalid_return_type invalid_date invalid_string too_small too_big invalid_intersection_types not_multiple_of not_finite invalid_value invalid_format').split(' '));
+const diagnosticErrorCodes = new Set<AdmissionDocumentErrorCode>(['ACCESS_DENIED','INVALID_INPUT','REVISION_CONFLICT','REQUEST_MISMATCH','SOURCE_CHANGED','REGISTERED_DOCUMENT','DEPENDENCY_UNAVAILABLE']);
+/** Static stages/schema paths only. Never log response values, IDs or raw errors. */
+function diagnostic(stage: DiagnosticStage, code?: AdmissionDocumentErrorCode, rawIssues?: unknown) {
+  const issues = Array.isArray(rawIssues) ? rawIssues.slice(0,8).map(raw => {
+    const issue = raw as { code?: unknown; path?: unknown } | null;
+    return { code: typeof issue?.code === 'string' && diagnosticIssueCodes.has(issue.code) ? issue.code : 'validation',
+      path: Array.isArray(issue?.path) ? issue.path.slice(0,12).map(part => typeof part === 'string' && diagnosticFields.has(part) ? part
+        : typeof part === 'number' && Number.isInteger(part) && part >= 0 && part <= 100000 ? part : '<field>') : [] };
+  }) : undefined;
+  try { console.warn('[AdmissionDocuments]', { stage,...(code ? { code: diagnosticErrorCodes.has(code) ? code : 'DEPENDENCY_UNAVAILABLE' } : {}),...(issues ? { issues } : {}) }); }
+  catch { /* Diagnostics cannot change mutation/retry behavior. */ }
+}
 export const admissionDocumentErrorMessages: Record<AdmissionDocumentErrorCode,string> = {
   ACCESS_DENIED: 'Доступ к настройкам документов не подтверждён.', INVALID_INPUT: 'Проверьте группу и выбранные даты.',
   REVISION_CONFLICT: 'Настройки изменились. Обновите сведения перед сохранением.', REQUEST_MISMATCH: 'Параметры повтора изменились. Обновите сведения.',
@@ -32,22 +49,27 @@ async function rpc(scope: AdmissionDocumentActorScope, name: string, args: Recor
   assertAdmissionDocumentScopeCurrent(scope);
   const session = await supabase.auth.getSession(); assertAdmissionDocumentScopeCurrent(scope);
   if (session.error || session.data.session?.user.id !== scope.actorId || !session.data.session.access_token) throw new AdmissionDocumentError('ACCESS_DENIED');
-  const result = await supabase.rpc(name as never,args as never).setHeader('Authorization',`Bearer ${session.data.session.access_token}`); assertAdmissionDocumentScopeCurrent(scope);
-  if (result.error) throw normalizeAdmissionDocumentError(result.error);
+  let result;
+  try { result = await supabase.rpc(name as never,args as never).setHeader('Authorization',`Bearer ${session.data.session.access_token}`); }
+  catch (error) { diagnostic('rpc.transport',normalizeAdmissionDocumentError(error).code); throw error; }
+  assertAdmissionDocumentScopeCurrent(scope);
+  if (result.error) { const error=normalizeAdmissionDocumentError(result.error); diagnostic('rpc.error',error.code); throw error; }
   return result.data;
 }
-function parse<T>(schema: { safeParse(raw: unknown): { success: boolean; data?: T } }, raw: unknown): T {
+function parse<T>(schema: { safeParse(raw: unknown): { success: boolean; data?: T; error?: { issues?: unknown } } }, raw: unknown, stage: DiagnosticStage): T {
   const parsed = schema.safeParse(raw);
-  if (!parsed.success) throw new AdmissionDocumentError();
+  if (!parsed.success) { diagnostic(stage,undefined,parsed.error?.issues); throw new AdmissionDocumentError(); }
   return parsed.data as T;
 }
 function assertSettings(scope: AdmissionDocumentActorScope, state: c.AdmissionDocumentSettings) {
-  if (state.organization_id !== scope.organizationId || JSON.stringify(state.scope) !== JSON.stringify(scope.scope)
-    || new Set(state.groups.map(group => group.id)).size !== state.groups.length
-    || state.draft && (state.draft.organization_id !== scope.organizationId || scope.scope.kind === 'enrollment' && state.draft.enrollment_id !== scope.scope.enrollment_id)) throw new AdmissionDocumentError();
+  const stage:DiagnosticStage|null = state.organization_id !== scope.organizationId ? 'settings.organization'
+    : JSON.stringify(state.scope) !== JSON.stringify(scope.scope) ? 'settings.scope'
+      : new Set(state.groups.map(group => group.id)).size !== state.groups.length ? 'settings.groups_unique'
+        : state.draft && (state.draft.organization_id !== scope.organizationId || scope.scope.kind === 'enrollment' && state.draft.enrollment_id !== scope.scope.enrollment_id) ? 'settings.draft_binding' : null;
+  if (stage) { diagnostic(stage); throw new AdmissionDocumentError(); }
 }
 export async function readAdmissionDocumentSettings(scope: AdmissionDocumentActorScope) {
-  const state = parse<c.AdmissionDocumentSettings>(c.settingsSchema,await rpc(scope,'read_admission_document_settings',{ p_organization_id: scope.organizationId,p_scope: scope.scope }));
+  const state = parse<c.AdmissionDocumentSettings>(c.settingsSchema,await rpc(scope,'read_admission_document_settings',{ p_organization_id: scope.organizationId,p_scope: scope.scope }),'settings.response');
   assertSettings(scope,state); return state;
 }
 export async function applyAdmissionDocumentSettings(scope: AdmissionDocumentActorScope, expectedRevision: number, requestId: string, command: c.AdmissionDocumentCommand) {
@@ -56,17 +78,19 @@ export async function applyAdmissionDocumentSettings(scope: AdmissionDocumentAct
   if (!input.success) throw new AdmissionDocumentError('INVALID_INPUT');
   const value = parse<c.AdmissionDocumentMutation>(c.mutationSchema,await rpc(scope,'apply_admission_document_settings',{
     p_organization_id: scope.organizationId,p_scope: scope.scope,p_expected_revision: expectedRevision,p_request_id: requestId,p_command: input.data,
-  }));
+  }),'mutation.response');
   assertSettings(scope,value.state);
-  if (value.request_id !== requestId || value.state.revision < expectedRevision || input.data.action !== 'apply_current' && value.next_after_enrollment_id !== null
-    || input.data.action === 'apply_current' && value.next_after_enrollment_id !== null && value.next_after_enrollment_id === input.data.after_enrollment_id) throw new AdmissionDocumentError();
+  const stage:DiagnosticStage|null = value.request_id !== requestId ? 'mutation.request' : value.state.revision < expectedRevision ? 'mutation.revision'
+    : input.data.action !== 'apply_current' && value.next_after_enrollment_id !== null ? 'mutation.cursor_kind'
+      : input.data.action === 'apply_current' && value.next_after_enrollment_id !== null && value.next_after_enrollment_id === input.data.after_enrollment_id ? 'mutation.cursor_repeat' : null;
+  if (stage) { diagnostic(stage); throw new AdmissionDocumentError(); }
   return value;
 }
 export async function readAutomaticAdmissionDraft(scope: AdmissionDocumentActorScope, draft: c.AutomaticAdmissionDraft) {
   if (scope.scope.kind !== 'enrollment' || scope.scope.enrollment_id !== draft.enrollment_id || draft.organization_id !== scope.organizationId || draft.group_id !== scope.scope.group_id) throw new AdmissionDocumentError('INVALID_INPUT');
   const data = parse<c.AdmissionDraftExport>(c.exportSchema,await rpc(scope,'read_automatic_admission_draft',{
     p_organization_id: scope.organizationId,p_enrollment_id: draft.enrollment_id,p_expected_revision: draft.revision,
-  }));
-  if (data.organization_id !== scope.organizationId || data.enrollment_id !== draft.enrollment_id || data.draft_id !== draft.id || data.revision !== draft.revision) throw new AdmissionDocumentError();
+  }),'draft.response');
+  if (data.organization_id !== scope.organizationId || data.enrollment_id !== draft.enrollment_id || data.draft_id !== draft.id || data.revision !== draft.revision) { diagnostic('draft.binding'); throw new AdmissionDocumentError(); }
   return data;
 }

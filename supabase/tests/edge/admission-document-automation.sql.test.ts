@@ -3,6 +3,7 @@
 // group-authority/programme collaborators below are explicit synthetic fixtures,
 // not evidence of production OAuth or a multi-session lock-wait experiment.
 import { PGlite } from '@electric-sql/pglite';
+import { settingsSchema, mutationSchema } from '@/lib/admissionDocuments/contract';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -196,5 +197,18 @@ describe('actual admission draft migration (synthetic upstream authority adapter
   await expect(db.query('SELECT * FROM uc_automatic_admission_drafts')).rejects.toThrow('permission denied');
   await actAs(owner,'anon');await expect(read(scope)).rejects.toThrow('permission denied');
   await actAs(owner,'service_role');await expect(read(scope)).rejects.toThrow('permission denied');
+ });
+ it('strict wire roundtrip accepts actual group null-date save, repeated no-op and independent date output',async()=>{
+  const assertWire=(schema:typeof settingsSchema|typeof mutationSchema,raw:unknown)=>{
+   const parsed=schema.safeParse(JSON.parse(JSON.stringify(raw)));
+   const issues='error' in parsed ? parsed.error.issues.map(issue=>({path:issue.path,code:issue.code})) : [];
+   expect(parsed.success,JSON.stringify(issues)).toBe(true);
+  };
+  assertWire(settingsSchema,await read(groupScope));
+  const first=await mutate(groupScope,save({enabled:true}));assertWire(mutationSchema,first);
+  const second=await mutate(groupScope,save({enabled:true}),1);assertWire(mutationSchema,second);
+  expect(second.state.preferences).toEqual({enabled:true,document_date:null,effective_admission_date:null,timezone:null});expect(second.state.revision).toBe(1);
+  const dated=await mutate(groupScope,save({enabled:true,document_date:'2026-11-18',effective_admission_date:'2026-11-17'}),1);assertWire(mutationSchema,dated);
+  expect(dated.state.preferences).toMatchObject({document_date:'2026-11-18',effective_admission_date:'2026-11-17'});expect(dated.state.revision).toBe(2);
  });
 });
