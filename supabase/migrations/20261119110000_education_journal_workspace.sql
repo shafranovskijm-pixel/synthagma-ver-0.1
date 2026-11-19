@@ -90,9 +90,9 @@ RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_cata
    AND r.data->'context'->>'kind' IN('enrollment','enrollment_contract') AND r.context_binding->>'kind'=r.data->'context'->>'kind' AND r.data->'context'->>'enrollment_id'=ee.enrollment_id::text
   WHERE r.organization_id=p_org AND NOT r.redacted
   AND(p_scope->>'group_id' IS NULL OR r.group_id=(p_scope->>'group_id')::uuid OR (p_scope->>'group_id')::uuid=ANY(r.scope_group_ids))
-  AND((p_scope->>'kind'='student' AND p.user_id=(p_scope->>'student_user_id')::uuid AND EXISTS(SELECT 1 FROM e WHERE e.user_id=p.user_id)
+  AND((p_scope->>'kind'='student' AND p.user_id=(p_scope->>'student_user_id')::uuid AND public.uc_identification_target_allowed(p_org,p.user_id,false)
     AND(p_scope->>'enrollment_id' IS NULL OR ee.enrollment_id=(p_scope->>'enrollment_id')::uuid))
-   OR(p_scope->>'kind'<>'student' AND((p.user_id IS NOT NULL AND EXISTS(SELECT 1 FROM e WHERE e.user_id=p.user_id))
+   OR(p_scope->>'kind'<>'student' AND((p.user_id IS NOT NULL AND public.uc_identification_target_allowed(p_org,p.user_id,false))
     OR(p.user_id IS NULL AND r.data->'subject'->>'kind'='none'))))
   AND uc_education_journal_private.source_allowed(p_org,p_scope,r.group_id,ee.enrollment_id,p.user_id,ee.course_id)),
  copies AS MATERIALIZED(SELECT r.*,p.user_id AS subject_id,coalesce(nullif(btrim(p.full_name),''),'Имя не указано') AS subject_label
@@ -100,7 +100,7 @@ RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_cata
   WHERE r.organization_id=p_org AND NOT r.redacted AND r.data->'subject'->>'kind'='person'
   AND(p_scope->>'kind'<>'student' OR p.user_id=(p_scope->>'student_user_id')::uuid)
   AND(p_scope->>'group_id' IS NULL OR r.group_id=(p_scope->>'group_id')::uuid)
-  AND EXISTS(SELECT 1 FROM e WHERE e.user_id=p.user_id AND(e.group_id IS NULL OR e.group_id=r.group_id))
+  AND public.uc_identification_target_allowed(p_org,p.user_id,false)
   AND uc_education_journal_private.source_allowed(p_org,p_scope,r.group_id,NULL,p.user_id,NULL))
  SELECT uc_education_journal_private.row_value('completion:'||a.id,'activity',e.user_id,e.person_label,e.enrollment_id,e.course_id,e.course_label,NULL,NULL,
   a.completed_at,a.lesson_label,'Зафиксировано завершение онлайн-урока; посещение и зачёт этим не подтверждаются',
@@ -180,15 +180,21 @@ RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_cata
  WHERE(p_type IS NULL OR p_type='admission_orders') AND(p_scope->>'group_id' IS NULL OR d.group_id=(p_scope->>'group_id')::uuid)
   AND uc_education_journal_private.source_allowed(p_org,p_scope,d.group_id,e.enrollment_id,e.user_id,e.course_id)
  UNION ALL
- SELECT uc_education_journal_private.row_value('education:'||r.id,'education_documents',e.user_id,e.person_label,e.enrollment_id,e.course_id,e.course_label,r.group_id,g.name,
+ SELECT uc_education_journal_private.row_value('education:'||r.id,'education_documents',p.user_id,coalesce(nullif(btrim(p.full_name),''),'Имя не указано'),e.enrollment_id,coalesce(e.course_id,rc.id),coalesce(e.course_label,rc.title),r.group_id,g.name,
   r.created_at,CASE r.document_type WHEN 'certificate' THEN 'Удостоверение' WHEN 'diploma' THEN 'Диплом' WHEN 'qualification' THEN 'Свидетельство' ELSE 'Документ об обучении' END,
   coalesce(r.document_number,'Номер не указан')||' · '||CASE WHEN s.annulment IS NOT NULL THEN 'Аннулировано' WHEN s.record_id IS NULL THEN 'Прежняя запись; контролируемое подтверждение выдачи отсутствует' ELSE 'Запись контролируемого реестра' END,
   CASE WHEN s.record_id IS NULL THEN 'Прежний учёт документов' ELSE 'Контролируемый реестр документов об обучении' END,r.id::text,s.revision)
- FROM e JOIN public.education_document_records r ON r.enrollment_id=e.enrollment_id AND r.user_id=e.user_id AND r.organization_id=p_org AND r.deleted_at IS NULL
- LEFT JOIN public.uc_education_issuance_states s ON s.record_id=r.id AND s.organization_id=p_org AND s.user_id=e.user_id AND NOT s.redacted
+ FROM public.education_document_records r JOIN public.profiles p ON p.user_id=r.user_id AND p.organization_id=p_org
+ LEFT JOIN e ON e.enrollment_id=r.enrollment_id AND e.user_id=r.user_id AND(r.course_id IS NULL OR r.course_id=e.course_id)
+ LEFT JOIN public.courses rc ON rc.id=r.course_id AND rc.organization_id=p_org
+ LEFT JOIN public.uc_education_issuance_states s ON s.record_id=r.id AND s.organization_id=p_org AND s.user_id=p.user_id
  LEFT JOIN public.student_groups g ON g.id=r.group_id AND g.organization_id=p_org
- WHERE(p_type IS NULL OR p_type='education_documents') AND(p_scope->>'group_id' IS NULL OR r.group_id=(p_scope->>'group_id')::uuid)
-  AND uc_education_journal_private.source_allowed(p_org,p_scope,r.group_id,e.enrollment_id,e.user_id,e.course_id)
+ WHERE(p_type IS NULL OR p_type='education_documents') AND r.organization_id=p_org AND r.deleted_at IS NULL AND NOT coalesce(s.redacted,false)
+  AND public.uc_identification_target_allowed(p_org,p.user_id,false)
+  AND(p_scope->>'kind'<>'student' OR p.user_id=(p_scope->>'student_user_id')::uuid)
+  AND(p_scope->>'enrollment_id' IS NULL OR e.enrollment_id=(p_scope->>'enrollment_id')::uuid)
+  AND(p_scope->>'group_id' IS NULL OR r.group_id=(p_scope->>'group_id')::uuid)
+  AND uc_education_journal_private.source_allowed(p_org,p_scope,r.group_id,e.enrollment_id,p.user_id,coalesce(e.course_id,rc.id))
  UNION ALL
  SELECT uc_education_journal_private.row_value('registry:'||r.id,'document_registration',r.subject_id,r.subject_label,r.subject_enrollment,r.subject_course,r.subject_course_label,r.group_id,g.name,
   r.registered_at,CASE WHEN p_scope->>'kind'='student' THEN CASE r.data->>'document_type' WHEN 'enrollment_order' THEN 'Приказ о зачислении' WHEN 'expulsion_order' THEN 'Приказ об отчислении' ELSE 'Регистрация документа' END ELSE coalesce(r.data->>'title','Регистрация документа') END,

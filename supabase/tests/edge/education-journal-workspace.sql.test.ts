@@ -180,6 +180,18 @@ it('future completion capture survives progress deletion and records a new epoch
  const r=await rows('activity');expect(r.rows).toHaveLength(2);expect(new Set(r.rows.map((r:any)=>r.source_revision))).toEqual(new Set([0,1]));
  await fail(()=>db.query('DELETE FROM public.uc_online_completion_events'));
 });
+it('explicit old personal records remain visible without a current enrollment; subjects are not inferred',async()=>{
+ await db.exec('RESET ROLE');await db.query('UPDATE education_document_records SET enrollment_id=NULL WHERE id=$1',[id(91)]);await db.query('DELETE FROM enrollments WHERE id=$1',[enrollment]);await as(student);
+ expect((await rows('education_documents')).rows).toHaveLength(1);
+ expect((await rows('education_documents')).rows[0].enrollment_id).toBeNull();
+ expect((await rows('document_registration')).rows).toHaveLength(1);
+ expect((await rows('copies_duplicates')).rows).toHaveLength(1);
+ await as(teacher);for(const type of ['education_documents','document_registration','copies_duplicates'])expect((await rows(type)).rows).toHaveLength(0);
+});
+it('redacted controlled issuance is not relabeled as an ordinary legacy document',async()=>{
+ await db.exec('RESET ROLE');await db.query('INSERT INTO uc_education_issuance_states VALUES($1,$2,$3,true,NULL,1)',[id(91),org,student]);await as(student);
+ expect((await rows('education_documents')).rows).toHaveLength(0);
+});
 it('rejects malformed and widened scope/query objects without partial success',async()=>{
  for(const s of [{kind:'organization',group_id:groupA},{kind:'student',student_user_id:student},{...scope,enrollment_id:'invalid'},{kind:'group',group_id:otherOrg}])await fail(()=>rpc(s),s.group_id===otherOrg?'42501':'22023');
  await fail(()=>rows('activity',scope,{limit:101}),'22023');await fail(()=>rows('activity',scope,{after:'bad'}),'22023');await fail(()=>rpc(scope,{kind:'summary',extra:true}),'22023');
