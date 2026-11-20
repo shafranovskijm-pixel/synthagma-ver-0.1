@@ -9,9 +9,14 @@ export function createRtnNewsRuntime() {
   const auth = { persistSession: false, autoRefreshToken: false };
   // Bound SDK headers AND response-body consumption through the native signal.
   // This is ordinary application transport, never a browser or TLS bypass.
-  const sdkFetch: typeof fetch = (input, init = {}) => fetch(input, {
-    ...init, signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
-  });
+  const sdkFetch: typeof fetch = (input, init = {}) => {
+    // The cron's node:crypto types add a RequestInit overload without signal.
+    // Narrow that union before reading it; retain all SDK request options.
+    const callerSignal = 'signal' in init ? init.signal : undefined;
+    return fetch(input, {
+      ...init, signal: callerSignal ? AbortSignal.any([callerSignal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
+    });
+  };
   return {
     service: createClient(url, key, { auth, global: { fetch: sdkFetch } }) as unknown as NewsWorkerClient,
     user: (authorization: string) => createClient(url, anon, { auth, global: { fetch: sdkFetch, headers: { Authorization: authorization } } }) as never,

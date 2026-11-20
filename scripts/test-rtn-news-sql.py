@@ -78,7 +78,7 @@ def main():
                 raise SystemExit('FAIL: precondition did not reject atomically: ' + result.stderr[-6000:])
         elif result.returncode:
             raise SystemExit(name + ': ' + result.stderr[-6000:])
-    concurrency_checks(psql, lambda sql: run('SET ROLE postgres;\n' + sql))
+    concurrency_checks(psql, lambda sql: run('SET ROLE postgres;\n' + sql), run)
     result = run('SET ROLE postgres;SELECT name FROM lab.results ORDER BY name;')
     if result.returncode:
         raise SystemExit(result.stderr)
@@ -89,31 +89,50 @@ def main():
     print(json.dumps(receipt))
 
 
-def concurrency_checks(psql, run):
+def concurrency_checks(psql, run, monitor):
     """Fresh isolated PG17 only: real concurrent wait/revoke, no server reset."""
     actor = '81000000-0000-4000-8000-000000000001'
     org = '11111111-1111-4111-8111-111111111111'
     auth = "SET ROLE authenticated;SELECT set_config('request.jwt.claim.role','authenticated',false);SELECT set_config('request.jwt.claim.sub','" + actor + "',false);"
+    # The fixture owner is intentionally NOSUPERUSER. SET ROLE postgres would
+    # hide other bootstrap-owned sessions' wait columns in pg_stat_activity.
+    # Only this read-only monitor keeps the disposable lab's bootstrap role;
+    # all mutations/actor calls retain their existing explicit fixture roles.
+    capability = monitor("SELECT current_user,session_user,(SELECT rolsuper FROM pg_roles WHERE rolname=current_user) OR pg_has_role(current_user,'pg_read_all_stats','MEMBER');")
+    identity = capability.stdout.strip().split('|')
+    if capability.returncode or len(identity) != 3 or identity[0] != identity[1] or identity[2] != 't':
+        raise AssertionError('news race monitor requires the existing lab bootstrap statistics visibility: ' + capability.stderr + capability.stdout)
+    observations = []
     def blocked(name, lock_sql, commit_sql, operation_sql, expected_error):
         blocker = subprocess.Popen([psql,'-X','-A','-t','-q','-v','ON_ERROR_STOP=1'], stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8')
         pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         try:
-            blocker.stdin.write("SET ROLE postgres;BEGIN;SET LOCAL statement_timeout='15s';"+lock_sql+"SELECT 'RTN_NEWS_LOCK_READY';\n");blocker.stdin.flush()
+            blocker.stdin.write("SET ROLE postgres;BEGIN;SET LOCAL statement_timeout='15s';"+lock_sql+"SELECT 'RTN_NEWS_LOCK_READY:'||pg_backend_pid();\n");blocker.stdin.flush()
             def marker():
                 for line in blocker.stdout:
-                    if line.strip() == 'RTN_NEWS_LOCK_READY':return True
-                return False
-            if not pool.submit(marker).result(timeout=10):raise AssertionError(name+': blocker did not lock')
+                    value = line.strip()
+                    if value.startswith('RTN_NEWS_LOCK_READY:'):
+                        return int(value.split(':', 1)[1])
+                return 0
+            blocker_pid = pool.submit(marker).result(timeout=10)
+            if blocker_pid <= 0:raise AssertionError(name+': blocker did not lock')
             operation = pool.submit(run,"\\set VERBOSITY verbose\nSET statement_timeout='15s';SET application_name='rtn_news_synthetic_race';"+operation_sql)
-            deadline=time.monotonic()+8;waited=False
+            deadline=time.monotonic()+8;waited=False;probe=None
             while time.monotonic()<deadline:
-                probe=run("SELECT count(*) FROM pg_stat_activity WHERE application_name='rtn_news_synthetic_race' AND wait_event_type='Lock';")
+                probe=monitor("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND application_name='rtn_news_synthetic_race' AND wait_event_type='Lock' AND " + str(blocker_pid) + "=ANY(pg_blocking_pids(pid));")
                 if not probe.returncode and probe.stdout.strip()=='1':waited=True;break
                 if operation.done():break
                 time.sleep(.02)
             blocker.stdin.write(commit_sql+'COMMIT;\n\\q\n');blocker.stdin.flush()
             _,err=blocker.communicate(timeout=10);response=operation.result(timeout=12)
-            if not waited or blocker.returncode:raise AssertionError(name+': no real lock wait: '+err+response.stderr)
+            observation = {'name':name,'monitor_current_user':identity[0],'monitor_session_user':identity[1],
+                           'blocker_pid':blocker_pid,'observed_expected_blocker_wait':waited,
+                           'probe_returncode':None if probe is None else probe.returncode,
+                           'probe_stdout':None if probe is None else probe.stdout.strip(),
+                           'probe_stderr':None if probe is None else probe.stderr.strip()}
+            observations.append(observation)
+            (OUT / 'native-race-observations.json').write_text(json.dumps(observations,indent=2),encoding='utf-8')
+            if not waited or blocker.returncode:raise AssertionError(name+': no real lock wait: '+json.dumps(observation)+err+response.stderr)
             if not response.returncode or expected_error not in response.stderr:raise AssertionError(name+': expected after-wait denial missing: '+response.stderr)
             check=run("SELECT lab.check('"+name+"',true);")
             if check.returncode:raise AssertionError(check.stderr)
