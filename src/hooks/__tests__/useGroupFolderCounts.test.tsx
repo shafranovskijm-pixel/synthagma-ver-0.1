@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGroupFolderCounts } from "../useGroupFolderCounts";
-import { EMPTY_GROUP_FOLDER_COUNTS, type GroupFolderCounts } from "@/lib/groups/folderCounts";
+import { EMPTY_GROUP_FOLDER_COUNTS, type GroupFolderCounts, type GroupFolderCountSeed } from "@/lib/groups/folderCounts";
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
@@ -21,6 +21,17 @@ beforeEach(() => { mocks.fetch.mockReset(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("group folder count scope guards", () => {
+  it("uses a completed initial seed once, then refreshes changed documents from current sources", async () => {
+    const seed: GroupFolderCountSeed = { organizationId: "org-1", groupId: "group-1", studentContractIds: [], passports: 2, snils: 1, exams: 5 };
+    mocks.fetch.mockResolvedValueOnce(counts(1)).mockResolvedValueOnce(counts(3));
+    const hook = renderHook(() => useGroupFolderCounts("org-1", "group-1", seed));
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    expect(mocks.fetch.mock.calls[0]).toEqual([{}, "org-1", "group-1", seed]);
+    await act(async () => { await hook.result.current.refresh(); });
+    expect(mocks.fetch.mock.calls[1]).toEqual([{}, "org-1", "group-1", undefined]);
+    expect(hook.result.current.counts.docs).toBe(3);
+  });
+
   it("ignores an old organization's late result during a new scope load", async () => {
     const oldRead = pending(); const newRead = pending();
     mocks.fetch.mockReturnValueOnce(oldRead.promise).mockReturnValueOnce(newRead.promise);

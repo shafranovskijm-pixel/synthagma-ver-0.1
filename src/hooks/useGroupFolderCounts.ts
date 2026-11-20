@@ -4,17 +4,18 @@ import {
   fetchGroupFolderCounts,
   EMPTY_GROUP_FOLDER_COUNTS,
   type GroupFolderCounts,
+  type GroupFolderCountSeed,
 } from "@/lib/groups/folderCounts";
 
 /** Счётчики папок группы с возможностью перезапроса после генерации документов. */
-export function useGroupFolderCounts(organizationId: string | null, groupId: string | null) {
+export function useGroupFolderCounts(organizationId: string | null, groupId: string | null, initialRead?: GroupFolderCountSeed | null) {
   const scope = JSON.stringify([organizationId, groupId]);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
   const generation = useRef(0);
   const [state, setState] = useState({ scope, counts: { ...EMPTY_GROUP_FOLDER_COUNTS }, loading: true, error: false });
 
-  const refresh = useCallback(async () => {
+  const read = useCallback(async (seed?: GroupFolderCountSeed | null) => {
     if (scopeRef.current !== scope) return;
     const request = ++generation.current;
     const isCurrent = () => generation.current === request && scopeRef.current === scope;
@@ -24,7 +25,7 @@ export function useGroupFolderCounts(organizationId: string | null, groupId: str
     }
     setState(current => ({ scope, counts: current.scope === scope ? current.counts : { ...EMPTY_GROUP_FOLDER_COUNTS }, loading: true, error: false }));
     try {
-      const next = await fetchGroupFolderCounts(supabase, organizationId, groupId);
+      const next = await fetchGroupFolderCounts(supabase, organizationId, groupId, seed);
       if (isCurrent()) setState({ scope, counts: next, loading: false, error: false });
     } catch {
       // Do not expose request URLs or learner data in diagnostic messages.
@@ -35,10 +36,13 @@ export function useGroupFolderCounts(organizationId: string | null, groupId: str
     }
   }, [organizationId, groupId, scope]);
 
+  // Only the initial scope read may reuse the just-confirmed roster details.
+  // Explicit refreshes after documents/membership changes always query afresh.
+  const refresh = useCallback(() => read(), [read]);
   useEffect(() => {
-    void refresh();
+    void read(initialRead);
     return () => { generation.current += 1; };
-  }, [refresh]);
+  }, [read, initialRead]);
 
   return {
     counts: state.scope === scope ? state.counts : { ...EMPTY_GROUP_FOLDER_COUNTS },

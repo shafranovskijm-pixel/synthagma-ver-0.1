@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fetchGroupFolderCounts, countUniqueContracts, countIdentityDocs } from "../folderCounts";
+import { fetchGroupFolderCounts, countUniqueContracts, countIdentityDocs, type GroupFolderCountSeed } from "../folderCounts";
 
 const ORG = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GROUP = "0cd9dd54-af40-4899-bd94-9d3c1a728d38";
@@ -54,6 +54,29 @@ function acceptanceData(): FakeData {
 }
 
 describe("group folder counts", () => {
+  it("reuses completed same-scope learner reads and queries only the two group sources", async () => {
+    const data = acceptanceData();
+    const seed: GroupFolderCountSeed = { organizationId: ORG, groupId: GROUP, studentContractIds: ["c1", "c3"], passports: 2, snils: 1, exams: 1 };
+    const calls: Query[] = [];
+    const fresh = await fetchGroupFolderCounts(makeClient(data), ORG, GROUP);
+    const reused = await fetchGroupFolderCounts(makeClient(data, calls), ORG, GROUP, seed);
+    expect(reused).toEqual(fresh);
+    expect(calls.map(query => query.table).sort()).toEqual(["group_documents", "org_contracts"]);
+    expect(reused.contracts).toBe(3);
+  });
+
+  it("discards a seed from another organization or group and reads current data", async () => {
+    const data = acceptanceData();
+    for (const seed of [
+      { organizationId: "foreign", groupId: GROUP, studentContractIds: ["fake"], passports: 99, snils: 99, exams: 99 },
+      { organizationId: ORG, groupId: "other", studentContractIds: ["fake"], passports: 99, snils: 99, exams: 99 },
+    ]) {
+      const calls: Query[] = [];
+      expect(await fetchGroupFolderCounts(makeClient(data, calls), ORG, GROUP, seed)).toEqual({ contracts: 3, docs: 19, passports: 2, snils: 1, exams: 1 });
+      expect(calls.some(query => query.table === "student_group_profiles_effective")).toBe(true);
+    }
+  });
+
   it("counts unique contracts across group and learner matches", () => {
     expect(countUniqueContracts([{ id: "c1" }, { id: "c1" }, { id: "c2" }])).toBe(2);
     expect(countUniqueContracts(null)).toBe(0);
