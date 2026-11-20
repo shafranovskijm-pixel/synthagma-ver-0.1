@@ -139,7 +139,7 @@ function rpcFixture(linkedCourseId: string | null = null) {
   db.rows.organizations = [{ id: ids.org, name: "Организация RPC" }];
   db.rows.courses = linkedCourseId ? [{ id: linkedCourseId, organization_id: ids.org, title: "Курс RPC" }] : [];
   db.rpcResults.get_group_roster_metadata = { data: roster, error: null };
-  db.rpcResults.get_group_participant_metadata = { data: detail, error: null };
+  db.rpcResults.get_group_participant_metadata_batch = { data: detail, error: null };
   return { roster, detail };
 }
 function mountRpc() {
@@ -156,7 +156,7 @@ describe("GroupFolderTab metadata RPC integration", () => {
     expect(loaded.students.map((row: any) => row.user_id)).toEqual([ids.learner]);
     expect(loaded.students[0].snils).toBe("own-snils");
     expect(screen.queryByText("Архив RPC")).not.toBeInTheDocument();
-    expect(db.rpcCalls.map(call => call.name)).toEqual(["get_group_roster_metadata", "get_group_participant_metadata"]);
+    expect(db.rpcCalls.map(call => call.name)).toEqual(["get_group_roster_metadata", "get_group_participant_metadata_batch"]);
     expect(db.rpcCalls[1].args).toEqual({ p_organization_id: ids.org, p_group_id: ids.group, p_user_ids: [ids.learner], p_linked_course_id: null });
     expect(db.queries.map(query => query.table)).toEqual(["student_groups", "organizations"]);
     expect(db.countSeeds.at(-1)).toMatchObject({ passports: 1, snils: 0, exams: 1, studentContractIds: [ids.document] });
@@ -164,7 +164,7 @@ describe("GroupFolderTab metadata RPC integration", () => {
   });
   it("keeps the complete read-only roster visible while metadata is pending without unconfirmed generation", async () => {
     rpcFixture(); let release!: () => void;
-    db.rpcDelays.get_group_participant_metadata = new Promise<void>(resolve => { release = resolve; });
+    db.rpcDelays.get_group_participant_metadata_batch = new Promise<void>(resolve => { release = resolve; });
     mountRpc();
     expect(await screen.findByText("Ученик RPC")).toBeInTheDocument();
     expect(document.querySelector('[data-group-load-stage="roster"]')).toHaveAttribute("data-group-roster-source", "rpc");
@@ -193,7 +193,7 @@ describe("GroupFolderTab metadata RPC integration", () => {
     expect(document.querySelector('[data-group-details-source="rpc"]')).toBeInTheDocument();
   });
   it("shows a roster-change retry instead of a connection failure or silent legacy widening", async () => {
-    rpcFixture(); db.rpcResults.get_group_participant_metadata = { data: null, error: { code: "40001", message: "private-server-detail" } };
+    rpcFixture(); db.rpcResults.get_group_participant_metadata_batch = { data: null, error: { code: "40001", message: "private-server-detail" } };
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       mountRpc();
@@ -207,7 +207,7 @@ describe("GroupFolderTab metadata RPC integration", () => {
   it("runs one parent reload from the manual refresh button and leaves count refresh to its new seed", async () => {
     rpcFixture(); mountRpc(); await context();
     fireEvent.click(screen.getByRole("button", { name: "Обновить папки" }));
-    await waitFor(() => expect(db.rpcCalls.filter(call => call.name === "get_group_participant_metadata")).toHaveLength(2));
+    await waitFor(() => expect(db.rpcCalls.filter(call => call.name === "get_group_participant_metadata_batch")).toHaveLength(2));
     await context();
     expect(db.refresh).not.toHaveBeenCalled();
   });
@@ -220,7 +220,7 @@ describe("GroupFolderTab metadata RPC integration", () => {
     db.rows.student_groups.push({ id: nextGroup, organization_id: ids.org, name: "Новая группа RPC", course_id: null });
     db.rpcResults.get_group_roster_metadata = { data: { version: 1, organization_id: ids.org, group_id: nextGroup,
       profiles: [{ user_id: nextUser, full_name: "Новый ученик RPC", email: null, login: null, phone: null, archived_at: null, department: null }] }, error: null };
-    db.rpcResults.get_group_participant_metadata = { data: { version: 1, organization_id: ids.org, group_id: nextGroup, user_ids: [nextUser], linked_course_id: null,
+    db.rpcResults.get_group_participant_metadata_batch = { data: { version: 1, organization_id: ids.org, group_id: nextGroup, user_ids: [nextUser], linked_course_id: null,
       identity_rows: [], contract_rows: [], attempt_rows: [], frdo_rows: [], enrollment_rows: [], enrollment_error: false }, error: null };
     delete db.rpcDelays.get_group_roster_metadata;
     mounted.rerender(<MemoryRouter><GroupFolderTab organizationId={ids.org} groupId={nextGroup} /></MemoryRouter>);

@@ -77,7 +77,7 @@ function invalidResponse(): never {
 }
 
 /** Only an exact missing target RPC permits the existing RLS loader during rollout. */
-export function isMissingGroupMetadataRpc(error: unknown, name: "get_group_roster_metadata" | "get_group_participant_metadata"): boolean {
+export function isMissingGroupMetadataRpc(error: unknown, name: "get_group_roster_metadata" | "get_group_participant_metadata_batch"): boolean {
   const candidate = error as { code?: unknown; message?: unknown } | null;
   return candidate?.code === "PGRST202" && typeof candidate.message === "string"
     && new RegExp(`^Could not find the function public\\.${name}\\([^\\r\\n]*\\) in the schema cache$`).test(candidate.message);
@@ -99,16 +99,8 @@ export async function fetchGroupRosterMetadata(client: any, organizationId: stri
   return { profiles: value.profiles, source: "rpc" };
 }
 
-/** Null is explicit rollout absence only; errors and malformed/foreign responses never widen to legacy. */
-export async function readGroupParticipantMetadata(client: any, organizationId: string, groupId: string,
-  userIds: string[], linkedCourseId: string | null): Promise<GroupParticipantMetadata | null> {
-  const { data, error } = await client.rpc("get_group_participant_metadata", {
-    p_organization_id: organizationId, p_group_id: groupId, p_user_ids: userIds, p_linked_course_id: linkedCourseId,
-  });
-  if (error) {
-    if (isMissingGroupMetadataRpc(error, "get_group_participant_metadata")) return null;
-    throw error;
-  }
+function decodeParticipantMetadata(data: unknown, organizationId: string, groupId: string,
+  userIds: string[], linkedCourseId: string | null): GroupParticipantMetadata {
   const parsed = participant.safeParse(data);
   if (!parsed.success) invalidResponse();
   const value = parsed.data as GroupParticipantMetadata;
@@ -124,4 +116,78 @@ export async function readGroupParticipantMetadata(client: any, organizationId: 
     || (value.enrollment_error ? linkedCourseId === null || value.enrollment_rows !== null : value.enrollment_rows === null)
     || (linkedCourseId !== null && value.enrollment_rows?.some(row => row.course_id !== linkedCourseId))) invalidResponse();
   return value;
+}
+
+async function readParticipantBatch(client: any, organizationId: string, groupId: string,
+  userIds: string[], linkedCourseId: string | null): Promise<GroupParticipantMetadata> {
+  const { data, error } = await client.rpc("get_group_participant_metadata_batch", {
+    p_organization_id: organizationId, p_group_id: groupId, p_user_ids: userIds, p_linked_course_id: linkedCourseId,
+  });
+  if (error) throw error;
+  return decodeParticipantMetadata(data, organizationId, groupId, userIds, linkedCourseId);
+}
+
+/**
+ * One small probe checks rollout availability before the bounded worker queue.
+ * No partial metadata is returned: every batch and the aggregate must validate.
+ * Null permits the old loader only for the exact missing RPC, never an error.
+ */
+export async function readGroupParticipantMetadata(client: any, organizationId: string, groupId: string,
+  userIds: string[], linkedCourseId: string | null, options: { isCurrent?: () => boolean } = {}): Promise<GroupParticipantMetadata | null> {
+  const ids = [...userIds];
+  if (new Set(ids).size !== ids.length) invalidResponse();
+  const assertCurrent = () => {
+    if (options.isCurrent && !options.isCurrent()) {
+      throw Object.assign(new Error("group_metadata_cancelled"), { code: "GROUP_METADATA_CANCELLED" });
+    }
+  };
+  const batches: string[][] = [];
+  for (let offset = 0; offset < ids.length; offset += 100) batches.push(ids.slice(offset, offset + 100));
+  if (!batches.length) batches.push([]);
+  assertCurrent();
+  let first: GroupParticipantMetadata;
+  try {
+    first = await readParticipantBatch(client, organizationId, groupId, batches[0], linkedCourseId);
+  } catch (error) {
+    assertCurrent();
+    if (isMissingGroupMetadataRpc(error, "get_group_participant_metadata_batch")) return null;
+    throw error;
+  }
+  assertCurrent();
+  const results: GroupParticipantMetadata[] = [first];
+  let cursor = 1;
+  let stopped = false;
+  let failure: { error: unknown } | null = null;
+  const worker = async () => {
+    while (!stopped && cursor < batches.length) {
+      const index = cursor++;
+      try {
+        assertCurrent();
+        const result = await readParticipantBatch(client, organizationId, groupId, batches[index], linkedCourseId);
+        assertCurrent();
+        results[index] = result;
+      } catch (error) {
+        if (!failure || (isMissingGroupMetadataRpc(failure.error, "get_group_participant_metadata_batch")
+          && !isMissingGroupMetadataRpc(error, "get_group_participant_metadata_batch"))) failure = { error };
+        stopped = true;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, batches.length - 1) }, worker));
+  assertCurrent();
+  if (failure) throw failure.error;
+  // After a successful probe every failure is fatal, including later schema
+  // changes. Never mix partial RPC results with a second legacy read.
+  if (results.filter(Boolean).length !== batches.length) invalidResponse();
+  const enrollmentError = results.some(result => result.enrollment_error);
+  return decodeParticipantMetadata({
+    version: 1, organization_id: organizationId, group_id: groupId,
+    user_ids: [...ids].sort(), linked_course_id: linkedCourseId,
+    identity_rows: results.flatMap(result => result.identity_rows),
+    contract_rows: results.flatMap(result => result.contract_rows),
+    attempt_rows: results.flatMap(result => result.attempt_rows),
+    frdo_rows: results.flatMap(result => result.frdo_rows),
+    enrollment_rows: enrollmentError ? null : results.flatMap(result => result.enrollment_rows || []),
+    enrollment_error: enrollmentError,
+  }, organizationId, groupId, ids, linkedCourseId);
 }

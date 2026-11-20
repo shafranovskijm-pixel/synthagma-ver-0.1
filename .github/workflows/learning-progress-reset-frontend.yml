@@ -7,7 +7,9 @@ on:
     paths:
       - src/**
       - supabase/migrations/20261120090000_group_folder_read_metadata.sql
+      - supabase/migrations/20261120100000_group_participant_metadata_batch.sql
       - supabase/tests/edge/groupFolderMetadata.sql.test.ts
+      - supabase/tests/edge/groupParticipantMetadataBatch.sql.test.ts
       - supabase/tests/group-folder-metadata/**
       - index.html
       - .github/workflows/learning-progress-reset-frontend.yml
@@ -81,7 +83,9 @@ jobs:
           src/hooks/__tests__/useGroupFolderCounts.test.tsx
           src/lib/groups/__tests__/folderCounts.test.ts
           src/api/__tests__/groupFolderMetadata.test.ts
+          src/api/__tests__/groupFolderMetadata.batches.test.ts
           supabase/tests/edge/groupFolderMetadata.sql.test.ts
+          supabase/tests/edge/groupParticipantMetadataBatch.sql.test.ts
           src/components/organization/__tests__/OrganizationPaymentNoticeBanner.test.tsx
           src/lib/notifications/organizationPaymentNotice.test.ts
           --maxWorkers=1
