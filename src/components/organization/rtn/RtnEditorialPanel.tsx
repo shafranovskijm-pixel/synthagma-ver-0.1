@@ -99,13 +99,13 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
   const data = query.data;
   const busy = mutation.isPending || query.isFetching;
   return <section className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5">
-    <Button variant="ghost" aria-expanded={open} onClick={() => setOpen(v => !v)}>Редакции и предметная проверка · администратор</Button>
+    <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" variant="ghost" aria-expanded={open} onClick={() => setOpen(v => !v)}>Редакции и предметная проверка · администратор</Button>
     {open && <div className="mt-4 min-w-0 space-y-4">
       <p className="text-sm text-muted-foreground">Оригинал, извлечённые формулировки, проверенные учебные ответы и выпуск сохраняются отдельно. Непроверенные ключи не включаются в обучение. Клиентские курсы не изменяются.</p>
       {query.isPending && <p role="status">Загружаем редакции…</p>}
       {query.error && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{errorText(query.error)}</p><Button variant="outline" disabled={query.isFetching} onClick={() => query.refetch()}>Повторить загрузку редакций</Button></div>}
       {data && !query.error && <>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => mutation.mutate('bootstrap')}>Проверить подключение источников</Button><Button variant="ghost" disabled={busy} onClick={async () => { const result = await query.refetch(); if (!result.error) setRolloutRequest(null); }}>Обновить данные</Button></div>
+        <div className="flex flex-wrap gap-2"><Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" variant="outline" disabled={busy} onClick={() => mutation.mutate('bootstrap')}>Проверить подключение источников</Button><Button variant="ghost" disabled={busy} onClick={async () => { const result = await query.refetch(); if (!result.error) setRolloutRequest(null); }}>Обновить данные</Button></div>
         {data.rollout && <section className="space-y-3 rounded-xl border border-border p-3" aria-label="Этап запуска Ростехнадзора">
           <h3 className="text-sm font-semibold">{data.rollout.stage === 'paid' ? 'Включено в действующий доступ организаций' : 'Пилот: Техносервис и технические QA-организации'}</h3>
           <p className="text-xs text-muted-foreground">Учёт месячных лимитов: {data.rollout.quota_integration_ready ? 'подключён' : 'проходит проверку'}. Обработка удаления персональных данных: {data.rollout.privacy_integration_ready ? 'подключена' : 'проходит проверку'}.</p>
@@ -113,7 +113,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
             <label className="block space-y-1 text-sm">Подтверждение проверки QA<input className={field} value={qaReceipt} disabled={busy || !!rolloutRequest} onChange={event => setQaReceipt(event.target.value)} /></label>
             <label className="block space-y-1 text-sm">Подтверждение проверки Техносервиса<input className={field} value={techReceipt} disabled={busy || !!rolloutRequest} onChange={event => setTechReceipt(event.target.value)} /></label>
             <label className="block space-y-1 text-sm">Основание включения<input className={field} value={rolloutReason} disabled={busy || !!rolloutRequest} onChange={event => setRolloutReason(event.target.value)} /></label>
-            <Button disabled={busy || !data.rollout.quota_integration_ready || !data.rollout.privacy_integration_ready || !qaReceipt.trim() || !techReceipt.trim() || rolloutReason.trim().length < 10} onClick={() => mutation.mutate('rollout')}>Включить для организаций с действующим доступом</Button>
+            <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" disabled={busy || !data.rollout.quota_integration_ready || !data.rollout.privacy_integration_ready || !qaReceipt.trim() || !techReceipt.trim() || rolloutReason.trim().length < 10} onClick={() => mutation.mutate('rollout')}>Включить для организаций с действующим доступом</Button>
           </>}
         </section>}
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
