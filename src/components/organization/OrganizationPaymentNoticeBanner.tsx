@@ -51,7 +51,7 @@ export function OrganizationPaymentNoticeBanner({ organizationId }: { organizati
       <p className="font-medium">{notice.title}</p>
       <p className="whitespace-pre-wrap text-sm text-muted-foreground">{notice.message}</p>
     </div>
-    <Button asChild variant="outline" size="sm" className="h-auto max-w-full shrink-0 whitespace-normal text-center">
+    <Button asChild variant="outline" size="sm" className="h-auto min-h-10 max-w-full shrink-0 whitespace-normal text-center">
       <Link to={notice.path}>Открыть счёт</Link>
     </Button>
   </section>;

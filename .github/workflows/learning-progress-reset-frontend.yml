@@ -6,6 +6,9 @@ on:
   pull_request:
     paths:
       - src/**
+      - supabase/migrations/20261120090000_group_folder_read_metadata.sql
+      - supabase/tests/edge/groupFolderMetadata.sql.test.ts
+      - supabase/tests/group-folder-metadata/**
       - index.html
       - .github/workflows/learning-progress-reset-frontend.yml
   workflow_dispatch:
@@ -71,12 +74,14 @@ jobs:
           --maxWorkers=1 --reporter=json
           --outputFile=outputs/learning-progress-reset-frontend/test-results.json
           2>&1 | tee outputs/learning-progress-reset-frontend/tests.stdout.txt
-      - name: Group loading, scoped counters and persistent payment reminder regressions
+      - name: Group loading, caller RLS and persistent payment reminder regressions
         run: >-
           node node_modules/vitest/vitest.mjs run
           src/components/organization/__tests__/GroupFolderTab
           src/hooks/__tests__/useGroupFolderCounts.test.tsx
           src/lib/groups/__tests__/folderCounts.test.ts
+          src/api/__tests__/groupFolderMetadata.test.ts
+          supabase/tests/edge/groupFolderMetadata.sql.test.ts
           src/components/organization/__tests__/OrganizationPaymentNoticeBanner.test.tsx
           src/lib/notifications/organizationPaymentNotice.test.ts
           --maxWorkers=1

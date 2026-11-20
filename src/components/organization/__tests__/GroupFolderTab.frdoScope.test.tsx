@@ -12,6 +12,7 @@ const db = vi.hoisted(() => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
+    rpc: async (name: string) => ({ data: null, error: { code: "PGRST202", message: `Could not find the function public.${name}(p_group_id, p_organization_id) in the schema cache` } }),
     from: (table: string) => {
       const query = { table, filters: [] as Array<[string, unknown]> };
       db.queries.push(query);

@@ -10,6 +10,7 @@ const db = vi.hoisted(() => ({
   denied: new Set<string>(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
+  rpc: async (name: string) => ({ data: null, error: { code: "PGRST202", message: `Could not find the function public.${name}(p_group_id, p_organization_id) in the schema cache` } }),
   from: (table: string) => {
     const filters: Array<[string, unknown]> = [];
     let start = 0; let end = 999;

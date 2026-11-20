@@ -37,7 +37,7 @@ import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfil
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
 import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddStudentsToGroupDialog";
-import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
+import { fetchGroupRosterMetadata, readGroupParticipantMetadata, type GroupRosterProfile, type GroupMetadataSource } from "@/api/groupFolderMetadata";
 import { fetchRowsByIdBatches } from "@/lib/groups/batchedReads";
 import { countIdentityDocs, type GroupFolderCountSeed } from "@/lib/groups/folderCounts";
 import { useGroupProgramFacts } from "@/hooks/useProgramFacts";
@@ -81,15 +81,7 @@ interface CourseInfo {
   training_form: string | null;
 }
 
-interface RosterProfile {
-  user_id: string;
-  full_name: string | null;
-  email: string | null;
-  login: string | null;
-  phone: string | null;
-  archived_at: string | null;
-  department: string | null;
-}
+type RosterProfile = GroupRosterProfile;
 
 interface StudentRow {
   user_id: string;
@@ -171,7 +163,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [loading, setLoading] = useState(true);
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const currentScope = JSON.stringify([organizationId, groupId]);
-  const [earlyRoster, setEarlyRoster] = useState<{ scope: string; group: GroupData; profiles: RosterProfile[]; archived: number } | null>(null);
+  const [earlyRoster, setEarlyRoster] = useState<{ scope: string; group: GroupData; profiles: RosterProfile[]; archived: number; source: GroupMetadataSource } | null>(null);
+  const [metadataSource, setMetadataSource] = useState<{ scope: string; roster: GroupMetadataSource; details: GroupMetadataSource } | null>(null);
   const [initialCountRead, setInitialCountRead] = useState<GroupFolderCountSeed | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadDiagnostic, setLoadDiagnostic] = useState<{ stage: string; code: string; category: string } | null>(null);
@@ -291,6 +284,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     (async () => {
       setLoading(true);
       setEarlyRoster(null);
+      setMetadataSource(null);
       setInitialCountRead(null);
       setLoadError(null);
       setLoadDiagnostic(null);
@@ -326,7 +320,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         const linkedCourseId = (groupData as any)?.course_id as string | null;
 
         loadStage = "participants";
-        const groupProfiles = await fetchEffectiveGroupProfiles<RosterProfile>(supabase, organizationId, groupId, { select: "user_id, full_name, email, login, phone, archived_at, department" });
+        const rosterRead = await fetchGroupRosterMetadata(supabase, organizationId, groupId);
+        const groupProfiles = rosterRead.profiles;
         if (cancelled) return;
         // Archived learners remain visible in the group counter, but must not
         // enter the active roster or document-generation batch.
@@ -335,7 +330,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         // This complete, tenant-confirmed roster is already useful. Publish a
         // read-only view while ancillary documents/tests continue; no unknown
         // detail is presented as zero and generation/actions remain unmounted.
-        setEarlyRoster({ scope: currentScope, group: groupData as GroupData, profiles: profiles.map(profile => ({ ...profile, full_name: profile.full_name || "—", department: profile.department?.trim() || null })), archived: groupProfiles.length - profiles.length });
+        setEarlyRoster({ scope: currentScope, group: groupData as GroupData, profiles: profiles.map(profile => ({ ...profile, full_name: profile.full_name || "—", department: profile.department?.trim() || null })), archived: groupProfiles.length - profiles.length, source: rosterRead.source });
 
         const userIds = (profiles || []).map((p: any) => p.user_id);
         if (!cancelled) {
@@ -343,11 +338,18 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           setCourseEnrollmentEvidenceError(false);
         }
 
+        loadStage = "participant-metadata";
+        const participantMetadata = userIds.length
+          ? await readGroupParticipantMetadata(supabase, organizationId, groupId, userIds, linkedCourseId)
+          : null;
+        if (cancelled) return;
+        setMetadataSource({ scope: currentScope, roster: rosterRead.source, details: participantMetadata ? "rpc" : "legacy" });
+
         let resolvedCourseId: string | null = linkedCourseId;
         let inferredEnrollments: Array<EnrollmentEvidence & { course_id: string | null }> | null = null;
         if (!resolvedCourseId && userIds.length > 0) {
           loadStage = "course-links";
-          const enrollments = await fetchRowsByIdBatches<EnrollmentEvidence & { course_id: string | null }>(
+          const enrollments = participantMetadata?.enrollment_rows ?? await fetchRowsByIdBatches<EnrollmentEvidence & { course_id: string | null }>(
             userIds, (batch, { from, to }) => (supabase as any)
               .from("enrollments")
               .select("course_id, user_id, status, progress, completed_at")
@@ -382,7 +384,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
               // The common-course read already fetched these exact rows under
               // caller RLS. Reuse them after validating the course tenant;
               // do not run another chain of member-ID requests.
-              const enrollmentRows = inferredEnrollments
+              if (participantMetadata?.enrollment_error) throw new Error("group_enrollment_evidence_unavailable");
+              const enrollmentRows = participantMetadata
+                ? (participantMetadata.enrollment_rows || []).filter(row => row.course_id === resolvedCourseId)
+                : inferredEnrollments
                 ? inferredEnrollments.filter(row => row.course_id === resolvedCourseId)
                 : await fetchRowsByIdBatches<EnrollmentEvidence>(
                 userIds, (batch, { from, to }) => (supabase as any)
@@ -419,7 +424,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           try { return await read(); }
           catch (cause) { throw { groupLoadStage: stage, cause }; }
         };
-        const [docsRows, contractsRows, attemptsRows, frdoRows] = await Promise.all([
+        const [docsRows, contractsRows, attemptsRows, frdoRows] = participantMetadata
+          ? [participantMetadata.identity_rows, participantMetadata.contract_rows, participantMetadata.attempt_rows, participantMetadata.frdo_rows]
+          : await Promise.all([
           readDetails("identity-documents", () => fetchRowsByIdBatches<any>(userIds, (batch, { from, to }) => (supabase as any)
             .from("student_identity_documents")
             .select("user_id, type, organization_id")
@@ -492,7 +499,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           // URLs, tokens or server messages containing private record values.
           console.error("[GroupFolderTab.load]", diagnostic);
           setLoadDiagnostic(diagnostic);
-          setLoadError("Не удалось загрузить данные группы. Проверьте соединение и повторите попытку.");
+          setLoadError(code === "40001" && loadStage === "participant-metadata"
+            ? "Состав или курс группы изменились. Обновите список."
+            : "Не удалось загрузить данные группы. Проверьте соединение и повторите попытку.");
         }
       } finally {
         if (!cancelled) { setLoadedScope(currentScope); setLoading(false); }
@@ -687,7 +696,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
   if (loading || loadedScope !== currentScope) {
     if (earlyRoster?.scope === currentScope) {
-      return <div className="p-4 md:p-6 space-y-4" data-group-load-stage="roster">
+      return <div className="p-4 md:p-6 space-y-4" data-group-load-stage="roster" data-group-roster-source={earlyRoster.source}>
         <Button variant="ghost" size="sm" onClick={backToStudentsGroups} className="gap-1.5 rounded-xl"><ArrowLeft className="w-4 h-4" /> К ученикам</Button>
         <Card className="rounded-2xl border-border p-4">
           <h1 className="text-xl font-semibold">{earlyRoster.group.name}</h1>
@@ -846,12 +855,12 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       case "requisites": navigate("/organization?tab=documents&documentView=constructor"); return;
       case "journals": navigate(groupContextPath("journals", { groupId, courseId: resolvedCourseId })); return;
       case "documents": focusWorkspace("docs"); return;
-      case "refresh": void refreshCounts(); setReloadKey(key => key + 1); return;
+      case "refresh": setReloadKey(key => key + 1); return;
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-group-roster-source={metadataSource?.scope === currentScope ? metadataSource.roster : undefined} data-group-details-source={metadataSource?.scope === currentScope ? metadataSource.details : undefined}>
       {/* Breadcrumbs */}
       <div className={GROUP_WORKFLOW_LAYOUT_CLASSES.breadcrumbs}>
         <button className="shrink-0 hover:text-foreground" onClick={() => backToStudentsGroups()}>Ученики</button>
@@ -1239,7 +1248,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             className="h-8 w-8 rounded-md"
             aria-label="Обновить папки"
             title="Обновить"
-            onClick={() => { refreshCounts(); setReloadKey(key => key + 1); }}
+            onClick={() => setReloadKey(key => key + 1)}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
