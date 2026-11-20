@@ -9,6 +9,7 @@ import type { RtnWorkspaceView } from "@/lib/rtnWorkspaceNavigation";
 import { assignRtnTraining, checkRtnSource, getRtnWorkspace, saveRtnSettings } from "@/api/rostechnadzor";
 import { canAssignRtnBank, type RtnBank, type RtnCheckResult, type RtnCheckStatus, type RtnReleaseMetadata, type RtnSettings, type RtnWorkspace } from "@/types/rostechnadzor";
 import { RtnEditorialPanel } from "./RtnEditorialPanel";
+import { RtnUpdatesFeed } from "./RtnUpdatesFeed";
 
 type Panel = "assign" | "results";
 interface RtnWorkspaceNavigation {
@@ -236,10 +237,10 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
         <p className="text-sm text-muted-foreground">Для новых попыток используется выпущенная редакция с проверенными учебными ответами. Старые попытки и результаты сохраняют свою редакцию. Подготовка не заменяет официальную аттестацию.</p>
       </TabsContent>
       <TabsContent value="changes" className="min-w-0 space-y-4">
+        {view === "changes" && <RtnUpdatesFeed organizationId={organizationId} actorId={actorId} eventId={navigation?.invalidTarget ? null : navigation?.eventId} onSelectEvent={eventId => navigateView({ view: "changes", eventId })} onOpenBank={bankId => navigateView({ view: "training", bankId })} />}
         <section className={`${boxClass} space-y-4`} aria-label="Изменения вопросов">
-          <div><h3 className="font-semibold">Изменения вопросов</h3><p className="mt-1 text-sm text-muted-foreground">Изменение официального файла не означает, что новые учебные ответы уже проверены.</p></div>
-          {navigation?.eventId && <p role="status" className="text-sm text-muted-foreground">Карточка изменения из ссылки пока не подтверждена. Откройте сведения об источнике или доступную программу.</p>}
-          {!changedSources.length && <p className="text-sm text-muted-foreground">Подтверждённых изменений пока нет. Дата и результат последней проверки показаны в разделе «Источники».</p>}
+          <div><h3 className="font-semibold">Состояние программ</h3><p className="mt-1 text-sm text-muted-foreground">Текущее состояние источников программ, отдельно от общей ленты событий. Изменение официального файла не означает, что новые учебные ответы уже проверены.</p></div>
+          {!changedSources.length && <p className="text-sm text-muted-foreground">В данных программ пока нет отмеченных изменений источника. Дата и результат последней проверки показаны в разделе «Источники».</p>}
           {changedSources.map(([sourceId, affectedBanks]) => <article key={sourceId} className="space-y-3 border-t border-border pt-4"><h4 className="text-sm font-medium">Изменение источника вопросов</h4><div className="space-y-4">{affectedBanks.map(bank => <div key={bank.id} className="space-y-2"><p className="break-words text-sm font-medium">{bank.title}</p><p className="text-sm text-muted-foreground">{hasPendingSourceRevision(bank) ? "Новая редакция проходит предметную проверку; прежние попытки не пересчитываются." : "Проверка обнаружила изменение. Состояние редакции показано в программе."}</p><Button size="sm" variant="outline" className="min-h-11" onClick={() => { navigateView({ view: "training", bankId: bank.id }); setDetail(bank); }}>Посмотреть программу</Button></div>)}</div><Button size="sm" variant="outline" className="min-h-11" onClick={() => navigateView({ view: "sources" })}>Проверка источника</Button></article>)}
         </section>
       </TabsContent>

@@ -17,6 +17,7 @@ import { getOrganizationContextPresentation } from "@/lib/organization/contextPr
 import { organizationMailingPath } from "@/lib/organization/workspaceNavigation";
 import { cn } from "@/lib/utils";
 import { StatsCards } from "./StatsCards";
+import { RtnUpdatesHomeCard } from "@/components/organization/rtn/RtnUpdatesHomeCard";
 
 interface WorkspaceCardProps {
   title: string;
@@ -147,6 +148,8 @@ export function OrganizationHomeTab() {
           )}
         </div>
       </section>
+
+      <RtnUpdatesHomeCard organizationId={d.organizationId} actorId={d.user?.id ?? null} canReadCourses={canReadCourses} />
 
       {!permissionsLoading && (
         <QuickStartCard courses={d.courses} isLoadingCourses={d.isLoadingCourses} />
