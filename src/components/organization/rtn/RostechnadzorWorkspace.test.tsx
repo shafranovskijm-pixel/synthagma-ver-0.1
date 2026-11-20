@@ -11,6 +11,8 @@ const updatesApi = vi.hoisted(() => ({ getRtnUpdates: vi.fn(), getRtnUpdate: vi.
 vi.mock("@/api/rtn-updates", () => updatesApi);
 const personalApi = vi.hoisted(() => ({ getMyRtnSubscription: vi.fn(), saveMyRtnSubscription: vi.fn(), notifyRtnPersonalRefresh: vi.fn() }));
 vi.mock("@/api/rtn-personal-notifications", () => personalApi);
+const newsApi = vi.hoisted(() => ({ getRtnNewsCheckState: vi.fn(), checkRtnNewsNow: vi.fn() }));
+vi.mock("@/api/rtn-news-check", () => newsApi);
 
 const bank: RtnBank = {
   id: "bank-a", code: "А.1", title: "Основы промышленной безопасности", domain: "Промышленная безопасность",
@@ -37,9 +39,32 @@ function mount(organizationId = "org-a", props: Partial<React.ComponentProps<typ
 }
 
 beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(workspace()); updatesApi.getRtnUpdates.mockResolvedValue({ events: [], has_more: false, next_before_sequence: null, source_health: { status: "never_checked", last_success_at: null, coverage_kind: "unknown" } }); });
+beforeEach(() => { newsApi.getRtnNewsCheckState.mockResolvedValue({ check: null, can_request: true, next_due_at: "2026-11-20T12:00:00Z", source_health: { code: "official-news-rss", feed_url: "https://www.gosnadzor.ru/news/rss/", status: "never_checked", coverage_kind: "unknown", last_checked_at: null, last_success_at: null, coverage_from: null, coverage_until: null, error_code: null, complete_archive: false } }); });
 afterEach(cleanup);
 
 describe("RTN organization workspace", () => {
+  it("loads news source status only inside authorized Sources and retains the real session actor", async () => {
+    const org = "11111111-1111-4111-8111-111111111111";
+    mount(org, { actorId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" });
+    await screen.findByRole("heading", { name: `А.1. ${bank.title}` });
+    expect(newsApi.getRtnNewsCheckState).not.toHaveBeenCalled();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
+    await screen.findByRole("region", { name: "Новости официального сайта" });
+    expect(newsApi.getRtnNewsCheckState).toHaveBeenCalledTimes(1);
+    expect(newsApi.getRtnNewsCheckState).toHaveBeenCalledWith(org, expect.any(AbortSignal));
+    expect(newsApi.checkRtnNewsNow).not.toHaveBeenCalled();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Изменения" }), { button: 0, ctrlKey: false });
+    await screen.findByRole("heading", { name: "Изменения Ростехнадзора" });
+    expect(screen.queryByRole("region", { name: "Новости официального сайта" })).not.toBeInTheDocument();
+    expect(newsApi.getRtnNewsCheckState).toHaveBeenCalledTimes(1);
+  });
+  it("does not mount news source controls when workspace authorization is denied", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ access: { allowed: false, reason: "permission_denied", can_manage: false, can_assign: false, can_view_results: false, pilot: false } }));
+    mount("11111111-1111-4111-8111-111111111111", { actorId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+    await screen.findByText(/нужны права на курсы/);
+    expect(newsApi.getRtnNewsCheckState).not.toHaveBeenCalled();
+    expect(newsApi.checkRtnNewsNow).not.toHaveBeenCalled();
+  });
   it("offers only own preferences in Sources to an authorized reader without organization-management rights", async () => {
     const org = "11111111-1111-4111-8111-111111111111", actor = "22222222-2222-4222-8222-222222222222";
     api.getRtnWorkspace.mockResolvedValue(workspace({ access: { allowed: true, reason: "included", can_manage: false, can_assign: false, can_view_results: false, pilot: false } }));

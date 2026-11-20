@@ -11,6 +11,7 @@ import { canAssignRtnBank, type RtnBank, type RtnCheckResult, type RtnCheckStatu
 import { RtnEditorialPanel } from "./RtnEditorialPanel";
 import { RtnUpdatesFeed } from "./RtnUpdatesFeed";
 import { RtnPersonalPreferences } from "./RtnPersonalPreferences";
+import { RtnNewsSourceCheck } from "./RtnNewsSourceCheck";
 
 type Panel = "assign" | "results";
 interface RtnWorkspaceNavigation {
@@ -278,6 +279,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
         </div>;
       })}
     </section>
+        {view === "sources" && <RtnNewsSourceCheck organizationId={organizationId} actorId={actorId} canReadCourses={workspace.access.allowed} canManageCourses={workspace.access.can_manage} />}
         <SettingsPanel organizationId={organizationId} initial={workspace.settings} canManage={workspace.access.can_manage} onSaved={() => void query.refetch()} />
         {view === "sources" && <RtnPersonalPreferences organizationId={organizationId} actorId={actorId} />}
       </TabsContent>
