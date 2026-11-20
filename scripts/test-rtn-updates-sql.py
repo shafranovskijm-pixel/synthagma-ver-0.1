@@ -57,7 +57,10 @@ def main():
     (OUT / 'native.stdout.txt').write_text('', encoding='utf-8')
     (OUT / 'native.stderr.txt').write_text('', encoding='utf-8')
     for name, sql in sql_files:
-        result = run(sql)
+        # Each psql call is a fresh connection. The bootstrap role creates the
+        # fixture owner in setup, then every later file explicitly uses that
+        # existing owner; the setup connection's SET ROLE cannot persist here.
+        result = run(sql if name == 'setup.sql' else 'SET ROLE postgres;\n' + sql)
         for stream in ('stdout', 'stderr'):
             with (OUT / f'native.{stream}.txt').open('a', encoding='utf-8') as log:
                 log.write(f'FILE {name}\n' + getattr(result, stream))
