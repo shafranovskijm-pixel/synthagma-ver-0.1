@@ -94,9 +94,12 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [selectedTab, setActiveTab] = useState<TabKey>("all");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const personal = useRtnPersonalNotifications({ organizationId, actorId: actorId || "" }, personalEnabled, isOpen);
+  const personalAvailable = personalEnabled && !personal.forbidden;
+  const activeTab = selectedTab === "rtn" && !personalAvailable ? "all" : selectedTab;
+  useEffect(() => { if (personal.forbidden && selectedTab === "rtn") setActiveTab("all"); }, [personal.forbidden, selectedTab]);
 
   // Load sound preference
   useEffect(() => {
@@ -190,7 +193,7 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
 
   const markAllAsRead = async () => {
     const unreadIds = getFilteredNotifications(notifications, activeTab).filter(n => !n.is_read).map(n => n.id);
-    const ownEventIds = (activeTab === "all" || activeTab === "rtn") ? personal.data?.items.filter(n => n.read_at === null).map(n => n.event.id) ?? [] : [];
+    const ownEventIds = personalAvailable && (activeTab === "all" || activeTab === "rtn") ? personal.data?.items.filter(n => n.read_at === null).map(n => n.event.id) ?? [] : [];
     if (ownEventIds.length) { try { await personal.mark(ownEventIds); } catch { toast.error("Не удалось прочитать личные уведомления Ростехнадзора"); } }
     if (!mounted.current) return;
     if (unreadIds.length === 0) return;
@@ -205,9 +208,9 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
 
 
   const orgUnreadCount = notifications.filter(n => !n.is_read).length;
-  const unreadCount = orgUnreadCount + (personal.data?.unread_count ?? 0);
-  const ownUnconfirmed = personalEnabled && (!personal.data || !!personal.error);
-  const incomplete = ownUnconfirmed || personal.data?.materialization_pending === true;
+  const unreadCount = orgUnreadCount + (personalAvailable ? personal.data?.unread_count ?? 0 : 0);
+  const ownUnconfirmed = personalAvailable && (!personal.data || !!personal.error);
+  const incomplete = ownUnconfirmed || personalAvailable && personal.data?.materialization_pending === true;
 
   const filtered = useMemo(() => getFilteredNotifications(notifications, activeTab), [notifications, activeTab]);
 
@@ -215,14 +218,14 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
     all: unreadCount,
     tasks: getFilteredNotifications(notifications, "tasks").filter(n => !n.is_read).length,
     payments: getFilteredNotifications(notifications, "payments").filter(n => !n.is_read).length,
-    rtn: personal.data?.unread_count ?? 0 }), [notifications, unreadCount, personal.data]);
-  const shownUnread = filtered.some(n => !n.is_read) || (activeTab === "all" || activeTab === "rtn") && personal.data?.items.some(n => n.read_at === null);
+    rtn: personalAvailable ? personal.data?.unread_count ?? 0 : 0 }), [notifications, unreadCount, personal.data, personalAvailable]);
+  const shownUnread = filtered.some(n => !n.is_read) || personalAvailable && (activeTab === "all" || activeTab === "rtn") && personal.data?.items.some(n => n.read_at === null);
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "all", label: "Все", icon: <Bell className="w-3.5 h-3.5" /> },
     { key: "tasks", label: "Задания", icon: <ClipboardList className="w-3.5 h-3.5" /> },
     { key: "payments", label: "Оплаты", icon: <CreditCard className="w-3.5 h-3.5" /> },
-    ...(personalEnabled ? [{ key: "rtn" as const, label: "Ростехнадзор", icon: <Shield className="w-3.5 h-3.5" /> }] : []),
+    ...(personalAvailable ? [{ key: "rtn" as const, label: "Ростехнадзор", icon: <Shield className="w-3.5 h-3.5" /> }] : []),
   ];
 
   return (
@@ -287,7 +290,7 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
         <div className="border-t border-border" />
 
         {/* Content */}
-        {personalEnabled && activeTab === "all" && <p className="px-5 pt-3 text-xs font-semibold text-muted-foreground">Уведомления организации</p>}
+        {personalAvailable && activeTab === "all" && <p className="px-5 pt-3 text-xs font-semibold text-muted-foreground">Уведомления организации</p>}
         {activeTab !== "rtn" && (isLoading ? (
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner />
@@ -301,7 +304,7 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">{personalEnabled ? "Нет уведомлений организации в этом списке" : "Нет уведомлений"}</p>
+            <p className="text-sm">{personalAvailable ? "Нет уведомлений организации в этом списке" : "Нет уведомлений"}</p>
           </div>
         ) : (
           <ScrollArea className="h-80">
@@ -348,7 +351,7 @@ function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: O
           </ScrollArea>
         ))}
 
-        {personalEnabled && (activeTab === "all" || activeTab === "rtn") && <RtnPersonalBellItems {...personal} openEvent={(eventId, href, unread) => {
+        {personalAvailable && (activeTab === "all" || activeTab === "rtn") && <RtnPersonalBellItems {...personal} openEvent={(eventId, href, unread) => {
           navigate(href); setIsOpen(false);
           if (unread) void personal.mark([eventId]).catch(() => toast.error("Не удалось прочитать личное уведомление Ростехнадзора"));
         }} />}

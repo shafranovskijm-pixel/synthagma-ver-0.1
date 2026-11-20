@@ -3,12 +3,14 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OrgNotifications } from "./OrgNotifications";
 import { StrictMode } from "react";
+import { RtnApiError } from "@/api/rostechnadzor";
 const mocks = vi.hoisted(() => ({ get: vi.fn(), mark: vi.fn(), notify: vi.fn(), updateEq: vi.fn(), updateIn: vi.fn(), rows: [] as unknown[], actor: "22222222-2222-4222-8222-222222222222", readable: true }));
 vi.mock("@/api/rtn-personal-notifications", () => ({ getMyRtnNotifications: mocks.get, markMyRtnNotificationsRead: mocks.mark, notifyRtnPersonalRefresh: mocks.notify, RTN_PERSONAL_REFRESH: "rtn-personal-refresh" }));
 const org = "11111111-1111-4111-8111-111111111111", id = "33333333-3333-4333-8333-333333333333", delivery = "44444444-4444-4444-8444-444444444444";
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: mocks.actor }, loading: false }) }));
 vi.mock("@/hooks/useStaffPermissions", () => ({ useStaffPermissions: () => ({ organizationId: org, isOrgOwner: true, orgPermissions: new Set(["courses.read"]), loading: false, error: null, canSeeOrgTab: () => mocks.readable, can: () => mocks.readable }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
+  rpc: vi.fn(),
   auth: { getUser: async () => ({ data: { user: { id: mocks.actor } } }) },
   from: () => { const query = { select: () => query, eq: () => query, order: () => query, limit: async () => ({ data: mocks.rows, error: null }), maybeSingle: async () => ({ data: null }), update: () => ({ eq: mocks.updateEq, in: mocks.updateIn }) }; return query; },
   channel: () => { const c = { on: () => c, subscribe: () => c }; return c; }, removeChannel: vi.fn(),
@@ -22,6 +24,32 @@ beforeEach(() => { vi.clearAllMocks(); mocks.actor = "22222222-2222-4222-8222-22
 afterEach(cleanup);
 async function open() { await waitFor(() => expect(mocks.get).toHaveBeenCalled()); fireEvent.click(screen.getByRole("button", { name: /^Уведомления об обучении/ })); await screen.findByText("Своя публикация Ростехнадзора"); }
 describe("single existing organization bell with own RTN source", () => {
+  it("hides a server-denied RTN source without an unknown badge and keeps old billing usable", async () => {
+    mocks.get.mockRejectedValue(new RtnApiError("forbidden", "Нет доступа")); mocks.rows = [oldNotification()]; mount();
+    const trigger = await screen.findByRole("button", { name: "Уведомления об обучении" }); fireEvent.click(trigger);
+    await screen.findByText("Счёт ожидает оплаты");
+    expect(screen.queryByRole("button", { name: /^Ростехнадзор/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Мои уведомления Ростехнадзора" })).not.toBeInTheDocument();
+    expect(trigger).not.toHaveAccessibleName(/не подтверждено/); expect(trigger).not.toHaveTextContent("?");
+    fireEvent.click(screen.getByRole("button", { name: /Счёт ожидает оплаты/ }));
+    await waitFor(() => expect(mocks.updateEq).toHaveBeenCalledWith("id", "shared-invoice")); expect(mocks.mark).not.toHaveBeenCalled();
+  });
+  it("falls back from an active RTN tab on denial without retaining old items or restoring the stale tab after recovery", async () => {
+    mocks.rows = [oldNotification()]; mount(); await open(); fireEvent.click(screen.getByRole("button", { name: "Ростехнадзор 1" }));
+    mocks.get.mockRejectedValue(new RtnApiError("forbidden", "Нет доступа")); fireEvent(window, new Event("focus"));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Ростехнадзор/ })).not.toBeInTheDocument());
+    expect(screen.queryByText("Своя публикация Ростехнадзора")).not.toBeInTheDocument(); expect(screen.getByText("Счёт ожидает оплаты")).toBeInTheDocument();
+    mocks.get.mockResolvedValue(page()); fireEvent(window, new Event("focus"));
+    await screen.findByRole("button", { name: "Ростехнадзор 1" }); expect(screen.getByRole("button", { name: "Все 2" })).toHaveAttribute("aria-pressed", "true");
+    expect(mocks.mark).not.toHaveBeenCalled();
+  });
+  it.each(["invalid_response", "unknown"] as const)("keeps the RTN source and unknown badge for %s failures", async code => {
+    mocks.get.mockRejectedValue(new RtnApiError(code, "Не подтверждено")); mount();
+    const trigger = await screen.findByRole("button", { name: /число личных уведомлений Ростехнадзора ещё не подтверждено/ }); fireEvent.click(trigger);
+    await screen.findByText(/Число непрочитанных неизвестно/);
+    expect(screen.getByRole("button", { name: "Ростехнадзор" })).toBeInTheDocument();
+    expect(screen.queryByText("Непрочитанных полученных: 0.")).not.toBeInTheDocument();
+  });
   it("keeps organization rows and loading completion after StrictMode effect replay", async () => {
     mocks.rows = [oldNotification()];
     render(<StrictMode><MemoryRouter><Probe /><OrgNotifications organizationId={org} /></MemoryRouter></StrictMode>);

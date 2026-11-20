@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRtnPersonalNotifications } from "./useRtnPersonalNotifications";
+import { RtnApiError } from "@/api/rostechnadzor";
 const api = vi.hoisted(() => ({ getMyRtnNotifications: vi.fn(), markMyRtnNotificationsRead: vi.fn(), notifyRtnPersonalRefresh: vi.fn(), RTN_PERSONAL_REFRESH: "rtn-personal-refresh" }));
 vi.mock("@/api/rtn-personal-notifications", () => api);
 const scope = { organizationId: "11111111-1111-4111-8111-111111111111", actorId: "22222222-2222-4222-8222-222222222222" };
@@ -10,6 +11,35 @@ beforeEach(() => { vi.resetAllMocks(); vi.useFakeTimers(); visible = "visible"; 
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
 describe("own RTN visible refresh", () => {
+  it("suspends background polling after a server denial but permits one focus recheck", async () => {
+    api.getMyRtnNotifications.mockRejectedValue(new RtnApiError("forbidden", "Нет доступа"));
+    const view = renderHook(() => useRtnPersonalNotifications(scope, true, false)); await flush();
+    expect(view.result.current.forbidden).toBe(true); expect(view.result.current.data).toBeUndefined();
+    await act(async () => { await vi.advanceTimersByTimeAsync(180_000); }); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(1);
+    act(() => window.dispatchEvent(new Event("focus"))); await flush(); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); }); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(2);
+    await act(async () => { await view.result.current.mark(["not-forwarded-after-denial"]); }); expect(api.markMyRtnNotificationsRead).not.toHaveBeenCalled();
+  });
+  it("recovers on bell opening and resumes bounded polling after entitlement returns", async () => {
+    api.getMyRtnNotifications.mockRejectedValueOnce(new RtnApiError("forbidden", "Нет доступа")).mockResolvedValue(page());
+    const view = renderHook(({ open }) => useRtnPersonalNotifications(scope, true, open), { initialProps: { open: false } }); await flush();
+    expect(view.result.current.forbidden).toBe(true);
+    view.rerender({ open: true }); await flush(); expect(view.result.current.forbidden).toBe(false); expect(view.result.current.data).toBeDefined();
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); }); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(3);
+  });
+  it("allows an own refresh and a changed scope to recheck a prior denial", async () => {
+    api.getMyRtnNotifications.mockRejectedValue(new RtnApiError("forbidden", "Нет доступа"));
+    const view = renderHook(({ actorId }) => useRtnPersonalNotifications({ ...scope, actorId }, true, false), { initialProps: { actorId: scope.actorId } }); await flush();
+    act(() => window.dispatchEvent(new CustomEvent(api.RTN_PERSONAL_REFRESH, { detail: scope }))); await flush(); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(2);
+    api.getMyRtnNotifications.mockResolvedValue(page()); view.rerender({ actorId: "33333333-3333-4333-8333-333333333333" }); await flush();
+    expect(view.result.current.forbidden).toBe(false); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(3);
+  });
+  it.each(["network", "invalid_response", "unknown"] as const)("keeps %s unknown and retryable instead of treating it as denied access", async code => {
+    api.getMyRtnNotifications.mockRejectedValue(new RtnApiError(code, "Не подтверждено"));
+    const view = renderHook(() => useRtnPersonalNotifications(scope, true, false)); await flush();
+    expect(view.result.current.forbidden).toBe(false); expect(view.result.current.data).toBeUndefined(); expect(view.result.current.error).toBeDefined();
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); }); expect(api.getMyRtnNotifications).toHaveBeenCalledTimes(2);
+  });
   it("does not read while hidden and checks on visibility return plus at most one periodic visible tick", async () => {
     visible = "hidden"; renderHook(() => useRtnPersonalNotifications(scope, true, false)); await flush();
     await act(async () => { await vi.advanceTimersByTimeAsync(120_000); }); expect(api.getMyRtnNotifications).not.toHaveBeenCalled();
