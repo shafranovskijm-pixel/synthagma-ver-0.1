@@ -51,7 +51,19 @@ describe("compact RTN home summary", () => {
     render(wrap());
     expect(await screen.findByText("Сохранённых изменений: 0")).toBeInTheDocument();
     expect(screen.getByText("Проверка новостей ещё не подтверждена.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Открыть источники" })).toHaveAttribute("href", "/organization?tab=courses&courseWorkspace=rtn&rtnView=sources");
     expect(screen.queryByText("Изменений не обнаружено")).not.toBeInTheDocument();
+  });
+  it("keeps a blocked source honest and reachable when no events have been saved", async () => {
+    const data = summary();
+    api.getRtnUpdateSummary.mockResolvedValue({ ...data, event_count: 0, latest_event: null, source_health: { ...data.source_health, status: "blocked", last_checked_at: "2026-11-20T13:00:00Z", error_code: "RTN_NEWS_HTTP_403" } });
+    render(wrap());
+    expect(await screen.findByText("Сохранённых изменений: 0")).toBeInTheDocument();
+    expect(screen.getByText("Проверка новостей недоступна. Отсутствие новых записей не подтверждено.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Открыть источники" })).toHaveAttribute("href", "/organization?tab=courses&courseWorkspace=rtn&rtnView=sources");
+    expect(screen.queryByRole("link", { name: "Посмотреть изменение" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Изменений не обнаружено")).not.toBeInTheDocument();
+    expect(api.getRtnUpdateSummary).toHaveBeenCalledTimes(1);
   });
   it("does not display a previous actor response after switching actor in the same organization", async () => {
     let finish!: (value: RtnUpdateSummary) => void;
