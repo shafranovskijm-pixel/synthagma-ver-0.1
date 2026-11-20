@@ -14,7 +14,7 @@ vi.mock("@/api/rtn-personal-notifications", () => personalApi);
 
 const bank: RtnBank = {
   id: "bank-a", code: "А.1", title: "Основы промышленной безопасности", domain: "Промышленная безопасность",
-  source_id: "source-a", source_revision_id: "source-rev-a", source_url: "https://www.gosnadzor.ru/industrial/",
+  source_id: "source-a", source_revision_id: "source-rev-a", bank_revision_id: "bank-rev-a", source_url: "https://www.gosnadzor.ru/industrial/",
   approved_on: "2026-08-10", effective_from: "2026-09-01", question_count: 211,
   release_id: "release-a", key_status: "released", available_for_training: true, can_manual_check: true,
   normative_status: "current", normative_cutoff_at: "2026-11-21T00:00:00+03:00",
@@ -393,4 +393,60 @@ describe("RTN workspace navigation and sections", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Вопросов в программе").nextElementSibling).toHaveTextContent("Не подтверждено");
   });
+
+  it("metadata truth: does not treat the SQL fallback zero without revisions after a failed check as a confirmed count or date", async () => {
+    const empty = { ...bank, source_revision_id: null, bank_revision_id: null, release_id: null, approved_on: null, effective_from: null,
+      question_count: 0, key_status: "unreviewed" as const, available_for_training: false, check_status: "error" as const };
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [empty], checks: [{ id: "failed-check", source_id: bank.source_id, status: "error", error: "OFFICIAL_HTTP_403" }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText(/Количество вопросов не подтверждено/)).toHaveTextContent("Дата применения не подтверждена");
+    expect(within(card).queryByText(/^0 вопросов/)).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
+    fireEvent.click(within(card).getByRole("button", { name: "Посмотреть состав" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Вопросов в программе").nextElementSibling).toHaveTextContent("Не подтверждено");
+    expect(within(dialog).getByText("Дата применения").nextElementSibling).toHaveTextContent("Не подтверждена");
+    expect(within(dialog).getByRole("button", { name: "Назначить обучение" })).toBeDisabled();
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 211])("metadata truth: a fetched source without a normalized bank revision does not confirm its %s question count", async question_count => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, bank_revision_id: null, release_id: null, question_count, key_status: "unreviewed", available_for_training: false }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText(/Количество вопросов не подтверждено/)).toHaveTextContent("Применяется с 01.09.2026");
+    expect(within(card).queryByText(new RegExp(`^${question_count} вопросов`))).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
+  });
+
+  it("metadata truth: a later failed source check preserves the confirmed revision count and application date", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, check_status: "error", last_success_at: "2026-11-19T10:00:00Z" }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText(/^211 вопросов/)).toHaveTextContent("Применяется с 01.09.2026");
+    expect(within(card).getByRole("button", { name: "Назначить обучение" })).toBeEnabled();
+  });
+
+  it("metadata truth: preserves an explicit real zero with a normalized revision without inferring training availability", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, question_count: 0, available_for_training: false }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText(/^0 вопросов/)).toBeInTheDocument();
+    expect(within(card).queryByText(/Количество вопросов не подтверждено/)).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
+  });
+
+  it.each([null, "not-a-date", "2026-02-30", "2026-09-01T00:00:00Z"])("metadata truth: reports unconfirmed application date %s independently from server-authorized availability", async effective_from => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, effective_from }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText(/Дата применения не подтверждена/)).toHaveTextContent("211 вопросов");
+    expect(within(card).queryByText(/Применяется с/)).not.toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Назначить обучение" })).toBeEnabled();
+    fireEvent.click(within(card).getByRole("button", { name: "Посмотреть состав" }));
+    expect(within(screen.getByRole("dialog")).getByText("Дата применения").nextElementSibling).toHaveTextContent("Не подтверждена");
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
 });
