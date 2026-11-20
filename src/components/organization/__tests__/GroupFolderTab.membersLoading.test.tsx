@@ -1,5 +1,5 @@
 import { useLayoutEffect } from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
@@ -17,9 +17,18 @@ const db = vi.hoisted(() => ({
   countSeeds: [] as any[],
   countsLoading: false,
   countsError: null as string | null,
+  rpcResults: {} as Record<string, { data: unknown; error: unknown }>,
+  rpcDelays: {} as Record<string, Promise<void>>,
+  rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
+  rpc: async (name: string, args: Record<string, unknown>) => {
+    db.rpcCalls.push({ name, args });
+    const result = db.rpcResults[name] ?? { data: null, error: { code: "PGRST202", message: `Could not find the function public.${name}(p_group_id, p_organization_id) in the schema cache` } };
+    await db.rpcDelays[name];
+    return result;
+  },
   from: (table: string) => {
     const query = { table, filters: [] as Array<[string, unknown]>, from: 0, to: 999, order: undefined as string | undefined };
     db.queries.push(query);
@@ -105,12 +114,121 @@ beforeEach(() => {
   db.countSeeds = [];
   db.countsLoading = false;
   db.countsError = null;
+  db.rpcResults = {};
+  db.rpcDelays = {};
+  db.rpcCalls = [];
   db.refresh.mockClear();
   db.rows = {
     student_groups: [{ id: "group-1", organization_id: "org-1", name: "Учебный центр", course_id: null }],
     organizations: [{ id: "org-1", name: "Организация" }],
     profiles: [profile(1)],
   };
+});
+
+function rpcFixture(linkedCourseId: string | null = null) {
+  const active = { user_id: ids.learner, full_name: "Ученик RPC", email: null, login: "rpc-student", phone: null, department: " Цех ", archived_at: null };
+  const roster = { version: 1, organization_id: ids.org, group_id: ids.group, profiles: [active,
+    { ...active, user_id: ids.newer, full_name: "Архив RPC", archived_at: "2026-11-01T00:00:00Z" }] };
+  const detail = { version: 1, organization_id: ids.org, group_id: ids.group, user_ids: [ids.learner], linked_course_id: linkedCourseId,
+    identity_rows: [{ user_id: ids.learner, type: "passport", organization_id: ids.org }, { user_id: ids.learner, type: "snils", organization_id: ids.actor }],
+    contract_rows: [{ id: ids.document, student_user_id: ids.learner }], attempt_rows: [{ id: ids.file, user_id: ids.learner }],
+    frdo_rows: [{ user_id: ids.learner, last_name: "Иванов", first_name: "Иван", middle_name: null, birth_date: null, gender: null, snils: "own-snils",
+      citizenship_code: null, education_level: null, passport_series: null, passport_number: null }],
+    enrollment_rows: [] as unknown, enrollment_error: false };
+  db.rows.student_groups = [{ id: ids.group, organization_id: ids.org, name: "Группа RPC", course_id: linkedCourseId }];
+  db.rows.organizations = [{ id: ids.org, name: "Организация RPC" }];
+  db.rows.courses = linkedCourseId ? [{ id: linkedCourseId, organization_id: ids.org, title: "Курс RPC" }] : [];
+  db.rpcResults.get_group_roster_metadata = { data: roster, error: null };
+  db.rpcResults.get_group_participant_metadata = { data: detail, error: null };
+  return { roster, detail };
+}
+function mountRpc() {
+  return render(<MemoryRouter initialEntries={[`/organization?tab=group-folder&groupId=${ids.group}&folder=docs`]}>
+    <GroupFolderTab organizationId={ids.org} groupId={ids.group} />
+  </MemoryRouter>);
+}
+
+describe("GroupFolderTab metadata RPC integration", () => {
+  it("uses two metadata calls without legacy learner filters and preserves exact active subjects/count seeds", async () => {
+    rpcFixture();
+    mountRpc();
+    const loaded = await context();
+    expect(loaded.students.map((row: any) => row.user_id)).toEqual([ids.learner]);
+    expect(loaded.students[0].snils).toBe("own-snils");
+    expect(screen.queryByText("Архив RPC")).not.toBeInTheDocument();
+    expect(db.rpcCalls.map(call => call.name)).toEqual(["get_group_roster_metadata", "get_group_participant_metadata"]);
+    expect(db.rpcCalls[1].args).toEqual({ p_organization_id: ids.org, p_group_id: ids.group, p_user_ids: [ids.learner], p_linked_course_id: null });
+    expect(db.queries.map(query => query.table)).toEqual(["student_groups", "organizations"]);
+    expect(db.countSeeds.at(-1)).toMatchObject({ passports: 1, snils: 0, exams: 1, studentContractIds: [ids.document] });
+    expect(document.querySelector('[data-group-details-source="rpc"][data-group-roster-source="rpc"]')).toBeInTheDocument();
+  });
+  it("keeps the complete read-only roster visible while metadata is pending without unconfirmed generation", async () => {
+    rpcFixture(); let release!: () => void;
+    db.rpcDelays.get_group_participant_metadata = new Promise<void>(resolve => { release = resolve; });
+    mountRpc();
+    expect(await screen.findByText("Ученик RPC")).toBeInTheDocument();
+    expect(document.querySelector('[data-group-load-stage="roster"]')).toHaveAttribute("data-group-roster-source", "rpc");
+    expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
+    await act(async () => { release(); });
+    await context();
+  });
+  it("keeps an explicitly unknown linked-enrollment branch nonfatal without trying the legacy enrollment reader", async () => {
+    const { detail } = rpcFixture(ids.course); detail.enrollment_error = true; detail.enrollment_rows = null;
+    mountRpc();
+    expect((await context()).students).toHaveLength(1);
+    expect(screen.getByText("Не удалось подтвердить обучение")).toBeInTheDocument();
+    expect(db.queries.some(query => query.table === "enrollments")).toBe(false);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+  it("loads participant details when the linked course is not visible, preserving the old optional-course branch", async () => {
+    const { detail } = rpcFixture(ids.course); detail.enrollment_error = true; detail.enrollment_rows = null;
+    db.rows.courses = [];
+    mountRpc();
+    expect((await context()).students.map((row: any) => row.user_id)).toEqual([ids.learner]);
+    expect(db.rpcCalls[1].args.p_linked_course_id).toBe(ids.course);
+    expect(db.queries.filter(query => query.table === "courses")).toHaveLength(1);
+    expect(db.queries.some(query => query.table === "enrollments" || query.table === "student_group_profiles_effective")).toBe(false);
+    expect(screen.queryByText("Курс RPC")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(document.querySelector('[data-group-details-source="rpc"]')).toBeInTheDocument();
+  });
+  it("shows a roster-change retry instead of a connection failure or silent legacy widening", async () => {
+    rpcFixture(); db.rpcResults.get_group_participant_metadata = { data: null, error: { code: "40001", message: "private-server-detail" } };
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      mountRpc();
+      expect(await screen.findByRole("alert")).toHaveTextContent("Состав или курс группы изменились. Обновите список.");
+      expect(screen.getByRole("button", { name: "Повторить загрузку" })).toBeEnabled();
+      expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
+      expect(db.queries.some(query => query.table === "student_group_profiles_effective" || query.table === "enrollments")).toBe(false);
+      expect(JSON.stringify(log.mock.calls)).not.toContain("private-server-detail");
+    } finally { log.mockRestore(); }
+  });
+  it("runs one parent reload from the manual refresh button and leaves count refresh to its new seed", async () => {
+    rpcFixture(); mountRpc(); await context();
+    fireEvent.click(screen.getByRole("button", { name: "Обновить папки" }));
+    await waitFor(() => expect(db.rpcCalls.filter(call => call.name === "get_group_participant_metadata")).toHaveLength(2));
+    await context();
+    expect(db.refresh).not.toHaveBeenCalled();
+  });
+  it("does not show a delayed previous RPC roster after changing group props", async () => {
+    rpcFixture(); let release!: () => void;
+    db.rpcDelays.get_group_roster_metadata = new Promise<void>(resolve => { release = resolve; });
+    const mounted = mountRpc();
+    await waitFor(() => expect(db.rpcCalls).toHaveLength(1));
+    const nextGroup = ids.binding; const nextUser = ids.actor;
+    db.rows.student_groups.push({ id: nextGroup, organization_id: ids.org, name: "Новая группа RPC", course_id: null });
+    db.rpcResults.get_group_roster_metadata = { data: { version: 1, organization_id: ids.org, group_id: nextGroup,
+      profiles: [{ user_id: nextUser, full_name: "Новый ученик RPC", email: null, login: null, phone: null, archived_at: null, department: null }] }, error: null };
+    db.rpcResults.get_group_participant_metadata = { data: { version: 1, organization_id: ids.org, group_id: nextGroup, user_ids: [nextUser], linked_course_id: null,
+      identity_rows: [], contract_rows: [], attempt_rows: [], frdo_rows: [], enrollment_rows: [], enrollment_error: false }, error: null };
+    delete db.rpcDelays.get_group_roster_metadata;
+    mounted.rerender(<MemoryRouter><GroupFolderTab organizationId={ids.org} groupId={nextGroup} /></MemoryRouter>);
+    await screen.findByText("Новый ученик RPC");
+    await act(async () => { release(); });
+    expect(screen.queryByText("Ученик RPC")).not.toBeInTheDocument();
+    expect(document.querySelector('[data-group-details-source="rpc"]')).toBeInTheDocument();
+  });
 });
 afterEach(cleanup);
 
