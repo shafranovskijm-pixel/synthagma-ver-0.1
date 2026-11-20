@@ -71,6 +71,15 @@ jobs:
           --maxWorkers=1 --reporter=json
           --outputFile=outputs/learning-progress-reset-frontend/test-results.json
           2>&1 | tee outputs/learning-progress-reset-frontend/tests.stdout.txt
+      - name: Group loading, scoped counters and persistent payment reminder regressions
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          src/components/organization/__tests__/GroupFolderTab
+          src/hooks/__tests__/useGroupFolderCounts.test.tsx
+          src/lib/groups/__tests__/folderCounts.test.ts
+          src/components/organization/__tests__/OrganizationPaymentNoticeBanner.test.tsx
+          src/lib/notifications/organizationPaymentNotice.test.ts
+          --maxWorkers=1
       - name: Build production application
         run: npm run build 2>&1 | tee outputs/learning-progress-reset-frontend/build.stdout.txt
       - name: Private homework file SQL boundary checks with synthetic authority adapters
