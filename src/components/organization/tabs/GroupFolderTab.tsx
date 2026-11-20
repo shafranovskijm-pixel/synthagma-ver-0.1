@@ -340,7 +340,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
         loadStage = "participant-metadata";
         const participantMetadata = userIds.length
-          ? await readGroupParticipantMetadata(supabase, organizationId, groupId, userIds, linkedCourseId)
+          ? await readGroupParticipantMetadata(supabase, organizationId, groupId, userIds, linkedCourseId, { isCurrent: () => !cancelled })
           : null;
         if (cancelled) return;
         setMetadataSource({ scope: currentScope, roster: rosterRead.source, details: participantMetadata ? "rpc" : "legacy" });

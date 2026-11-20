@@ -63,7 +63,7 @@ describe("group metadata RPC rollout and strict response boundary", () => {
   it("reads details for the exact initial active IDs and linked-course CAS argument", async () => {
     const body = details(course); const db = client(body);
     expect(await readGroupParticipantMetadata(db, org, group, [user], course)).toEqual(body);
-    expect(db.rpc).toHaveBeenCalledExactlyOnceWith("get_group_participant_metadata", {
+    expect(db.rpc).toHaveBeenCalledExactlyOnceWith("get_group_participant_metadata_batch", {
       p_organization_id: org, p_group_id: group, p_user_ids: [user], p_linked_course_id: course,
     });
   });
@@ -96,12 +96,12 @@ describe("group metadata RPC rollout and strict response boundary", () => {
     await expect(readGroupParticipantMetadata(client(body), org, group, [user], course)).rejects.toMatchObject({ code: "GROUP_METADATA_INVALID" });
   });
   it("returns rollout absence only for missing participant RPC and propagates denial or malformed data", async () => {
-    expect(await readGroupParticipantMetadata(client(null, missing("get_group_participant_metadata")), org, group, [user], null)).toBeNull();
+    expect(await readGroupParticipantMetadata(client(null, missing("get_group_participant_metadata_batch")), org, group, [user], null)).toBeNull();
     const error = { code: "42501", message: "not allowed" };
     await expect(readGroupParticipantMetadata(client(null, error), org, group, [user], null)).rejects.toBe(error);
     await expect(readGroupParticipantMetadata(client(null), org, group, [user], null)).rejects.toMatchObject({ code: "GROUP_METADATA_INVALID" });
   });
   it("does not confuse the two target names", () => {
-    expect(isMissingGroupMetadataRpc(missing("get_group_roster_metadata"), "get_group_participant_metadata")).toBe(false);
+    expect(isMissingGroupMetadataRpc(missing("get_group_roster_metadata"), "get_group_participant_metadata_batch")).toBe(false);
   });
 });
