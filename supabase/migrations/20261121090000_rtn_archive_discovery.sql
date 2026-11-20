@@ -691,12 +691,13 @@ BEGIN
 END;$f$;
 
 CREATE FUNCTION rtn_private.archive_publisher_block(p_code text)RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $f$
-DECLARE blocked timestamptz;BEGIN
+DECLARE blocked timestamptz;observed timestamptz;BEGIN
  PERFORM rtn_private.archive_require(p_code IN('RTN_NEWS_HTTP_401','RTN_NEWS_HTTP_403','RTN_NEWS_HTTP_429'));
+ PERFORM 1 FROM rtn_private.news_runtime WHERE source_id=1 FOR UPDATE;observed:=clock_timestamp();
  UPDATE rtn_private.news_runtime SET publisher_epoch=publisher_epoch+1,
-  publisher_blocked_until=greatest(publisher_blocked_until,clock_timestamp()+interval'24 hours'),publisher_error_code=p_code,
-  next_due_at=greatest(next_due_at,publisher_blocked_until,clock_timestamp()+interval'24 hours')WHERE source_id=1 RETURNING publisher_blocked_until INTO blocked;
- UPDATE rtn_private.news_sources SET last_checked_at=clock_timestamp(),last_status='blocked',last_error_code=p_code WHERE id=1;
+  publisher_blocked_until=greatest(publisher_blocked_until,observed+interval'24 hours'),publisher_error_code=p_code,
+  next_due_at=greatest(next_due_at,publisher_blocked_until,observed+interval'24 hours')WHERE source_id=1 RETURNING publisher_blocked_until INTO blocked;
+ UPDATE rtn_private.news_sources SET last_checked_at=observed,last_status='blocked',last_error_code=p_code WHERE id=1;
 END;$f$;
 CREATE FUNCTION rtn_private.archive_pause_reason()RETURNS text LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $f$
 DECLARE n rtn_private.news_runtime%ROWTYPE;BEGIN
