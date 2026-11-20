@@ -134,13 +134,13 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
         }} /></label>
         {packageError && <p role="alert" className="text-sm text-destructive">{packageError}</p>}
         <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => { setText(event.target.value); setPackageError(''); }} /></label>
-        <Button disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
+        <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов · {item.normative_status === "current" ? `повторная сверка до ${item.editorial_review_before || item.normative_cutoff_at || "уточняется"}` : "нужна нормативная проверка"}</option>)}</select></label>
           <label className="space-y-1 text-sm">Применять с<input type="date" className={field} value={effective} onChange={event => setEffective(event.target.value)} /></label>
         </div>
         <label className="block space-y-1 text-sm">Основание выпуска<input className={field} value={note} onChange={event => setNote(event.target.value)} /></label>
-        <Button disabled={busy || !keyId || !effective || note.trim().length < 10} onClick={() => mutation.mutate('publish')}>Выпустить проверенную учебную редакцию</Button>
+        <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" disabled={busy || !keyId || !effective || note.trim().length < 10} onClick={() => mutation.mutate('publish')}>Выпустить проверенную учебную редакцию</Button>
       </>}
       {mutation.error && <p role="alert" className="break-words text-sm text-destructive">{errorText(mutation.error)}</p>}
       {notice && <p role="status" className="break-words text-sm">{notice}</p>}
