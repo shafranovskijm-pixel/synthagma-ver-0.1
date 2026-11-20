@@ -17,6 +17,12 @@ on:
       - src/components/organization/rtn/**
       - src/components/student/rtn/**
       - src/components/organization/tabs/CoursesTab.tsx
+      - src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx
+      - src/lib/rtnWorkspaceNavigation.ts
+      - src/lib/__tests__/rtnWorkspaceNavigation.test.ts
+      - src/utils/authReturn.ts
+      - src/utils/authReturn.test.ts
+      - src/utils/__tests__/loginDestination.test.ts
       - src/pages/StudentDashboard.tsx
       - supabase/functions/_shared/rtn/**
       - supabase/functions/rtn-source-check/**
@@ -43,7 +49,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - name: Workspace learner editorial and official-source regressions
-        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/components/organization/rtn src/components/student/rtn supabase/functions/_shared/rtn --maxWorkers=1
+        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
       - run: npm run build
   edge:
     runs-on: ubuntu-24.04
