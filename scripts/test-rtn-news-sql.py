@@ -154,7 +154,9 @@ def concurrency_checks(psql, run, monitor):
     if restore.returncode:raise AssertionError(restore.stderr)
     blocked('news waiting manual rejects committed billing hold', runtime,
             "INSERT INTO billing_access_private.active_holds VALUES('"+org+"');",
-            auth+"SELECT public.request_rtn_news_check('"+org+"');", 'rtn_organization_permission_required')
+            # The existing actor fence rejects the suspended account before
+            # the later organization-permission assertion can run.
+            auth+"SELECT public.request_rtn_news_check('"+org+"');", 'rtn_active_actor_required')
     restore=run("DELETE FROM billing_access_private.active_holds WHERE organization_id='"+org+"';")
     if restore.returncode:raise AssertionError(restore.stderr)
     blocked('news waiting manual rejects committed actor revocation', runtime,
