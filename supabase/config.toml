@@ -313,3 +313,12 @@ verify_jwt = true
 [functions.support-event-delivery]
 verify_jwt = false
 
+# Central news manual entry validates the genuine bearer with auth.getUser and
+# exact current SQL courses.write/entitlement before any global check claim.
+[functions.rtn-news-check]
+verify_jwt = false
+
+# Separate news cron verifies the existing provider opaque authorization first.
+# Gateway JWT checking would reject that non-JWT opaque credential prematurely.
+[functions.rtn-news-cron]
+verify_jwt = false

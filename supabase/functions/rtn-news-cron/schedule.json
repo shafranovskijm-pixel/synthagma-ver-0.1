@@ -1,0 +1,10 @@
+{
+  "status": "candidate_not_installed",
+  "name": "rtn-official-news-check",
+  "schedule": "17 * * * *",
+  "function": "rtn-news-cron",
+  "body": { "task": "rtn-news-reconciliation" },
+  "auth": "provider-managed opaque cron helper; do not expose or construct its secret",
+  "network_due": "Once perhour centrally after success/transientfailure;24hours after blocked401/403/429; global manual cooldown10minutes",
+  "scope": "One central news lease and one bounded factual projection batch per tick. Separate from question-bank job27."
+}

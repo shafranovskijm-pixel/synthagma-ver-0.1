@@ -76,6 +76,25 @@ function confirmedQuestionCount(value: unknown): number | null {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
+// The workspace RPC uses zero when no normalized bank revision exists.
+// A numeric value alone therefore cannot confirm the size of a question bank.
+function bankQuestionCount(bank: RtnBank): number | null {
+  return typeof bank.bank_revision_id === "string" && bank.bank_revision_id.trim()
+    ? confirmedQuestionCount(bank.question_count) : null;
+}
+
+function applicationDate(value: string | null | undefined): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number(value.slice(0, 4)) < 1) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+  return rtnDate(value, false, "UTC");
+}
+
+function applicationDateLabel(value: string | null | undefined): string {
+  const date = applicationDate(value);
+  return date ? `Применяется с ${date}` : "Дата применения не подтверждена";
+}
+
 function hasPendingSourceRevision(bank: RtnBank): boolean {
   return typeof bank.pending_source_revision_id === "string" && bank.pending_source_revision_id.trim().length > 0;
 }
@@ -227,9 +246,9 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
         {panel === "results" && <ResultsPanel workspace={workspace} />}
     {visibleBanks.length ? <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">{visibleBanks.map(bank => {
       const ready = canAssignRtnBank(bank);
-      const questionCount = confirmedQuestionCount(bank.question_count);
+      const questionCount = bankQuestionCount(bank);
       return <article key={bank.id} className={`${boxClass} flex flex-col gap-4`}>
-        <div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{/энерг|электр/i.test(`${bank.domain} ${bank.title}`) ? <Zap className="h-6 w-6" /> : <Factory className="h-6 w-6" />}</div><div className="min-w-0 space-y-2"><h3 className="break-words font-semibold">{bank.code ? `${bank.code}. ` : ""}{bank.title}</h3><p className="text-xs text-muted-foreground">{questionCount === null ? "Количество вопросов не подтверждено" : `${questionCount} вопросов`} · применяется с {rtnDate(bank.effective_from)}</p><span className={`inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-xs ${ready ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>{ready ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <Clock3 className="h-3.5 w-3.5 shrink-0" />}{keyLabel(bank)}</span></div></div>
+        <div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{/энерг|электр/i.test(`${bank.domain} ${bank.title}`) ? <Zap className="h-6 w-6" /> : <Factory className="h-6 w-6" />}</div><div className="min-w-0 space-y-2"><h3 className="break-words font-semibold">{bank.code ? `${bank.code}. ` : ""}{bank.title}</h3><p className="text-xs text-muted-foreground">{questionCount === null ? "Количество вопросов не подтверждено" : `${questionCount} вопросов`} · {applicationDateLabel(bank.effective_from)}</p><span className={`inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-xs ${ready ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>{ready ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <Clock3 className="h-3.5 w-3.5 shrink-0" />}{keyLabel(bank)}</span></div></div>
         {bank.normative_cutoff_at && <p className="text-xs text-muted-foreground">Контроль актуальности редакции: до {rtnDate(bank.normative_cutoff_at, true, 'Europe/Moscow')} МСК.</p>}
         {ready && hasPendingSourceRevision(bank) && <p className={workspace.settings.notify_updates ? "text-xs font-medium text-amber-800 dark:text-amber-300" : "text-xs text-muted-foreground"}>Источник обновился. Новая редакция проходит проверку; обучение продолжается по выпущенной редакции.</p>}
         <div className="mt-auto flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => openBank(bank)} className="gap-2"><BookOpen className="h-4 w-4" />Посмотреть состав</Button>{ready && <Button size="sm" disabled={!workspace.access.can_assign} onClick={() => openAssign(bank)}>Назначить обучение</Button>}</div>
@@ -263,7 +282,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
         {view === "sources" && <RtnPersonalPreferences organizationId={organizationId} actorId={actorId} />}
       </TabsContent>
     </Tabs>
-    <Dialog open={!!detail} onOpenChange={open => { if (!open) closeBank(); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle className="break-words pr-4">{detail?.code} {detail?.title}</DialogTitle><DialogDescription>Источник вопросов, готовность учебной редакции и история выпусков.</DialogDescription></DialogHeader>{detail && <div className="space-y-4 text-sm"><p>{keyLabel(detail)}</p><dl className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Вопросов в программе</dt><dd>{confirmedQuestionCount(detail.question_count) ?? "Не подтверждено"}</dd></div><div><dt className="text-muted-foreground">Источник утверждён</dt><dd>{rtnDate(detail.approved_on)}</dd></div><div><dt className="text-muted-foreground">Применение с</dt><dd>{rtnDate(detail.effective_from)}</dd></div><div><dt className="text-muted-foreground">Последняя успешная проверка</dt><dd>{rtnDate(detail.last_success_at, true)}</dd></div></dl>{workspace.settings.show_archived_releases && <ReleaseHistory bankId={detail.id} releases={workspace.archived_releases || []} />}{officialSource(detail.source_url) && <a className="inline-flex items-center gap-2 text-primary underline underline-offset-4" href={officialSource(detail.source_url)!} rel="noopener noreferrer" target="_blank">Открыть официальный источник<ExternalLink className="h-4 w-4" /></a>}<p className="text-muted-foreground">Официальная публикация вопросов не подтверждает правильные ответы. К обучению допускается только выпущенная редакция с проверенными ключами.</p><Button disabled={!workspace.access.can_assign || !canAssignRtnBank(detail)} onClick={() => { openAssign(detail); closeBank(); }}>Назначить обучение</Button></div>}</DialogContent></Dialog>
+    <Dialog open={!!detail} onOpenChange={open => { if (!open) closeBank(); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle className="break-words pr-4">{detail?.code} {detail?.title}</DialogTitle><DialogDescription>Источник вопросов, готовность учебной редакции и история выпусков.</DialogDescription></DialogHeader>{detail && <div className="space-y-4 text-sm"><p>{keyLabel(detail)}</p><dl className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Вопросов в программе</dt><dd>{bankQuestionCount(detail) ?? "Не подтверждено"}</dd></div><div><dt className="text-muted-foreground">Источник утверждён</dt><dd>{rtnDate(detail.approved_on)}</dd></div><div><dt className="text-muted-foreground">Дата применения</dt><dd>{applicationDate(detail.effective_from) ?? "Не подтверждена"}</dd></div><div><dt className="text-muted-foreground">Последняя успешная проверка</dt><dd>{rtnDate(detail.last_success_at, true)}</dd></div></dl>{workspace.settings.show_archived_releases && <ReleaseHistory bankId={detail.id} releases={workspace.archived_releases || []} />}{officialSource(detail.source_url) && <a className="inline-flex items-center gap-2 text-primary underline underline-offset-4" href={officialSource(detail.source_url)!} rel="noopener noreferrer" target="_blank">Открыть официальный источник<ExternalLink className="h-4 w-4" /></a>}<p className="text-muted-foreground">Официальная публикация вопросов не подтверждает правильные ответы. К обучению допускается только выпущенная редакция с проверенными ключами.</p><Button disabled={!workspace.access.can_assign || !canAssignRtnBank(detail)} onClick={() => { openAssign(detail); closeBank(); }}>Назначить обучение</Button></div>}</DialogContent></Dialog>
   </section>;
 }
 
@@ -295,7 +314,7 @@ function AssignmentPanel({ organizationId, workspace, selectedBank, onSelectBank
 
 function ReleaseHistory({ bankId, releases }: { bankId: string; releases: RtnReleaseMetadata[] }) {
   const history = releases.filter(release => release.bank_id === bankId);
-  return <section className="space-y-3 border-t border-border pt-3" aria-label="История редакций"><h4 className="font-medium">История редакций</h4>{history.length ? history.map(release => <article key={release.release_id} className="space-y-1 rounded-lg border border-border p-3 text-xs"><p className="font-medium">{release.state === "current" ? "Действующая" : release.state === "scheduled" ? "Запланирована" : "Архивная"} · {confirmedQuestionCount(release.question_count) === null ? "Количество вопросов не подтверждено" : `${release.question_count} вопросов`}</p><p>Применение с {rtnDate(release.effective_from)} · Выпуск {rtnDate(release.published_at, true)}</p><p className="break-all text-muted-foreground">Редакция: {release.release_id}</p>{officialSource(release.document_url) && <a className="inline-block text-primary underline underline-offset-4" href={officialSource(release.document_url)!} target="_blank" rel="noopener noreferrer">Документ источника</a>}</article>) : <p className="text-xs text-muted-foreground">Выпущенных редакций пока нет.</p>}</section>;
+  return <section className="space-y-3 border-t border-border pt-3" aria-label="История редакций"><h4 className="font-medium">История редакций</h4>{history.length ? history.map(release => <article key={release.release_id} className="space-y-1 rounded-lg border border-border p-3 text-xs"><p className="font-medium">{release.state === "current" ? "Действующая" : release.state === "scheduled" ? "Запланирована" : "Архивная"} · {confirmedQuestionCount(release.question_count) === null ? "Количество вопросов не подтверждено" : `${release.question_count} вопросов`}</p><p>{applicationDateLabel(release.effective_from)} · Выпуск {rtnDate(release.published_at, true)}</p><p className="break-all text-muted-foreground">Редакция: {release.release_id}</p>{officialSource(release.document_url) && <a className="inline-block text-primary underline underline-offset-4" href={officialSource(release.document_url)!} target="_blank" rel="noopener noreferrer">Документ источника</a>}</article>) : <p className="text-xs text-muted-foreground">Выпущенных редакций пока нет.</p>}</section>;
 }
 
 function ResultsPanel({ workspace }: { workspace: RtnWorkspace }) {
