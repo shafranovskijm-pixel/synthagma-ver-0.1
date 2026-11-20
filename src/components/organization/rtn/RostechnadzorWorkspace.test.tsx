@@ -7,6 +7,8 @@ import type { RtnBank, RtnWorkspace } from "@/types/rostechnadzor";
 
 const api = vi.hoisted(() => ({ getRtnWorkspace: vi.fn(), checkRtnSource: vi.fn(), assignRtnTraining: vi.fn(), saveRtnSettings: vi.fn() }));
 vi.mock("@/api/rostechnadzor", () => api);
+const updatesApi = vi.hoisted(() => ({ getRtnUpdates: vi.fn(), getRtnUpdate: vi.fn() }));
+vi.mock("@/api/rtn-updates", () => updatesApi);
 
 const bank: RtnBank = {
   id: "bank-a", code: "А.1", title: "Основы промышленной безопасности", domain: "Промышленная безопасность",
@@ -32,10 +34,29 @@ function mount(organizationId = "org-a", props: Partial<React.ComponentProps<typ
   return { ...render(<RostechnadzorWorkspace organizationId={organizationId} actorId="actor-a" {...props} />, { wrapper }), client };
 }
 
-beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(workspace()); });
+beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(workspace()); updatesApi.getRtnUpdates.mockResolvedValue({ events: [], has_more: false, next_before_sequence: null, source_health: { status: "never_checked", last_success_at: null, coverage_kind: "unknown" } }); });
 afterEach(cleanup);
 
 describe("RTN organization workspace", () => {
+  it("loads shared changes only after the authorized Changes tab is opened", async () => {
+    mount("11111111-1111-4111-8111-111111111111");
+    await screen.findByRole("heading", { name: `А.1. ${bank.title}` });
+    expect(updatesApi.getRtnUpdates).not.toHaveBeenCalled();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
+    await screen.findByRole("region", { name: "Проверка источников" });
+    expect(updatesApi.getRtnUpdates).not.toHaveBeenCalled();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Изменения" }), { button: 0, ctrlKey: false });
+    await screen.findByText(/пока нет сохранённых изменений/);
+    expect(updatesApi.getRtnUpdates).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: "Состояние программ" })).toBeInTheDocument();
+  });
+  it("does not load shared changes when the workspace server denies access", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ access: { allowed: false, reason: "permission_denied", can_manage: false, can_assign: false, can_view_results: false, pilot: false } }));
+    mount("11111111-1111-4111-8111-111111111111", { navigation: { view: "changes", bankId: null, eventId: null, invalidTarget: false } });
+    await screen.findByText(/нужны права на курсы/);
+    expect(updatesApi.getRtnUpdates).not.toHaveBeenCalled();
+    expect(updatesApi.getRtnUpdate).not.toHaveBeenCalled();
+  });
   it("prevents a released but no longer normatively current bank from being assigned", async () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, available_for_training: true, normative_status: "review_required" }] }));
     mount();
@@ -273,11 +294,12 @@ describe("RTN workspace navigation and sections", () => {
   });
 
   it("does not invent a news event or claim a source unchanged for an unsupported event target", async () => {
-    mount("org-a", { navigation: { view: "changes", bankId: null, eventId: "event-not-loaded", invalidTarget: false } });
-    expect(await screen.findByText(/Карточка изменения из ссылки пока не подтверждена/)).toBeInTheDocument();
-    expect(screen.getByText(/Подтверждённых изменений пока нет/)).toBeInTheDocument();
+    mount("11111111-1111-4111-8111-111111111111", { navigation: { view: "changes", bankId: null, eventId: "event-not-loaded", invalidTarget: false } });
+    expect(await screen.findByText(/Ссылка на изменение некорректна/)).toBeInTheDocument();
+    expect(screen.getByText(/В данных программ пока нет отмеченных изменений/)).toBeInTheDocument();
     expect(screen.queryByText("Изменений не обнаружено")).not.toBeInTheDocument();
     expect(api.checkRtnSource).not.toHaveBeenCalled();
+    expect(updatesApi.getRtnUpdate).not.toHaveBeenCalled();
   });
 
   it("shows a real pending-source change and preserves the programme destination", async () => {
