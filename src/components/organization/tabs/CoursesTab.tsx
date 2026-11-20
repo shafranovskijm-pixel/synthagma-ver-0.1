@@ -1,7 +1,7 @@
 import { deleteUnusedCourses } from "@/api/courseDeletion";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BookOpen, Trash2, GripVertical } from "lucide-react";
@@ -30,6 +30,7 @@ import { hasOrganizationCourse, isSystemWelcomeCourse } from "@/lib/organization
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RostechnadzorWorkspace } from "../rtn/RostechnadzorWorkspace";
+import { parseRtnWorkspaceNavigation, withRtnWorkspaceNavigation } from "@/lib/rtnWorkspaceNavigation";
 
 const FIRST_COURSE_SKIP_KEY_PREFIX = "org-first-course-choice-skipped-";
 
@@ -42,7 +43,13 @@ interface CoursesTabProps {
 
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
-  const [courseWorkspace, setCourseWorkspace] = useState("mine");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rtnNavigation = parseRtnWorkspaceNavigation(searchParams);
+  const courseWorkspace = rtnNavigation.workspace;
+  const setCourseWorkspace = (workspace: string) => {
+    if (workspace !== "mine" && workspace !== "rtn") return;
+    setSearchParams(current => withRtnWorkspaceNavigation(current, { workspace }));
+  };
   const dashboard = useOrgDashboard();
   const { can } = useStaffPermissions();
   const { checkLimit, hasCourseSettings, loading: accessLoading, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
@@ -448,6 +455,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         <TabsTrigger value="mine" className="rounded-none border-b-2 border-transparent px-3 py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5">Мои курсы</TabsTrigger>
         <TabsTrigger value="rtn" className="rounded-none border-b-2 border-transparent px-3 py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5">Ростехнадзор</TabsTrigger>
       </TabsList>
+      {rtnNavigation.invalidTarget && courseWorkspace === "mine" && <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">Ссылка на раздел курсов некорректна. Открыт обычный список курсов; выберите нужный раздел заново.</p>}
       <TabsContent value="mine" forceMount hidden={courseWorkspace !== "mine"} className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
@@ -646,7 +654,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
       </TabsContent>
       <TabsContent value="rtn" className="min-w-0">
-        <RostechnadzorWorkspace organizationId={organizationId} actorId={dashboard.user?.id ?? null} isAdminView={isAdminView} onUsageChanged={() => void refetchLimits()} />
+        <RostechnadzorWorkspace organizationId={organizationId} actorId={dashboard.user?.id ?? null} isAdminView={isAdminView} onUsageChanged={() => void refetchLimits()} navigation={rtnNavigation} onNavigate={target => setSearchParams(current => withRtnWorkspaceNavigation(current, { workspace: "rtn", ...target }))} />
       </TabsContent>
       <CategoryDialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog} editingCategory={editingCategory} name={newCategoryName} setName={setNewCategoryName} color={newCategoryColor} setColor={setNewCategoryColor} isCreating={isCreatingCategory} onSubmit={handleCreateCategory} />
       <CreateCourseDialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog} title={newCourseTitle} setTitle={setNewCourseTitle} description={newCourseDescription} setDescription={setNewCourseDescription} categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId} categories={categories} showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory} inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName} inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor} isCreating={isCreatingCourse} onSubmit={handleCreateCourse} />

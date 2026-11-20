@@ -1,3 +1,5 @@
+import { rtnWorkspaceRegistrationTarget } from '@/lib/rtnWorkspaceNavigation';
+
 /** Only a same-origin route can survive the common login flow. */
 export function safeInternalNext(raw: string | null | undefined): string | null {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
@@ -26,7 +28,10 @@ export function courseCatalogRegistrationTarget(raw: string | null | undefined):
 }
 export function organizationRegistrationTarget(params: URLSearchParams): string {
   if (params.get('module') === 'driving-school' || params.get('next') === DRIVING_ORGANIZATION_PATH) return DRIVING_ORGANIZATION_PATH;
-  return params.getAll('next').length === 1 ? courseCatalogRegistrationTarget(params.get('next')) ?? '/organization' : '/organization';
+  if (params.getAll('next').length !== 1) return '/organization';
+  return courseCatalogRegistrationTarget(params.get('next'))
+    ?? rtnWorkspaceRegistrationTarget(params.get('next'))
+    ?? '/organization';
 }
 export function organizationRegistrationHref(params: URLSearchParams): string {
   const target = organizationRegistrationTarget(params);

@@ -26,10 +26,10 @@ function workspace(overrides: Partial<RtnWorkspace> = {}): RtnWorkspace {
   };
 }
 
-function mount(organizationId = "org-a") {
+function mount(organizationId = "org-a", props: Partial<React.ComponentProps<typeof RostechnadzorWorkspace>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  return { ...render(<RostechnadzorWorkspace organizationId={organizationId} actorId="actor-a" />, { wrapper }), client };
+  return { ...render(<RostechnadzorWorkspace organizationId={organizationId} actorId="actor-a" {...props} />, { wrapper }), client };
 }
 
 beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(workspace()); });
@@ -128,12 +128,15 @@ describe("RTN organization workspace", () => {
     api.assignRtnTraining.mockResolvedValue({ assignments: [{ id: "assignment-a" }], replayed: false });
     mount();
     await screen.findByRole("heading", { name: `А.1. ${bank.title}` });
-    fireEvent.click(screen.getAllByRole("button", { name: "Назначить обучение" })[0]);
+    const card = screen.getByRole("heading", { name: `А.1. ${bank.title}` }).closest("article")!;
+    fireEvent.click(within(card).getByRole("button", { name: "Назначить обучение" }));
     const panel = screen.getByRole("region", { name: "Назначение обучения" });
     fireEvent.click(within(panel).getByLabelText("Тестовый ученик"));
     fireEvent.click(within(panel).getByRole("button", { name: "Назначить выбранным (1)" }));
     await waitFor(() => expect(api.assignRtnTraining).toHaveBeenCalledWith({ organizationId: "org-a", bankId: "bank-a", studentIds: ["profile-a"], groupId: null }));
     expect(await within(panel).findByText(/Назначение сохранено/)).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: "Посмотреть назначения и результаты" }));
+    expect(screen.getByRole("region", { name: "Результаты обучения" })).toBeInTheDocument();
   });
 
   it("allows source checks with course-management rights without exposing student results", async () => {
@@ -142,8 +145,9 @@ describe("RTN organization workspace", () => {
       results: [{ attempt_id: "hidden-attempt", bank_id: "bank-a", student_id: "profile-a", student_name: "Закрытое имя", release_id: "release-a", score: 80 }],
     }));
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Обновления" }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
     expect(screen.getByRole("button", { name: "Проверить обновления сейчас" })).toBeEnabled();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Подготовка" }), { button: 0, ctrlKey: false });
     fireEvent.click(screen.getByRole("button", { name: "Результаты" }));
     expect(screen.queryByText("Закрытое имя")).not.toBeInTheDocument();
     expect(screen.getByText(/Для просмотра результатов нужны права/)).toBeInTheDocument();
@@ -154,7 +158,7 @@ describe("RTN organization workspace", () => {
     api.getRtnWorkspace.mockImplementation(() => Promise.resolve(current));
     api.checkRtnSource.mockResolvedValue({ run_id: "run-new", status: "queued" });
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Обновления" }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
     fireEvent.click(screen.getByRole("button", { name: "Проверить обновления сейчас" }));
     expect(await screen.findByText("В очереди")).toBeInTheDocument();
     expect(screen.queryByText("Изменений не обнаружено")).not.toBeInTheDocument();
@@ -173,7 +177,7 @@ describe("RTN organization workspace", () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, check_status: "unchanged", last_success_at: "2026-11-13T09:00:00Z" }] }));
     api.checkRtnSource.mockRejectedValue(new Error("Не удалось связаться с сервером"));
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Обновления" }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
     expect(screen.getByText("Изменений не обнаружено")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Проверить обновления сейчас" }));
     expect(await screen.findByText("Не удалось проверить источник")).toBeInTheDocument();
@@ -200,7 +204,7 @@ describe("RTN organization workspace", () => {
   it("does not claim settings were saved after a server rejection", async () => {
     api.saveRtnSettings.mockRejectedValue(new Error("Недостаточно прав"));
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Настройки" }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
     fireEvent.click(screen.getByLabelText("Подсвечивать новые редакции"));
     fireEvent.click(screen.getByRole("button", { name: "Сохранить настройки" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Недостаточно прав");
@@ -214,5 +218,144 @@ describe("RTN organization workspace", () => {
     expect(screen.getByText("Результат: 80% · 8 из 10 · Зачтено")).toBeInTheDocument();
     expect(screen.getByText(/Редакция: old-release/)).toBeInTheDocument();
     expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+});
+
+describe("RTN workspace navigation and sections", () => {
+  it("places the short navigation before filters, actions and programme cards", async () => {
+    mount();
+    const heading = await screen.findByRole("heading", { name: `А.1. ${bank.title}` });
+    const tabs = screen.getByRole("tablist", { name: "Разделы Ростехнадзора" });
+    expect(within(tabs).getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Подготовка", "Изменения", "Источники"]);
+    expect(tabs.compareDocumentPosition(screen.getByRole("textbox", { name: "Поиск программы" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tabs.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("opens the canonical Sources view without displaying training as the active section", async () => {
+    mount("org-a", { navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+    expect(await screen.findByRole("region", { name: "Проверка источников" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Источники" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("textbox", { name: "Поиск программы" })).not.toBeInTheDocument();
+    expect(screen.getByText("Источник ещё не проверен")).toBeInTheDocument();
+    expect(screen.queryByText("Изменений не обнаружено")).not.toBeInTheDocument();
+    expect(api.getRtnWorkspace).toHaveBeenCalledWith("org-a");
+  });
+
+  it("delegates a controlled section change to its route owner rather than overriding browser state", async () => {
+    const navigate = vi.fn();
+    const mounted = mount("org-a", { navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false }, onNavigate: navigate });
+    await screen.findByRole("region", { name: "Проверка источников" });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Изменения" }), { button: 0, ctrlKey: false });
+    expect(navigate).toHaveBeenCalledWith({ view: "changes" });
+    expect(screen.getByRole("tab", { name: "Источники" })).toHaveAttribute("aria-selected", "true");
+    mounted.rerender(<RostechnadzorWorkspace organizationId="org-a" actorId="actor-a" navigation={{ view: "changes", bankId: null, eventId: null, invalidTarget: false }} onNavigate={navigate} />);
+    expect(screen.getByRole("region", { name: "Изменения вопросов" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Изменения" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens only a linked programme that exists in the current authorized response and clears its target on close", async () => {
+    const navigate = vi.fn();
+    mount("org-a", { navigation: { view: "training", bankId: bank.id, eventId: null, invalidTarget: false }, onNavigate: navigate });
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: `А.1 ${bank.title}` })).toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ view: "training" }));
+    expect(api.getRtnWorkspace).toHaveBeenCalledTimes(1);
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
+  it("does not fetch or expose a foreign programme supplied in a link", async () => {
+    mount("org-a", { navigation: { view: "training", bankId: "foreign-bank", eventId: null, invalidTarget: false } });
+    expect(await screen.findByText(/Программа из ссылки недоступна/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.getRtnWorkspace).toHaveBeenCalledTimes(1);
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
+  it("does not invent a news event or claim a source unchanged for an unsupported event target", async () => {
+    mount("org-a", { navigation: { view: "changes", bankId: null, eventId: "event-not-loaded", invalidTarget: false } });
+    expect(await screen.findByText(/Карточка изменения из ссылки пока не подтверждена/)).toBeInTheDocument();
+    expect(screen.getByText(/Подтверждённых изменений пока нет/)).toBeInTheDocument();
+    expect(screen.queryByText("Изменений не обнаружено")).not.toBeInTheDocument();
+    expect(api.checkRtnSource).not.toHaveBeenCalled();
+  });
+
+  it("shows a real pending-source change and preserves the programme destination", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, pending_source_revision_id: "revision-new" }] }));
+    const navigate = vi.fn();
+    mount("org-a", { navigation: { view: "changes", bankId: null, eventId: null, invalidTarget: false }, onNavigate: navigate });
+    const region = await screen.findByRole("region", { name: "Изменения вопросов" });
+    expect(within(region).getByText(bank.title)).toBeInTheDocument();
+    fireEvent.click(within(region).getByRole("button", { name: "Посмотреть программу" }));
+    expect(navigate).toHaveBeenCalledWith({ view: "training", bankId: bank.id });
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
+  it("keeps organizational highlight preferences distinct from personal subscriptions", async () => {
+    mount("org-a", { navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+    expect(await screen.findByRole("heading", { name: "Настройки отображения" })).toBeInTheDocument();
+    expect(screen.getByText(/Они не включают личные уведомления/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Получать.*колокольчик/)).not.toBeInTheDocument();
+  });
+
+  it.each([true, false])("shows server-scoped assignment rows only with result permission=%s", async canViewResults => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({
+      access: { allowed: true, reason: "included", can_manage: true, can_assign: true, can_view_results: canViewResults, pilot: true },
+      assignments: [{ id: "assignment-one", bank_id: bank.id, student_id: "profile-a", student_name: "Назначенный ученик", assigned_at: "2026-11-20T04:00:00Z" }],
+    }));
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Результаты" }));
+    if (canViewResults) {
+      const assignments = screen.getByRole("region", { name: "Назначения программ" });
+      expect(within(assignments).getByText("Назначенный ученик")).toBeInTheDocument();
+      expect(within(assignments).getByText(`А.1 ${bank.title}`)).toBeInTheDocument();
+    } else {
+      expect(screen.queryByRole("region", { name: "Назначения программ" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Назначенный ученик")).not.toBeInTheDocument();
+    }
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+
+  it("keeps a historical changed-source fact neutral when no revision is pending", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, check_status: "changed", pending_source_revision_id: null }] }));
+    const mounted = mount("org-a", { navigation: { view: "changes", bankId: null, eventId: null, invalidTarget: false } });
+    const region = await screen.findByRole("region", { name: "Изменения вопросов" });
+    expect(within(region).getByText("Проверка обнаружила изменение. Состояние редакции показано в программе.")).toBeInTheDocument();
+    expect(within(region).queryByText(/редакция проходит предметную проверку/)).not.toBeInTheDocument();
+    mounted.rerender(<RostechnadzorWorkspace organizationId="org-a" actorId="actor-a" navigation={{ view: "sources", bankId: null, eventId: null, invalidTarget: false }} />);
+    expect(screen.getByText("Проверка обнаружила изменение источника")).toBeInTheDocument();
+    expect(screen.queryByText("Найдено изменение — редакция проходит проверку")).not.toBeInTheDocument();
+  });
+
+  it("groups a shared source after preserving the second bank pending revision and its exact destination", async () => {
+    const second = { ...bank, id: "bank-b", code: "Б.1", title: "Второе направление", pending_source_revision_id: "pending-second" };
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, check_status: "changed", pending_source_revision_id: null }, second] }));
+    const navigate = vi.fn();
+    mount("org-a", { navigation: { view: "changes", bankId: null, eventId: null, invalidTarget: false }, onNavigate: navigate });
+    const region = await screen.findByRole("region", { name: "Изменения вопросов" });
+    expect(within(region).getAllByRole("heading", { name: "Изменение источника вопросов" })).toHaveLength(1);
+    expect(within(region).getByText(bank.title)).toBeInTheDocument();
+    const pendingRow = within(region).getByText(second.title).closest("div")!;
+    expect(within(pendingRow).getByText(/Новая редакция проходит предметную проверку/)).toBeInTheDocument();
+    fireEvent.click(within(pendingRow).getByRole("button", { name: "Посмотреть программу" }));
+    expect(navigate).toHaveBeenCalledWith({ view: "training", bankId: second.id });
+  });
+
+  it("distinguishes an unknown question count from a confirmed zero in cards and programme details", async () => {
+    const missing = { ...bank, question_count: undefined as unknown as number };
+    const zero = { ...bank, id: "bank-zero", code: "А.0", title: "Пустая подтверждённая редакция", question_count: 0 };
+    const invalid = { ...bank, id: "bank-invalid", code: "А.X", title: "Количество на проверке", question_count: -1 };
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [missing, zero, invalid] }));
+    mount();
+    const missingCard = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    const zeroCard = screen.getByRole("heading", { name: `А.0. ${zero.title}` }).closest("article")!;
+    const invalidCard = screen.getByRole("heading", { name: `А.X. ${invalid.title}` }).closest("article")!;
+    expect(within(missingCard).getByText(/Количество вопросов не подтверждено/)).toBeInTheDocument();
+    expect(within(missingCard).queryByText(/^0 вопросов/)).not.toBeInTheDocument();
+    expect(within(zeroCard).getByText(/^0 вопросов/)).toBeInTheDocument();
+    expect(within(invalidCard).getByText(/Количество вопросов не подтверждено/)).toBeInTheDocument();
+    fireEvent.click(within(missingCard).getByRole("button", { name: "Посмотреть состав" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Вопросов в программе").nextElementSibling).toHaveTextContent("Не подтверждено");
   });
 });
