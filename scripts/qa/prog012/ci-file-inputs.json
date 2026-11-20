@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "status": "FROZEN_SEPARATE_FILE16_INPUTS_INTEGRATED_WITH_UNCHANGED_CORE48_NOT_RUN",
+  "dependsOn": "Unchanged prior core48 complete in same guarded PostgreSQL17.11 synthetic GitHub service",
+  "files": [
+    {
+      "path": "file-authority-unit-extension.sql",
+      "bytes": 3442,
+      "sha256": "486159107dd9ca931523fe84c758d6864ae364a1a6ef771011f8eba36f0d5560"
+    },
+    {
+      "path": "file-authority-r4.candidate.sql",
+      "bytes": 50326,
+      "sha256": "6de784c9d435152c355eccb6573620a321b756b17b8e1bbd39ac709d71c089d8"
+    },
+    {
+      "path": "file_authority_cases.py",
+      "bytes": 21095,
+      "sha256": "cbb2e11f9b61c5a5b3274b0debcddee1054907baeb244b69a4dd5e875868b8a1"
+    },
+    {
+      "path": "reader-gap-instrumentation.lab-only.sql",
+      "bytes": 6242,
+      "sha256": "2fe4bd52b8025f7c711fcde0b016e81fdbc4279a2ee53720cb015de19b8382ff"
+    },
+    {
+      "path": "reader-r4-exact-restore.sql",
+      "bytes": 5021,
+      "sha256": "6d940790743e762e9b6b242a40146e0992dd376cc107ae13a73f42507fbc271b"
+    },
+    {
+      "path": "run_file_stage.py",
+      "bytes": 6128,
+      "sha256": "d44654c4d1983fa2db787b9b743f905d320605b8b5878ea2b5d44f4c9fd58cbf"
+    }
+  ],
+  "expectedGroups": [
+    "DB14-R4-01",
+    "DB14-R4-02",
+    "DB14-R4-03",
+    "DB14-R4-04",
+    "DB14-R4-05",
+    "DB14-R4-06",
+    "DB14-R4-07",
+    "DB14-R4-08",
+    "DB14-R4-09",
+    "DB14-R4-10",
+    "DB14-R4-11",
+    "DB14-R4-12",
+    "DB14-R4-13",
+    "DB14-R4-14",
+    "DB14-R4-15",
+    "DB14-R4-16"
+  ],
+  "instrumentedRCGroups": [
+    9,
+    10,
+    11,
+    12
+  ],
+  "realAuthStorageConsumerParity": false,
+  "fullPROG012Accepted": false,
+  "createdAtUtc": "2026-10-28T12:08:46.251Z",
+  "priorFileStageManifestSHA256": "7f84c9ca045248b3e831c80f01a2e8614187189f3f54383c290e23928a8b2a17"
+}

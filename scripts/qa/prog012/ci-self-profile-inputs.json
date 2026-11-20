@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_ONLY_DISTINCT_FRESH_NATIVE_SELF_PROFILE12_AFTER_ORIGINAL77_NOT_RUN",
+  "database": "sintagma_self_profile_lab_20261028",
+  "files": [
+    {
+      "path": "self-profile-unit-bootstrap.sql",
+      "bytes": 12418,
+      "sha256": "95ea3ba934b15fb8a46756fb56d075974f539daec5bda0d5d710d422e19b0fdb"
+    },
+    {
+      "path": "self-profile.candidate.sql",
+      "bytes": 5341,
+      "sha256": "8125d8a207d0f6b6c7f231bbedeeba0504c79abebe6f1cb49ba33c9135698c09"
+    },
+    {
+      "path": "self_profile_cases.py",
+      "bytes": 11237,
+      "sha256": "c19b25a41e967ead67d910e0f547e0c6029a154adfddb777d2ae9b355ae1032a"
+    },
+    {
+      "path": "run_self_profile_stage.py",
+      "bytes": 17596,
+      "sha256": "6c25dab848536dafed47bff9ff3ed9a76f3b4d196ff5143a8d0f1b0207410289"
+    },
+    {
+      "path": "concurrency_cases.py",
+      "bytes": 24197,
+      "sha256": "802e828549a7bf116d1f2c6deda47cf31a2bc80e11096c68935773a9cd936d3c"
+    }
+  ],
+  "expected": {
+    "groups": [
+      "PSELF01",
+      "PSELF02",
+      "PSELF03",
+      "PSELF04",
+      "PSELF05",
+      "PSELF06",
+      "PSELF07",
+      "PSELF08",
+      "PSELF09",
+      "PSELF10",
+      "PSELF11",
+      "PSELF12"
+    ],
+    "nativeClients": 3,
+    "allNaturalExit0": true,
+    "old77FixturesUnchanged": true
+  },
+  "production": false,
+  "providerAuth": false,
+  "full14ProfileTriggerParity": false
+}
