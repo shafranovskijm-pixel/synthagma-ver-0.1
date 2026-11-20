@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRtnNewsManualHandler, createRtnNewsScheduledHandler } from './news-handlers';
 import type { NewsWorkerClient, RtnNewsClaim } from './news-worker';
 import { RTN_NEWS_RSS_URL } from './news-source';
+import { LostPublisherAuthority } from './news-publisher-http-client';
 
 const org = '11111111-1111-4111-8111-111111111111';
 const run = { run_id: '90000000-0000-4000-8000-000000000001', status: 'queued' };
@@ -13,16 +14,20 @@ const rss = '<rss version="2.0"><channel><title>RTN</title><link>https://www.gos
 function setup() {
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(rss, { headers: { 'content-type': 'text/xml' } }));
   const rpc = vi.fn(async (name: string, _args?: Record<string, unknown>) => ({
-    data: (name === 'claim_rtn_news_check' ? claim : name === 'complete_rtn_news_check' ? receipt : { processed: 0, has_more: false }) as unknown, error: null as { code?: string } | null,
+    data: (name === 'claim_rtn_news_check_v2' ? claim : name === 'complete_rtn_news_check' ? receipt : { processed: 0, has_more: false }) as unknown, error: null as { code?: string } | null,
   }));
   const upload = vi.fn(async () => ({ error: null }));
   const service: NewsWorkerClient = { rpc, storage: { from: () => ({ upload, download: () => ({ asStream: async () => ({ data: null, error: null }) }) }) } };
   const getUser = vi.fn(async () => ({ data: { user: { id: 'synthetic-real-session' } as unknown }, error: null as unknown }));
   const userRpc = vi.fn(async (_name: string, _args?: Record<string, unknown>) => ({ data: run as unknown, error: null as { code?: string } | null }));
-  const user = vi.fn((_authorization: string) => ({ auth: { getUser }, rpc: userRpc }));
+  const user = vi.fn((_authorization: string, _deadline: number, _signal: AbortSignal) => ({ auth: { getUser }, rpc: userRpc }));
   const authenticate = vi.fn(async (_request: Request): Promise<Response | null> => null);
-  const common = { service, withNewsFetch: async <T>(action: (f: typeof fetch) => Promise<T>) => action(fetcher as typeof fetch) };
-  return { fetcher, rpc, upload, getUser, userRpc, user, authenticate, manual: createRtnNewsManualHandler({ ...common, user }), cron: createRtnNewsScheduledHandler({ ...common, authenticate }) };
+  const scope = async <T>(action: (f: typeof fetch) => Promise<T>) => action(fetcher as typeof fetch);
+  const forRssClaim = vi.fn((_claim: RtnNewsClaim) => scope);
+  const reconcileArchive = vi.fn(async (): Promise<{ status: string; stop_reason: string | null }> => ({ status: 'paused', stop_reason: 'archive_disabled' }));
+  const createWork = vi.fn((_deadline: number, _signal: AbortSignal) => ({ service, forRssClaim, reconcileArchive }));
+  const common = { createWork };
+  return { fetcher, rpc, upload, getUser, userRpc, user, authenticate, forRssClaim, reconcileArchive, createWork, manual: createRtnNewsManualHandler({ ...common, user }), cron: createRtnNewsScheduledHandler({ ...common, authenticate }) };
 }
 const request = (body: unknown = { organizationId: org }, auth: string | null = 'Bearer synthetic-session') => new Request('https://fixture.test/rtn-news-check', {
   method: 'POST', headers: { 'content-type': 'application/json', ...(auth ? { authorization: auth } : {}) }, body: JSON.stringify(body),
@@ -64,8 +69,8 @@ describe('genuine-session news request boundary', () => {
   });
   it('uses the real user queue and only its returned run for a single service check', async () => {
     const a = setup();const response = await a.manual(request());expect(response.status).toBe(200);
-    expect(a.user).toHaveBeenCalledWith('Bearer synthetic-session');
-    expect(a.rpc.mock.calls.map(c => c[0])).toEqual(['claim_rtn_news_check', 'complete_rtn_news_check']);
+    expect(a.user).toHaveBeenCalledWith('Bearer synthetic-session', expect.any(Number), expect.any(AbortSignal));
+    expect(a.rpc.mock.calls.map(c => c[0])).toEqual(['claim_rtn_news_check_v2', 'complete_rtn_news_check']);
     expect(a.rpc.mock.calls[0][1]).toEqual({ p_run_id: run.run_id });expect(a.fetcher).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(await response.json())).not.toContain(claim.lease_token);
   });
@@ -94,17 +99,60 @@ describe('separate opaque authenticated news schedule', () => {
   });
   it('drains one bounded factual batch and executes at most one global RSS lease', async () => {
     const a = setup();const response = await a.cron(cronRequest());expect(response.status).toBe(200);
-    expect(a.rpc.mock.calls.map(c => c[0])).toEqual(['project_rtn_update_intents','enqueue_due_rtn_news_check','claim_rtn_news_check','complete_rtn_news_check']);
+    expect(a.rpc.mock.calls.map(c => c[0])).toEqual(['project_rtn_update_intents','enqueue_due_rtn_news_check','claim_rtn_news_check_v2','complete_rtn_news_check']);
     expect(a.rpc.mock.calls[0][1]).toEqual({ p_limit: 25 });expect(a.rpc.mock.calls[2][1]).toEqual({ p_run_id: null });
     expect(a.user).not.toHaveBeenCalled();expect(a.fetcher).toHaveBeenCalledTimes(1);
   });
   it('remains idle without a due lease and does not fetch per organization', async () => {
-    const a = setup();a.rpc.mockImplementation(async name => ({ data: name === 'claim_rtn_news_check' ? null : { processed: 0, has_more: false }, error: null }));
+    const a = setup();a.rpc.mockImplementation(async name => ({ data: name === 'claim_rtn_news_check_v2' ? null : { processed: 0, has_more: false }, error: null }));
     expect((await a.cron(cronRequest())).status).toBe(200);expect(a.fetcher).not.toHaveBeenCalled();expect(a.user).not.toHaveBeenCalled();
   });
   it('does not retry a completion when its commit response is lost', async () => {
-    const a = setup();a.rpc.mockImplementation(async name => ({ data: name === 'claim_rtn_news_check' ? claim : null, error: name === 'complete_rtn_news_check' ? { code: '08006' } : null }));
+    const a = setup();a.rpc.mockImplementation(async name => ({ data: name === 'claim_rtn_news_check_v2' ? claim : null, error: name === 'complete_rtn_news_check' ? { code: '08006' } : null }));
     expect((await a.cron(cronRequest())).status).toBe(503);
+    expect(a.rpc.mock.calls.filter(c => c[0] === 'complete_rtn_news_check')).toHaveLength(1);
+    expect(a.reconcileArchive).not.toHaveBeenCalled();
+  });
+  it('runs bounded archive subwork after the usual due RSS success, not only in an idle branch', async () => {
+    const a = setup();const response = await a.cron(cronRequest());const value = await response.json();
+    expect(response.status).toBe(200);expect(value.status).toBe('changed');
+    expect(value.archive).toEqual({ status: 'paused', stop_reason: 'archive_disabled' });
+    expect(a.reconcileArchive).toHaveBeenCalledTimes(1);
+    expect(a.forRssClaim).toHaveBeenCalledWith(claim);
+  });
+  it('never turns committed RSS success into an RSS failure when archive fails or returns unsafe diagnostics', async () => {
+    for (const unsafe of [false,true]) {
+      const a = setup();
+      if (unsafe) a.reconcileArchive.mockResolvedValue({ status: 'error', stop_reason: 'private URL/token diagnostic' });
+      else a.reconcileArchive.mockRejectedValue(new Error('private archive failure'));
+      const response = await a.cron(cronRequest());const value = await response.json();
+      expect(response.status).toBe(200);expect(value.status).toBe('changed');
+      expect(value.archive).toEqual({ status: 'error', stop_reason: 'archive_unavailable' });
+      expect(JSON.stringify(value)).not.toMatch(/private|token/);
+      expect(a.rpc.mock.calls.filter(c => c[0] === 'complete_rtn_news_check')).toHaveLength(1);
+    }
+  });
+  it('does no archive work after source403 or lost authority and never sends a second source-error completion', async () => {
+    const blocked = setup();blocked.fetcher.mockResolvedValue(new Response('blocked', { status: 403 }));
+    blocked.rpc.mockImplementation(async name => ({ data: name === 'claim_rtn_news_check_v2' ? claim : name === 'complete_rtn_news_check' ? { ...receipt, status: 'error', error_code: 'RTN_NEWS_HTTP_403' } : {}, error: null }));
+    expect((await blocked.cron(cronRequest())).status).toBe(503);expect(blocked.reconcileArchive).not.toHaveBeenCalled();
+    const lost = setup();lost.forRssClaim.mockReturnValue(async () => { throw new LostPublisherAuthority(); });
+    expect((await lost.cron(cronRequest())).status).toBe(503);
+    expect(lost.rpc.mock.calls.some(c => c[0] === 'complete_rtn_news_check')).toBe(false);expect(lost.reconcileArchive).not.toHaveBeenCalled();
+  });
+  it('keeps manual response exact and never starts hidden archive work, with a90s work context', async () => {
+    vi.useFakeTimers();vi.setSystemTime(new Date('2026-11-20T15:40:00Z'));
+    const a = setup();const response = await a.manual(request());
+    expect(await response.json()).toEqual(receipt);expect(a.reconcileArchive).not.toHaveBeenCalled();
+    expect(a.createWork.mock.calls[0][0]).toBe(Date.now() + 90_000);
+  });
+  it('bounds stalled post-success archive at the115s work deadline without relabeling RSS or retrying it', async () => {
+    vi.useFakeTimers();const a = setup();let opened!: () => void;
+    const start = new Promise<void>(resolve => { opened = resolve; });
+    a.reconcileArchive.mockImplementation(() => { opened();return new Promise(() => undefined); });
+    const pending = a.cron(cronRequest());await start;await vi.advanceTimersByTimeAsync(115_001);
+    const response = await pending;const value = await response.json();
+    expect(response.status).toBe(200);expect(value.status).toBe('changed');expect(value.archive.stop_reason).toBe('archive_unavailable');
     expect(a.rpc.mock.calls.filter(c => c[0] === 'complete_rtn_news_check')).toHaveLength(1);
   });
 });

@@ -12,6 +12,7 @@ import { RtnEditorialPanel } from "./RtnEditorialPanel";
 import { RtnUpdatesFeed } from "./RtnUpdatesFeed";
 import { RtnPersonalPreferences } from "./RtnPersonalPreferences";
 import { RtnNewsSourceCheck } from "./RtnNewsSourceCheck";
+import { RtnArchiveDiscoveries } from "./RtnArchiveDiscoveries";
 
 type Panel = "assign" | "results";
 interface RtnWorkspaceNavigation {
@@ -280,6 +281,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
       })}
     </section>
         {view === "sources" && <RtnNewsSourceCheck organizationId={organizationId} actorId={actorId} canReadCourses={workspace.access.allowed} canManageCourses={workspace.access.can_manage} />}
+        {view === "sources" && <RtnArchiveDiscoveries organizationId={organizationId} actorId={actorId} canReadCourses={workspace.access.allowed} />}
         <SettingsPanel organizationId={organizationId} initial={workspace.settings} canManage={workspace.access.can_manage} onSaved={() => void query.refetch()} />
         {view === "sources" && <RtnPersonalPreferences organizationId={organizationId} actorId={actorId} />}
       </TabsContent>
