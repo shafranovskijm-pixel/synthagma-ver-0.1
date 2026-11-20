@@ -22,8 +22,54 @@ const participant = z.object({
   enrollment_error: z.boolean(),
 }).strict();
 
-export type GroupRosterProfile = z.infer<typeof profile>;
-export type GroupParticipantMetadata = z.infer<typeof participant>;
+// Explicit required keys preserve the validated wire contract when this app's
+// strictNullChecks=false makes Zod's inferred object properties optional.
+export interface GroupRosterProfile {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  login: string | null;
+  phone: string | null;
+  archived_at: string | null;
+  department: string | null;
+}
+interface GroupRosterMetadata {
+  version: 1;
+  organization_id: string;
+  group_id: string;
+  profiles: GroupRosterProfile[];
+}
+export interface GroupParticipantMetadata {
+  version: 1;
+  organization_id: string;
+  group_id: string;
+  user_ids: string[];
+  linked_course_id: string | null;
+  identity_rows: Array<{ user_id: string; type: string; organization_id: string | null }>;
+  contract_rows: Array<{ id: string; student_user_id: string }>;
+  attempt_rows: Array<{ id: string; user_id: string }>;
+  frdo_rows: Array<{
+    user_id: string;
+    last_name: string | null;
+    first_name: string | null;
+    middle_name: string | null;
+    birth_date: string | null;
+    gender: string | null;
+    snils: string | null;
+    citizenship_code: string | null;
+    education_level: string | null;
+    passport_series: string | null;
+    passport_number: string | null;
+  }>;
+  enrollment_rows: Array<{
+    course_id: string | null;
+    user_id: string;
+    status: string | null;
+    progress: number | null;
+    completed_at: string | null;
+  }> | null;
+  enrollment_error: boolean;
+}
 export type GroupMetadataSource = "rpc" | "legacy";
 
 function invalidResponse(): never {
@@ -46,9 +92,11 @@ export async function fetchGroupRosterMetadata(client: any, organizationId: stri
     return { profiles, source: "legacy" };
   }
   const parsed = roster.safeParse(data);
-  if (!parsed.success || parsed.data.organization_id !== organizationId || parsed.data.group_id !== groupId
-    || new Set(parsed.data.profiles.map(row => row.user_id)).size !== parsed.data.profiles.length) invalidResponse();
-  return { profiles: parsed.data.profiles, source: "rpc" };
+  if (!parsed.success) invalidResponse();
+  const value = parsed.data as GroupRosterMetadata;
+  if (value.organization_id !== organizationId || value.group_id !== groupId
+    || new Set(value.profiles.map(row => row.user_id)).size !== value.profiles.length) invalidResponse();
+  return { profiles: value.profiles, source: "rpc" };
 }
 
 /** Null is explicit rollout absence only; errors and malformed/foreign responses never widen to legacy. */
@@ -63,7 +111,7 @@ export async function readGroupParticipantMetadata(client: any, organizationId: 
   }
   const parsed = participant.safeParse(data);
   if (!parsed.success) invalidResponse();
-  const value = parsed.data;
+  const value = parsed.data as GroupParticipantMetadata;
   const active = new Set(userIds);
   if (active.size !== userIds.length || value.organization_id !== organizationId || value.group_id !== groupId
     || value.linked_course_id !== linkedCourseId || value.user_ids.length !== active.size
