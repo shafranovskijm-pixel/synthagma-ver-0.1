@@ -13,12 +13,14 @@ on:
       - supabase/tests/rtn-personal-notifications/**
       - supabase/tests/rtn-news-ingestion/**
       - supabase/tests/rtn-source-failure-backoff/**
+      - supabase/tests/rtn-archive-discovery/**
       - scripts/test-rtn*.py
       - .github/workflows/rtn-managed.yml
       - src/api/rostechnadzor*
       - src/api/rtn-editorial*
       - src/api/rtn-updates*
       - src/api/rtn-news-check*
+      - src/api/rtn-archive*
       - src/types/rtn-news-check.ts
       - src/types/rtn-updates.ts
       - src/api/rtn-personal-notifications*
@@ -63,7 +65,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - name: Workspace learner editorial and official-source regressions
-        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rtn-updates.test.ts src/api/rtn-personal-notifications.test.ts src/hooks/useRtnPersonalNotifications.test.tsx src/components/organization/OrgNotifications.rtn.test.tsx src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
+        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rtn-updates.test.ts src/api/rtn-personal-notifications.test.ts src/api/rtn-news-check.test.ts src/api/rtn-archive.test.ts src/hooks/useRtnPersonalNotifications.test.tsx src/components/organization/OrgNotifications.rtn.test.tsx src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
       - run: npm run build
   edge:
     runs-on: ubuntu-24.04
@@ -80,6 +82,7 @@ jobs:
           deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/rtn-source-check/index.ts
           deno check --config supabase/functions/rtn-source-cron/deno.json --no-lock supabase/functions/rtn-source-cron/index.ts
           deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/_shared/rtn/news-http-client.ts
+          deno check --config supabase/functions/rtn-news-check/deno.json --no-lock supabase/functions/_shared/rtn/news-archive-source.ts
           deno check --config supabase/functions/rtn-news-check/deno.json --no-lock supabase/functions/rtn-news-check/index.ts
           deno check --config supabase/functions/rtn-news-cron/deno.json --no-lock supabase/functions/rtn-news-cron/index.ts
           deno eval 'new DecompressionStream("deflate-raw");'
@@ -441,5 +444,41 @@ jobs:
         with:
           name: rtn-source-backoff-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-source-backoff-sql/
+          if-no-files-found: error
+          retention-days: 14
+  archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_archive_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_archive_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_archive_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_archive_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_archive_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Archive provenance shared publisher gates and two-session races
+        run: python scripts/test-rtn-archive-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-archive-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-archive-sql/
           if-no-files-found: error
           retention-days: 14
