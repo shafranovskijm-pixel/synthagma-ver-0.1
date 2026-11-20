@@ -9,6 +9,8 @@ const api = vi.hoisted(() => ({ getRtnWorkspace: vi.fn(), checkRtnSource: vi.fn(
 vi.mock("@/api/rostechnadzor", () => api);
 const updatesApi = vi.hoisted(() => ({ getRtnUpdates: vi.fn(), getRtnUpdate: vi.fn() }));
 vi.mock("@/api/rtn-updates", () => updatesApi);
+const personalApi = vi.hoisted(() => ({ getMyRtnSubscription: vi.fn(), saveMyRtnSubscription: vi.fn(), notifyRtnPersonalRefresh: vi.fn() }));
+vi.mock("@/api/rtn-personal-notifications", () => personalApi);
 
 const bank: RtnBank = {
   id: "bank-a", code: "А.1", title: "Основы промышленной безопасности", domain: "Промышленная безопасность",
@@ -38,6 +40,17 @@ beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(wor
 afterEach(cleanup);
 
 describe("RTN organization workspace", () => {
+  it("offers only own preferences in Sources to an authorized reader without organization-management rights", async () => {
+    const org = "11111111-1111-4111-8111-111111111111", actor = "22222222-2222-4222-8222-222222222222";
+    api.getRtnWorkspace.mockResolvedValue(workspace({ access: { allowed: true, reason: "included", can_manage: false, can_assign: false, can_view_results: false, pilot: false } }));
+    personalApi.getMyRtnSubscription.mockResolvedValue({ options: { topics: ["general"], kinds: ["news"] }, subscription: { enabled: false, effective_enabled: false, needs_reconfiguration: false, topics: [], kinds: [], generation: 0 } });
+    mount(org, { actorId: actor, navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+    const own = await screen.findByRole("checkbox", { name: "Получать уведомления в колокольчике" });
+    expect(own).not.toBeDisabled(); expect(own).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Подсвечивать новые редакции" })).toBeDisabled();
+    expect(personalApi.getMyRtnSubscription).toHaveBeenCalledWith({ organizationId: org, actorId: actor });
+    expect(personalApi.saveMyRtnSubscription).not.toHaveBeenCalled();
+  });
   it("loads shared changes only after the authorized Changes tab is opened", async () => {
     mount("11111111-1111-4111-8111-111111111111");
     await screen.findByRole("heading", { name: `А.1. ${bank.title}` });

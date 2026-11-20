@@ -10,6 +10,7 @@ import { assignRtnTraining, checkRtnSource, getRtnWorkspace, saveRtnSettings } f
 import { canAssignRtnBank, type RtnBank, type RtnCheckResult, type RtnCheckStatus, type RtnReleaseMetadata, type RtnSettings, type RtnWorkspace } from "@/types/rostechnadzor";
 import { RtnEditorialPanel } from "./RtnEditorialPanel";
 import { RtnUpdatesFeed } from "./RtnUpdatesFeed";
+import { RtnPersonalPreferences } from "./RtnPersonalPreferences";
 
 type Panel = "assign" | "results";
 interface RtnWorkspaceNavigation {
@@ -259,6 +260,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
       })}
     </section>
         <SettingsPanel organizationId={organizationId} initial={workspace.settings} canManage={workspace.access.can_manage} onSaved={() => void query.refetch()} />
+        {view === "sources" && <RtnPersonalPreferences organizationId={organizationId} actorId={actorId} />}
       </TabsContent>
     </Tabs>
     <Dialog open={!!detail} onOpenChange={open => { if (!open) closeBank(); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle className="break-words pr-4">{detail?.code} {detail?.title}</DialogTitle><DialogDescription>Источник вопросов, готовность учебной редакции и история выпусков.</DialogDescription></DialogHeader>{detail && <div className="space-y-4 text-sm"><p>{keyLabel(detail)}</p><dl className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Вопросов в программе</dt><dd>{confirmedQuestionCount(detail.question_count) ?? "Не подтверждено"}</dd></div><div><dt className="text-muted-foreground">Источник утверждён</dt><dd>{rtnDate(detail.approved_on)}</dd></div><div><dt className="text-muted-foreground">Применение с</dt><dd>{rtnDate(detail.effective_from)}</dd></div><div><dt className="text-muted-foreground">Последняя успешная проверка</dt><dd>{rtnDate(detail.last_success_at, true)}</dd></div></dl>{workspace.settings.show_archived_releases && <ReleaseHistory bankId={detail.id} releases={workspace.archived_releases || []} />}{officialSource(detail.source_url) && <a className="inline-flex items-center gap-2 text-primary underline underline-offset-4" href={officialSource(detail.source_url)!} rel="noopener noreferrer" target="_blank">Открыть официальный источник<ExternalLink className="h-4 w-4" /></a>}<p className="text-muted-foreground">Официальная публикация вопросов не подтверждает правильные ответы. К обучению допускается только выпущенная редакция с проверенными ключами.</p><Button disabled={!workspace.access.can_assign || !canAssignRtnBank(detail)} onClick={() => { openAssign(detail); closeBank(); }}>Назначить обучение</Button></div>}</DialogContent></Dialog>
