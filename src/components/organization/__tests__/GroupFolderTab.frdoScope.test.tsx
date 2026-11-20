@@ -43,6 +43,7 @@ vi.mock("@/hooks/useGroupFolderCounts", () => ({
   useGroupFolderCounts: () => ({ counts: {}, refresh: db.refresh }),
 }));
 vi.mock("@/components/organization/group-folder/ContractsFolder", () => ({ ContractsFolder: () => null }));
+vi.mock("@/components/organization/groups/GroupEducationFactsPanel", () => ({ GroupEducationFactsPanel: () => null }));
 vi.mock("@/components/organization/GroupSettingsDialog", () => ({ GroupSettingsDialog: () => null }));
 vi.mock("@/components/organization/groups/AddStudentsToGroupDialog", () => ({ AddStudentsToGroupDialog: () => null }));
 vi.mock("@/components/organization/group-folder/GroupDocumentsFolder", () => ({

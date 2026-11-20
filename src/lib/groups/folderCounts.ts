@@ -20,6 +20,16 @@ export interface GroupFolderCounts {
   docs: number;
 }
 
+/** Completed detail reads from this mounted group load; never a persistent cache. */
+export interface GroupFolderCountSeed {
+  organizationId: string;
+  groupId: string;
+  studentContractIds: string[];
+  passports: number;
+  snils: number;
+  exams: number;
+}
+
 export const EMPTY_GROUP_FOLDER_COUNTS: GroupFolderCounts = {
   contracts: 0,
   passports: 0,
@@ -53,10 +63,12 @@ export async function fetchGroupFolderCounts(
   client: any,
   organizationId: string,
   groupId: string,
+  initialRead?: GroupFolderCountSeed | null,
 ): Promise<GroupFolderCounts> {
   if (!organizationId || !groupId) return { ...EMPTY_GROUP_FOLDER_COUNTS };
 
-  const profiles = await fetchEffectiveGroupProfiles<{ user_id: string }>(client, organizationId, groupId, { activeOnly: true, select: "user_id" });
+  const seed = initialRead?.organizationId === organizationId && initialRead.groupId === groupId ? initialRead : null;
+  const profiles = seed ? [] : await fetchEffectiveGroupProfiles<{ user_id: string }>(client, organizationId, groupId, { activeOnly: true, select: "user_id" });
   const userIds: string[] = ((profiles as any[]) || []).map(p => p.user_id).filter(Boolean);
 
   // Separate the two sides of the old OR: putting every group member in one
@@ -66,7 +78,7 @@ export async function fetchGroupFolderCounts(
       .from("org_contracts").select("id")
       .eq("organization_id", organizationId).eq("student_group_id", groupId)
       .order("id").range(from, to)),
-    fetchRowsByIdBatches<{ id: string }>(userIds, (batch, { from, to }) => client
+    seed ? Promise.resolve(seed.studentContractIds.map(id => ({ id }))) : fetchRowsByIdBatches<{ id: string }>(userIds, (batch, { from, to }) => client
       .from("org_contracts").select("id")
       .eq("organization_id", organizationId).in("student_user_id", batch)
       .order("id").range(from, to)),
@@ -74,10 +86,10 @@ export async function fetchGroupFolderCounts(
       .from("group_documents").select("id")
       .eq("organization_id", organizationId).eq("group_id", groupId).eq("status", "active")
       .order("id").range(from, to)),
-    fetchRowsByIdBatches<{ type: string }>(userIds, (batch, { from, to }) => client
+    seed ? Promise.resolve([]) : fetchRowsByIdBatches<{ type: string }>(userIds, (batch, { from, to }) => client
       .from("student_identity_documents").select("type")
       .eq("organization_id", organizationId).in("user_id", batch).order("id").range(from, to)),
-    fetchRowsByIdBatches<{ id: string }>(userIds, (batch, { from, to }) => client
+    seed ? Promise.resolve([]) : fetchRowsByIdBatches<{ id: string }>(userIds, (batch, { from, to }) => client
       .from("test_attempts").select("id")
       .in("user_id", batch).order("id").range(from, to)),
   ]);
@@ -87,8 +99,8 @@ export async function fetchGroupFolderCounts(
   return {
     contracts: countUniqueContracts([...groupContracts, ...studentContracts]),
     docs: documents.length,
-    passports: identity.passports,
-    snils: identity.snils,
-    exams: attempts.length,
+    passports: seed?.passports ?? identity.passports,
+    snils: seed?.snils ?? identity.snils,
+    exams: seed?.exams ?? attempts.length,
   };
 }

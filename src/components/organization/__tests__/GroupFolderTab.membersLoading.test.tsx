@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
 import { groupEnvelope, ids } from "../programs/programFacts.fixtures";
@@ -8,10 +9,12 @@ const db = vi.hoisted(() => ({
   rows: {} as Record<string, Array<Record<string, unknown>>>,
   errors: {} as Record<string, unknown>,
   rejectedTables: new Set<string>(),
+  delays: {} as Record<string, Promise<void>>,
   queries: [] as Array<{ table: string; filters: Array<[string, unknown]>; from: number; to: number; order?: string }>,
   refresh: vi.fn(),
   programme: null as any,
   maxFilterIds: Infinity,
+  countSeeds: [] as any[],
   countsLoading: false,
   countsError: null as string | null,
 }));
@@ -46,7 +49,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
       range: (from: number, to: number) => { query.from = from; query.to = to; return builder; },
       maybeSingle: async () => { const res = result(); return { ...res, data: res.data?.[0] ?? null }; },
       then: (resolve: (value: ReturnType<typeof result>) => unknown, reject?: (reason: unknown) => unknown) =>
-        Promise.resolve().then(result).then(resolve, reject),
+        Promise.resolve().then(() => db.delays[table]).then(result).then(resolve, reject),
     };
     return builder;
   },
@@ -64,7 +67,10 @@ vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({ can: () => true, canSeeOrgTab: () => true, loading: false }),
 }));
 vi.mock("@/hooks/useGroupFolderCounts", () => ({
-  useGroupFolderCounts: () => ({ counts: {}, loading: db.countsLoading, error: db.countsError, refresh: db.refresh }),
+  useGroupFolderCounts: (_org: unknown, _group: unknown, initialRead: unknown) => {
+    if (initialRead) db.countSeeds.push(initialRead);
+    return { counts: {}, loading: db.countsLoading, error: db.countsError, refresh: db.refresh };
+  },
 }));
 vi.mock("@/components/organization/groups/GroupEducationFactsPanel", () => ({ GroupEducationFactsPanel: () => null }));
 vi.mock("@/components/organization/group-folder/ContractsFolder", () => ({ ContractsFolder: () => null }));
@@ -94,7 +100,9 @@ beforeEach(() => {
   db.programme = null;
   db.errors = {};
   db.rejectedTables.clear();
+  db.delays = {};
   db.maxFilterIds = Infinity;
+  db.countSeeds = [];
   db.countsLoading = false;
   db.countsError = null;
   db.refresh.mockClear();
@@ -107,6 +115,117 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("GroupFolderTab roster loading", () => {
+  it.each([
+    { department: "department:Цех", search: "1", user: "student-0001", name: "Ученик 1" },
+    { department: "none", search: "3", user: "student-0003", name: "Ученик 3" },
+  ])("keeps normalized $department participant filters and the exact return route in the early roster", async ({ department, search, user, name }) => {
+    let release!: () => void;
+    db.delays.test_attempts = new Promise<void>(resolve => { release = resolve; });
+    db.rows.profiles = [{ ...profile(1), department: " Цех " }, { ...profile(2), department: "Другой" }, { ...profile(3), department: " " }];
+    function LocationProbe() { return <span data-testid="location">{useLocation().search}</span>; }
+    render(<MemoryRouter initialEntries={[`/organization?tab=group-folder&groupId=group-1&department=${encodeURIComponent(department)}&participantSearch=${search}`]}>
+      <GroupFolderTab organizationId="org-1" groupId="group-1" /><LocationProbe />
+    </MemoryRouter>);
+    await screen.findByRole("status");
+    expect(screen.getByText(name)).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-group-load-stage="roster"] tbody tr')).toHaveLength(1);
+    expect(screen.getByText("Показано 1 из 3 активных участников")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Открыть карточку/ }));
+    const route = new URLSearchParams(screen.getByTestId("location").textContent || "");
+    expect(route.get("studentId")).toBe(user);
+    expect(route.get("returnToGroupId")).toBe("group-1");
+    expect(route.get("returnDepartment")).toBe(department);
+    expect(route.get("returnParticipantSearch")).toBe(search);
+    await act(async () => { release(); });
+  });
+
+  it("reuses the complete common-course read as exact course evidence without a second member-query chain", async () => {
+    db.rows.profiles = Array.from({ length: 150 }, (_, index) => profile(index));
+    db.rows.enrollments = db.rows.profiles.flatMap((row, index) => [
+      { id: `enrollment-${index}`, course_id: "course-shared", user_id: row.user_id, status: "completed", progress: 100, completed_at: "2026-11-01" },
+      ...(index === 0 ? [{ id: "other-course", course_id: "other", user_id: row.user_id, status: "active", progress: 0 }] : []),
+    ]);
+    db.rows.courses = [{ id: "course-shared", organization_id: "org-1", title: "Общий курс" }];
+    mount();
+    expect((await context()).group.program_title).toBe("Общий курс");
+    expect(screen.getByText("150 из 150 завершили обучение")).toBeInTheDocument();
+    const requests = db.queries.filter(query => query.table === "enrollments");
+    expect(requests).toHaveLength(2);
+    expect(requests.every(query => !query.filters.some(([field]) => field === "course_id"))).toBe(true);
+  });
+
+  it("hides completed old scope content before the next group's asynchronous reads finish", async () => {
+    const committedContexts: Array<string | null> = [];
+    function CommitProbe({ groupId }: { groupId: string }) {
+      useLayoutEffect(() => { committedContexts.push(document.querySelector('[data-testid="document-context"]')?.textContent ?? null); }, [groupId]);
+      return null;
+    }
+    const app = (groupId: string) => <MemoryRouter initialEntries={["/organization?tab=group-folder&groupId=group-1&folder=docs"]}><GroupFolderTab organizationId="org-1" groupId={groupId} /><CommitProbe groupId={groupId} /></MemoryRouter>;
+    const mounted = render(app("group-1"));
+    await context();
+    let release!: () => void;
+    db.delays.enrollments = new Promise<void>(resolve => { release = resolve; });
+    db.rows.student_groups.push({ id: "group-2", organization_id: "org-1", name: "Новая группа", course_id: null });
+    db.rows.profiles.push({ ...profile(2), student_group_id: "group-2" });
+    mounted.rerender(app("group-2"));
+    // Layout effects observe committed DOM before passive loading effects.
+    expect(committedContexts.at(-1)).toBeNull();
+    expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ученик 1")).not.toBeInTheDocument();
+    expect(await screen.findByText("Ученик 2")).toBeInTheDocument();
+    await act(async () => { release(); });
+    expect((await context()).students.map((row: { user_id: string }) => row.user_id)).toEqual(["student-0002"]);
+  });
+
+  it("seeds counters only after all detail reads and excludes another organization's identity records for the same learner", async () => {
+    let release!: () => void;
+    db.delays.student_frdo_data = new Promise<void>(resolve => { release = resolve; });
+    db.rows.student_identity_documents = [
+      { id: "own-passport", organization_id: "org-1", user_id: "student-0001", type: "passport" },
+      { id: "foreign-passport", organization_id: "org-2", user_id: "student-0001", type: "passport" },
+      { id: "foreign-snils", organization_id: "org-2", user_id: "student-0001", type: "snils" },
+    ];
+    db.rows.org_contracts = [{ id: "contract", organization_id: "org-1", student_user_id: "student-0001" }];
+    db.rows.test_attempts = [{ id: "attempt", user_id: "student-0001" }];
+    mount();
+    await screen.findByText("Ученик 1");
+    expect(db.countSeeds).toEqual([]);
+    await act(async () => { release(); });
+    await context();
+    expect(db.countSeeds.at(-1)).toEqual({ organizationId: "org-1", groupId: "group-1", studentContractIds: ["contract"], passports: 1, snils: 0, exams: 1 });
+  });
+
+  it("opens the complete confirmed roster before slow details without exposing partial generation or false badges", async () => {
+    let release!: () => void;
+    db.delays.test_attempts = new Promise<void>(resolve => { release = resolve; });
+    db.rows.profiles = Array.from({ length: 1276 }, (_, index) => profile(index));
+    mount();
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("Список участников загружен");
+    expect(screen.getByText("1276 активных учеников")).toBeInTheDocument();
+    expect(screen.getByText("Ученик 1275")).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-group-load-stage="roster"] tbody tr')).toHaveLength(1276);
+    expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Паспорт/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Подтверждено/)).not.toBeInTheDocument();
+    await act(async () => { release(); });
+    expect((await context()).students).toHaveLength(1276);
+  });
+
+  it("never shows the previous roster during a prop-only scope switch while details are pending", async () => {
+    let release!: () => void;
+    db.delays.test_attempts = new Promise<void>(resolve => { release = resolve; });
+    const mounted = mount();
+    await screen.findByText("Ученик 1");
+    db.rows.student_groups.push({ id: "group-2", organization_id: "org-1", name: "Другая группа", course_id: null });
+    db.rows.profiles.push({ ...profile(2), student_group_id: "group-2" });
+    mounted.rerender(<MemoryRouter><GroupFolderTab organizationId="org-1" groupId="group-2" /></MemoryRouter>);
+    expect(screen.queryByText("Ученик 1")).not.toBeInTheDocument();
+    expect(await screen.findByText("Ученик 2")).toBeInTheDocument();
+    await act(async () => { release(); });
+    expect((await context()).students.map((row: { user_id: string }) => row.user_id)).toEqual(["student-0002"]);
+  });
+
   it("uses the pinned approved version and calendar even after mutable course and group fields change", async () => {
     db.programme = groupEnvelope(); db.programme.enrollments[0] = { ...db.programme.enrollments[0], state: "confirmed", snapshot_id: ids.snapshot };
     db.programme.binding.group_snapshot = { name: "Зафиксированная группа", start_date: "2026-10-01", end_date: "2026-10-31", training_dates: ["2026-10-02", "2026-10-09", "2026-10-16", "2026-10-23"], schedule_text: "Согласованное расписание", instructor_name: "Прежний преподаватель" };
