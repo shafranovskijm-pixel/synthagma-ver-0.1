@@ -12,11 +12,14 @@ on:
       - supabase/tests/rtn-global-updates/**
       - supabase/tests/rtn-personal-notifications/**
       - supabase/tests/rtn-news-ingestion/**
+      - supabase/tests/rtn-source-failure-backoff/**
       - scripts/test-rtn*.py
       - .github/workflows/rtn-managed.yml
       - src/api/rostechnadzor*
       - src/api/rtn-editorial*
       - src/api/rtn-updates*
+      - src/api/rtn-news-check*
+      - src/types/rtn-news-check.ts
       - src/types/rtn-updates.ts
       - src/api/rtn-personal-notifications*
       - src/types/rtn-personal-notifications.ts
@@ -402,5 +405,41 @@ jobs:
         with:
           name: rtn-news-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-news-ingestion-sql/
+          if-no-files-found: error
+          retention-days: 14
+  source-backoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_source_backoff_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_backoff_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_source_backoff_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_source_backoff_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_backoff_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Failed-source retry boundaries and unchanged existing queue
+        run: python scripts/test-rtn-source-backoff-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-source-backoff-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-source-backoff-sql/
           if-no-files-found: error
           retention-days: 14
