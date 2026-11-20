@@ -57,6 +57,8 @@ function event(value: unknown): RtnUpdateEvent {
   const { id, sequence, kind, topic, previous_event_id, bank_id, source_revision_id, release_id, canonical_url, title, source_excerpt, own_summary, published_at, effective_from, observed_at, historical, notifiable } = value;
   return { id, sequence, kind, topic, previous_event_id, bank_id, source_revision_id, release_id, canonical_url, title, source_excerpt, own_summary, published_at, effective_from, observed_at, historical, notifiable } as RtnUpdateEvent;
 }
+// One canonical public event projection is shared with own-delivery readers.
+export { event as parseRtnUpdateEvent };
 function health(value: unknown): RtnNewsSourceHealth {
   if (!record(value) || value.code !== 'official-news-rss' || value.feed_url !== 'https://www.gosnadzor.ru/news/rss/'
     || !['never_checked', 'success', 'partial', 'error', 'blocked'].includes(String(value.status))

@@ -1,9 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { getCourseDetailsPath } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { isCurrentOrganizationAccess } from "@/hooks/useDocumentActionPermissions";
+import { useRtnPersonalNotifications } from "@/hooks/useRtnPersonalNotifications";
+import { RtnPersonalBellItems } from "./rtn/RtnPersonalBellItems";
 
 import { handleNotificationClick } from "@/lib/notifications/orgNotificationClick";
 import {
@@ -40,13 +45,14 @@ interface OrgNotificationsProps {
   organizationId: string;
 }
 
-type TabKey = "all" | "tasks" | "payments";
+type TabKey = "all" | "tasks" | "payments" | "rtn";
 
 const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task", "course_completed"];
 const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "subscription_expiry", "order"];
 
 function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
   if (tab === "all") return notifications;
+  if (tab === "rtn") return [];
   if (tab === "tasks") return notifications.filter(n => TASK_TYPES.some(t => n.type.includes(t)));
   return notifications.filter(n => PAYMENT_TYPES.some(t => n.type.includes(t)));
 }
@@ -74,19 +80,30 @@ function getAvatarColor(id: string) {
 }
 
 export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
+  const auth = useAuth(), permissions = useStaffPermissions();
+  const actorId = !auth.loading ? auth.user?.id ?? null : null;
+  const personalEnabled = !!actorId && isCurrentOrganizationAccess(permissions, organizationId) && permissions.canSeeOrgTab("courses") && permissions.can("courses.read");
+  return <OrgNotificationsContent key={`${actorId}:${organizationId}:${personalEnabled}`} organizationId={organizationId} actorId={actorId} personalEnabled={personalEnabled} />;
+}
+
+function OrgNotificationsContent({ organizationId, actorId, personalEnabled }: OrgNotificationsProps & { actorId: string | null; personalEnabled: boolean }) {
   const navigate = useNavigate();
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const personal = useRtnPersonalNotifications({ organizationId, actorId: actorId || "" }, personalEnabled, isOpen);
 
   // Load sound preference
   useEffect(() => {
+    let active = true;
     const loadSoundPref = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !active) return;
       const { data } = await supabase
         .from("notification_preferences")
         .select("enabled")
@@ -94,9 +111,10 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .eq("notification_type", "sound")
         .eq("channel", "platform")
         .maybeSingle();
-      if (data) setSoundEnabled(data.enabled ?? false);
+      if (data && active) setSoundEnabled(data.enabled ?? false);
     };
     loadSoundPref();
+    return () => { active = false; };
   }, []);
 
   const playNotificationSound = () => {
@@ -119,7 +137,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   };
 
   useEffect(() => {
-    if (organizationId) {
+    if (organizationId && actorId) {
       loadNotifications();
       const channel = supabase
         .channel(`org_notifications-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
@@ -127,6 +145,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
           event: 'INSERT', schema: 'public', table: 'org_notifications',
           filter: `organization_id=eq.${organizationId}` }, (payload) => {
           const incoming = payload.new as Notification;
+          if (!mounted.current) return;
           setNotifications(prev => {
             if (prev.some(n => n.id === incoming.id)) return prev;
             return [incoming, ...prev];
@@ -136,7 +155,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .subscribe();
       return () => { try { supabase.removeChannel(channel); } catch { /* ignore */ } };
     }
-  }, [organizationId, soundEnabled]);
+  }, [organizationId, actorId, soundEnabled]);
 
   const loadNotifications = async () => {
     setIsLoading(true);
@@ -149,12 +168,12 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      setNotifications(data || []);
+      if (mounted.current) setNotifications(data || []);
     } catch (error) {
       console.error("Error loading notifications:", error);
-      setLoadError(error instanceof Error ? error.message : "Не удалось загрузить уведомления");
+      if (mounted.current) { setNotifications([]); setLoadError(error instanceof Error ? error.message : "Не удалось загрузить уведомления"); }
     } finally {
-      setIsLoading(false);
+      if (mounted.current) setIsLoading(false);
     }
   };
 
@@ -166,11 +185,14 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
       // Не маскируем локально как прочитанное и сообщаем вызывающему коду об ошибке.
       throw error;
     }
-    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
+    if (mounted.current) setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
   };
 
   const markAllAsRead = async () => {
-    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    const unreadIds = getFilteredNotifications(notifications, activeTab).filter(n => !n.is_read).map(n => n.id);
+    const ownEventIds = (activeTab === "all" || activeTab === "rtn") ? personal.data?.items.filter(n => n.read_at === null).map(n => n.event.id) ?? [] : [];
+    if (ownEventIds.length) { try { await personal.mark(ownEventIds); } catch { toast.error("Не удалось прочитать личные уведомления Ростехнадзора"); } }
+    if (!mounted.current) return;
     if (unreadIds.length === 0) return;
     const { error } = await supabase.from("org_notifications").update({ is_read: true }).in("id", unreadIds);
     if (error) {
@@ -178,56 +200,62 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
       toast.error("Не удалось отметить все как прочитанные");
       return;
     }
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    if (mounted.current) setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, is_read: true } : n));
   };
 
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const orgUnreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = orgUnreadCount + (personal.data?.unread_count ?? 0);
+  const ownUnconfirmed = personalEnabled && (!personal.data || !!personal.error);
+  const incomplete = ownUnconfirmed || personal.data?.materialization_pending === true;
 
   const filtered = useMemo(() => getFilteredNotifications(notifications, activeTab), [notifications, activeTab]);
 
   const tabCounts = useMemo(() => ({
-    all: notifications.filter(n => !n.is_read).length,
+    all: unreadCount,
     tasks: getFilteredNotifications(notifications, "tasks").filter(n => !n.is_read).length,
-    payments: getFilteredNotifications(notifications, "payments").filter(n => !n.is_read).length }), [notifications]);
+    payments: getFilteredNotifications(notifications, "payments").filter(n => !n.is_read).length,
+    rtn: personal.data?.unread_count ?? 0 }), [notifications, unreadCount, personal.data]);
+  const shownUnread = filtered.some(n => !n.is_read) || (activeTab === "all" || activeTab === "rtn") && personal.data?.items.some(n => n.read_at === null);
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "all", label: "Все", icon: <Bell className="w-3.5 h-3.5" /> },
     { key: "tasks", label: "Задания", icon: <ClipboardList className="w-3.5 h-3.5" /> },
     { key: "payments", label: "Оплаты", icon: <CreditCard className="w-3.5 h-3.5" /> },
+    ...(personalEnabled ? [{ key: "rtn" as const, label: "Ростехнадзор", icon: <Shield className="w-3.5 h-3.5" /> }] : []),
   ];
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Уведомления об обучении" className="relative rounded-full h-10 w-10">
+        <Button variant="ghost" size="icon" aria-label={`Уведомления об обучении${incomplete ? ", число личных уведомлений Ростехнадзора ещё не подтверждено полностью" : ""}`} className="relative rounded-full h-10 w-10">
           <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
+          {(unreadCount > 0 || incomplete) && (
             <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount > 0 ? `${unreadCount}${incomplete ? "+" : ""}` : "?"}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[420px] p-0 rounded-2xl" align="end" sideOffset={8}>
+      <PopoverContent className="w-[420px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-4rem)] overflow-y-auto p-0 rounded-2xl" align="end" sideOffset={8}>
         {/* Header */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
           <h3 className="font-bold text-lg">Уведомления об обучении</h3>
-          {unreadCount > 0 && (
+          {shownUnread && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs gap-1.5"
+              className="h-auto min-h-10 px-2 text-xs gap-1.5 whitespace-normal"
               onClick={markAllAsRead}
             >
               <CheckCheck className="w-3.5 h-3.5" />
-              Отметить все
+              Прочитать показанные
             </Button>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1.5 px-5 pb-3">
+        <div role="group" aria-label="Разделы уведомлений" className="flex min-w-0 gap-1.5 overflow-x-auto px-5 pb-3">
           {tabs.map(tab => {
             const count = tabCounts[tab.key];
             const isActive = activeTab === tab.key;
@@ -235,7 +263,8 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                aria-pressed={isActive}
+                className={`flex min-h-10 shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -258,7 +287,8 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         <div className="border-t border-border" />
 
         {/* Content */}
-        {isLoading ? (
+        {personalEnabled && activeTab === "all" && <p className="px-5 pt-3 text-xs font-semibold text-muted-foreground">Уведомления организации</p>}
+        {activeTab !== "rtn" && (isLoading ? (
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner />
           </div>
@@ -271,15 +301,16 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Нет уведомлений</p>
+            <p className="text-sm">{personalEnabled ? "Нет уведомлений организации в этом списке" : "Нет уведомлений"}</p>
           </div>
         ) : (
           <ScrollArea className="h-80">
             <div className="divide-y divide-border">
               {filtered.map((n) => (
-                <div
+                <button
+                  type="button"
                   key={n.id}
-                  className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
+                  className={`block min-h-10 w-full px-5 py-3.5 text-left hover:bg-muted/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${!n.is_read ? "bg-primary/5" : ""}`}
                   onClick={() => {
                     // Навигация выполняется сразу; markAsRead — best-effort и не блокирует переход.
                     handleNotificationClick(n, {
@@ -311,23 +342,28 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                       </p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </ScrollArea>
-        )}
+        ))}
+
+        {personalEnabled && (activeTab === "all" || activeTab === "rtn") && <RtnPersonalBellItems {...personal} openEvent={(eventId, href, unread) => {
+          navigate(href); setIsOpen(false);
+          if (unread) void personal.mark([eventId]).catch(() => toast.error("Не удалось прочитать личное уведомление Ростехнадзора"));
+        }} />}
 
         {/* Footer */}
-        {unreadCount > 0 && (
+        {shownUnread && (
           <>
             <div className="border-t border-border" />
             <div className="px-5 py-3 flex justify-center">
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 transition-colors"
+                className="min-h-10 text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 transition-colors"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Отметить все как прочитанные
+                Прочитать показанные уведомления
               </button>
             </div>
           </>
