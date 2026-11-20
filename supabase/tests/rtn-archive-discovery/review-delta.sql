@@ -1,4 +1,6 @@
 -- Two new review cases only. The prior58case receipt/source remain immutable.
+SET ROLE postgres;
+SELECT set_config('request.jwt.claim.role','service_role',false);
 SELECT lab.archive_case('cross-SCAN repeated URL cannot close a boundary and keeps all page observations',$s$
  SELECT lab.keep('claim',lab.archive_gap());SELECT lab.keep('page1',lab.archive_page(lab.ctx('claim'),300));
  SELECT lab.keep('extra',jsonb_set(jsonb_set(jsonb_set(lab.ctx('page1')#>'{page,items,0}','{canonical_url}','"https://www.gosnadzor.ru/news/67/301/"'),'{title}','"Archive synthetic 301"'),'{ordinal}','2'));

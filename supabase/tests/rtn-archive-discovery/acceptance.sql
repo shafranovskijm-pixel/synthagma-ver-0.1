@@ -1,5 +1,8 @@
 -- Only new archive cases. Released1300–1600 acceptance suites are not run.
 SET ROLE postgres;
+-- Each native file is a NEW disposable-lab psql session. Never inherit the
+-- preceding fixture's synthetic claim; no production identity is involved.
+SELECT set_config('request.jwt.claim.role','service_role',false);
 CREATE FUNCTION lab.archive_assert(ok boolean)RETURNS void LANGUAGE plpgsql AS $f$BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'ARCHIVE_LAB_ASSERTION_FAILED';END IF;END;$f$;
 CREATE FUNCTION lab.archive_case(name text,sql text)RETURNS void LANGUAGE plpgsql AS $f$
 BEGIN
