@@ -8,6 +8,8 @@ on:
       - supabase/tests/rtn-drafts/**
       - supabase/tests/rtn-account-erasure/**
       - supabase/tests/rtn-freshness/**
+      - supabase/tests/rtn-question-review-policy/**
+      - supabase/tests/rtn-manual-source-backoff/**
       - supabase/tests/rtn-core-reconciliation/**
       - supabase/tests/rtn-global-updates/**
       - supabase/tests/rtn-personal-notifications/**
@@ -63,7 +65,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - name: Workspace learner editorial and official-source regressions
-        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rtn-updates.test.ts src/api/rtn-personal-notifications.test.ts src/hooks/useRtnPersonalNotifications.test.tsx src/components/organization/OrgNotifications.rtn.test.tsx src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
+        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rostechnadzor.policy.test.ts src/api/rtn-editorial.policy.test.ts src/api/rtn-updates.test.ts src/api/rtn-personal-notifications.test.ts src/hooks/useRtnPersonalNotifications.test.tsx src/components/organization/OrgNotifications.rtn.test.tsx src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
       - run: npm run build
   edge:
     runs-on: ubuntu-24.04
@@ -405,6 +407,78 @@ jobs:
         with:
           name: rtn-news-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-news-ingestion-sql/
+          if-no-files-found: error
+          retention-days: 14
+  question-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_question_policy_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_question_policy_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_question_policy_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_question_policy_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_question_policy_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Editorial schedule legal validity and immutable attempt editions
+        run: python scripts/test-rtn-question-policy-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-question-policy-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-question-policy-sql/
+          if-no-files-found: error
+          retention-days: 14
+  manual-source-backoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_manual_source_backoff_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_manual_backoff_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_manual_source_backoff_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_manual_source_backoff_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_manual_backoff_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Manual publisher backoff authority terminal replay and fresh after-lock clock
+        run: python scripts/test-rtn-manual-source-backoff-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-manual-backoff-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-manual-source-backoff-sql/
           if-no-files-found: error
           retention-days: 14
   source-backoff:

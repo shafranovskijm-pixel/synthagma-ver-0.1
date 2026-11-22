@@ -33,3 +33,7 @@ supabase/tests/fixtures/uc016-legacy101-conflicts.json text eol=lf
 
 # PDF cross-reference offsets require byte-exact public guide assets.
 public/guides/*.pdf -text -diff
+
+# Question review policy release hashes are canonical LF on every checkout.
+supabase/migrations/20261122100000_rtn_question_review_policy_v2.sql text eol=lf
+supabase/migrations/20261122133000_rtn_manual_source_backoff.sql text eol=lf

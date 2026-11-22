@@ -1,7 +1,17 @@
 export type RtnKeyStatus = "unreviewed" | "reviewed" | "released";
 export type RtnCheckStatus = "queued" | "running" | "unchanged" | "changed" | "error" | "success";
 
-export interface RtnBank {
+export interface RtnReviewPolicySummary {
+  approval_policy?: "legacy-weekly-v1" | "source-tracked-v2" | "not_reviewed";
+  legal_validity?: "bounded" | "no_declared_cutoff_reviewed" | "unassessed";
+  legal_cutoff_at?: string | null;
+  editorial_review_before?: string | null;
+  editorial_status?: "scheduled" | "due" | "unassessed";
+  key_reviewed_at?: string | null;
+  admission_reason?: "ready" | "not_reviewed" | "legacy_review_required" | "legal_limit_reached" | "source_revision_changed" | "normalization_changed";
+}
+
+export interface RtnBank extends RtnReviewPolicySummary {
   id: string;
   code: string;
   title: string;
@@ -15,11 +25,13 @@ export interface RtnBank {
   effective_from: string | null;
   question_count: number;
   release_id: string | null;
+  published_at?: string | null;
   key_status: RtnKeyStatus;
   normative_status?: "current" | "review_required";
   normative_cutoff_at?: string | null;
   available_for_training: boolean;
   can_manual_check: boolean;
+  next_check_after?: string | null;
   last_checked_at: string | null;
   last_success_at: string | null;
   check_status: RtnCheckStatus | null;
@@ -33,6 +45,7 @@ export interface RtnBank {
     question_count: number;
     effective_from: string;
     approved_on: string | null;
+    published_at?: string | null;
   } | null;
 }
 
@@ -112,6 +125,8 @@ export interface RtnCheckResult {
   last_success_at?: string | null;
   error?: string | null;
   replayed?: boolean;
+  retry_after?: string | null;
+  can_manual_check?: boolean;
 }
 
 export function canAssignRtnBank(bank: RtnBank): boolean {
@@ -119,7 +134,7 @@ export function canAssignRtnBank(bank: RtnBank): boolean {
     && bank.normative_status === "current" && !!bank.release_id;
 }
 
-export interface RtnStudentAssignment {
+export interface RtnStudentAssignment extends RtnReviewPolicySummary {
   id: string;
   assignment_id: string;
   organization_id: string;
@@ -200,7 +215,7 @@ export interface RtnMaterial {
 }
 
 export interface RtnAssignmentDetail {
-  assignment: { id: string; organization_id: string; bank_id: string; code: string; title: string; status: string; can_start?: boolean; normative_status?: "current" | "review_required"; normative_cutoff_at?: string | null };
+  assignment: RtnReviewPolicySummary & { id: string; organization_id: string; bank_id: string; code: string; title: string; status: string; can_start?: boolean; normative_status?: "current" | "review_required"; normative_cutoff_at?: string | null };
   release: { id: string; effective_from: string; question_count: number };
   source: { page_url: string; document_url: string; approved_on: string | null };
   materials: RtnMaterial[];

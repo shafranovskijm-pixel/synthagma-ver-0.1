@@ -1,8 +1,8 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RostechnadzorWorkspace } from "./RostechnadzorWorkspace";
+import { RostechnadzorWorkspace, rtnBankDisplayTitle } from "./RostechnadzorWorkspace";
 import type { RtnBank, RtnWorkspace } from "@/types/rostechnadzor";
 
 const api = vi.hoisted(() => ({ getRtnWorkspace: vi.fn(), checkRtnSource: vi.fn(), assignRtnTraining: vi.fn(), saveRtnSettings: vi.fn() }));
@@ -41,6 +41,125 @@ function mount(organizationId = "org-a", props: Partial<React.ComponentProps<typ
 beforeEach(() => { vi.resetAllMocks(); api.getRtnWorkspace.mockResolvedValue(workspace()); updatesApi.getRtnUpdates.mockResolvedValue({ events: [], has_more: false, next_before_sequence: null, source_health: { status: "never_checked", last_success_at: null, coverage_kind: "unknown" } }); });
 beforeEach(() => { newsApi.getRtnNewsCheckState.mockResolvedValue({ check: null, can_request: true, next_due_at: "2026-11-20T12:00:00Z", source_health: { code: "official-news-rss", feed_url: "https://www.gosnadzor.ru/news/rss/", status: "never_checked", coverage_kind: "unknown", last_checked_at: null, last_success_at: null, coverage_from: null, coverage_until: null, error_code: null, complete_archive: false } }); });
 afterEach(cleanup);
+
+describe("question-first client cards", () => {
+  it("shows three independent actual dates and source link despite a failed source check, without reading news", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, published_at: "2026-11-18T10:00:00Z", last_success_at: "2026-11-19T11:00:00Z", last_checked_at: "2026-11-22T10:00:00Z", check_status: "error" }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText("Источник проверен").nextElementSibling).toHaveTextContent("19.11.2026");
+    expect(within(card).getByText("Курс обновлён").nextElementSibling).toHaveTextContent("18.11.2026");
+    expect(within(card).getByText("Применяется с").nextElementSibling).toHaveTextContent("01.09.2026");
+    expect(within(card).getByText(/Не удалось сверить официальный источник/)).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "Официальный источник" })).toHaveAttribute("href", bank.source_url);
+    expect(within(card).getByRole("button", { name: "Назначить обучение" })).toBeEnabled();
+    expect(newsApi.getRtnNewsCheckState).not.toHaveBeenCalled(); expect(api.checkRtnSource).not.toHaveBeenCalled();
+  });
+  it("does not invent a course update date from its source check, review cutoff or unrelated future release", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, last_success_at: "2026-11-22T10:00:00Z" }], archived_releases: [{ bank_id: bank.id, bank_code: bank.code, release_id: "future", key_set_id: "future-key", bank_revision_id: "future-bank", source_revision_id: "future-source", question_count: 211, effective_from: "2027-01-01", published_at: "2026-11-22T12:00:00Z", is_current: false, state: "scheduled", source_url: bank.source_url!, document_url: "https://www.gosnadzor.ru/future.pdf" }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText("Курс обновлён").nextElementSibling).toHaveTextContent("Не подтверждено");
+    expect(within(card).getByText("Источник проверен").nextElementSibling).toHaveTextContent("22.11.2026");
+  });
+  it("keeps a genuinely admitted V2 edition assignable when only its routine editorial review is due", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, approval_policy: "source-tracked-v2", legal_validity: "no_declared_cutoff_reviewed", legal_cutoff_at: null, editorial_review_before: "2026-11-21", editorial_status: "due", admission_reason: "ready", normative_cutoff_at: null }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText(/Наступил срок плановой сверки/)).toHaveTextContent("Обучение по проверенной редакции доступно");
+    expect(within(card).getByRole("button", { name: "Назначить обучение" })).toBeEnabled();
+    expect(within(card).queryByText(/Контроль актуальности редакции: до/)).not.toBeInTheDocument();
+  });
+  it("does not turn a real legal expiry into an advisory reminder or change historical results", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, approval_policy: "source-tracked-v2", legal_validity: "bounded", legal_cutoff_at: "2026-11-21T00:00:00+03:00", editorial_status: "due", admission_reason: "legal_limit_reached", normative_status: "review_required" }], results: [{ attempt_id: "old-attempt", student_id: "profile-a", bank_id: bank.id, release_id: "old-release", score: 80, submitted_at: "2026-10-10T10:00:00Z" }] }));
+    mount();
+    const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
+    expect(within(card).getByText("Нормативный срок истёк · нужна новая проверка")).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Результаты" }));
+    expect(screen.getByText("Результат: 80%")).toBeInTheDocument(); expect(screen.getByText(/Редакция: old-release/)).toBeInTheDocument();
+    expect(api.assignRtnTraining).not.toHaveBeenCalled();
+  });
+  it("disables a future manual deadline from the server and never invokes the source on opening Sources", async () => {
+    const deadline = new Date(Date.now() + 60_000).toISOString();
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, can_manual_check: false, next_check_after: deadline, check_status: "error" }] }));
+    mount("org-a", { navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+    const button = await screen.findByRole("button", { name: "Проверить обновления сейчас" });
+    expect(button).toBeDisabled(); expect(screen.getByText(/Следующая проверка доступна/)).toBeInTheDocument();
+    fireEvent.click(button); expect(api.checkRtnSource).not.toHaveBeenCalled();
+  });
+  it("honors a replayed terminal-error deadline from a stale page without another source call", async () => {
+    api.checkRtnSource.mockResolvedValue({ run_id: "real-failed-run", status: "error", replayed: true, retry_after: new Date(Date.now() + 60_000).toISOString(), can_manual_check: false });
+    mount("org-a", { navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+    fireEvent.click(await screen.findByRole("button", { name: "Проверить обновления сейчас" }));
+    expect(await screen.findByText(/Следующая проверка доступна/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Проверить обновления сейчас" })).toBeDisabled();
+    expect(api.checkRtnSource).toHaveBeenCalledTimes(1);
+  });
+  it("refreshes only saved state once the manual deadline passes without invoking another source check", async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-22T13:00:00Z"));
+    try {
+      api.getRtnWorkspace.mockResolvedValueOnce(workspace({ banks: [{ ...bank, can_manual_check: false, next_check_after: "2026-11-22T13:00:10Z" }] }))
+        .mockResolvedValue(workspace({ banks: [{ ...bank, can_manual_check: true, next_check_after: null }] }));
+      mount("org-a", { navigation: { view: "sources", bankId: null, eventId: null, invalidTarget: false } });
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(screen.getByRole("button", { name: "Проверить обновления сейчас" })).toBeDisabled();
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_050); });
+      expect(api.getRtnWorkspace).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "Проверить обновления сейчас" })).toBeEnabled();
+      expect(api.checkRtnSource).not.toHaveBeenCalled();
+    } finally { cleanup(); vi.useRealTimers(); }
+  });
+  it("replaces an old manual403 receipt with a later authoritative source success and its actual date", async () => {
+    let current = workspace({ banks: [{ ...bank, check_status: "error", last_success_at: "2026-11-19T09:00:00Z", last_checked_at: "2026-11-21T09:00:00Z" }] });
+    api.getRtnWorkspace.mockImplementation(() => Promise.resolve(current));
+    api.checkRtnSource.mockResolvedValue({ run_id: "manual403", status: "error", error: "OFFICIAL_HTTP_403", last_success_at: "2026-11-19T09:00:00Z" });
+    const mounted = mount();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
+    fireEvent.click(screen.getByRole("button", { name: "Проверить обновления сейчас" }));
+    await waitFor(() => expect(api.checkRtnSource).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Не удалось проверить источник")).toBeInTheDocument();
+    current = workspace({ banks: [{ ...bank, check_status: "success", last_success_at: "2026-11-22T12:00:00Z", last_checked_at: "2026-11-22T12:00:00Z" }], checks: [{ id: "scheduled200", source_id: bank.source_id, status: "success", completed_at: "2026-11-22T12:00:00Z" }] });
+    await act(async () => { await mounted.client.invalidateQueries({ queryKey: ["rtn-workspace"] }); });
+    expect(await screen.findByText("Источник проверен")).toBeInTheDocument();
+    expect(screen.queryByText("Не удалось проверить источник")).not.toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Подготовка" }), { button: 0, ctrlKey: false });
+    const card = screen.getByRole("heading", { name: `А.1. ${bank.title}` }).closest("article")!;
+    expect(within(card).getByText("Источник проверен").nextElementSibling).toHaveTextContent("22.11.2026");
+    expect(within(card).queryByText(/Не удалось сверить официальный источник/)).not.toBeInTheDocument();
+    expect(api.checkRtnSource).toHaveBeenCalledTimes(1);
+  });
+  it("does not start deadline-driven saved-state reads from the course preparation view", async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-22T13:00:00Z"));
+    try {
+      api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, can_manual_check: false, next_check_after: "2026-11-22T13:00:10Z" }] }));
+      mount(); await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(screen.getByRole("heading", { name: `А.1. ${bank.title}` })).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_050); });
+      expect(api.getRtnWorkspace).toHaveBeenCalledTimes(1); expect(api.checkRtnSource).not.toHaveBeenCalled();
+    } finally { cleanup(); vi.useRealTimers(); }
+  });
+  it("keeps the confirmed source date but shows a failed manual verification on returning to a course card", async () => {
+    api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, check_status: "success", last_success_at: "2026-11-19T09:00:00Z" }] }));
+    api.checkRtnSource.mockRejectedValue(new Error("Не удалось связаться с сервером"));
+    mount();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Источники" }), { button: 0, ctrlKey: false });
+    fireEvent.click(screen.getByRole("button", { name: "Проверить обновления сейчас" }));
+    await screen.findByText("Не удалось проверить источник");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Подготовка" }), { button: 0, ctrlKey: false });
+    const card = screen.getByRole("heading", { name: `А.1. ${bank.title}` }).closest("article")!;
+    expect(within(card).getByText(/Не удалось сверить официальный источник/)).toBeInTheDocument();
+    expect(within(card).getByText("Источник проверен").nextElementSibling).toHaveTextContent("19.11.2026");
+    expect(api.checkRtnSource).toHaveBeenCalledTimes(1);
+  });
+  it("removes only the duplicated known A.1 display prefix without changing catalogue data or A.10", () => {
+    const value = { code: "A.1", title: "А.1 — основы промышленной безопасности" };
+    expect(rtnBankDisplayTitle(value)).toBe("основы промышленной безопасности");
+    expect(value.title).toBe("А.1 — основы промышленной безопасности");
+    expect(rtnBankDisplayTitle({ code: "A.1", title: "A.10 — другое направление" })).toBe("A.10 — другое направление");
+    expect(rtnBankDisplayTitle({ code: "A.1", title: "A.1.1 — подраздел" })).toBe("A.1.1 — подраздел");
+  });
+});
 
 describe("RTN organization workspace", () => {
   it("loads news source status only inside authorized Sources and retains the real session actor", async () => {
@@ -425,13 +544,14 @@ describe("RTN workspace navigation and sections", () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [empty], checks: [{ id: "failed-check", source_id: bank.source_id, status: "error", error: "OFFICIAL_HTTP_403" }] }));
     mount();
     const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
-    expect(within(card).getByText(/Количество вопросов не подтверждено/)).toHaveTextContent("Дата применения не подтверждена");
+    expect(within(card).getByText(/Количество вопросов не подтверждено/)).toBeInTheDocument();
+    expect(within(card).getByText("Применяется с").nextElementSibling).toHaveTextContent("Не подтверждена");
     expect(within(card).queryByText(/^0 вопросов/)).not.toBeInTheDocument();
     expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
     fireEvent.click(within(card).getByRole("button", { name: "Посмотреть состав" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Вопросов в программе").nextElementSibling).toHaveTextContent("Не подтверждено");
-    expect(within(dialog).getByText("Дата применения").nextElementSibling).toHaveTextContent("Не подтверждена");
+    expect(within(dialog).getByText("Применяется с").nextElementSibling).toHaveTextContent("Не подтверждена");
     expect(within(dialog).getByRole("button", { name: "Назначить обучение" })).toBeDisabled();
     expect(api.assignRtnTraining).not.toHaveBeenCalled();
   });
@@ -440,7 +560,8 @@ describe("RTN workspace navigation and sections", () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, bank_revision_id: null, release_id: null, question_count, key_status: "unreviewed", available_for_training: false }] }));
     mount();
     const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
-    expect(within(card).getByText(/Количество вопросов не подтверждено/)).toHaveTextContent("Применяется с 01.09.2026");
+    expect(within(card).getByText(/Количество вопросов не подтверждено/)).toBeInTheDocument();
+    expect(within(card).getByText("Применяется с").nextElementSibling).toHaveTextContent("01.09.2026");
     expect(within(card).queryByText(new RegExp(`^${question_count} вопросов`))).not.toBeInTheDocument();
     expect(within(card).queryByRole("button", { name: "Назначить обучение" })).not.toBeInTheDocument();
   });
@@ -449,7 +570,8 @@ describe("RTN workspace navigation and sections", () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, check_status: "error", last_success_at: "2026-11-19T10:00:00Z" }] }));
     mount();
     const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
-    expect(within(card).getByText(/^211 вопросов/)).toHaveTextContent("Применяется с 01.09.2026");
+    expect(within(card).getByText(/^211 вопросов/)).toBeInTheDocument();
+    expect(within(card).getByText("Применяется с").nextElementSibling).toHaveTextContent("01.09.2026");
     expect(within(card).getByRole("button", { name: "Назначить обучение" })).toBeEnabled();
   });
 
@@ -466,11 +588,11 @@ describe("RTN workspace navigation and sections", () => {
     api.getRtnWorkspace.mockResolvedValue(workspace({ banks: [{ ...bank, effective_from }] }));
     mount();
     const card = (await screen.findByRole("heading", { name: `А.1. ${bank.title}` })).closest("article")!;
-    expect(within(card).getByText(/Дата применения не подтверждена/)).toHaveTextContent("211 вопросов");
-    expect(within(card).queryByText(/Применяется с/)).not.toBeInTheDocument();
+    expect(within(card).getByText("211 вопросов")).toBeInTheDocument();
+    expect(within(card).getByText("Применяется с").nextElementSibling).toHaveTextContent("Не подтверждена");
     expect(within(card).getByRole("button", { name: "Назначить обучение" })).toBeEnabled();
     fireEvent.click(within(card).getByRole("button", { name: "Посмотреть состав" }));
-    expect(within(screen.getByRole("dialog")).getByText("Дата применения").nextElementSibling).toHaveTextContent("Не подтверждена");
+    expect(within(screen.getByRole("dialog")).getByText("Применяется с").nextElementSibling).toHaveTextContent("Не подтверждена");
     expect(api.assignRtnTraining).not.toHaveBeenCalled();
   });
 

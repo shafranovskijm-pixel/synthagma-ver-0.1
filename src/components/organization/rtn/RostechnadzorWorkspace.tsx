@@ -12,8 +12,10 @@ import { RtnEditorialPanel } from "./RtnEditorialPanel";
 import { RtnUpdatesFeed } from "./RtnUpdatesFeed";
 import { RtnPersonalPreferences } from "./RtnPersonalPreferences";
 import { RtnNewsSourceCheck } from "./RtnNewsSourceCheck";
+import { RtnBankFreshness } from "./RtnBankFreshness";
 
 type Panel = "assign" | "results";
+type LocalCheckResult = RtnCheckResult & { workspaceSnapshot?: RtnWorkspace };
 interface RtnWorkspaceNavigation {
   view: RtnWorkspaceView;
   bankId: string | null;
@@ -66,6 +68,8 @@ function checkLabel(status: RtnCheckStatus | null | undefined): string {
 }
 
 function keyLabel(bank: RtnBank): string {
+  if (bank.admission_reason === "legal_limit_reached") return "Нормативный срок истёк · нужна новая проверка";
+  if (bank.admission_reason === "source_revision_changed" || bank.admission_reason === "normalization_changed") return "Изменения проходят предметную проверку";
   if (bank.key_status === "released" && bank.normative_status !== "current") return "Нужна повторная нормативная проверка";
   if (canAssignRtnBank(bank)) return "Проверенные учебные ответы";
   if (bank.key_status === "reviewed") return "Ключи проверены · редакция готовится к выпуску";
@@ -104,6 +108,11 @@ function domainLabel(value: string): string {
   return ({ 'industrial-safety': 'Промышленная безопасность', energy_supervision_knowledge_check: 'Энергонадзор · проверка знаний' } as Record<string, string>)[value] || 'Другое направление';
 }
 
+export function rtnBankDisplayTitle(bank: Pick<RtnBank, "code" | "title">): string {
+  const match = bank.title.trim().match(/^([AА]\.1)(?:\s*[—–:-]\s*|\.\s+|\s+)(.+)$/iu);
+  return match && match[1].toUpperCase().replace("А", "A") === bank.code.trim().toUpperCase().replace("А", "A") ? match[2] : bank.title;
+}
+
 function ErrorBox({ message, retry, busy = false }: { message: string; retry?: () => void; busy?: boolean }) {
   return <div role="alert" className={`${boxClass} flex items-start gap-3`}>
     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -135,7 +144,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
   const [domain, setDomain] = useState("");
   const [detail, setDetail] = useState<RtnBank | null>(null);
   const [selectedBank, setSelectedBank] = useState("");
-  const [checkResults, setCheckResults] = useState<Record<string, RtnCheckResult>>({});
+  const [checkResults, setCheckResults] = useState<Record<string, LocalCheckResult>>({});
   const [checkFailures, setCheckFailures] = useState<Record<string, boolean>>({});
   const [pendingRuns, setPendingRuns] = useState<Record<string, { id: string; until: number }>>({});
   const query = useQuery({
@@ -160,7 +169,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
     if (!completed.length) return;
     setCheckResults(previous => {
       const next = { ...previous };
-      for (const { sourceId, check } of completed) next[sourceId] = { run_id: check.id, status: check.status, last_success_at: check.last_success_at, error: check.error };
+      for (const { sourceId, check } of completed) next[sourceId] = { run_id: check.id, status: check.status, last_success_at: check.last_success_at, error: check.error, workspaceSnapshot: query.data };
       return next;
     });
     setPendingRuns(previous => {
@@ -170,12 +179,23 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
     });
   }, [query.data, pendingRuns]);
 
+  useEffect(() => {
+    if (!query.data) return;
+    // A changed authoritative workspace supersedes terminal local receipts.
+    // Keep in-flight run tracking and receipts observed from this same response.
+    setCheckResults(previous => {
+      const entries = Object.entries(previous).filter(([, result]) => result.status === "queued" || result.status === "running" || result.workspaceSnapshot === query.data);
+      return entries.length === Object.keys(previous).length ? previous : Object.fromEntries(entries);
+    });
+    setCheckFailures({});
+  }, [query.data]);
+
   const check = useMutation({
     mutationFn: (sourceId: string) => checkRtnSource(organizationId, sourceId),
     onMutate: sourceId => setCheckFailures(previous => ({ ...previous, [sourceId]: false })),
     onError: (_error, sourceId) => setCheckFailures(previous => ({ ...previous, [sourceId]: true })),
     onSuccess: (result, sourceId) => {
-      setCheckResults(previous => ({ ...previous, [sourceId]: result }));
+      setCheckResults(previous => ({ ...previous, [sourceId]: { ...result, workspaceSnapshot: query.data } }));
       if (result.status === "queued" || result.status === "running") {
         setPendingRuns(previous => ({ ...previous, [sourceId]: { id: result.run_id, until: Date.now() + 60000 } }));
       }
@@ -188,6 +208,15 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
   const visibleBanks = banks.filter(bank => (!domain || bank.domain === domain) &&
     `${bank.code} ${bank.title}`.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru").trim()));
   const sources = banks.filter((bank, index) => banks.findIndex(other => other.source_id === bank.source_id) === index);
+  useEffect(() => {
+    if (view !== "sources") return;
+    const deadlines = sources.flatMap(bank => [bank.next_check_after, checkResults[bank.source_id]?.retry_after])
+      .map(value => value ? Date.parse(value) : 0).filter(value => Number.isFinite(value) && value > Date.now());
+    if (!deadlines.length) return;
+    // At the server's deadline refresh saved state only. Never launch a source check.
+    const timer = setTimeout(() => { if (document.visibilityState === "visible") void query.refetch(); }, Math.min(Math.min(...deadlines) - Date.now() + 25, 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [query.data, checkResults, view]);
   const openAssign = (bank?: RtnBank) => { if (bank) setSelectedBank(bank.id); setPanel("assign"); };
   const openBank = (bank: RtnBank) => {
     setDetail(bank);
@@ -249,8 +278,9 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
       const ready = canAssignRtnBank(bank);
       const questionCount = bankQuestionCount(bank);
       return <article key={bank.id} className={`${boxClass} flex flex-col gap-4`}>
-        <div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{/энерг|электр/i.test(`${bank.domain} ${bank.title}`) ? <Zap className="h-6 w-6" /> : <Factory className="h-6 w-6" />}</div><div className="min-w-0 space-y-2"><h3 className="break-words font-semibold">{bank.code ? `${bank.code}. ` : ""}{bank.title}</h3><p className="text-xs text-muted-foreground">{questionCount === null ? "Количество вопросов не подтверждено" : `${questionCount} вопросов`} · {applicationDateLabel(bank.effective_from)}</p><span className={`inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-xs ${ready ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>{ready ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <Clock3 className="h-3.5 w-3.5 shrink-0" />}{keyLabel(bank)}</span></div></div>
-        {bank.normative_cutoff_at && <p className="text-xs text-muted-foreground">Контроль актуальности редакции: до {rtnDate(bank.normative_cutoff_at, true, 'Europe/Moscow')} МСК.</p>}
+        <div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{/энерг|электр/i.test(`${bank.domain} ${bank.title}`) ? <Zap className="h-6 w-6" /> : <Factory className="h-6 w-6" />}</div><div className="min-w-0 space-y-2"><h3 className="break-words font-semibold">{bank.code ? `${bank.code}. ` : ""}{rtnBankDisplayTitle(bank)}</h3><p className="text-xs text-muted-foreground">{questionCount === null ? "Количество вопросов не подтверждено" : `${questionCount} вопросов`}</p><span className={`inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-xs ${ready ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>{ready ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <Clock3 className="h-3.5 w-3.5 shrink-0" />}{keyLabel(bank)}</span></div></div>
+        <RtnBankFreshness bank={bank} checkResult={checkResults[bank.source_id]} verificationFailed={checkFailures[bank.source_id]} officialUrl={officialSource(bank.source_url)} />
+        {bank.normative_cutoff_at && bank.approval_policy !== "source-tracked-v2" && <p className="text-xs text-muted-foreground">Контроль актуальности редакции: до {rtnDate(bank.normative_cutoff_at, true, 'Europe/Moscow')} МСК.</p>}
         {ready && hasPendingSourceRevision(bank) && <p className={workspace.settings.notify_updates ? "text-xs font-medium text-amber-800 dark:text-amber-300" : "text-xs text-muted-foreground"}>Источник обновился. Новая редакция проходит проверку; обучение продолжается по выпущенной редакции.</p>}
         <div className="mt-auto flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => openBank(bank)} className="gap-2"><BookOpen className="h-4 w-4" />Посмотреть состав</Button>{ready && <Button size="sm" disabled={!workspace.access.can_assign} onClick={() => openAssign(bank)}>Назначить обучение</Button>}</div>
       </article>;
@@ -274,8 +304,11 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
         const pending = !!pendingRuns[bank.source_id];
         const status = check.isPending && check.variables === bank.source_id ? "running" : checkFailures[bank.source_id] ? "error" : result?.status || bank.check_status;
         const source = officialSource(bank.source_url);
+        const nextCheck = Math.max(bank.next_check_after ? Date.parse(bank.next_check_after) : 0, result?.retry_after ? Date.parse(result.retry_after) : 0);
+        const coolingDown = Number.isFinite(nextCheck) && nextCheck > Date.now();
         return <div key={bank.source_id} className="min-w-0 space-y-2 border-t border-border pt-4"><h4 className="break-words text-sm font-medium">{bank.title}</h4>{source && <a href={source} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary underline underline-offset-4">Официальный источник<ExternalLink className="h-3.5 w-3.5" /></a>}<p role="status" className={`text-sm ${status === "error" ? "text-destructive" : "text-muted-foreground"}`}>{checkLabel(status)}</p><p className="text-xs text-muted-foreground">Последняя успешная проверка: {rtnDate(result?.last_success_at || bank.last_success_at, true)}</p>
-          {pending ? <div className="flex flex-wrap items-center gap-2"><p className="text-xs text-muted-foreground">Результат появится после завершения проверки.</p><Button size="sm" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>Обновить состояние</Button></div> : <Button size="sm" variant="outline" className="h-auto min-h-11 gap-2 whitespace-normal" disabled={!workspace.access.can_manage || !bank.can_manual_check || check.isPending} onClick={() => check.mutate(bank.source_id)}>{check.isPending && check.variables === bank.source_id ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <RefreshCw className="h-4 w-4 shrink-0" />}Проверить обновления сейчас</Button>}
+          {coolingDown && <p className="text-xs text-muted-foreground">Следующая проверка доступна {rtnDate(new Date(nextCheck).toISOString(), true, "Europe/Moscow")} МСК.</p>}
+          {pending ? <div className="flex flex-wrap items-center gap-2"><p className="text-xs text-muted-foreground">Результат появится после завершения проверки.</p><Button size="sm" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>Обновить состояние</Button></div> : <Button size="sm" variant="outline" className="h-auto min-h-11 gap-2 whitespace-normal" disabled={!workspace.access.can_manage || !bank.can_manual_check || coolingDown || check.isPending} onClick={() => check.mutate(bank.source_id)}>{check.isPending && check.variables === bank.source_id ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <RefreshCw className="h-4 w-4 shrink-0" />}Проверить обновления сейчас</Button>}
         </div>;
       })}
     </section>
@@ -284,7 +317,7 @@ function RtnWorkspaceContent({ organizationId, actorId, onUsageChanged, navigati
         {view === "sources" && <RtnPersonalPreferences organizationId={organizationId} actorId={actorId} />}
       </TabsContent>
     </Tabs>
-    <Dialog open={!!detail} onOpenChange={open => { if (!open) closeBank(); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle className="break-words pr-4">{detail?.code} {detail?.title}</DialogTitle><DialogDescription>Источник вопросов, готовность учебной редакции и история выпусков.</DialogDescription></DialogHeader>{detail && <div className="space-y-4 text-sm"><p>{keyLabel(detail)}</p><dl className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Вопросов в программе</dt><dd>{bankQuestionCount(detail) ?? "Не подтверждено"}</dd></div><div><dt className="text-muted-foreground">Источник утверждён</dt><dd>{rtnDate(detail.approved_on)}</dd></div><div><dt className="text-muted-foreground">Дата применения</dt><dd>{applicationDate(detail.effective_from) ?? "Не подтверждена"}</dd></div><div><dt className="text-muted-foreground">Последняя успешная проверка</dt><dd>{rtnDate(detail.last_success_at, true)}</dd></div></dl>{workspace.settings.show_archived_releases && <ReleaseHistory bankId={detail.id} releases={workspace.archived_releases || []} />}{officialSource(detail.source_url) && <a className="inline-flex items-center gap-2 text-primary underline underline-offset-4" href={officialSource(detail.source_url)!} rel="noopener noreferrer" target="_blank">Открыть официальный источник<ExternalLink className="h-4 w-4" /></a>}<p className="text-muted-foreground">Официальная публикация вопросов не подтверждает правильные ответы. К обучению допускается только выпущенная редакция с проверенными ключами.</p><Button disabled={!workspace.access.can_assign || !canAssignRtnBank(detail)} onClick={() => { openAssign(detail); closeBank(); }}>Назначить обучение</Button></div>}</DialogContent></Dialog>
+    <Dialog open={!!detail} onOpenChange={open => { if (!open) closeBank(); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle className="break-words pr-4">{detail?.code} {detail ? rtnBankDisplayTitle(detail) : ""}</DialogTitle><DialogDescription>Источник вопросов, готовность учебной редакции и история выпусков.</DialogDescription></DialogHeader>{detail && <div className="space-y-4 text-sm"><p>{keyLabel(detail)}</p><dl className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Вопросов в программе</dt><dd>{bankQuestionCount(detail) ?? "Не подтверждено"}</dd></div><div><dt className="text-muted-foreground">Источник утверждён</dt><dd>{rtnDate(detail.approved_on)}</dd></div></dl><RtnBankFreshness bank={detail} checkResult={checkResults[detail.source_id]} verificationFailed={checkFailures[detail.source_id]} officialUrl={officialSource(detail.source_url)} details />{workspace.settings.show_archived_releases && <ReleaseHistory bankId={detail.id} releases={workspace.archived_releases || []} />}<p className="text-muted-foreground">Официальная публикация вопросов не подтверждает правильные ответы. К обучению допускается только выпущенная редакция с проверенными ключами.</p><Button disabled={!workspace.access.can_assign || !canAssignRtnBank(detail)} onClick={() => { openAssign(detail); closeBank(); }}>Назначить обучение</Button></div>}</DialogContent></Dialog>
   </section>;
 }
 
