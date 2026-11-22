@@ -1,3 +1,5 @@
+import { httpFailureDiagnostic } from './http-failure-diagnostics.ts';
+
 const STAGES = [
   'read_claim', 'service_catalog_fetch', 'service_catalog_hash', 'service_catalog_decode', 'service_catalog_discover',
   'question_catalog_fetch', 'question_catalog_hash', 'question_catalog_decode', 'a1_section_discover',
@@ -59,4 +61,20 @@ export function reportSourceCheckFailure(claim: unknown, stage: SourceCheckStage
       exception: summarize(error), causes,
     });
   } catch { /* Logging failure cannot suppress or retry the original completion. */ }
+  try {
+    const http_failure = httpFailureDiagnostic(error);
+    if (http_failure) console.error({
+      tag: 'RTN_HTTP_DENIAL_DIAGNOSTIC_V2',
+      run_id: id(field(claim, 'run_id')), source_id: id(field(field(claim, 'source'), 'id')),
+      stage: (STAGES as readonly string[]).includes(stage) ? stage : 'unknown', http_failure,
+    });
+  } catch { /* HTTP evidence must never replace the original completion. */ }
+}
+
+/** RSS uses the same private evidence binding and its actual durable run ID. */
+export function reportNewsHttpFailure(claim: unknown, error: unknown): void {
+  try {
+    const http_failure = httpFailureDiagnostic(error);
+    if (http_failure) console.error({ tag: 'RTN_HTTP_DENIAL_DIAGNOSTIC_V2', run_id: id(field(claim, 'run_id')), stage: 'rss_fetch', http_failure });
+  } catch { /* Logging failure cannot suppress the known HTTP error. */ }
 }
