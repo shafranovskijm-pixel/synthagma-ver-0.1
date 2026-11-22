@@ -17,6 +17,9 @@ function apiError(error: unknown): RtnApiError {
   const context = record.context && typeof record.context === "object" ? record.context as Record<string, unknown> : {};
   const status = record.status || context.status;
   if (message === "rtn_normative_review_required") {
+    const reason = String(record.details || "");
+    if (reason === "legal_limit_reached") return new RtnApiError("unknown", "Нормативный срок этой редакции истёк. Начатые попытки и результаты сохранены; для новых попыток нужна проверенная редакция.");
+    if (reason === "source_revision_changed" || reason === "normalization_changed") return new RtnApiError("unknown", "Вопросы источника изменились. Новые попытки откроются после проверки и выпуска обновлённой редакции. Прежние результаты сохранены.");
     return new RtnApiError("unknown", "Для этой редакции нужна повторная нормативная проверка. Начатые попытки и прежние результаты сохранены; новые попытки откроются после выпуска проверенной редакции.");
   }
   if (record.code === "40001" && message === "rtn_draft_revision_conflict") {
@@ -43,6 +46,28 @@ function record(value: unknown): value is Record<string, unknown> {
 
 function invalidResponse(): never {
   throw new RtnApiError("invalid_response", "Сервер вернул неполные данные. Обновите раздел, чтобы проверить доступ и состояние программ.");
+}
+
+function nullableTimestamp(value: unknown): boolean {
+  if (value === null) return true;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(value) || !Number.isFinite(Date.parse(value))) return false;
+  const day = value.slice(0, 10);
+  return new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+}
+
+function validPolicySummary(value: Record<string, unknown>): boolean {
+  const choices: Record<string, string[]> = {
+    approval_policy: ["legacy-weekly-v1", "source-tracked-v2", "not_reviewed"],
+    legal_validity: ["bounded", "no_declared_cutoff_reviewed", "unassessed"],
+    editorial_status: ["scheduled", "due", "unassessed"],
+    admission_reason: ["ready", "not_reviewed", "legacy_review_required", "legal_limit_reached", "source_revision_changed", "normalization_changed"],
+  };
+  if (Object.entries(choices).some(([key, options]) => value[key] !== undefined && !options.includes(String(value[key])))) return false;
+  if (["legal_cutoff_at", "key_reviewed_at"].some(key => value[key] !== undefined && !nullableTimestamp(value[key]))) return false;
+  const due = value.editorial_review_before;
+  if (due !== undefined && due !== null && (typeof due !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(due)
+    || !Number.isFinite(Date.parse(`${due}T00:00:00Z`)) || new Date(`${due}T00:00:00Z`).toISOString().slice(0, 10) !== due)) return false;
+  return true;
 }
 
 // New RPCs are kept behind this boundary until generated Database types include them.
@@ -77,7 +102,16 @@ export async function getRtnWorkspace(organizationId: string): Promise<RtnWorksp
     && typeof bank.source_id === "string" && typeof bank.available_for_training === "boolean"
     && ["current", "review_required"].includes(String(bank.normative_status))
     && (bank.normative_cutoff_at === null || typeof bank.normative_cutoff_at === "string")
+    && validPolicySummary(bank)
+    && (bank.published_at === undefined || nullableTimestamp(bank.published_at))
+    && (bank.next_check_after === undefined || nullableTimestamp(bank.next_check_after))
     && typeof bank.can_manual_check === "boolean" && ["unreviewed", "reviewed", "released"].includes(String(bank.key_status)))) invalidResponse();
+  for (const bank of banks as Record<string, unknown>[]) {
+    if (bank.active_release !== undefined && bank.active_release !== null && (!record(bank.active_release)
+      || bank.active_release.release_id !== bank.release_id
+      || bank.active_release.published_at !== undefined && (!nullableTimestamp(bank.active_release.published_at)
+        || bank.published_at !== undefined && bank.active_release.published_at !== bank.published_at))) invalidResponse();
+  }
   if (!(data.students as unknown[]).every(student => record(student) && ["id", "user_id"].every(key => typeof student[key] === "string") && (typeof student.full_name === "string" || student.full_name === null))
     || !(data.groups as unknown[]).every(group => record(group) && typeof group.id === "string" && typeof group.name === "string")
     || !(data.checks as unknown[]).every(check => record(check) && typeof check.id === "string" && typeof check.source_id === "string" && typeof check.status === "string")
@@ -106,7 +140,9 @@ export async function checkRtnSource(organizationId: string, sourceId: string): 
     });
     if (error) throw error;
     if (!record(data) || typeof data.run_id !== "string"
-      || !["queued", "running", "unchanged", "changed", "error", "success"].includes(String(data.status))) invalidResponse();
+      || !["queued", "running", "unchanged", "changed", "error", "success"].includes(String(data.status))
+      || data.retry_after !== undefined && !nullableTimestamp(data.retry_after)
+      || data.can_manual_check !== undefined && typeof data.can_manual_check !== "boolean") invalidResponse();
     return data as unknown as RtnCheckResult;
   } catch (error) { throw apiError(error); }
 }
@@ -129,6 +165,7 @@ export async function getRtnStudentWorkspace(): Promise<RtnStudentWorkspace> {
   if (!record(data) || !record(data.access) || typeof data.access.allowed !== "boolean" || !Array.isArray(data.assignments)
     || !data.assignments.every(item => record(item) && ["id", "assignment_id", "organization_id", "bank_id", "code", "title", "status"].every(key => typeof item[key] === "string") && typeof item.access_allowed === "boolean"
       && typeof item.can_start === "boolean" && ["current", "review_required"].includes(String(item.normative_status))
+      && validPolicySummary(item)
       && (item.normative_cutoff_at === null || typeof item.normative_cutoff_at === "string"))) invalidResponse();
   return data as unknown as RtnStudentWorkspace;
 }
@@ -159,6 +196,7 @@ export async function getRtnAssignment(assignmentId: string): Promise<RtnAssignm
   const data = await call("get_rtn_assignment", { p_assignment_id: assignmentId });
   if (!record(data) || !record(data.assignment) || typeof data.assignment.id !== "string"
     || typeof data.assignment.can_start !== "boolean" || !["current", "review_required"].includes(String(data.assignment.normative_status))
+    || !validPolicySummary(data.assignment)
     || !record(data.release) || typeof data.release.id !== "string" || typeof data.release.question_count !== "number"
     || !record(data.source) || typeof data.source.page_url !== "string" || typeof data.source.document_url !== "string") invalidResponse();
   materials(data.materials);

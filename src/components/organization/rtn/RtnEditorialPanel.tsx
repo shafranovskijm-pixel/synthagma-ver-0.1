@@ -28,6 +28,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
   const [effective, setEffective] = useState('');
   const [note, setNote] = useState('');
   const [correctionNote, setCorrectionNote] = useState('');
+  const [legalReviewNote, setLegalReviewNote] = useState('');
   const [packageError, setPackageError] = useState('');
   const [notice, setNotice] = useState('');
   const [qaReceipt, setQaReceipt] = useState('');
@@ -57,7 +58,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
       if (action === 'publish') {
         if (!keyId || !/^\d{4}-\d{2}-\d{2}$/.test(effective) || note.trim().length < 10) throw new Error('Выберите проверенный набор, дату применения и пояснение выпуска.');
         if (!query.data?.key_sets.some(item => item.id === keyId) || query.data.releases.some(item => item.key_set_id === keyId)) throw new Error('Обновите список: этот набор уже выпущен или недоступен.');
-        if (query.data.key_sets.find(item => item.id === keyId)?.normative_status !== 'current') throw new Error('Нужна повторная нормативная проверка с явным сроком следующей сверки. Сохраните проверенный пакет новой редакцией перед выпуском.');
+        if (query.data.key_sets.find(item => item.id === keyId)?.normative_status !== 'current') throw new Error('Редакция не допущена к выпуску. Проверьте нормативные сроки, источник и формулировки; сохраните новое заключение перед выпуском.');
         const result = await publishRtnModule(keyId, effective, note);
         return `Учебная редакция выпущена: ${result.release_id}. Старые попытки сохраняют прежнюю редакцию.`;
       }
@@ -86,13 +87,18 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
       }
       const revision = query.data?.bank_revisions.find(item => item.id === selection);
       if (!revision) throw new Error('Обновите список редакций вопросов.');
-      const result = await reviewRtnModule(revision.bank_id, revision.id, payload);
+      const policy = query.data?.review_policy_capabilities;
+      if (policy && (legalReviewNote.trim().length < 20 || legalReviewNote.trim().length > 2500)) throw new Error('Опишите проверку применимых норм и сроков: от 20 до 2500 знаков.');
+      const result = await reviewRtnModule(revision.bank_id, revision.id, payload, policy ? {
+        version: policy.version, legal_assessment: policy.legal_assessment, legal_review_note: legalReviewNote.trim(),
+      } : undefined);
       setKeyId(result.key_set_id);
       return 'Материалы и учебные ответы сохранены после проверки. Перед выпуском задайте дату применения.';
     },
     onSuccess: async (message, action) => {
       if (action === 'publish') { setKeyId(''); setEffective(''); setNote(''); }
       if (action === 'rollout') setRolloutRequest(null);
+      if (action === 'save' && mode === 'review') setLegalReviewNote('');
       setNotice(message); await refresh();
     },
   });
@@ -117,8 +123,8 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
           </>}
         </section>}
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          <label className="space-y-1 text-sm">Этап<select className={field} value={mode} onChange={event => { setMode(event.target.value as typeof mode); setSelection(''); setNotice(''); }}><option value="normalize">Сохранить формулировки из оригинала</option><option value="correct">Исправить извлечение из оригинала</option><option value="review">Утвердить материалы и учебные ответы</option></select></label>
-          <label className="min-w-0 space-y-1 text-sm">Исходная редакция<select className={field} value={selection} onChange={event => setSelection(event.target.value)}><option value="">Выберите редакцию</option>
+          <label className="space-y-1 text-sm">Этап<select className={field} value={mode} onChange={event => { setMode(event.target.value as typeof mode); setSelection(''); setLegalReviewNote(''); setNotice(''); }}><option value="normalize">Сохранить формулировки из оригинала</option><option value="correct">Исправить извлечение из оригинала</option><option value="review">Утвердить материалы и учебные ответы</option></select></label>
+          <label className="min-w-0 space-y-1 text-sm">Исходная редакция<select className={field} value={selection} onChange={event => { setSelection(event.target.value); setLegalReviewNote(''); }}><option value="">Выберите редакцию</option>
             {mode !== 'review' ? data.source_revisions.filter(item => mode === 'correct' ? !item.normalization_required : item.normalization_required).map(item => <option key={item.id} value={item.id}>{data.sources.find(s => s.id === item.source_id)?.title} · {item.sha256.slice(0, 12)}</option>)
               : data.bank_revisions.filter(item => data.banks.some(bank => bank.id === item.bank_id && !bank.parent_bank_id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов · извлечение {item.normalization_version ?? 1} · {item.created_at.slice(0, 10)} · {item.id.slice(0, 8)}</option>)}
           </select></label>
@@ -129,14 +135,18 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
           if (!file) return;
           setPackageError('');
           if (file.size > 2_000_000) { setPackageError('Пакет должен быть не больше 2 МБ.'); return; }
-          try { const content = await file.text(); parsePackage(content); setText(content); }
+          try { const content = await file.text(); parsePackage(content); setText(content); setLegalReviewNote(''); }
           catch { setPackageError('Не удалось прочитать JSON-пакет.'); }
         }} /></label>
         {packageError && <p role="alert" className="text-sm text-destructive">{packageError}</p>}
-        <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => { setText(event.target.value); setPackageError(''); }} /></label>
-        <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
+        <label className="block min-w-0 space-y-1 text-sm">Проверенный пакет JSON<textarea aria-label="Проверенный пакет JSON" className={`${field} min-h-36 font-mono text-xs`} value={text} onChange={event => { setText(event.target.value); setLegalReviewNote(''); setPackageError(''); }} /></label>
+        {mode === 'review' && (data.review_policy_capabilities ? <div className="min-w-0 space-y-3 rounded-xl border border-border p-3">
+          <p className="text-sm">Плановая сверка не прерывает обучение. Нормативные сроки, изменение источника и новые формулировки проверяются отдельно.</p>
+          <label className="block min-w-0 space-y-1 text-sm">Заключение о применимых нормах и сроках<textarea aria-label="Заключение о применимых нормах и сроках" className={`${field} min-h-24`} maxLength={2500} value={legalReviewNote} disabled={busy} onChange={event => setLegalReviewNote(event.target.value)} /><span className="block text-xs text-muted-foreground">Укажите проверенные основания и предельные даты либо обоснование отсутствия объявленной предельной даты. Сроки определяет сервер по проверенному пакету; прежние редакции не продлеваются.</span></label>
+        </div> : <p className="text-xs text-muted-foreground">Сервер использует прежние правила сроков проверки. Новая политика для этой проверки не подтверждена.</p>)}
+        <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" disabled={busy || !selection || !text.trim() || (mode === 'correct' && correctionNote.trim().length < 10) || (mode === 'review' && !!data.review_policy_capabilities && legalReviewNote.trim().length < 20)} onClick={() => mutation.mutate('save')}>{mode === 'review' ? 'Подтвердить предметную проверку' : 'Сохранить формулировки'}</Button>
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов · {item.normative_status === "current" ? `повторная сверка до ${item.editorial_review_before || item.normative_cutoff_at || "уточняется"}` : "нужна нормативная проверка"}</option>)}</select></label>
+          <label className="min-w-0 space-y-1 text-sm">Проверенный набор<select className={field} value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">Выберите набор</option>{data.key_sets.filter(item => !data.releases.some(r => r.key_set_id === item.id)).map(item => <option key={item.id} value={item.id}>{data.banks.find(b => b.id === item.bank_id)?.title} · {item.question_count} вопросов, {item.material_count} разделов · {item.normative_status === "current" ? item.approval_policy === "source-tracked-v2" ? `плановая сверка ${item.editorial_review_before || "не подтверждена"}${item.editorial_status === "due" ? " — срок наступил, выпуск доступен" : ""}` : `повторная сверка до ${item.editorial_review_before || item.normative_cutoff_at || "уточняется"}` : "нужна нормативная проверка"}</option>)}</select></label>
           <label className="space-y-1 text-sm">Применять с<input type="date" className={field} value={effective} onChange={event => setEffective(event.target.value)} /></label>
         </div>
         <label className="block space-y-1 text-sm">Основание выпуска<input className={field} value={note} onChange={event => setNote(event.target.value)} /></label>

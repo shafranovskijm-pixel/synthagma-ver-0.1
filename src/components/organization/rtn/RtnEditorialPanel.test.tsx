@@ -37,6 +37,54 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+describe("question-first editorial policy", () => {
+  const capability = { source_tracked_v2: true as const, version: "source-tracked-v2" as const, legal_assessment: "applicable_norms_and_end_dates_reviewed" as const };
+  const assessment = "Проверены применимые нормы, их редакции и объявленные предельные даты.";
+  const packageText = JSON.stringify({ questions: [{ id: "synthetic-question" }], review_note: "Предметная проверка технического пакета", module: { title: "Технический модуль", review_before: "2026-11-27" } });
+  it("uses the confirmed new policy for a fresh review with a substantive assessment and no extra consent checkbox", async () => {
+    api.getRtnEditorial.mockResolvedValue({ ...data, review_policy_capabilities: capability });
+    api.reviewRtnModule.mockResolvedValue({ key_set_id: "new-v2-key" });
+    mount(); openPanel(); await screen.findByRole("textbox", { name: "Проверенный пакет JSON" });
+    fireEvent.change(screen.getByLabelText("Этап"), { target: { value: "review" } });
+    fireEvent.change(screen.getByLabelText("Исходная редакция"), { target: { value: "parent-revision" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Проверенный пакет JSON" }), { target: { value: packageText } });
+    expect(screen.getByText(/Плановая сверка не прерывает обучение/)).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    const confirm = screen.getByRole("button", { name: "Подтвердить предметную проверку" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Заключение о применимых нормах и сроках"), { target: { value: assessment } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(api.reviewRtnModule).toHaveBeenCalledWith("parent-bank", "parent-revision", JSON.parse(packageText), {
+      version: capability.version, legal_assessment: capability.legal_assessment, legal_review_note: assessment,
+    }));
+  });
+  it("does not reuse a legal assessment after the source or reviewed package changes", async () => {
+    api.getRtnEditorial.mockResolvedValue({ ...data, review_policy_capabilities: capability });
+    mount(); openPanel(); await screen.findByRole("textbox", { name: "Проверенный пакет JSON" });
+    fireEvent.change(screen.getByLabelText("Этап"), { target: { value: "review" } });
+    fireEvent.change(screen.getByLabelText("Исходная редакция"), { target: { value: "parent-revision" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Проверенный пакет JSON" }), { target: { value: packageText } });
+    const note = screen.getByLabelText("Заключение о применимых нормах и сроках");
+    fireEvent.change(note, { target: { value: assessment } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Проверенный пакет JSON" }), { target: { value: `${packageText} ` } });
+    expect(note).toHaveValue("");
+    fireEvent.change(note, { target: { value: assessment } });
+    fireEvent.change(screen.getByLabelText("Исходная редакция"), { target: { value: "" } });
+    expect(note).toHaveValue(""); expect(api.reviewRtnModule).not.toHaveBeenCalled();
+  });
+  it("shows an overdue routine review as a reminder rather than disabling an otherwise admitted new-policy release", async () => {
+    api.getRtnEditorial.mockResolvedValue({ ...data, review_policy_capabilities: capability, key_sets: [{ ...data.key_sets[0], approval_policy: "source-tracked-v2", editorial_status: "due", normative_status: "current", legal_cutoff_at: null, legal_validity: "no_declared_cutoff_reviewed" }] });
+    api.publishRtnModule.mockResolvedValue({ release_id: "new-release" });
+    mount(); openPanel(); await screen.findByRole("textbox", { name: "Проверенный пакет JSON" });
+    expect(screen.getByRole("option", { name: /плановая сверка.*срок наступил, выпуск доступен/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Проверенный набор"), { target: { value: "key-a" } });
+    fireEvent.change(screen.getByLabelText("Применять с"), { target: { value: "2026-11-22" } });
+    fireEvent.change(screen.getByLabelText("Основание выпуска"), { target: { value: "Проверенный выпуск с учётом нормативных оснований" } });
+    fireEvent.click(screen.getByRole("button", { name: "Выпустить проверенную учебную редакцию" }));
+    await waitFor(() => expect(api.publishRtnModule).toHaveBeenCalledTimes(1));
+  });
+});
+
 describe("actual-admin RTN editorial controls", () => {
   it("does not enable general rollout until server integration gates and both live receipts are present", async () => {
     api.getRtnEditorial.mockResolvedValue({ ...data, rollout: { stage: "pilot", revision: 2, quota_integration_ready: true, privacy_integration_ready: false } });
