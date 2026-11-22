@@ -1,3 +1,5 @@
+import { createHttpFailureError } from './http-failure-diagnostics.ts';
+
 /** Public official documents only. No caller-controlled host, redirect, or storage path. */
 export type SourceRule = 'a1' | 'energy-xlsx';
 export type SourceDescriptor = {
@@ -44,8 +46,8 @@ export async function fetchOfficial(input: string, kind: 'page' | 'document', fe
         url = officialUrl(location, url.href);
         continue;
       }
-      if (response.status !== 200 || !response.body) {
-        await response.body?.cancel();
+      if (response.status !== 200) throw await createHttpFailureError(response, `OFFICIAL_HTTP_${response.status}`, controller.signal);
+      if (!response.body) {
         throw new Error(`OFFICIAL_HTTP_${response.status}`);
       }
       const length = Number(response.headers.get('content-length') || 0);

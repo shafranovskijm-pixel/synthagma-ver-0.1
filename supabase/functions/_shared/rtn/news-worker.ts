@@ -1,6 +1,7 @@
 import { fetchRtnNewsRss, RTN_NEWS_BYTE_LIMIT, RTN_NEWS_RSS_URL, type RtnNewsFeed } from './news-source.ts';
 import { sha256 } from './official-source.ts';
 import type { WithRtnNewsFetch } from './news-http-client.ts';
+import { reportNewsHttpFailure } from './source-diagnostics.ts';
 
 type RpcReply = { data: unknown; error: { code?: string; message?: string } | null };
 export type NewsRpcClient = { rpc(name: string, args?: Record<string, unknown>): PromiseLike<RpcReply> };
@@ -141,7 +142,10 @@ export async function executeRtnNewsCheck(client: NewsWorkerClient, claim: RtnNe
       // or a generated summary. Raw item's digest is retained as evidence only.
       items: feed.items.map(({ canonical_url, title, published_at, content_sha256 }) => ({ canonical_url, title, published_at, content_sha256 })),
     };
-  } catch (error) { completion = { status: 'error', error_code: safeRtnNewsError(error) }; }
+  } catch (error) {
+    reportNewsHttpFailure(claim, error);
+    completion = { status: 'error', error_code: safeRtnNewsError(error) };
+  }
   const result = await newsRpc<RtnNewsCheckReceipt>(client, 'complete_rtn_news_check', {
     p_run_id: claim.run_id, p_lease_token: claim.lease_token, p_result: completion,
   });
