@@ -48,7 +48,6 @@ export async function fetchOfficial(input: string, kind: 'page' | 'document', fe
       }
       if (response.status !== 200) throw await createHttpFailureError(response, `OFFICIAL_HTTP_${response.status}`, controller.signal);
       if (!response.body) {
-        await response.body?.cancel();
         throw new Error(`OFFICIAL_HTTP_${response.status}`);
       }
       const length = Number(response.headers.get('content-length') || 0);

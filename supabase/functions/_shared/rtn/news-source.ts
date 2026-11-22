@@ -249,7 +249,7 @@ export async function fetchRtnNewsRss(fetcher: typeof fetch = fetch): Promise<Rt
         continue;
       }
       if (response.status !== 200) throw await createHttpFailureError(response, `RTN_NEWS_HTTP_${response.status}`, controller.signal);
-      if (!response.body) { await response.body?.cancel(); return fail(`HTTP_${response.status}`); }
+      if (!response.body) return fail(`HTTP_${response.status}`);
       if (!/^(?:application\/(?:rss\+xml|xml)|text\/xml)(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) { await response.body.cancel(); return fail('CONTENT_TYPE_INVALID'); }
       const declared = response.headers.get('content-length');
       if (declared !== null && (!/^\d+$/.test(declared) || !Number.isSafeInteger(Number(declared)) || Number(declared) > RTN_NEWS_BYTE_LIMIT)) { await response.body.cancel(); return fail('BODY_SIZE_INVALID'); }
