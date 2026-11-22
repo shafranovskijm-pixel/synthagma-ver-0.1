@@ -25,14 +25,18 @@ export function RtnBankFreshness({ bank, checkResult, verificationFailed = false
   const sourceSuccess = [bank.last_success_at, checkResult?.last_success_at].filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
   const routineDue = bank.approval_policy === "source-tracked-v2" && bank.editorial_status === "due";
+  const uploadedOriginal = bank.source_acquisition_method === "admin_upload" && !!bank.source_revision_id;
   return <div className="min-w-0 space-y-3" role="group" aria-label="Актуальность редакции">
     <dl className="grid min-w-0 grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
       <div><dt>Источник проверен</dt><dd className="font-medium text-foreground">{confirmedDate(sourceSuccess)}</dd></div>
       <div><dt>Курс обновлён</dt><dd className="font-medium text-foreground">{confirmedDate(published)}</dd></div>
       <div><dt>Применяется с</dt><dd className="font-medium text-foreground">{effectiveDate(bank.effective_from)}</dd></div>
     </dl>
+    {uploadedOriginal && <p className="text-xs text-muted-foreground">Файл загружен администратором: {confirmedDate(bank.source_received_at, true)}{bank.source_received_at ? " МСК" : ""}. Это не дата автоматической проверки сайта или выпуска курса.</p>}
     {officialUrl && <a href={officialUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-sm text-primary underline underline-offset-4">Официальный источник<ExternalLink className="h-3.5 w-3.5 shrink-0" /></a>}
-    {sourceFailed && <p role="status" className="text-xs text-amber-800 dark:text-amber-300">Не удалось сверить официальный источник. {bank.release_id ? "Последняя выпущенная редакция сохранена; её даты показаны выше." : "Актуальность вопросов пока не подтверждена."}</p>}
+    {sourceFailed && <p role="status" className="text-xs text-amber-800 dark:text-amber-300">{uploadedOriginal
+      ? `Автоматическая проверка источника недоступна. ${bank.release_id ? "Используется официальный файл, загруженный администратором." : "Добавлен официальный файл; учебная редакция ещё не выпущена."}`
+      : `Не удалось сверить официальный источник. ${bank.release_id ? "Последняя выпущенная редакция сохранена; её даты показаны выше." : "Актуальность вопросов пока не подтверждена."}`}</p>}
     {routineDue && <p className="text-xs text-muted-foreground">Наступил срок плановой сверки. {bank.normative_status === "current" ? "Обучение по проверенной редакции доступно." : "Доступ к новым попыткам определяется состоянием редакции."}</p>}
     {details && bank.approval_policy === "source-tracked-v2" && <div className="space-y-1 text-xs text-muted-foreground">
       <p>Плановая сверка: {effectiveDate(bank.editorial_review_before)}. Её срок сам по себе не приостанавливает обучение.</p>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { getRtnEditorial, openRtnPaidRollout, publishRtnModule, reviewRtnModule, rtnEditorialWorker, type RtnRolloutRequest } from '@/api/rtn-editorial';
+import { RtnOfficialFileUpload } from './RtnOfficialFileUpload';
 
 const field = 'min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm';
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Не удалось выполнить действие.';
@@ -106,6 +107,7 @@ function RtnEditorialContent({ actorId }: { actorId: string }) {
   const busy = mutation.isPending || query.isFetching;
   return <section className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5">
     <Button className="max-sm:h-auto max-sm:min-h-10 max-sm:min-w-0 max-sm:max-w-full max-sm:whitespace-normal max-sm:break-words max-sm:text-left" variant="ghost" aria-expanded={open} onClick={() => setOpen(v => !v)}>Редакции и предметная проверка · администратор</Button>
+    <RtnOfficialFileUpload workspace={query.data} showTrigger={open && !query.error} disabled={busy} onAccepted={refresh} onRefresh={async () => { const result = await query.refetch(); if (result.error) throw result.error; }} />
     {open && <div className="mt-4 min-w-0 space-y-4">
       <p className="text-sm text-muted-foreground">Оригинал, извлечённые формулировки, проверенные учебные ответы и выпуск сохраняются отдельно. Непроверенные ключи не включаются в обучение. Клиентские курсы не изменяются.</p>
       {query.isPending && <p role="status">Загружаем редакции…</p>}

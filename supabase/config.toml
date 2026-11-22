@@ -322,3 +322,8 @@ verify_jwt = false
 # Gateway JWT checking would reject that non-JWT opaque credential prematurely.
 [functions.rtn-news-cron]
 verify_jwt = false
+
+# A genuine user bearer is checked with Auth and current platform-admin/privacy
+# guards before reading an upload and again before the narrow finalization RPC.
+[functions.rtn-source-upload]
+verify_jwt = false

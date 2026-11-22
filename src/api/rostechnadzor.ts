@@ -103,6 +103,9 @@ export async function getRtnWorkspace(organizationId: string): Promise<RtnWorksp
     && ["current", "review_required"].includes(String(bank.normative_status))
     && (bank.normative_cutoff_at === null || typeof bank.normative_cutoff_at === "string")
     && validPolicySummary(bank)
+    && (bank.source_acquisition_method === undefined || ["admin_upload", "official_http", "unknown"].includes(String(bank.source_acquisition_method)))
+    && (bank.source_received_at === undefined || nullableTimestamp(bank.source_received_at))
+    && (bank.source_acquisition_method !== "admin_upload" || typeof bank.source_revision_id === "string" && bank.source_revision_id.length > 0)
     && (bank.published_at === undefined || nullableTimestamp(bank.published_at))
     && (bank.next_check_after === undefined || nullableTimestamp(bank.next_check_after))
     && typeof bank.can_manual_check === "boolean" && ["unreviewed", "reviewed", "released"].includes(String(bank.key_status)))) invalidResponse();

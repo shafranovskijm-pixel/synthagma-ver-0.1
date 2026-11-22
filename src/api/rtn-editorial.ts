@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { RtnReviewPolicySummary } from '@/types/rostechnadzor';
+import { isRtnManualImportCapability, type RtnManualSourceImportCapability, type RtnSourceImportDescriptor } from './rtn-source-upload';
 
 export interface RtnReviewPolicyV2 {
   version: 'source-tracked-v2';
@@ -15,8 +16,9 @@ export interface RtnReviewPolicyCapability {
 
 export interface EditorialWorkspace {
   review_policy_capabilities?: RtnReviewPolicyCapability;
+  manual_source_import_capability?: RtnManualSourceImportCapability;
   rollout?: { stage: 'pilot' | 'paid'; revision: number; quota_integration_ready: boolean; privacy_integration_ready: boolean };
-  sources: { id: string; code: string; title: string }[];
+  sources: (Partial<RtnSourceImportDescriptor> & { id: string; code: string; title: string })[];
   banks: { id: string; source_id: string; code: string; title: string; parent_bank_id: string | null }[];
   source_revisions: { id: string; source_id: string; sha256: string; captured_at: string; normalization_required: boolean }[];
   bank_revisions: { id: string; bank_id: string; source_revision_id: string; question_count: number; created_at: string; normalization_version?: number }[];
@@ -36,6 +38,7 @@ export async function getRtnEditorial(): Promise<EditorialWorkspace> {
   const capability = data.review_policy_capabilities;
   if (capability !== undefined && (!capability || capability.source_tracked_v2 !== true || capability.version !== 'source-tracked-v2'
     || capability.legal_assessment !== 'applicable_norms_and_end_dates_reviewed')) throw new Error('Не удалось подтвердить правила новой предметной проверки. Обновите данные.');
+  if (data.manual_source_import_capability !== undefined && !isRtnManualImportCapability(data.manual_source_import_capability)) throw new Error('Не удалось подтвердить возможность загрузки официального оригинала. Обновите данные.');
   return data;
 }
 export async function rtnEditorialWorker(body: Record<string, unknown>) {

@@ -18,6 +18,8 @@ export interface RtnBank extends RtnReviewPolicySummary {
   domain: string;
   source_id: string;
   source_revision_id: string | null;
+  source_acquisition_method?: "admin_upload" | "official_http" | "unknown";
+  source_received_at?: string | null;
   bank_revision_id?: string | null;
   source_url: string | null;
   document_url?: string | null;
