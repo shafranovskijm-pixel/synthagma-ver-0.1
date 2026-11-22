@@ -10,6 +10,7 @@ on:
       - supabase/tests/rtn-freshness/**
       - supabase/tests/rtn-question-review-policy/**
       - supabase/tests/rtn-manual-source-backoff/**
+      - supabase/tests/rtn-manual-source-import/**
       - supabase/tests/rtn-core-reconciliation/**
       - supabase/tests/rtn-global-updates/**
       - supabase/tests/rtn-personal-notifications/**
@@ -19,6 +20,7 @@ on:
       - .github/workflows/rtn-managed.yml
       - src/api/rostechnadzor*
       - src/api/rtn-editorial*
+      - src/api/rtn-source-upload*
       - src/api/rtn-updates*
       - src/api/rtn-news-check*
       - src/types/rtn-news-check.ts
@@ -40,6 +42,7 @@ on:
       - src/pages/StudentDashboard.tsx
       - supabase/functions/_shared/rtn/**
       - supabase/functions/rtn-source-check/**
+      - supabase/functions/rtn-source-upload/**
       - supabase/functions/rtn-source-cron/**
       - supabase/functions/rtn-news-check/**
       - supabase/functions/rtn-news-cron/**
@@ -65,7 +68,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - name: Workspace learner editorial and official-source regressions
-        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rostechnadzor.policy.test.ts src/api/rtn-editorial.policy.test.ts src/api/rtn-updates.test.ts src/api/rtn-personal-notifications.test.ts src/hooks/useRtnPersonalNotifications.test.tsx src/components/organization/OrgNotifications.rtn.test.tsx src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
+        run: node node_modules/vitest/vitest.mjs run src/api/rostechnadzor.test.ts src/api/rostechnadzor.policy.test.ts src/api/rtn-editorial.policy.test.ts src/api/rtn-editorial.upload.test.ts src/api/rostechnadzor.manual-import.test.ts src/api/rtn-updates.test.ts src/api/rtn-personal-notifications.test.ts src/hooks/useRtnPersonalNotifications.test.tsx src/components/organization/OrgNotifications.rtn.test.tsx src/components/organization/rtn src/components/student/rtn src/components/organization/tabs/CoursesTab.rtn-navigation.test.tsx src/lib/__tests__/rtnWorkspaceNavigation.test.ts src/utils/authReturn.test.ts src/utils/__tests__/loginDestination.test.ts supabase/functions/_shared/rtn --maxWorkers=1
       - run: npm run build
   edge:
     runs-on: ubuntu-24.04
@@ -80,6 +83,7 @@ jobs:
       - name: Edge runtime types and bounded native decompression
         run: |
           deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/rtn-source-check/index.ts
+          deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/rtn-source-upload/index.ts
           deno check --config supabase/functions/rtn-source-cron/deno.json --no-lock supabase/functions/rtn-source-cron/index.ts
           deno check --config supabase/functions/rtn-source-check/deno.json --no-lock supabase/functions/_shared/rtn/news-http-client.ts
           deno check --config supabase/functions/rtn-news-check/deno.json --no-lock supabase/functions/rtn-news-check/index.ts
@@ -479,6 +483,42 @@ jobs:
         with:
           name: rtn-manual-backoff-native-${{ github.run_id }}-${{ github.run_attempt }}
           path: outputs/rtn-manual-source-backoff-sql/
+          if-no-files-found: error
+          retention-days: 14
+  manual-source-import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: rtn_manual_source_import_lab_ci
+          POSTGRES_USER: lab_bootstrap
+          POSTGRES_PASSWORD: synthetic_rtn_manual_import_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lab_bootstrap -d rtn_manual_source_import_lab_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: rtn_manual_source_import_lab_ci
+      PGUSER: lab_bootstrap
+      PGPASSWORD: synthetic_rtn_manual_import_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Manual original provenance authority replay and source concurrency
+        run: python scripts/test-rtn-manual-source-import-sql.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rtn-manual-import-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/rtn-manual-source-import-sql/
           if-no-files-found: error
           retention-days: 14
   source-backoff:
