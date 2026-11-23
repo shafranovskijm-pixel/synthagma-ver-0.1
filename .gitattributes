@@ -38,3 +38,6 @@ public/guides/*.pdf -text -diff
 supabase/migrations/20261122100000_rtn_question_review_policy_v2.sql text eol=lf
 supabase/migrations/20261122133000_rtn_manual_source_backoff.sql text eol=lf
 supabase/migrations/20261123100000_rtn_manual_source_import.sql text eol=lf
+
+# The isolated B1 fixture manifest pins exact bytes, including inherited CRLF.
+supabase/tests/uc-issued-recipient/** -text whitespace=trailing-space,space-before-tab,cr-at-eol

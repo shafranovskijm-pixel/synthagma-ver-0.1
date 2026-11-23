@@ -1,0 +1,78 @@
+name: UC issued PDF recipient request
+on:
+  pull_request:
+    paths:
+      - 'src/lib/educationIssuance/recipientRequest.ts'
+      - 'src/lib/educationIssuance/__tests__/recipientRequest*'
+      - 'src/lib/__tests__/studentDocumentInbox.history.test.ts'
+      - 'src/components/organization/education-issuance/IssuedRecipientRequest.tsx'
+      - 'src/components/organization/education-issuance/RecordDialog.tsx'
+      - 'src/components/organization/education-issuance/__tests__/IssuedRecipientRequest.test.tsx'
+      - 'supabase/migrations/20261123150000_uc_issued_recipient_bridge.sql'
+      - 'supabase/migrations/20261123160000_uc_issued_inbox_current_source.sql'
+      - 'supabase/tests/uc-issued-recipient/**'
+      - '.github/workflows/uc-issued-recipient.yml'
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Record exact reviewed inputs
+        run: |
+          mkdir -p outputs/uc-issued-recipient-frontend
+          git rev-parse HEAD > outputs/uc-issued-recipient-frontend/head.txt
+          node --version > outputs/uc-issued-recipient-frontend/node.txt
+          sha256sum supabase/migrations/20261123150000_uc_issued_recipient_bridge.sql supabase/migrations/20261123160000_uc_issued_inbox_current_source.sql src/lib/educationIssuance/recipientRequest.ts src/components/organization/education-issuance/IssuedRecipientRequest.tsx src/components/organization/education-issuance/RecordDialog.tsx > outputs/uc-issued-recipient-frontend/source.sha256
+      - name: Check complete application types
+        run: npm run typecheck 2>&1 | tee outputs/uc-issued-recipient-frontend/typecheck.txt
+      - name: Durable requests, actual source boundaries and preserved confirmation history
+        run: node node_modules/vitest/vitest.mjs run src/lib/educationIssuance/__tests__/recipientRequest.test.ts src/components/organization/education-issuance/__tests__/IssuedRecipientRequest.test.tsx src/lib/__tests__/studentDocumentInbox.history.test.ts --maxWorkers=1 --reporter=json --outputFile=outputs/uc-issued-recipient-frontend/tests.json 2>&1 | tee outputs/uc-issued-recipient-frontend/tests.txt
+      - name: Build production application
+        run: npm run build 2>&1 | tee outputs/uc-issued-recipient-frontend/build.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-issued-recipient-frontend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/uc-issued-recipient-frontend/
+          if-no-files-found: error
+          retention-days: 14
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      B1_NATIVE_ARTIFACTS: outputs/uc-issued-recipient-native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Pull exact PostgreSQL17 image
+        run: docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+      - name: Actual issued PDF, recipient confirmation, preservation and two-session races
+        run: node supabase/tests/uc-issued-recipient/run-native.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-issued-recipient-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/uc-issued-recipient-native/
+          if-no-files-found: error
+          retention-days: 14

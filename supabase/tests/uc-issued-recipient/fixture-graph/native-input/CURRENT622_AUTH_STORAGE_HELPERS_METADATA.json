@@ -1,0 +1,164 @@
+{
+  "status": "ACTUAL_CURRENT622_READ_ONLY_METADATA_CAPTURE",
+  "tool": "lovable.query_database",
+  "project_id": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "sql": "SELECT p.oid::regprocedure::text AS signature,n.nspname AS schema,p.proname AS name,pg_get_functiondef(p.oid) AS definition,pg_get_userbyid(p.proowner)AS owner,p.prosecdef AS security_definer,p.provolatile AS volatility,p.proconfig AS config,p.proacl AS acl FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE (n.nspname='storage'AND p.proname='foldername'AND p.pronargs=1)OR(n.nspname='public'AND p.proname IN('storage_try_uuid','can_access_organization','has_role','account_deletion_access_allowed','uc_document_storage_scope','uc_document_action_allowed','uc_document_storage_access','is_active_user','get_admin_staff_role','has_org_staff_permission','is_organization_owner','current_organization_id')) ORDER BY n.nspname,p.proname,p.oid::regprocedure::text",
+  "result": {
+    "rows": [
+      {
+        "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+        "name": "account_deletion_access_allowed",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "account_deletion_access_allowed()",
+        "volatility": "s"
+      },
+      {
+        "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.can_access_organization(_organization_id uuid, _permission text DEFAULT 'settings.read'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _organization_id IS NOT NULL\n    AND auth.uid() IS NOT NULL\n    AND (\n      public.has_role(auth.uid(), 'admin'::public.app_role)\n      OR EXISTS (\n        SELECT 1\n        FROM public.user_roles ur\n        JOIN public.profiles p ON p.user_id = ur.user_id\n        WHERE ur.user_id = auth.uid()\n          AND ur.role = 'organization'::public.app_role\n          AND p.organization_id = _organization_id\n          AND NOT EXISTS (\n            SELECT 1\n            FROM public.org_staff os\n            WHERE os.user_id = auth.uid()\n              AND os.organization_id = _organization_id\n          )\n      )\n      OR (\n        _permission IS NOT NULL\n        AND EXISTS (\n          SELECT 1\n          FROM public.org_staff os\n          WHERE os.user_id = auth.uid()\n            AND os.organization_id = _organization_id\n            AND (os.expires_at IS NULL OR os.expires_at > now())\n        )\n        AND public.has_org_staff_permission(auth.uid(), _organization_id, _permission)\n      )\n    )\n$function$\n",
+        "name": "can_access_organization",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "can_access_organization(uuid,text)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.current_organization_id()\n RETURNS uuid\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_org uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN NULL;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.profiles\n  WHERE user_id = auth.uid()\n  LIMIT 1;\n\n  IF v_org IS NOT NULL THEN\n    RETURN v_org;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.org_staff\n  WHERE user_id = auth.uid()\n    AND (expires_at IS NULL OR expires_at > now())\n  ORDER BY\n    CASE role\n      WHEN 'owner' THEN 1\n      WHEN 'admin' THEN 2\n      WHEN 'school_editor' THEN 3\n      WHEN 'course_editor' THEN 4\n      WHEN 'teacher' THEN 5\n      WHEN 'sales_manager' THEN 6\n      ELSE 10\n    END,\n    created_at ASC\n  LIMIT 1;\n\n  RETURN v_org;\nEND;\n$function$\n",
+        "name": "current_organization_id",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "current_organization_id()",
+        "volatility": "s"
+      },
+      {
+        "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.get_admin_staff_role(_user_id uuid)\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT role FROM public.admin_staff WHERE user_id = _user_id LIMIT 1\n$function$\n",
+        "name": "get_admin_staff_role",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "get_admin_staff_role(uuid)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+        "name": "has_org_staff_permission",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "has_org_staff_permission(uuid,uuid,text)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+        "name": "has_role",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "has_role(app_role,uuid)",
+        "volatility": "v"
+      },
+      {
+        "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+        "name": "has_role",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "has_role(uuid,app_role)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.storage_try_uuid(_value text)\n RETURNS uuid\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF _value IS NULL THEN RETURN NULL; END IF;\n  RETURN _value::uuid;\nEXCEPTION WHEN others THEN\n  RETURN NULL;\nEND;\n$function$\n",
+        "name": "storage_try_uuid",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": false,
+        "signature": "storage_try_uuid(text)",
+        "volatility": "i"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.uc_document_action_allowed(p_org uuid, p_action text, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_document_has_action(p_org,p_action)\n  AND public.uc_document_scope_allowed(p_org,p_group,p_enrollment)\n$function$\n",
+        "name": "uc_document_action_allowed",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "uc_document_action_allowed(uuid,text,uuid,uuid)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres,anon=X/postgres}",
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.uc_document_storage_access(p_bucket text, p_name text, p_write boolean DEFAULT false)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_user uuid:=auth.uid(); v_target uuid; v_orgs uuid[]; v_org uuid;\nBEGIN\n IF v_user IS NULL OR NOT public.account_deletion_access_allowed()\n OR p_bucket IS NULL OR p_name IS NULL OR p_name='' OR left(p_name,1)='/'\n OR p_name ~ '(^|/)[.]{1,2}(/|$)' OR position(chr(92) IN p_name)>0\n OR p_name ~ '[?#]' OR p_name ~* '%(2f|5c|2e)' OR position('//' IN p_name)>0 THEN RETURN false; END IF;\n IF p_bucket NOT IN('student-documents','company-documents') THEN RETURN false; END IF;\n IF public.has_role('admin'::public.app_role,v_user) THEN RETURN true; END IF;\n IF p_bucket='company-documents' THEN\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',1));\n  RETURN split_part(p_name,'/',2)<>'' AND public.uc_document_company_access(v_target,p_write);\n END IF;\n IF split_part(p_name,'/',1)='students' THEN\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',2));\n  RETURN split_part(p_name,'/',3)<>'' AND public.uc_document_enrollment_access(v_target,p_write);\n ELSIF split_part(p_name,'/',1)='avatars' THEN\n  IF p_name !~ '^avatars/[0-9A-Fa-f-]{36}[.][A-Za-z0-9]+$' THEN RETURN false; END IF;\n  v_target:=public.storage_try_uuid(split_part(split_part(p_name,'/',2),'.',1));\n ELSIF split_part(p_name,'/',1)='support' THEN\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',2));\n  RETURN v_target=v_user AND split_part(p_name,'/',3)<>'';\n ELSE\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',1));\n  IF split_part(p_name,'/',2)='' THEN RETURN false; END IF;\n END IF;\n IF v_target IS NULL OR EXISTS(SELECT 1 FROM public.account_deletion_revocations r WHERE r.user_id=v_target) THEN RETURN false; END IF;\n IF v_target=v_user THEN RETURN true; END IF;\n SELECT array_agg(DISTINCT scoped.org) INTO v_orgs FROM (\n  SELECT p.organization_id AS org FROM public.profiles p WHERE p.user_id=v_target\n  UNION ALL\n  SELECT d.organization_id FROM public.student_identity_documents d WHERE d.user_id=v_target\n  AND (d.file_path=p_name OR d.file_url=p_name\n    OR right(split_part(d.file_url,'?',1),length('/student-documents/'||p_name))='/student-documents/'||p_name)\n ) scoped WHERE scoped.org IS NOT NULL;\n IF cardinality(v_orgs) IS DISTINCT FROM 1 THEN RETURN false; END IF;\n v_org:=v_orgs[1];\n RETURN public.uc_document_org_access(v_org,p_write);\nEND\n$function$\n",
+        "name": "uc_document_storage_access",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "uc_document_storage_access(text,text,boolean)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres,anon=X/postgres}",
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.uc_document_storage_scope(p_bucket text, p_name text)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_org uuid;v_user uuid;v_enrollment uuid;v_group uuid;\nBEGIN\n IF p_bucket IN('external-contracts','signed-documents') THEN RETURN public.uc_signature_file_scope(p_bucket,p_name); END IF;\n IF p_bucket NOT IN('student-documents','company-documents','billing-documents','org-documents','incoming-documents','program-documents','frdo-documents','signed-documents','external-contracts') THEN RETURN true; END IF;\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() THEN RETURN false; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.role='teacher')\n OR public.has_role(auth.uid(),'admin'::public.app_role) THEN RETURN true; END IF;\n IF p_bucket='student-documents' THEN\n  IF split_part(p_name,'/',1)='students' THEN\n   v_enrollment:=public.storage_try_uuid(split_part(p_name,'/',2));\n   SELECT c.organization_id,e.user_id INTO v_org,v_user FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id WHERE e.id=v_enrollment;\n   RETURN v_user=auth.uid() OR (v_org IS NOT NULL AND (NOT public.uc_document_teacher_limited(v_org) OR public.uc_document_scope_allowed(v_org,NULL,v_enrollment)));\n  END IF;\n  IF split_part(p_name,'/',1) IN('avatars','support') THEN\n   v_user:=public.storage_try_uuid(split_part(split_part(p_name,'/',2),'.',1));\n  ELSE v_user:=public.storage_try_uuid(split_part(p_name,'/',1)); END IF;\n  IF v_user=auth.uid() THEN RETURN true; END IF;\n  SELECT organization_id INTO v_org FROM public.profiles WHERE user_id=v_user;\n  RETURN v_org IS NOT NULL AND public.uc_document_student_scope_allowed(v_org,v_user);\n ELSIF p_bucket='company-documents' THEN\n  SELECT c.organization_id,c.user_id INTO v_org,v_user FROM public.companies c WHERE c.id=public.storage_try_uuid(split_part(p_name,'/',1));\n  RETURN v_user=auth.uid() OR (v_org IS NOT NULL AND NOT public.uc_document_teacher_limited(v_org));\n ELSIF p_bucket IN('signed-documents','external-contracts') AND EXISTS(\n  SELECT 1 FROM public.document_signatures s WHERE public.uc_document_signature_read_scope(s.id) AND s.organization_id::text=split_part(p_name,'/',1)\n   AND (s.signed_document_path=p_name AND p_bucket='signed-documents'\n     OR s.handwritten_scan_path=p_name AND p_bucket='external-contracts'\n     OR s.signed_source_bucket=p_bucket AND s.signed_source_path=p_name\n     OR p_bucket='external-contracts' AND EXISTS(SELECT 1 FROM public.signature_revisions r WHERE r.signature_id=s.id\n       AND (r.file_url=p_name OR right(split_part(r.file_url,'?',1),length('/external-contracts/'||p_name))='/external-contracts/'||p_name))))\n THEN RETURN true;\n END IF;\n IF p_bucket='external-contracts' AND EXISTS(SELECT 1 FROM public.document_signatures s\n  WHERE s.recipient_user_id=auth.uid() AND s.deleted_at IS NULL AND s.expires_at>now()\n   AND s.status IN('sent','viewed','in_review') AND\n   left(p_name,length(s.organization_id::text||'/signed-scans/'||s.id::text||'-'))=s.organization_id::text||'/signed-scans/'||s.id::text||'-')\n THEN RETURN true; END IF;\n IF split_part(p_name,'/',1)='organizations' THEN\n  v_org:=public.storage_try_uuid(split_part(p_name,'/',2));\n  IF p_bucket='billing-documents' AND split_part(p_name,'/',3)='group-documents' THEN\n   v_group:=public.storage_try_uuid(split_part(p_name,'/',4));\n   RETURN public.uc_document_scope_allowed(v_org,v_group,NULL) AND v_group IS NOT NULL AND split_part(p_name,'/',5)<>'';\n  END IF;\n ELSE v_org:=public.storage_try_uuid(split_part(p_name,'/',1)); END IF;\n IF v_org IS NULL THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(v_org) THEN RETURN true; END IF;\n IF p_bucket='billing-documents' THEN\n  IF split_part(p_name,'/',2)='contracts' AND split_part(p_name,'/',4)<>'' AND split_part(p_name,'/',5)<>'' THEN\n   v_group:=public.storage_try_uuid(split_part(p_name,'/',3));\n   RETURN v_group IS NOT NULL AND public.uc_document_scope_allowed(v_org,v_group,NULL);\n  END IF;\n  RETURN EXISTS(SELECT 1 FROM public.group_documents d WHERE d.organization_id=v_org AND d.file_path=p_name\n   AND public.uc_document_record_scope(d.organization_id,d.group_id,NULL,d.student_user_id,NULL))\n   OR EXISTS(SELECT 1 FROM public.org_contracts d WHERE d.organization_id=v_org AND p_name IN(d.file_path,d.docx_path,d.pdf_path)\n   AND public.uc_document_contract_scope(d.organization_id,d.student_group_id,d.student_user_id,d.company_id,d.students));\n END IF;\n RETURN false;\nEND;$function$\n",
+        "name": "uc_document_storage_scope",
+        "owner": "postgres",
+        "schema": "public",
+        "security_definer": true,
+        "signature": "uc_document_storage_scope(text,text)",
+        "volatility": "s"
+      },
+      {
+        "acl": "{=X/supabase_storage_admin,supabase_storage_admin=X/supabase_storage_admin}",
+        "config": null,
+        "definition": "CREATE OR REPLACE FUNCTION storage.foldername(name text)\n RETURNS text[]\n LANGUAGE plpgsql\n IMMUTABLE\nAS $function$\nDECLARE\n    _parts text[];\nBEGIN\n    -- Split on \"/\" to get path segments\n    SELECT string_to_array(name, '/') INTO _parts;\n    -- Return everything except the last segment\n    RETURN _parts[1 : array_length(_parts,1) - 1];\nEND\n$function$\n",
+        "name": "foldername",
+        "owner": "supabase_storage_admin",
+        "schema": "storage",
+        "security_definer": false,
+        "signature": "storage.foldername(text)",
+        "volatility": "i"
+      }
+    ]
+  }
+}

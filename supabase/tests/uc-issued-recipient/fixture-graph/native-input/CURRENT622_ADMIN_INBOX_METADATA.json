@@ -1,0 +1,146 @@
+{
+  "status": "ACTUAL_CURRENT622_READ_ONLY_ADMIN_INBOX_METADATA_CAPTURE",
+  "project_id": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "sql": "SELECT jsonb_build_object('captured_at',clock_timestamp(),'migration_count',(SELECT count(*) FROM supabase_migrations.schema_migrations),'columns',(SELECT jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'not_null',a.attnotnull,'default',pg_get_expr(d.adbin,d.adrelid)) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid='public.admin_org_messages'::regclass AND a.attnum>0 AND NOT a.attisdropped),'constraints',(SELECT coalesce(jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid,true)) ORDER BY conname),'[]') FROM pg_constraint WHERE conrelid='public.admin_org_messages'::regclass),'triggers',(SELECT coalesce(jsonb_agg(jsonb_build_object('name',t.tgname,'definition',pg_get_triggerdef(t.oid,true),'function',pg_get_functiondef(t.tgfoid)) ORDER BY t.tgname),'[]') FROM pg_trigger t WHERE t.tgrelid='public.admin_org_messages'::regclass AND NOT t.tgisinternal),'policies',(SELECT coalesce(jsonb_agg(jsonb_build_object('name',polname,'command',polcmd,'permissive',polpermissive,'using',pg_get_expr(polqual,polrelid),'check',pg_get_expr(polwithcheck,polrelid),'roles',ARRAY(SELECT CASE WHEN r=0 THEN 'PUBLIC' ELSE pg_get_userbyid(r) END FROM unnest(polroles)r)) ORDER BY polname),'[]') FROM pg_policy WHERE polrelid='public.admin_org_messages'::regclass)) metadata",
+  "result": {
+    "rows": [
+      {
+        "metadata": {
+          "captured_at": "2026-10-23T07:05:50.893009+00:00",
+          "columns": [
+            {
+              "default": "gen_random_uuid()",
+              "name": "id",
+              "not_null": true,
+              "type": "uuid"
+            },
+            {
+              "default": null,
+              "name": "organization_id",
+              "not_null": true,
+              "type": "uuid"
+            },
+            {
+              "default": null,
+              "name": "sender_user_id",
+              "not_null": true,
+              "type": "uuid"
+            },
+            {
+              "default": "'admin'::text",
+              "name": "sender_role",
+              "not_null": true,
+              "type": "text"
+            },
+            {
+              "default": null,
+              "name": "content",
+              "not_null": false,
+              "type": "text"
+            },
+            {
+              "default": null,
+              "name": "attachment_url",
+              "not_null": false,
+              "type": "text"
+            },
+            {
+              "default": null,
+              "name": "attachment_name",
+              "not_null": false,
+              "type": "text"
+            },
+            {
+              "default": null,
+              "name": "attachment_type",
+              "not_null": false,
+              "type": "text"
+            },
+            {
+              "default": "false",
+              "name": "is_read",
+              "not_null": true,
+              "type": "boolean"
+            },
+            {
+              "default": "now()",
+              "name": "created_at",
+              "not_null": true,
+              "type": "timestamp with time zone"
+            }
+          ],
+          "constraints": [
+            {
+              "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+              "name": "admin_org_messages_organization_id_fkey"
+            },
+            {
+              "definition": "PRIMARY KEY (id)",
+              "name": "admin_org_messages_pkey"
+            }
+          ],
+          "migration_count": 622,
+          "policies": [
+            {
+              "check": "has_role('admin'::app_role, auth.uid())",
+              "command": "*",
+              "name": "Admins full access on admin_org_messages",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "has_role('admin'::app_role, auth.uid())"
+            },
+            {
+              "check": "(organization_id = current_organization_id())",
+              "command": "w",
+              "name": "Orgs can mark admin messages as read",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "(organization_id = current_organization_id())"
+            },
+            {
+              "check": "((organization_id = current_organization_id()) AND (sender_role = 'organization'::text) AND (sender_user_id = auth.uid()))",
+              "command": "a",
+              "name": "Orgs can reply to admin messages",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": null
+            },
+            {
+              "check": null,
+              "command": "r",
+              "name": "Orgs can view own admin messages",
+              "permissive": true,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "(organization_id = current_organization_id())"
+            },
+            {
+              "check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+              "command": "*",
+              "name": "account_deletion_no_revoked_access",
+              "permissive": false,
+              "roles": [
+                "authenticated"
+              ],
+              "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+            }
+          ],
+          "triggers": [
+            {
+              "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON admin_org_messages FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('sender_user_id')",
+              "function": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+              "name": "account_deletion_subject_fence"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
