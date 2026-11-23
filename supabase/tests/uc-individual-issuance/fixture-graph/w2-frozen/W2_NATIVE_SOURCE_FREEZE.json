@@ -1,22 +1,24 @@
 {
-  "at_utc": "2026-11-23T18:29:49.219Z",
-  "kind": "ROOT_R6_ACTUAL_42P01_SOURCE_FIX_AND_NATIVE_ACK",
+  "at_utc": "2026-11-23T19:34:08.159Z",
+  "kind": "W2_R7_FROZEN_SOURCE_FOR_REQUIRED_EXACT_HEAD_CI_ONLY",
   "status": "FROZEN_ROOT_NATIVE_EXECUTION_ACK",
   "candidate": {
-    "sha256": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
-    "bytes": 389267,
-    "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql"
+    "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
+    "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+    "bytes": 390227
   },
   "newFunctionCount": 53,
   "newPrivateTableCount": 5,
-  "changed_new_functions": [
-    "uc_individual_issuance_private.mutation_receipt"
-  ],
-  "other52_newdefinitions_exact": true,
-  "alloutside_newfunctions_exact": true,
-  "fix": "onlylocalnamesv_case_id/v_case_revision evcolumnsqualified; no invalidimplicitfunctionlocalnamespace",
-  "actual_failure": "ownedrollbackdiagnostic542981/SQLSTATE42P01",
-  "native_authorization": "Same previouslyfailedONEnew3programmeownedPG17case afterminimalSUTfix, no oldcoresuite",
+  "changed_new_functions": [],
+  "fix": "Only old individual record/list duplicate capability becomesfalse for exact persisted private source tuple; old grouped records keep actualpriorcapabilities.",
+  "actual_failure": {
+    "rootVerifiedCi": "81e7400/native262d5c",
+    "legacyCanIssueDuplicate": true,
+    "privateSources": 1,
+    "groupedSources": 0,
+    "proofAvailability": "currently_unavailable"
+  },
+  "native_authorization": "Root canonical promotion +explicit required newCI; NOT a new local full-case rerun",
   "production_actions": 0,
   "oldFunctionPostimages": [
     {
@@ -128,7 +130,7 @@
       "identity": "read_education_issuance(uuid,jsonb,jsonb)",
       "declaredIdentity": "public.read_education_issuance(uuid,jsonb,jsonb)",
       "before_md5": "f03cf43f952e0d1191943f4c9b2c8808",
-      "after_md5": "06a21a71fd0ef5fdfc4122f6578358e1",
+      "after_md5": "4ed350757fe98a6d929fd3ab06ce402f",
       "guard": "w2_delta_16"
     },
     {
@@ -146,10 +148,26 @@
       "guard": "w2_delta_18"
     }
   ],
-  "rootAckSha256": "54ec7e61bf27bdfea74ba36998b7c2623384bcae199812d58efcc7ddaf5031c5",
+  "rootAckSha256": "30b2dff66425f89c71523e0f84db728fad399c69e03bfbfd3914c0b90219462d",
   "independentSourceReview": {
-    "path": "review/W2_R6_ACTUAL_42P01_INDEPENDENT_SOURCE_CLOSURE.json",
-    "sha256": "6c617025374ca3d83b577a77ca8848b03354bc7ce40fe56393a754551d6f6c3a"
+    "path": "review/W2_R7_LEGACY_DUPLICATE_CAP_INDEPENDENT_SOURCE_REVIEW.json",
+    "sha256": "8f0b41db02656c00ff026f8c3a89c68019ba455ebf99f01468061f6423d8ded5"
   },
-  "derivation": "Exact actual root R6 native execution ACK plus unchanged eighteen old function postimage identities from source-owned frozen manifest. No authority/status invention."
+  "derivation": "Actual root R7 canonical promotion/CI instruction plus unchanged acceptedR6 oldpostimages except exactread_education_issuance postimage4ed350. Historical R6 metadataJSON is nevereditedorrelabeled.",
+  "authorization": {
+    "scope": "REQUIRED_NEW_EXACT_HEAD_NATIVE_CI_ONLY",
+    "actualRootStatus": "R7_CANONICAL_LOCAL_PROMOTED_REQUIRED_NATIVE_CI_AND_NEW_OWNER_BINDINGS_PENDING",
+    "localPassedThreeKindRerunAuthorized": false,
+    "productionAuthorized": false,
+    "sourceReview": "8f0b41db02656c00ff026f8c3a89c68019ba455ebf99f01468061f6423d8ded5"
+  },
+  "all53NewDefinitionsExactRelativeToAcceptedR6": true,
+  "changed_old_function": "read_education_issuance(uuid,jsonb,jsonb)",
+  "referenceNativeMetadata": {
+    "path": "fixture-graph/ACCEPTED_R6_W2_NATIVE_SCHEMA_METADATA.json",
+    "sha256": "9aa11599f515f85b2f5e8cea73072049d92617876f3b4d97a4edd1adb5b0d51e",
+    "actualSourceR6": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
+    "unchangedNewSchemaVectorsOnly": true,
+    "freshActualR7MetadataRequired": true
+  }
 }

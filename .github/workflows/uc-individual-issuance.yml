@@ -98,7 +98,7 @@ jobs:
           node - <<'NODE'
           const fs=require('node:fs'),path=require('node:path');
           const root=process.env.W2_NATIVE_ARTIFACTS;
-          if(fs.existsSync(root)) for(const run of fs.readdirSync(root)){const p=path.join(root,run,'w2-three-programme-case.json');if(fs.existsSync(p)){const x=JSON.parse(fs.readFileSync(p));console.log(JSON.stringify({run,status:x.status,source1800Sha256:x.source1800Sha256,acceptedR6SchemaLogicalVectorsExact:x.acceptedR6SchemaLogicalVectorsExact,legacyOldRecordActualCapability:x.legacyOldRecordActualCapability,legacyIndividualIsolation:x.legacyIndividualIsolation,programmes:x.programmes?.map(p=>({kind:p.kind,recordId:p.recordId})),error:x.error}));}}
+          if(fs.existsSync(root)) for(const run of fs.readdirSync(root)){const p=path.join(root,run,'w2-three-programme-case.json');if(fs.existsSync(p)){const x=JSON.parse(fs.readFileSync(p));console.log(JSON.stringify({run,status:x.status,source1800Sha256:x.source1800Sha256,acceptedR6SchemaLogicalVectorsExact:x.acceptedR6SchemaLogicalVectorsExact,legacyOldRecordActualCapability:x.legacyOldRecordActualCapability,legacyIndividualDuplicateCapability:x.legacyIndividualDuplicateCapability,legacyGroupedCapabilityPreserved:x.legacyGroupedCapabilityPreserved,historicalR6MetadataReference:x.historicalR6MetadataReference,legacyIndividualIsolation:x.legacyIndividualIsolation,programmes:x.programmes?.map(p=>({kind:p.kind,recordId:p.recordId})),error:x.error}));}}
           NODE
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()

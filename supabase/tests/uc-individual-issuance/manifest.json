@@ -917,13 +917,13 @@
         "kind": "package",
         "path": "fixture-graph/w2-frozen/20261123180000_uc_individual_education_issuance.sql"
       },
-      "bytes": 389267,
-      "sha256": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
+      "bytes": 390227,
+      "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
       "verifyRepository": {
         "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
-        "canonicalLfBytes": 389267,
-        "canonicalLfSha256": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
-        "heldSha256": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831"
+        "canonicalLfBytes": 390227,
+        "canonicalLfSha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+        "heldSha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757"
       }
     },
     {
@@ -932,8 +932,8 @@
         "kind": "package",
         "path": "fixture-graph/w2-frozen/W2_NATIVE_SOURCE_FREEZE.json"
       },
-      "bytes": 6859,
-      "sha256": "43f0f153b21979390471e2f44407f85ca7aaec1a633624a62a7bbd9a8a46cee1"
+      "bytes": 7809,
+      "sha256": "e7df58146439c22f93866a3cce32a3044977808de7d9e03e8580b4f5f7e10554"
     },
     {
       "target": "supabase/functions/_shared/individual-education-order-artifact.ts",
@@ -1051,8 +1051,8 @@
     {
       "path": "case/legacy-privacy.fixture.ts",
       "target": "supabase/tests/native/w2-end-to-end/legacy-privacy.fixture.ts",
-      "bytes": 11531,
-      "sha256": "51d94d09e086ce8d7cec54348e3bf80f22dd5e6db7338ae0a601306def54d1a1"
+      "bytes": 13577,
+      "sha256": "25b85b001b0bb7c9104ff821ca17652325342ed0b71c5861f55dc5d82ae971f5"
     },
     {
       "path": "case/native-byte-worker-ports.ts",
@@ -1075,8 +1075,8 @@
     {
       "path": "case/w2.three-programme.native.test.ts",
       "target": "supabase/tests/native/w2-end-to-end/w2.three-programme.native.test.ts",
-      "bytes": 23118,
-      "sha256": "3d4ddd771fea74125c0c02a407adb71b1439daf0749b705a533747a7d53911e0"
+      "bytes": 25494,
+      "sha256": "2f26f4fd5c787c2406ec2ac01eb234fbe60ad0dd5136577958a72b76cc4158ff"
     }
   ],
   "profileFiles": [
@@ -1133,9 +1133,10 @@
     }
   ],
   "source1800": {
-    "sha256": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
-    "bytes": 389267,
-    "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql"
+    "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
+    "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+    "bytes": 390227
   },
-  "rootNativeExecutionAckSha256": "54ec7e61bf27bdfea74ba36998b7c2623384bcae199812d58efcc7ddaf5031c5"
+  "rootNativeExecutionAckSha256": "30b2dff66425f89c71523e0f84db728fad399c69e03bfbfd3914c0b90219462d",
+  "executionScope": "REQUIRED_EXACT_HEAD_CI_NO_LOCAL_PASSED_CASE_RERUN"
 }
