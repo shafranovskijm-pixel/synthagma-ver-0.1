@@ -6,6 +6,7 @@ import { captureIssuanceScope, readEducationIssuance, type EducationIssuanceScop
 import { downloadIssuedPdf } from '@/lib/educationIssuance/artifactDownload';
 import { DocumentChainError, documentChainScopeCurrent, readDocumentChain, requireDocumentChainScope, type DocumentChainScope } from './client';
 import type { ChainQuery } from './contract';
+import { loadOwnIndividualOrderPdf } from './ownIndividualOrderFile';
 
 export type OpenedChainDocument =
   | { kind: 'draft'; title: string; html: string }
@@ -15,7 +16,12 @@ export async function openDocumentChainSource(scope: DocumentChainScope, query: 
   const value = await readDocumentChain(scope, query); requireDocumentChainScope(scope);
   if (value.kind !== 'source' && value.kind !== 'journal_source') throw new DocumentChainError();
   if (value.availability !== 'available' || !value.target || !value.source) throw new DocumentChainError('NOT_FOUND', value.why || undefined);
-  if (value.viewer === 'self') throw new DocumentChainError('ACCESS_DENIED');
+  if (value.viewer === 'self') {
+    if (value.target.kind !== 'own_individual_order_file') throw new DocumentChainError('ACCESS_DENIED');
+    const blob = await loadOwnIndividualOrderPdf(scope, query, value); requireDocumentChainScope(scope);
+    return { kind: 'file', title: 'Ваш приказ по обучению', blob, fileName: 'Приказ_обучения.pdf', mime: 'application/pdf' };
+  }
+  if (value.target.kind === 'own_individual_order_file') throw new DocumentChainError('ACCESS_DENIED');
   const { target, context, source } = value, current = () => documentChainScopeCurrent(scope);
   if (!context.enrollment_id || !context.student_user_id || !context.course_id) throw new DocumentChainError('SOURCE_CHANGED');
   if (target.kind === 'admission_draft') {

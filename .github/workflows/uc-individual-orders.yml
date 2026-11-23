@@ -1,0 +1,141 @@
+name: Individual education orders
+on:
+  pull_request:
+    paths:
+      - .gitattributes
+      - .github/workflows/uc-individual-orders.yml
+      - package.json
+      - package-lock.json
+      - tsconfig*.json
+      - vite.config.ts
+      - vitest*.config.ts
+      - src/test/**
+      - src/lib/individualEducationOrders/**
+      - src/components/organization/individual-orders/**
+      - src/lib/documentChain/**
+      - src/hooks/useDocumentChain.ts
+      - src/components/organization/documents/DocumentChain*.tsx
+      - src/components/organization/student-detail/StudentDocumentChain.tsx
+      - src/components/organization/student-detail/DocumentsTab.tsx
+      - src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx
+      - src/components/organization/student-detail/__tests__/DocumentsTab.safety.test.tsx
+      - src/components/student/StudentDocumentsTab.tsx
+      - src/lib/customJournals/client.ts
+      - src/lib/programFacts.ts
+      - src/lib/documentRegistry/**
+      - src/lib/orgDocumentWorkflow.ts
+      - src/lib/signatureAssurance/validation.ts
+      - src/integrations/supabase/client.ts
+      - src/utils/courseCache.ts
+      - src/utils/proxyFetch.ts
+      - supabase/migrations/*uc_individual_education_orders.sql
+      - supabase/functions/_shared/individual-education-order-*.ts
+      - supabase/functions/_shared/admission-case-access.ts
+      - supabase/functions/_shared/faithful-pdf.ts
+      - supabase/functions/_shared/education-issuance-fonts.ts
+      - supabase/functions/individual-education-order-artifact/**
+      - supabase/functions/individual-education-order-file/**
+      - supabase/tests/edge/individual-education-order-*
+      - supabase/tests/uc-individual-orders/**
+      - supabase/tests/uc-issued-recipient/**
+      - supabase/config.toml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    name: Client UI and worker unit contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Whole application TypeScript
+        run: npm run typecheck
+      - name: Guided orders own learner routes and existing document chain
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          src/lib/individualEducationOrders
+          src/components/organization/individual-orders
+          src/lib/documentChain
+          src/components/organization/documents/DocumentChainPanel.test.tsx
+          src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx
+          src/components/organization/student-detail/__tests__/DocumentsTab.safety.test.tsx
+          --maxWorkers=1
+      - name: Browser and Edge DTO parity
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          --config vitest.individual-orders.config.ts
+          supabase/tests/edge/individual-education-order-contract-mirror.test.ts
+          --maxWorkers=1
+      - name: Artifact worker exact bytes recovery and deadline unit checks
+        run: node node_modules/vitest/vitest.mjs run --config vitest.individual-order-worker.config.ts
+      - name: Own file worker genuine actor context and private bytes unit checks
+        run: node node_modules/vitest/vitest.mjs run --config vitest.individual-order-own-file.config.ts
+      - name: Production build
+        run: npm run build
+  edge:
+    name: Actual Deno entrypoint and contract types
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - name: Install locked dependencies for Deno package resolution
+        run: npm ci --no-audit --no-fund
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: '2.1.4'
+      - name: Genuine worker entrypoints imported DTO and local SDK ports
+        run: |
+          deno check --no-lock supabase/functions/individual-education-order-artifact/index.ts
+          deno check --no-lock supabase/functions/individual-education-order-file/index.ts
+          deno check --no-lock supabase/functions/_shared/individual-education-order-contract.ts
+          deno check --no-lock supabase/functions/_shared/individual-education-order-ports.ts
+  native:
+    name: Actual PostgreSQL individual orders and private PDF workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      W1_NATIVE_ARTIFACTS: outputs/uc-individual-orders-native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify finite canonical inputs and reject changed sources
+        run: node supabase/tests/uc-individual-orders/prepare-native.test.cjs
+      - name: Pull exact PostgreSQL17 image
+        run: docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+      - name: Real admission, completion, withdrawal, private bytes and two-session guards
+        run: node supabase/tests/uc-individual-orders/run-native.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-individual-orders-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/uc-individual-orders-native/
+            outputs/uc-individual-orders-prepare.json
+            !outputs/uc-individual-orders-native/**/node_modules/**
+          if-no-files-found: error
+          retention-days: 14

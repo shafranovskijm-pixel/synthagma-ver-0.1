@@ -26,11 +26,12 @@ export function DocumentChainSourceDialog({ organizationId, target, query, inval
       try {
         const captured = captureDocumentChainScope(organizationId, target, valid, controller.signal);
         if (ownViewer) captured.expectedViewer = 'self';
-        current.current = () => valid() && documentChainScopeCurrent(captured);
+        const sourceCurrent = () => valid() && documentChainScopeCurrent(captured);
+        current.current = sourceCurrent;
         const document = await openDocumentChainSource(captured, query);
-        if (!current.current()) return;
+        if (!sourceCurrent()) return;
         if (document.kind === 'file' && /^(application\/pdf|image\/(png|jpeg|gif|webp))$/i.test(document.mime)) localUrl = URL.createObjectURL(new Blob([document.blob], { type: document.mime }));
-        if (!current.current()) { if (localUrl) URL.revokeObjectURL(localUrl); localUrl = null; return; }
+        if (!sourceCurrent()) { if (localUrl) URL.revokeObjectURL(localUrl); localUrl = null; return; }
         setState({ key, loading: false, error: null, document, url: localUrl });
       } catch (error) { if (valid()) setState({ key, loading: false, error: normalizeChainError(error).message, document: null, url: null }); }
     })();
@@ -49,13 +50,13 @@ export function DocumentChainSourceDialog({ organizationId, target, query, inval
     finally { if (currentKey.current === key && current.current()) setDownloadBusy(false); }
   };
   return <Dialog open={!!query || invalid} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="min-w-0 max-w-4xl rounded-2xl max-h-[90vh] overflow-y-auto">
-    <DialogHeader><DialogTitle>{view.document?.title || 'Документ ученика'}</DialogTitle><DialogDescription>{view.document?.kind === 'draft' ? 'Неподписанный проект. Официальный номер не присвоен.' : 'Точная сохранённая версия по текущему доступу.'}</DialogDescription></DialogHeader>
+    <DialogHeader><DialogTitle>{view.document?.title || 'Документ ученика'}</DialogTitle><DialogDescription>{view.document?.kind === 'draft' ? 'Неподписанный проект. Официальный номер не присвоен.' : ownViewer ? 'Личный документ вашего обучения. Общие файлы организации не открываются.' : 'Точная сохранённая версия по текущему доступу.'}</DialogDescription></DialogHeader>
     {view.loading && <div role="status" className="flex items-center gap-2 py-8"><SigmaSpinner size="sm" />Проверяем документ…</div>}
     {view.error && <p role="alert" className="text-sm text-destructive">{view.error}</p>}
     {view.document?.kind === 'draft' && <iframe title={view.document.title} srcDoc={view.document.html} sandbox="" className="h-[65vh] w-full rounded-xl border border-border bg-white" />}
     {view.url && view.document?.kind === 'file' && (view.document.mime === 'application/pdf' ? <iframe title={view.document.title} src={view.url} className="h-[65vh] w-full rounded-xl border border-border bg-white" /> : <img src={view.url} alt={view.document.title} className="max-h-[65vh] w-full object-contain" />)}
     {view.document?.kind === 'file' && !view.url && <p className="text-sm text-muted-foreground">Этот формат можно скачать.</p>}
     {view.document?.kind === 'education' && <p className="text-sm">Документ № {view.document.number}. Сохранённый PDF можно скачать без повторной выдачи.</p>}
-    <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" className="rounded-xl" onClick={onClose}>Закрыть</Button>{view.document && view.document.kind !== 'draft' && <Button className="rounded-xl" disabled={downloadBusy || !current.current()} onClick={() => void download()}>{downloadBusy ? 'Загрузка…' : view.document.kind === 'education' ? 'Скачать PDF' : 'Скачать файл'}</Button>}</div>
+    <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" className="min-h-11 rounded-xl" onClick={onClose}>Закрыть</Button>{view.document && view.document.kind !== 'draft' && <Button className="min-h-11 rounded-xl" disabled={downloadBusy || !current.current()} onClick={() => void download()}>{downloadBusy ? 'Загрузка…' : view.document.kind === 'education' || view.document.kind === 'file' && view.document.mime === 'application/pdf' ? 'Скачать PDF' : 'Скачать файл'}</Button>}</div>
   </DialogContent></Dialog>;
 }

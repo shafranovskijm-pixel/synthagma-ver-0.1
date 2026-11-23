@@ -57,7 +57,10 @@ export const chainQuerySchema = z.discriminatedUnion('kind', [
 ]);
 export type ChainQuery = Validated<z.infer<typeof chainQuerySchema>>;
 export const chainContextSchema = z.object({ organization_id: chainUuid, student_user_id: chainUuid, enrollment_id: chainUuid, course_id: chainUuid, group_id: chainUuid.nullable() }).strict();
+export const chainOwnIndividualOrderTargetSchema = z.object({ kind: z.literal('own_individual_order_file'), order_id: chainUuid, order_revision: revision, registry_record_id: chainUuid, registry_record_revision: revision, document_id: chainUuid, version_id: chainUuid, content_hash: z.string().regex(/^[a-f0-9]{64}$/), byte_sha256: z.string().regex(/^[a-f0-9]{64}$/), byte_size: z.number().int().min(1).max(20971520) }).strict();
+export type ChainOwnIndividualOrderTarget = Validated<z.infer<typeof chainOwnIndividualOrderTargetSchema>>;
 export const chainOpenTargetSchema = z.discriminatedUnion('kind', [
+  chainOwnIndividualOrderTargetSchema,
   z.object({ kind: z.literal('admission_draft'), draft: draftSchema, enrollment_id: chainUuid, group_id: chainUuid.nullable() }).strict(),
   z.object({ kind: z.literal('registry_record'), record_id: chainUuid, revision }).strict(),
   z.object({ kind: z.literal('education_record'), record_id: chainUuid, revision, enrollment_id: chainUuid }).strict(),
