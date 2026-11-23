@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render as renderWithTestingLibrary, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { GroupDocumentsFolder } from "../GroupDocumentsFolder";
 import { SAMPLE_CONTEXT } from "@/lib/group-docs/sampleContext";
 import { emptyFactualData } from "@/lib/group-docs/factualData";
@@ -10,11 +12,14 @@ import { EDUCATION_ARTIFACT_NOTICE, EDUCATION_GENERIC_ARTIFACT_NOTICE } from '..
 vi.mock('@/lib/admissionDocuments/client',()=>({captureAdmissionDocumentScope:(organizationId:string,scope:unknown,current:()=>boolean)=>({organizationId,scope,current}),readAdmissionDocumentSettings:(...args:any[])=>mocks.readAdmission(...args),normalizeAdmissionDocumentError:()=>({code:'ACCESS_DENIED'}),admissionDocumentErrorMessages:{ACCESS_DENIED:'Недостаточно прав'}}));
 vi.mock('@/hooks/useGroupEducationFacts',()=>({useGroupEducationFacts:()=>mocks.education}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:mocks.actor},loading:false})}));
+vi.mock('@/hooks/useStaffPermissions',()=>({useStaffPermissions:()=>({loading:false,error:null,organizationId:'org-1',orgRole:'teacher',adminRole:null,isOrgOwner:false,can:(permission:string)=>permission==='documents.read'||permission==='students.read'})}));
+vi.mock('@/hooks/useDocumentChain',()=>({useDocumentChain:(...args:unknown[])=>{mocks.readChain(...args);return mocks.chain;}}));
 vi.mock('@/utils/courseCache',()=>({captureOfflineActor:()=>mocks.accessRevision}));
 vi.mock('@/lib/groupEducationFacts/client',async original=>({...await original<typeof import('@/lib/groupEducationFacts/client')>(),captureEducationScope:vi.fn((organizationId,groupId,current)=>({organizationId,groupId,current,actorId:mocks.actor,accessRevision:mocks.accessRevision})),educationBearer:()=>mocks.bearer(),educationScopeCurrent:(s:any)=>s.actorId===mocks.actor&&s.accessRevision===mocks.accessRevision&&s.current(),saveEducationDocuments:(...args:any[])=>mocks.saveEducation(...args)}));
 
 const mocks = vi.hoisted(() => ({
   actor:'',accessRevision:1,readAdmission:vi.fn(),toastInfo:vi.fn(),
+  readChain:vi.fn(),chain:{} as any,
   education:{} as any,
   bearer:vi.fn(),
   saveEducation:vi.fn(),
@@ -40,6 +45,13 @@ const mocks = vi.hoisted(() => ({
     legalProps: null as any,
   },
 }));
+
+// The real document-chain pane uses router navigation even when no file is open.
+// Keep it mounted; mock only its scoped read boundary, like the package data hooks.
+function TestRouter({ children }: { children: ReactNode }) {
+  return <MemoryRouter initialEntries={['/organization?tab=group-folder&groupId=group-1']}>{children}</MemoryRouter>;
+}
+const render = (ui: ReactNode) => renderWithTestingLibrary(ui, { wrapper: TestRouter });
 
 vi.mock("../../../../../supabase/functions/_shared/program-facts", async importOriginal => ({
   ...await importOriginal<typeof import("../../../../../supabase/functions/_shared/program-facts")>(),
@@ -188,6 +200,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.actor=id(40);mocks.accessRevision=1;
+    mocks.chain={loading:false,error:null,rows:[],data:{kind:'list',availability:'available',why:null,capabilities:{can_read:true,can_open_sources:true,can_open_journals:true},next_after_enrollment_id:null,total_count:0},loadingMore:false,loadMore:vi.fn(),refresh:vi.fn()};
     mocks.education={scopeKey:'actor-a:1',envelope:null,calendarValue:null,snapshotValue:null,busy:false,pending:false,error:null,scopeCurrent:()=>false,calendar:vi.fn(),invalidateAccess:vi.fn()};
     mocks.bearer.mockReset().mockResolvedValue('Bearer original');mocks.saveEducation.mockReset().mockResolvedValue({version:1});
     mocks.dialogState.docxProps = null;
@@ -216,6 +229,17 @@ describe("GroupDocumentsFolder package contract routing", () => {
       factual: emptyFactualData(),
       loading: false,
     });
+  });
+
+  it('mounts the real document chain with the exact group scope inside the package folder', () => {
+    renderFolder();
+    expect(screen.getByRole('heading', { name: 'Документы учеников группы' })).toBeInTheDocument();
+    expect(screen.getByTestId('document-chain-panel')).toBeInTheDocument();
+    expect(mocks.readChain).toHaveBeenCalledWith('org-1', { kind: 'group', group_id: 'group-1' }, true, expect.any(String));
+    expect(screen.getByText('В выбранной области пока нет подтверждённых зачислений с текущими правами.')).toBeInTheDocument();
+    expect(mocks.generatePackage).not.toHaveBeenCalled();
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();
+    expect(mocks.saveEducation).not.toHaveBeenCalled();
   });
 
   it("направляет пакет компании в Word-диалог и запускает 9 документов после одного договора", async () => {
