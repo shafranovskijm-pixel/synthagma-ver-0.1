@@ -20,7 +20,7 @@ describe('scoped document chain read', () => {
     expect(m.headers).toHaveBeenCalledWith('Authorization', 'Bearer synthetic-session');
   });
   it.each(['organization', 'student', 'enrollment', 'group'])('rejects a reply for another %s', async changed => {
-    const scope = { ...target, enrollment_id: enrollment, group_id: group };
+    const scope = { kind: 'student' as const, student_user_id: pupil, enrollment_id: enrollment, group_id: group };
     m.result.data.scope = scope;
     if (changed === 'organization') m.result.data.organization_id = id(90);
     if (changed === 'student') m.result.data.rows[0].student_user_id = id(90);
@@ -52,7 +52,7 @@ describe('scoped document chain read', () => {
     await expect(readDocumentChain(scoped(), query)).rejects.toBeDefined();
   });
   it('accepts a server-confirmed unique group when detail has no explicit group filter', async () => {
-    const scope = { ...target, enrollment_id: enrollment };
+    const scope = { kind: 'student' as const, student_user_id: pupil, enrollment_id: enrollment, group_id: null };
     m.result.data = { ...envelope(scope), kind: 'detail', availability: 'available', why: null, row: row() };
     await expect(readDocumentChain(scoped(scope), { kind: 'detail', enrollment_id: enrollment, group_id: null })).resolves.toMatchObject({ row: { group_id: group } });
   });

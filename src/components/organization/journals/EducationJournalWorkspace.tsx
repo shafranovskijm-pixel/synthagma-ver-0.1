@@ -13,9 +13,20 @@ import { educationJournalReturnPath, educationJournalWorkspacePath, type Journal
 import { AdmissionDocumentSettingsPanel } from '@/components/organization/documents/AdmissionDocumentSettingsPanel';
 import { DocumentChainSourceDialog } from '@/components/organization/documents/DocumentChainSourceDialog';
 import { clearDocumentChainSourceParams, documentChainJournalSourcePath, readDocumentChainSourceRoute } from '@/lib/documentChain/navigation';
+import { chainUuid, type ChainScope } from '@/lib/documentChain/contract';
 
 interface OwnViewer { onSelect: (type: EducationJournalType) => void; onBack: () => void }
 interface Props { organizationId: string; scope: EducationJournalScope; journalType: EducationJournalType | null; origin: JournalOrigin; ownViewer?: OwnViewer }
+function documentSourceScope(scope: EducationJournalScope): ChainScope | null {
+  if (scope.kind === 'organization') return { kind: 'organization' };
+  if (scope.kind === 'group' && typeof scope.group_id === 'string' && chainUuid.safeParse(scope.group_id).success)
+    return { kind: 'group', group_id: scope.group_id };
+  if (scope.kind === 'student' && typeof scope.student_user_id === 'string' && chainUuid.safeParse(scope.student_user_id).success
+    && (scope.enrollment_id === null || typeof scope.enrollment_id === 'string' && chainUuid.safeParse(scope.enrollment_id).success)
+    && (scope.group_id === null || typeof scope.group_id === 'string' && chainUuid.safeParse(scope.group_id).success))
+    return { kind: 'student', student_user_id: scope.student_user_id, enrollment_id: scope.enrollment_id, group_id: scope.group_id };
+  return null;
+}
 export function EducationJournalWorkspace({ organizationId, scope, journalType, origin, ownViewer }: Props) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -28,6 +39,7 @@ export function EducationJournalWorkspace({ organizationId, scope, journalType, 
   const access = JSON.stringify([user?.id, p.organizationId, p.orgRole, p.adminRole, p.isOrgOwner, enabled]);
   const model = useEducationJournalWorkspace(organizationId, scope, journalType, enabled, access);
   const sourceRoute = readDocumentChainSourceRoute(params);
+  const sourceScope = documentSourceScope(scope);
   const closeSource = () => setParams(clearDocumentChainSourceParams(params), { replace: true });
   const summary = model.summary;
   const selected = summary?.journals.find(row => row.journal_type === journalType);
@@ -70,6 +82,7 @@ export function EducationJournalWorkspace({ organizationId, scope, journalType, 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4"><p className="text-xs text-muted-foreground">Загружено {model.page.rows.length} из {model.page.total_count}. Выписка включает всю выборку.</p>{model.page.next_cursor && <Button variant="outline" className="rounded-xl" onClick={() => void model.loadMore()}>Загрузить ещё</Button>}</div>
       </div>}
     </>}
-    {!ownViewer && <DocumentChainSourceDialog organizationId={organizationId} target={scope} query={sourceRoute.state === 'ready' ? sourceRoute.query : null} invalid={sourceRoute.state === 'invalid'} enabled={enabled} accessKey={access} onClose={closeSource} />}
+    {!ownViewer && sourceScope && <DocumentChainSourceDialog organizationId={organizationId} target={sourceScope} query={sourceRoute.state === 'ready' ? sourceRoute.query : null} invalid={sourceRoute.state === 'invalid'} enabled={enabled} accessKey={access} onClose={closeSource} />}
+    {!ownViewer && !sourceScope && sourceRoute.state !== 'none' && <p role="alert" className="text-sm text-destructive">Не удалось подтвердить область документа.</p>}
   </div>;
 }

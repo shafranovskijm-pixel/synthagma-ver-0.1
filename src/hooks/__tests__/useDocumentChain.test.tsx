@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { id, list, org, target } from '@/lib/documentChain/__tests__/fixtures';
+import { id, list, org, pupil, target } from '@/lib/documentChain/__tests__/fixtures';
 const m = vi.hoisted(() => ({ read: vi.fn(), captured: [] as any[] }));
 vi.mock('@/lib/documentChain/client', () => ({
   captureDocumentChainScope: (_organizationId: string, _target: unknown, current: () => boolean, signal: AbortSignal) => { const scope = { current, signal }; m.captured.push(scope); return scope; },
@@ -13,7 +13,7 @@ beforeEach(() => { vi.clearAllMocks(); m.captured = []; });
 describe('document chain request lifetime', () => {
   it('discards a delayed prior student response after switching cards', async () => {
     const first = deferred(), second = deferred(); m.read.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-    const view = renderHook(({ pupil }) => useDocumentChain(org, { ...target, student_user_id: pupil }, true, 'access1'), { initialProps: { pupil: target.student_user_id } });
+    const view = renderHook(({ pupil }) => useDocumentChain(org, { kind: 'student', student_user_id: pupil, enrollment_id: null, group_id: null }, true, 'access1'), { initialProps: { pupil } });
     await waitFor(() => expect(m.read).toHaveBeenCalledTimes(1)); view.rerender({ pupil: id(90) });
     await waitFor(() => expect(m.read).toHaveBeenCalledTimes(2)); expect(m.captured[0].signal.aborted).toBe(true);
     await act(async () => { first.resolve(list()); await first.promise; }); expect(view.result.current.rows).toEqual([]);
