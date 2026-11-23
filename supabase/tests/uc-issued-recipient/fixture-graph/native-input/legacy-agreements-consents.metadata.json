@@ -1,0 +1,600 @@
+{
+  "captured_at": "2026-10-23T08:19:08.801871+00:00",
+  "relations": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "acl": null,
+          "collation": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "user_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "full_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "agreement_text",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": "'v1.0'::text",
+          "generated": "",
+          "identity": "",
+          "name": "agreement_version",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "accepted_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "ip_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "user_agent",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "pep_agreements_organization_id_fkey",
+          "type": "f",
+          "validated": true
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "pep_agreements_pkey",
+          "type": "p",
+          "validated": true
+        },
+        {
+          "definition": "CHECK (user_id IS NOT NULL OR email IS NOT NULL)",
+          "name": "pep_user_or_email",
+          "type": "c",
+          "validated": true
+        }
+      ],
+      "force_rls": false,
+      "indexes": [
+        {
+          "definition": "CREATE INDEX idx_pep_agreements_email ON public.pep_agreements USING btree (email) WHERE (email IS NOT NULL)",
+          "name": "idx_pep_agreements_email",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "definition": "CREATE INDEX idx_pep_agreements_org ON public.pep_agreements USING btree (organization_id)",
+          "name": "idx_pep_agreements_org",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "definition": "CREATE INDEX idx_pep_agreements_user ON public.pep_agreements USING btree (user_id) WHERE (user_id IS NOT NULL)",
+          "name": "idx_pep_agreements_user",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX pep_agreements_pkey ON public.pep_agreements USING btree (id)",
+          "name": "pep_agreements_pkey",
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "name": "pep_agreements",
+      "owner": "postgres",
+      "policies": [
+        {
+          "check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "check": "account_deletion_access_allowed()",
+          "command": "*",
+          "name": "uc_pep_active_account",
+          "permissive": false,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "account_deletion_access_allowed()"
+        },
+        {
+          "check": "((user_id = auth.uid()) AND ((organization_id = current_organization_id()) OR can_access_organization(organization_id, 'documents.write'::text) OR (EXISTS ( SELECT 1\n   FROM (enrollments e\n     JOIN courses c ON ((c.id = e.course_id)))\n  WHERE ((e.user_id = auth.uid()) AND (c.organization_id = pep_agreements.organization_id) AND (e.status = ANY (ARRAY['active'::text, 'completed'::text])))))))",
+          "command": "a",
+          "name": "uc_pep_insert_own",
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "uc_pep_read",
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "((user_id = auth.uid()) OR can_access_organization(organization_id, 'documents.read'::text))"
+        }
+      ],
+      "rls": true,
+      "schema": "public",
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON pep_agreements FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_pep_evidence_integrity BEFORE DELETE OR UPDATE ON pep_agreements FOR EACH ROW EXECUTE FUNCTION uc_guard_pep_evidence()",
+          "enabled": "O",
+          "function": "uc_guard_pep_evidence()",
+          "name": "uc_pep_evidence_integrity"
+        }
+      ]
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "acl": null,
+          "collation": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "enrollment_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "consent_type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": "'pending'::text",
+          "generated": "",
+          "identity": "",
+          "name": "status",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "full_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "passport_data",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "signed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "ip_address",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "user_agent",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "policy_version",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "policy_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": "ARRAY[]::text[]",
+          "generated": "",
+          "identity": "",
+          "name": "purposes",
+          "not_null": false,
+          "type": "text[]"
+        },
+        {
+          "acl": null,
+          "collation": null,
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "withdrawn_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "collation": "\"default\"",
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "withdrawn_reason",
+          "not_null": false,
+          "type": "text"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (consent_type = ANY (ARRAY['individual'::text, 'organization'::text]))",
+          "name": "student_consents_consent_type_check",
+          "type": "c",
+          "validated": true
+        },
+        {
+          "definition": "FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE",
+          "name": "student_consents_enrollment_id_fkey",
+          "type": "f",
+          "validated": true
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "student_consents_pkey",
+          "type": "p",
+          "validated": true
+        },
+        {
+          "definition": "CHECK (status = ANY (ARRAY['pending'::text, 'signed'::text, 'rejected'::text, 'expired'::text]))",
+          "name": "student_consents_status_check",
+          "type": "c",
+          "validated": true
+        }
+      ],
+      "force_rls": false,
+      "indexes": [
+        {
+          "definition": "CREATE UNIQUE INDEX student_consents_pkey ON public.student_consents USING btree (id)",
+          "name": "student_consents_pkey",
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "name": "student_consents",
+      "owner": "postgres",
+      "policies": [
+        {
+          "check": null,
+          "command": "w",
+          "name": "Org admins can update consent status",
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": "((EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN user_roles ur ON ((ur.user_id = p.user_id)))\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id = student_consents.organization_id) AND (ur.role = ANY (ARRAY['organization'::app_role, 'admin'::app_role]))))) OR has_role('admin'::app_role, auth.uid()))"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "Org admins can view consents of their students",
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": "((EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN user_roles ur ON ((ur.user_id = p.user_id)))\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id = student_consents.organization_id) AND (ur.role = ANY (ARRAY['organization'::app_role, 'admin'::app_role]))))) OR has_role('admin'::app_role, auth.uid()))"
+        },
+        {
+          "check": "(auth.uid() = user_id)",
+          "command": "a",
+          "name": "Students can create their own consents",
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "w",
+          "name": "Students can update their own pending consents",
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": "((auth.uid() = user_id) AND (status = 'pending'::text))"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "Students can view their own consents",
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = user_id)"
+        },
+        {
+          "check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "rls": true,
+      "schema": "public",
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON student_consents FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER encrypt_consent_passport_trigger BEFORE INSERT OR UPDATE OF passport_data ON student_consents FOR EACH ROW EXECUTE FUNCTION trigger_encrypt_consent_passport()",
+          "enabled": "O",
+          "function": "trigger_encrypt_consent_passport()",
+          "name": "encrypt_consent_passport_trigger"
+        },
+        {
+          "definition": "CREATE TRIGGER update_student_consents_updated_at BEFORE UPDATE ON student_consents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_student_consents_updated_at"
+        }
+      ]
+    }
+  ],
+  "scope": "Readonly actual623 legacy agreement/consent schema only; no personal rows",
+  "trigger_functions": [
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+      "identity": "account_deletion_subject_write_guard()",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.trigger_encrypt_consent_passport()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'extensions'\nAS $function$\nBEGIN\n  IF NEW.passport_data IS NOT NULL AND NEW.passport_data != '' AND NOT (NEW.passport_data LIKE 'ENC:%') THEN\n    NEW.passport_data = encrypt_password(NEW.passport_data);\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+      "identity": "trigger_encrypt_consent_passport()",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_guard_pep_evidence()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nBEGIN\n IF EXISTS(SELECT 1 FROM public.document_signatures s WHERE s.pep_agreement_id=OLD.id\n   AND (s.signed_at IS NOT NULL OR s.status='signed')) THEN\n  RAISE EXCEPTION 'Accepted signature agreement is immutable' USING ERRCODE='42501'; END IF;\n IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;\nEND;$function$\n",
+      "identity": "uc_guard_pep_evidence()",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n",
+      "identity": "update_updated_at_column()",
+      "owner": "postgres"
+    }
+  ]
+}

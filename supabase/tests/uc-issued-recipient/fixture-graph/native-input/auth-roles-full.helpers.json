@@ -1,0 +1,95 @@
+{
+  "at": "2026-10-23T09:44:38.772Z",
+  "scope": "Readonly currenttable policy/trigger function definitions+metadata, no personal rows",
+  "rows": [
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "1d308e11216993f0320b85ad0e66670c",
+      "definition": "CREATE OR REPLACE FUNCTION public.assign_demo_role()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  demo_org_id uuid;\nBEGIN\n  -- Handle admin demo account\n  IF NEW.email = 'admin@demo.sigma' THEN\n    INSERT INTO public.user_roles (user_id, role)\n    VALUES (NEW.id, 'admin')\n    ON CONFLICT (user_id) DO UPDATE SET role = 'admin';\n  END IF;\n  \n  -- Handle organization demo account\n  IF NEW.email = 'org@demo.sigma' THEN\n    -- First create/find the demo organization\n    SELECT id INTO demo_org_id FROM public.organizations WHERE name = 'Демо Организация';\n    \n    IF demo_org_id IS NULL THEN\n      INSERT INTO public.organizations (name, email)\n      VALUES ('Демо Организация', 'org@demo.sigma')\n      RETURNING id INTO demo_org_id;\n    END IF;\n    \n    -- Assign organization role\n    INSERT INTO public.user_roles (user_id, role)\n    VALUES (NEW.id, 'organization')\n    ON CONFLICT (user_id) DO UPDATE SET role = 'organization';\n    \n    -- Update profile with organization_id\n    UPDATE public.profiles \n    SET organization_id = demo_org_id\n    WHERE user_id = NEW.id;\n  END IF;\n  \n  -- Handle student demo account - just ensure student role (default)\n  IF NEW.email = 'student@demo.sigma' THEN\n    INSERT INTO public.user_roles (user_id, role)\n    VALUES (NEW.id, 'student')\n    ON CONFLICT (user_id) DO UPDATE SET role = 'student';\n  END IF;\n  \n  RETURN NEW;\nEND;\n$function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "proname": "assign_demo_role",
+      "prosecdef": true,
+      "provolatile": "v"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "adc73e4d65f757e5ef7cb910cb64ce8c",
+      "definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  INSERT INTO public.profiles (user_id, email, full_name)\n  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', ''));\n  \n  INSERT INTO public.user_roles (user_id, role)\n  VALUES (NEW.id, 'student');\n  \n  RETURN NEW;\nEND;\n$function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "proname": "handle_new_user",
+      "prosecdef": true,
+      "provolatile": "v"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "2d732190e5f8079b465d50701fc441f3",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_ownership_identity(_user_id uuid, _organization_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.user_roles ur\n    JOIN public.profiles p ON p.user_id = ur.user_id\n    WHERE ur.user_id = _user_id\n      AND ur.role = 'organization'::public.app_role\n      AND p.organization_id = _organization_id\n  )\n$function$\n",
+      "identity_arguments": "_user_id uuid, _organization_id uuid",
+      "owner": "postgres",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "proname": "has_org_ownership_identity",
+      "prosecdef": true,
+      "provolatile": "s"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "7f0a595ffa5fa18519bcf83890ae2898",
+      "definition": "CREATE OR REPLACE FUNCTION public.log_org_staff_changes()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE actor_name TEXT;\nBEGIN\n  SELECT COALESCE(full_name, email) INTO actor_name FROM public.profiles WHERE user_id = auth.uid() LIMIT 1;\n  IF (TG_OP = 'INSERT') THEN\n    INSERT INTO public.role_audit_log (scope, organization_id, target_user_id, action, new_role, new_sections_access, performed_by, performed_by_name)\n    VALUES ('organization', NEW.organization_id, NEW.user_id, 'granted', NEW.role, NEW.sections_access, auth.uid(), actor_name);\n    RETURN NEW;\n  ELSIF (TG_OP = 'UPDATE') THEN\n    IF (OLD.role IS DISTINCT FROM NEW.role) OR (OLD.sections_access IS DISTINCT FROM NEW.sections_access) THEN\n      INSERT INTO public.role_audit_log (scope, organization_id, target_user_id, action, old_role, new_role, old_sections_access, new_sections_access, performed_by, performed_by_name)\n      VALUES ('organization', NEW.organization_id, NEW.user_id, 'changed', OLD.role, NEW.role, OLD.sections_access, NEW.sections_access, auth.uid(), actor_name);\n    END IF;\n    RETURN NEW;\n  ELSIF (TG_OP = 'DELETE') THEN\n    INSERT INTO public.role_audit_log (scope, organization_id, target_user_id, action, old_role, old_sections_access, performed_by, performed_by_name)\n    VALUES ('organization', OLD.organization_id, OLD.user_id, 'revoked', OLD.role, OLD.sections_access, auth.uid(), actor_name);\n    RETURN OLD;\n  END IF;\n  RETURN NULL;\nEND $function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "proname": "log_org_staff_changes",
+      "prosecdef": true,
+      "provolatile": "v"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "569748fa56ca96c226d17bf58e036b73",
+      "definition": "CREATE OR REPLACE FUNCTION public.prevent_org_staff_owner_overlap()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.role = 'owner'\n     OR public.has_org_ownership_identity(NEW.user_id, NEW.organization_id)\n  THEN\n    RAISE EXCEPTION 'Organization owner cannot also be organization staff'\n      USING ERRCODE = '23514';\n  END IF;\n\n  RETURN NEW;\nEND\n$function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "proname": "prevent_org_staff_owner_overlap",
+      "prosecdef": true,
+      "provolatile": "v"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "b29618affb66cbbb9b96e5a1c0d5a3e6",
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_org_staff_to_sales_managers()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE u uuid; users uuid[]; v_name text;\nBEGIN\n  IF TG_OP='DELETE' THEN users:=ARRAY[OLD.user_id];\n  ELSIF TG_OP='UPDATE' THEN users:=ARRAY[OLD.user_id,NEW.user_id];\n  ELSE users:=ARRAY[NEW.user_id]; END IF;\n  FOR u IN SELECT DISTINCT x FROM unnest(users)x WHERE x IS NOT NULL LOOP\n    IF public.has_role('admin'::public.app_role,u)\n       OR public.has_role('sales_manager'::public.app_role,u)\n       OR EXISTS(SELECT 1 FROM public.admin_staff a WHERE a.user_id=u\n                 AND a.role IN('sales_manager','admin','super_admin')) THEN\n      CONTINUE;\n    END IF;\n    v_name:=NULL;\n    SELECT COALESCE(NULLIF(s.display_name,''),NULLIF(p.full_name,''),p.email,'Сотрудник')\n      INTO v_name FROM public.org_staff s LEFT JOIN public.profiles p ON p.user_id=s.user_id\n     WHERE s.user_id=u AND (s.can_receive_crm_tasks OR s.role='sales_manager')\n       AND (s.expires_at IS NULL OR s.expires_at>now())\n       AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations r WHERE r.user_id=u)\n     ORDER BY s.organization_id LIMIT 1;\n    IF v_name IS NOT NULL THEN\n      INSERT INTO public.sales_managers(user_id,full_name,is_active) VALUES(u,v_name,true)\n      ON CONFLICT(user_id) DO UPDATE SET full_name=EXCLUDED.full_name,is_active=true;\n    ELSE\n      UPDATE public.sales_managers SET is_active=false WHERE user_id=u;\n    END IF;\n  END LOOP;\n  IF TG_OP='DELETE' THEN RETURN OLD; END IF;\n  RETURN NEW;\nEND $function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "proname": "sync_org_staff_to_sales_managers",
+      "prosecdef": true,
+      "provolatile": "v"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "e3addd320004eb7a8494e7a0c2614c97",
+      "definition": "CREATE OR REPLACE FUNCTION public.touch_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN NEW.updated_at = now(); RETURN NEW; END $function$\n",
+      "identity_arguments": "",
+      "owner": "postgres",
+      "proconfig": null,
+      "proname": "touch_updated_at",
+      "prosecdef": false,
+      "provolatile": "v"
+    }
+  ]
+}
