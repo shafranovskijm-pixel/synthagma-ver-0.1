@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { approvedOrder, basis, choice, course, enrollment, envelope, org, preparedOrder, pupil, registeredOrder, savedOrder, source, uid, witness } from '@/lib/individualEducationOrders/__tests__/fixtures';
 const m = vi.hoisted(() => ({ current: true, summary: null as any, choices: [] as any[], read: vi.fn(), prepare: vi.fn(), run: vi.fn(), render: vi.fn(), renderRun: vi.fn(), load: vi.fn(), sources: vi.fn(), reviews: vi.fn(), changed: vi.fn(), close: vi.fn(), prior: vi.fn() }));
 vi.mock('@/lib/individualEducationOrders/client', () => ({
+ IndividualOrderError: class extends Error { constructor(readonly code = 'DEPENDENCY_UNAVAILABLE', readonly missingFacts: readonly string[] = []) { super('Результат пока не подтверждён.'); this.name = 'IndividualOrderError'; } },
  captureIndividualOrderScope: (organizationId: string, enrollmentId: string, target: any, current: () => boolean) => ({ organizationId, enrollmentId, ...target, actorId: 'actor', accessRevision: 1, current }),
  individualOrderScopeCurrent: (scope: any) => m.current && scope.current(), normalizeIndividualOrderError: (e: any) => ({ code: e?.code ?? 'DEPENDENCY_UNAVAILABLE', message: e?.code === 'SOURCE_CHANGED' ? 'Источник изменился.' : 'Результат пока не подтверждён.', missingFacts: [] }),
  readIndividualEducationOrder: (...args: any[]) => m.read(...args), readIndividualOrderProgrammeChoices: async () => ({ choices: m.choices, nextAfterVersionId: null }),
