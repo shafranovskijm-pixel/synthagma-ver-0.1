@@ -2,6 +2,7 @@ name: Individual education orders
 on:
   pull_request:
     paths:
+      - .gitattributes
       - .github/workflows/uc-individual-orders.yml
       - package.json
       - package-lock.json
@@ -35,6 +36,8 @@ on:
       - supabase/functions/individual-education-order-artifact/**
       - supabase/functions/individual-education-order-file/**
       - supabase/tests/edge/individual-education-order-*
+      - supabase/tests/uc-individual-orders/**
+      - supabase/tests/uc-issued-recipient/**
       - supabase/config.toml
   workflow_dispatch:
 permissions:
@@ -90,6 +93,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - name: Install locked dependencies for Deno package resolution
+        run: npm ci --no-audit --no-fund
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
         with:
           deno-version: '2.1.4'
@@ -99,3 +108,34 @@ jobs:
           deno check --no-lock supabase/functions/individual-education-order-file/index.ts
           deno check --no-lock supabase/functions/_shared/individual-education-order-contract.ts
           deno check --no-lock supabase/functions/_shared/individual-education-order-ports.ts
+  native:
+    name: Actual PostgreSQL individual orders and private PDF workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      W1_NATIVE_ARTIFACTS: outputs/uc-individual-orders-native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify finite canonical inputs and reject changed sources
+        run: node supabase/tests/uc-individual-orders/prepare-native.test.cjs
+      - name: Pull exact PostgreSQL17 image
+        run: docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+      - name: Real admission, completion, withdrawal, private bytes and two-session guards
+        run: node supabase/tests/uc-individual-orders/run-native.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-individual-orders-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/uc-individual-orders-native/
+            outputs/uc-individual-orders-prepare.json
+            !outputs/uc-individual-orders-native/**/node_modules/**
+          if-no-files-found: error
+          retention-days: 14

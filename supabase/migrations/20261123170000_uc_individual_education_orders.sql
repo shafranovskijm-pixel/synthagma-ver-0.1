@@ -1,4 +1,4 @@
--- W1 LOCAL CANDIDATE R2. NOT QUALIFIED OR AUTHORIZED FOR PRODUCTION EXECUTION.
+-- W1 LOCAL CANDIDATE R5. NOT QUALIFIED OR AUTHORIZED FOR PRODUCTION EXECUTION.
 -- Explicit individual legal decisions, not automatic legal acts from progress.
 -- No old programme/course/group/result/profile is updated or backfilled.
 BEGIN;
@@ -163,6 +163,7 @@ BEGIN
   path:=uc_individual_orders_private.output_descriptor(head_row)->>'file_path';owner_text:=coalesce(nullif(NEW.owner_id,''),NEW.owner::text);
   IF NOT public.uc_signature_assurance_uuid(to_jsonb(owner_text))THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
   actor:=owner_text::uuid;
+  IF NEW.owner IS NOT NULL AND NEW.owner IS DISTINCT FROM actor THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
   IF NOT coalesce((auth.role()='authenticated'AND auth.uid()=actor)
    OR(SESSION_USER='supabase_storage_admin'AND auth.role()='service_role'AND auth.uid()IS NULL AND NEW.owner_id=actor::text AND(NEW.owner IS NULL OR NEW.owner=actor)),false)
   THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
@@ -418,7 +419,9 @@ BEGIN
   IF object_row.owner IS NOT NULL OR nullif(object_row.owner_id,'')IS NOT NULL THEN PERFORM uc_individual_orders_private.fail('SOURCE_CHANGED');END IF;
  ELSE
   owner_text:=coalesce(nullif(object_row.owner_id,''),object_row.owner::text);
-  IF owner_text IS NULL OR NOT public.uc_signature_assurance_uuid(to_jsonb(owner_text))OR public.uc_custom_journal_person(owner_text::uuid)IS NOT TRUE
+  IF owner_text IS NULL OR NOT public.uc_signature_assurance_uuid(to_jsonb(owner_text))
+   OR object_row.owner IS NOT NULL AND object_row.owner::text IS DISTINCT FROM owner_text
+   OR public.uc_custom_journal_person(owner_text::uuid)IS NOT TRUE
   THEN PERFORM uc_individual_orders_private.fail('SOURCE_CHANGED');END IF;
  END IF;
  size_text:=coalesce(object_row.metadata->>'size',object_row.metadata->>'contentLength');
@@ -533,6 +536,28 @@ BEGIN
   'participants',jsonb_build_array(enrollment_row.user_id),'groups',to_jsonb(groups),'label',left(label,500));
 END;$fn$;
 
+-- Exact individual-target authority. context() proves the actual current
+-- organization/enrollment/user/course BEFORE calling this owner-private gate.
+-- The old UC013/UC019 group association helpers remain byte-for-byte unchanged.
+CREATE FUNCTION uc_individual_orders_private.actor_allowed(p_actor uuid,p_org uuid,p_subject uuid,p_mode text)RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+ SELECT coalesce(p_mode IN('read','write','issue')AND p_actor IS NOT NULL AND p_actor<>p_subject
+ AND public.uc_custom_journal_person(p_actor)AND billing_access_private.target_allowed(p_org,p_actor)AND public.is_user_blocked(p_actor)IS FALSE
+ AND public.uc_admission_actor_allowed(p_actor,false)
+ AND public.uc_platform_document_action_allowed(p_actor,'read')AND public.uc_education_actor_org_permission(p_actor,p_org,'documents.read')
+ AND public.uc_learning_staff(p_actor,p_org,NULL,false)
+ AND(p_mode='read'OR(public.uc_platform_document_action_allowed(p_actor,'write')AND public.uc_education_actor_org_permission(p_actor,p_org,'documents.write')))
+ AND(p_mode<>'issue'OR(
+  public.uc_platform_document_action_allowed(p_actor,'issue')AND public.uc_education_actor_org_permission(p_actor,p_org,'documents.issue')
+  AND public.uc_education_actor_org_permission(p_actor,p_org,'journals.read')AND public.uc_education_actor_org_permission(p_actor,p_org,'journals.write')
+  AND NOT public.has_role(p_actor,'sales_manager'::public.app_role)
+  AND NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=p_actor AND s.role IN('viewer','sales_manager'))
+  AND(public.has_role(p_actor,'admin'::public.app_role)OR public.is_org_owner(p_actor,p_org)
+   OR NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.role='teacher')
+   OR EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=p_actor AND s.role<>'teacher'AND(s.expires_at IS NULL OR s.expires_at>now())))
+ )),false)
+$fn$;
+
 CREATE FUNCTION uc_individual_orders_private.context(p_org uuid,p_enrollment uuid,p_actor uuid,p_mode text)RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
 DECLARE e public.enrollments;c public.courses;p public.profiles;d public.student_frdo_data;org public.organizations;
@@ -551,12 +576,7 @@ BEGIN
  IF p_mode='own'THEN
   IF p_actor<>e.user_id THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
  ELSE
-  IF public.uc_education_actor_org_permission(p_actor,p_org,'documents.read')IS NOT TRUE OR public.uc_platform_document_action_allowed(p_actor,'read')IS NOT TRUE
-   OR public.uc_admission_staff_allowed(p_actor,p_org,e.user_id,NULL,e.id,false)IS NOT TRUE OR public.uc_learning_staff(p_actor,p_org,NULL,false)IS NOT TRUE
-  THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
-  IF p_mode IN('write','issue')AND(public.uc_education_actor_org_permission(p_actor,p_org,'documents.write')IS NOT TRUE OR public.uc_platform_document_action_allowed(p_actor,'write')IS NOT TRUE)
-  THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
-  IF p_mode='issue'AND public.uc_education_artifact_actor(p_actor,p_org,NULL,e.user_id,e.id)IS NOT TRUE THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
+  IF uc_individual_orders_private.actor_allowed(p_actor,p_org,e.user_id,p_mode)IS NOT TRUE THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
  END IF;
  SELECT *INTO d FROM public.student_frdo_data WHERE organization_id=p_org AND user_id=e.user_id FOR SHARE NOWAIT;
  name:=nullif(btrim(p.full_name),'');birth:=d.birth_date;
@@ -749,7 +769,7 @@ BEGIN
  -- approved edition. Compare pinned programme/file/review facts, not pointers.
  -- A mutable reporting label likewise does not change registry binding facts.
  IF prepared->'facts'IS DISTINCT FROM p_order.facts
-  OR(prepared->'witness'-'registry_context')IS DISTINCT FROM(p_order.source_witness-'registry_context')
+  OR((prepared->'witness')-'registry_context')IS DISTINCT FROM(p_order.source_witness-'registry_context')
   OR prepared->'witness'->'registry_context'->'binding'IS DISTINCT FROM p_order.source_witness->'registry_context'->'binding'
   OR prepared->'witness'->'registry_context'->'groups'IS DISTINCT FROM p_order.source_witness->'registry_context'->'groups'
  THEN PERFORM uc_individual_orders_private.fail('SOURCE_CHANGED');END IF;
@@ -873,7 +893,15 @@ BEGIN
   SELECT *INTO head_row FROM uc_individual_orders_private.orders WHERE id=(p_action->>'order_id')::uuid AND organization_id=p_organization_id AND enrollment_id=p_enrollment_id FOR UPDATE NOWAIT;
   IF head_row.id IS NULL THEN PERFORM uc_individual_orders_private.fail('NOT_FOUND');END IF;
   IF head_row.subject_user_id::text IS DISTINCT FROM ctx->>'subject_user_id'OR head_row.course_id::text IS DISTINCT FROM ctx->>'course_id'THEN PERFORM uc_individual_orders_private.fail('ACCESS_DENIED');END IF;
-  people:=ARRAY(SELECT DISTINCT value FROM unnest(array_append(head_row.participant_ids,actual_actor))value WHERE value IS NOT NULL ORDER BY value);
+  IF op='revise_draft'THEN
+   IF head_row.approved_snapshot IS NOT NULL THEN PERFORM uc_individual_orders_private.fail('CLOSED');END IF;
+   prepared:=uc_individual_orders_private.prepare_facts(p_organization_id,ctx,head_row.order_kind,p_action,true);
+   SELECT array_agg(DISTINCT value::uuid ORDER BY value::uuid)INTO people FROM jsonb_array_elements_text(to_jsonb(array_append(head_row.participant_ids,actual_actor))||(prepared->'participants'));
+  ELSE
+   people:=ARRAY(SELECT DISTINCT value FROM unnest(array_append(head_row.participant_ids,actual_actor))value WHERE value IS NOT NULL ORDER BY value);
+  END IF;
+  -- The complete revised-source participant set is known before the first
+  -- sorted exclusive42007 acquisition and the later shared role/file fence.
   PERFORM uc_individual_orders_private.people(people,true);PERFORM public.uc_signature_assurance_fence(p_organization_id,people,true,NULL,NULL,actual_actor);
   ctx:=uc_individual_orders_private.context(p_organization_id,p_enrollment_id,actual_actor,CASE WHEN op IN('approve','register')THEN'issue'ELSE'write'END);
   IF op='register'AND head_row.registry IS NOT NULL THEN
@@ -887,9 +915,7 @@ BEGIN
   old_hash:=head_row.state_sha256;reason:=p_action->>'reason';head_row.revision:=head_row.revision+1;head_row.updated_by:=actual_actor;head_row.updated_at:=at_time;head_row.participant_ids:=people;
   IF op='revise_draft'THEN
    IF head_row.approved_snapshot IS NOT NULL THEN PERFORM uc_individual_orders_private.fail('CLOSED');END IF;
-   prepared:=uc_individual_orders_private.prepare_facts(p_organization_id,ctx,head_row.order_kind,p_action,true);
-   SELECT array_agg(DISTINCT value::uuid ORDER BY value::uuid)INTO head_row.participant_ids FROM jsonb_array_elements_text(to_jsonb(people)||(prepared->'participants'));
-   PERFORM uc_individual_orders_private.people(head_row.participant_ids,true);
+   IF prepared->'witness'->'enrollment'IS DISTINCT FROM ctx->'enrollment_witness'THEN PERFORM uc_individual_orders_private.fail('CONTEXT_CHANGED');END IF;
    head_row.facts:=prepared->'facts';head_row.source_witness:=prepared->'witness';op:='draft_revised';
   ELSIF op='approve'THEN
    IF head_row.approved_snapshot IS NOT NULL THEN PERFORM uc_individual_orders_private.fail('CLOSED');END IF;

@@ -1,0 +1,287 @@
+{
+  "version": 1,
+  "kind": "W1_BOUNDED_CANONICAL_FOUNDATION_INPUT_SNAPSHOT",
+  "status": "SOURCE_ONLY_NOT_SQL_EXECUTED_NOT_RUNNER_READY",
+  "createdAt": "2026-11-23T15:33:44.129Z",
+  "files": [
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261018105000_uc_document_action_permissions.sql",
+      "input": "inputs/20261018105000_uc_document_action_permissions.sql",
+      "bytes": 39723,
+      "sha256": "8bfb958affc916cec61bf711882a397227e39397625fedd25dacf9dc400abb29",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261018111000_uc_program_facts.sql",
+      "input": "inputs/20261018111000_uc_program_facts.sql",
+      "bytes": 70236,
+      "sha256": "3b2715e0eafc568f05562800f88bcd018b9059de305c3c9c7e6e30a5f00f7eaf",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261023010000_uc_education_issuance_lifecycle.sql",
+      "input": "inputs/20261023010000_uc_education_issuance_lifecycle.sql",
+      "bytes": 302641,
+      "sha256": "73a44f8fb32c51682962c02211f24439e574132e06cb9f325e2407082fc48bc6",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261023100000_uc020_persisted_frdo_packet_workflow.sql",
+      "input": "inputs/20261023100000_uc020_persisted_frdo_packet_workflow.sql",
+      "bytes": 302871,
+      "sha256": "ce11705de9ee11968828ed854486d4723ac8579b3ea112d2c159ed4a32557d06",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261024110000_uc_signature_policy_read_alias.sql",
+      "input": "inputs/20261024110000_uc_signature_policy_read_alias.sql",
+      "bytes": 13307,
+      "sha256": "341311719a6bb469b5b0dca8c32d5ba89ffd36976475aa115822b09df3c70129",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261024090000_uc_education_artifact_metadata_observation.sql",
+      "input": "inputs/20261024090000_uc_education_artifact_metadata_observation.sql",
+      "bytes": 4131,
+      "sha256": "e604acbfe7d531dd9e1275743059ea6815fae9529bddc3cf140109156d97cb24",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261024100000_uc_education_output_storage_context.sql",
+      "input": "inputs/20261024100000_uc_education_output_storage_context.sql",
+      "bytes": 2991,
+      "sha256": "3f267006a63a50b14a797a8d5de349620d710cda9c14ca3e14535f3d634c14c4",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261025120000_uc_archive_reports_publication_normative.sql",
+      "input": "inputs/20261025120000_uc_archive_reports_publication_normative.sql",
+      "bytes": 502425,
+      "sha256": "e5d9274a9379714cd7018288aad82a774d76228389a85e49b1e294580fa697e5",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261030000000_learning_progress_reset_epoch.sql",
+      "input": "inputs/20261030000000_learning_progress_reset_epoch.sql",
+      "bytes": 66787,
+      "sha256": "9c7e2ce70a42f739614f2f5b84828ab4f930aba5a53c5fd3a1f16a36f76db48b",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/tests/org_billing_hold/released-sources.sql",
+      "input": "inputs/supabase__tests__org_billing_hold__released-sources.sql",
+      "bytes": 10541,
+      "sha256": "2ecd610aa20b2b437b13ca373d769d6035b5aa3d24cba2cc124174a45b63ed74",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261106120000_organization_billing_hold.sql",
+      "input": "inputs/20261106120000_organization_billing_hold.sql",
+      "bytes": 21784,
+      "sha256": "f3b5b2183c1863528ba09edad1b841b8d3c166be369bc175134c72899620dc88",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/tests/rtn-managed/released-quota-sources.sql",
+      "input": "inputs/supabase__tests__rtn-managed__released-quota-sources.sql",
+      "bytes": 10423,
+      "sha256": "a44476ddba932d73409304c43c92da079dd1f83ff4ca41eb2396bda6b50f096a",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114120000_rtn_managed_training.sql",
+      "input": "inputs/20261114120000_rtn_managed_training.sql",
+      "bytes": 75193,
+      "sha256": "17f5d155a1e8e5b729c8a276a5542f1bac1594269271306c5a44b53914c84e25",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114121000_rtn_source_scheduler.sql",
+      "input": "inputs/20261114121000_rtn_source_scheduler.sql",
+      "bytes": 984,
+      "sha256": "a80e6a057513794c487105684e85e389872a1a050ed4ddfab42bea71243ef9ae",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql",
+      "input": "inputs/20261114121500_rtn_provider_core_whitespace_reconciliation.sql",
+      "bytes": 3760,
+      "sha256": "13749c9f54464bd1c5bedb9ba53da21afbf830c95f8ea40ccc6b052641a47c2c",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114122000_rtn_quota_activity_integration.sql",
+      "input": "inputs/20261114122000_rtn_quota_activity_integration.sql",
+      "bytes": 16815,
+      "sha256": "f0430fcaa4fb417acd4c79ccf425e68406e8564525030756c01caac7e532b2cb",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114122500_rtn_attempt_drafts.sql",
+      "input": "inputs/20261114122500_rtn_attempt_drafts.sql",
+      "bytes": 6037,
+      "sha256": "9f193d2e18b17f691dcfc54933795038a4cfac19451aa9a7870b6897a41c1d21",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114123000_rtn_account_erasure.sql",
+      "input": "inputs/20261114123000_rtn_account_erasure.sql",
+      "bytes": 30147,
+      "sha256": "cdfc61118bd1af078c73a5519ea5a1d89414a6f05564cf8f4217dffd56684d76",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261114124000_rtn_normative_review_admission.sql",
+      "input": "inputs/20261114124000_rtn_normative_review_admission.sql",
+      "bytes": 18023,
+      "sha256": "630d4d8a1d7f34a0eb815881cf14962b19cfac326133a7594f1b3feab719a0e6",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261120130000_rtn_global_updates.sql",
+      "input": "inputs/20261120130000_rtn_global_updates.sql",
+      "bytes": 17137,
+      "sha256": "22cdd87ff08ee293c747355949c05eb444052758e4242fd3ab53430f9c238b30",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261120140000_rtn_personal_notifications.sql",
+      "input": "inputs/20261120140000_rtn_personal_notifications.sql",
+      "bytes": 22354,
+      "sha256": "a0b77783a427acc8812d6cf1161ffdbb46a1a88713ed2bb2efc46e1a87a46799",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261120150000_rtn_news_ingestion.sql",
+      "input": "inputs/20261120150000_rtn_news_ingestion.sql",
+      "bytes": 37108,
+      "sha256": "d6a4c2ef21d43522d3cd14955854d5e73bab867b14ee8a84cf72dcc1412b3ba5",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261120160000_rtn_source_failure_backoff.sql",
+      "input": "inputs/20261120160000_rtn_source_failure_backoff.sql",
+      "bytes": 4047,
+      "sha256": "2ba4a259e01a5ed2eed9d152832757c2f03bcf3d2dc200b466d742f43065cadd",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261122100000_rtn_question_review_policy_v2.sql",
+      "input": "inputs/20261122100000_rtn_question_review_policy_v2.sql",
+      "bytes": 17674,
+      "sha256": "c93ac7836752e61a3954a486e828d417373847dd6c483f479971c4fb3ce165b0",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261122133000_rtn_manual_source_backoff.sql",
+      "input": "inputs/20261122133000_rtn_manual_source_backoff.sql",
+      "bytes": 6618,
+      "sha256": "e0cd52524746db3281b885dd23c70c6e0a5dfd16995cebc8daca2ec3a97f387a",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261123100000_rtn_manual_source_import.sql",
+      "input": "inputs/20261123100000_rtn_manual_source_import.sql",
+      "bytes": 16342,
+      "sha256": "048f3d711696c1f0ca57c3d08f7d641e90df216064198c68102c94776857c66f",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261119090000_uc_automatic_admission_drafts.sql",
+      "input": "inputs/20261119090000_uc_automatic_admission_drafts.sql",
+      "bytes": 32344,
+      "sha256": "eff860be075476887acb0a76e3a67f233cb99d0f4f0ec1fd170107c78d44372d",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261119110000_education_journal_workspace.sql",
+      "input": "inputs/20261119110000_education_journal_workspace.sql",
+      "bytes": 40136,
+      "sha256": "ef984ead1a557ad783ea8b3a5651c10bf6ecbb6986b229f9a970492c912d8dda",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261123130000_uc_student_signature_inbox.sql",
+      "input": "inputs/20261123130000_uc_student_signature_inbox.sql",
+      "bytes": 12273,
+      "sha256": "6e6545795d5195c4741ad3df3a894670020f3b2ce3af823582781fe6a869939d",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "a2717a2ea4109c9294479de917de5ae9095f70f0",
+      "repositoryPath": "supabase/migrations/20261123140000_uc_document_chain_readmodel.sql",
+      "input": "inputs/20261123140000_uc_document_chain_readmodel.sql",
+      "bytes": 42972,
+      "sha256": "53a6522d3a61b93485e5e4148245ef69c0495f95edf45663e4c830a9f8f740fb",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "sourceRepositoryHead": "9cbdaab99b1532f197e08e30572f7677c65456a6",
+      "repositoryPath": "supabase/migrations/20261123150000_uc_issued_recipient_bridge.sql",
+      "input": "inputs/20261123150000_uc_issued_recipient_bridge.sql",
+      "bytes": 47381,
+      "sha256": "1d85cc49c31bad3bd692ee5264e75d2d24456cd003e225f263b4867825860c80",
+      "representation": "EXACT_GIT_BLOB_BYTES_ACTUALLY_INSTALLED_B1_SOURCE"
+    },
+    {
+      "sourceRepositoryHead": "9cbdaab99b1532f197e08e30572f7677c65456a6",
+      "repositoryPath": "supabase/migrations/20261123160000_uc_issued_inbox_current_source.sql",
+      "input": "inputs/20261123160000_uc_issued_inbox_current_source.sql",
+      "bytes": 18162,
+      "sha256": "d97a52c5075a54e6343bb017414d6059b68213814c71e3064094b698d989939c",
+      "representation": "EXACT_GIT_BLOB_BYTES_ACTUALLY_INSTALLED_B1_SOURCE"
+    },
+    {
+      "repositoryPath": "supabase/migrations/20260110234906_159335d2-99b0-4002-b8c0-e8dc0e87993b.sql",
+      "input": "inputs/20260110234906_159335d2-99b0-4002-b8c0-e8dc0e87993b.sql",
+      "bytes": 16158,
+      "sha256": "f5b0e28d924e5a798fe9f54a033c3e3d506032eee9a35cbcffb47ce6e1388a7c",
+      "representation": "EXACT_GIT_BLOB_BYTES"
+    },
+    {
+      "repositoryPath": "review/ACTUAL_PROFILES_KEY_CONSTRAINT_METADATA.json",
+      "input": "inputs/ACTUAL_PROFILES_KEY_CONSTRAINT_METADATA.json",
+      "bytes": 4850,
+      "sha256": "a1c65bfd805f3373477ff70cebda9c6076b781d1fdd9a4e117732f4c580186bc",
+      "representation": "EXACT_FRESH_ROOT_METADATA_CAPTURE_NO_PROFILE_ROWS"
+    }
+  ],
+  "excluded": [
+    "Moving1700",
+    "all customer rows/documents/results",
+    "production ledgers/secrets/claims",
+    "RTN draftarchive0900",
+    "old tests/assertions"
+  ],
+  "baseline": "Existing tracked B1 source-only native fixture/import closure, parent-owned and not edited here. This snapshot contains only necessary new canonical real source modules/preimages, not a complete standalone runtime.",
+  "requiresFullGuardedComposition": true
+}

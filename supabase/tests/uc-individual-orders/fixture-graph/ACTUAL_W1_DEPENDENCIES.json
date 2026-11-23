@@ -1,0 +1,125 @@
+{
+  "rows": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "body_md5": "0ed7ea257cbcfd2e91f5e6adbdcc9187",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "definition_md5": "48ae4a53f5f116e57199ffd10d1a9642",
+      "identity": "apply_document_registry_action(uuid,jsonb,bigint,uuid,jsonb)",
+      "observed_at": "2026-11-23 14:26:55.530864+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "ecfec664bb82c4fd3e8f74d07b4b1b70",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definition_md5": "fe18ea1dcbd919cd0edbc12a641ce124",
+      "identity": "commit_org_document_version(uuid,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "observed_at": "2026-11-23 14:26:55.530875+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "body_md5": "851f9c0704f4cbcdb3ac0d828a823b97",
+      "config": [
+        "search_path=pg_catalog, public",
+        "lock_timeout=2000ms",
+        "statement_timeout=10000ms"
+      ],
+      "definition_md5": "5567382afd0a559b3ba1ba638e8d8750",
+      "identity": "read_signature_assurance(uuid,jsonb)",
+      "observed_at": "2026-11-23 14:26:55.530877+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "9a40eb521a7eea730151888118baa32a",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definition_md5": "5700ec56872cd460ada507305c3898a2",
+      "identity": "reserve_group_document_number(uuid,uuid,text,integer)",
+      "observed_at": "2026-11-23 14:26:55.530879+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "body_md5": "f6ecfacc97224d5dfa317655995dd4e6",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "definition_md5": "402d8fb618f3b1f935293ea14270951a",
+      "identity": "uc_document_registry_context(uuid,uuid,jsonb,jsonb,boolean)",
+      "observed_at": "2026-11-23 14:26:55.53088+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "body_md5": "3b00f8587eb56ae9a609ffc73d07051b",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definition_md5": "e59798b9cd41c74b31c3c5db9e80aaf1",
+      "identity": "uc_education_actor_org_permission(uuid,uuid,text)",
+      "observed_at": "2026-11-23 14:26:55.530881+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "body_md5": "fc4226c1d46d54099d2853ef46e8faf7",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definition_md5": "48982b7957b826797311faf438a29a5a",
+      "identity": "uc_education_artifact_actor(uuid,uuid,uuid,uuid,uuid)",
+      "observed_at": "2026-11-23 14:26:55.530882+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "body_md5": "e195ec30d4e080956fe65edf57193cc6",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definition_md5": "907b8b6273881c72189003cd03e28824",
+      "identity": "uc_program_active_file_proof(uuid,uuid)",
+      "observed_at": "2026-11-23 14:26:55.530883+00",
+      "owner": "postgres",
+      "scoped_counts_definition": null,
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "body_md5": "c6ae8b366a77714e1050167f35408023",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definition_md5": "aa1e36c82204ba4c1dae0496f8759397",
+      "identity": "uc_scoped_journal_personal_counts(uuid)",
+      "observed_at": "2026-11-23 14:26:55.530885+00",
+      "owner": "postgres",
+      "scoped_counts_definition": "CREATE OR REPLACE FUNCTION public.uc_scoped_journal_personal_counts(p_user uuid)\n RETURNS jsonb\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT (\n SELECT(\n SELECT(\n SELECT(\n SELECT(\n SELECT(\n SELECT coalesce(jsonb_agg(jsonb_build_object('table',count_row.table_name,'column',count_row.column_name,'count',count_row.n) ORDER BY count_row.table_name),'[]'::jsonb) FROM(\n  SELECT 'uc_scoped_journal_contexts'::text table_name,'created_by'::text column_name,count(*) n FROM public.uc_scoped_journal_contexts c WHERE c.created_by=p_user\n  UNION ALL SELECT 'uc_scoped_journal_records','participant_ids',count(*) FROM public.uc_scoped_journal_records r WHERE p_user=ANY(r.participant_ids) OR r.subject_user_id=p_user OR r.recorded_by=p_user OR r.created_by=p_user\n  UNION ALL SELECT 'uc_scoped_journal_history','participant_ids',count(*) FROM public.uc_scoped_journal_history h WHERE p_user=ANY(h.participant_ids) OR h.subject_user_id=p_user OR h.recorded_by=p_user\n  UNION ALL SELECT 'uc_scoped_journal_requests','participant_ids',count(*) FROM public.uc_scoped_journal_requests request_row WHERE p_user=ANY(request_row.participant_ids) OR request_row.actor_id=p_user\n  UNION ALL SELECT 'uc_scoped_journal_exports','participant_ids',count(*) FROM public.uc_scoped_journal_exports e WHERE p_user=ANY(e.participant_ids) OR e.recorded_by=p_user\n ) count_row WHERE count_row.n>0\n)||public.uc_copy_registry_personal_counts(p_user)\n)||public.uc_document_registry_personal_counts(p_user)\n)||public.uc_education_personal_counts(p_user))||public.uc_frdo_personal_counts(p_user))||public.uc_signature_assurance_personal_counts(p_user)||public.uc_signature_assurance_file_proof_personal_counts(p_user)||public.uc_archive_personal_counts(p_user)||public.uc_publication_personal_counts(p_user)\n||(SELECT coalesce(jsonb_agg(jsonb_build_object('table',x.key,'column','retained_self_examination','count',x.value::bigint)ORDER BY x.key),'[]'::jsonb)FROM jsonb_each_text(public.uc_self_examination_personal_counts(p_user))x WHERE x.value::bigint>0)\n||public.uc_ng_personal_counts(p_user)\n) || rtn_private.personal_counts(p_user)\n$function$\n",
+      "security_definer": true
+    }
+  ]
+}
