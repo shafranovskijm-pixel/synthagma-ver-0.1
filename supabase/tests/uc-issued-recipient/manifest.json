@@ -7,7 +7,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ecfc67886e9eb5e9a97d4951eb38ed95563fb10dab262e2c4eead3444717a842",
+          "bytes": 33276,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 34248,
       "sha256": "261aba78dbb6960cb0fecab2b89a918c61bcbe21aca0ff98812ea8ae300f7ee5"
@@ -17,7 +22,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-document-review-20261018/release-manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "5f3a2a129006f775de843aa9be4c1be553cb1f5dca47fb59a19eb666413f2568",
+          "bytes": 13313,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 13688,
       "sha256": "3cd780ecd0ea7e4afb5c03691500365934000a21b2bb66209e6e4708009f975d"
@@ -27,7 +37,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-education-profile-20261018/release-manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "fc02d8e7ca6d7a0adaae550f10602d914b5305bdf23753c4e5e8d171e88ca9fe",
+          "bytes": 15854,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 16314,
       "sha256": "065e516291ba0adb73f8939538090aedcca0f3b59cd029b7c3c7512e3aac4ea6"
@@ -37,7 +52,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-enrollment-delete-20261019/release-manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8cd6efec7b172bac889a64f34c269c7afb8d42a0747c97ecf02cff0242aef900",
+          "bytes": 10749,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 11065,
       "sha256": "85034de93c885002b23e0c9f2a10166e5ed3a62c9382be155491f76ef36b1881"
@@ -57,7 +77,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-identification-private-review-20261019/manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "75413d3ef229f2c48c400a10229bf5d166b71814b1831685175ecacda1bb29cf",
+          "bytes": 21062,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 21679,
       "sha256": "661ff245a3ff61d9b79ecf308e1260cee18fc84ac7760b089c38ebc8b1ba5196"
@@ -67,7 +92,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf",
+          "bytes": 22284,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 22940,
       "sha256": "c39fb4bbf0ea8328a3fd9108360e5e1c27a24ce8ba1c30ecfdd20bdc95f0b3c1"
@@ -77,7 +107,12 @@
       "source": {
         "kind": "repository",
         "path": "docs/releases/sintagma-production/uc-student-frdo-write-20261019/release-manifest.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "4a9418590b780982532519476d5bf095b4fe8665b3a5fd8bca03939a68f15091",
+          "bytes": 14217,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 14625,
       "sha256": "bc72e56d9194f4ab9b4074e49dee37ccf3d9fc65f98e0814798ebfb7a56750a0"
@@ -302,7 +337,12 @@
       "source": {
         "kind": "repository",
         "path": "src/lib/customJournals/contract.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "25ac3a844988e2ffe8685cfe3b3df5d6195d6c817a1f238cbd2dc660a844f32e",
+          "bytes": 11745,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 11857,
       "sha256": "2fc1e0b73240e2981cbe2ae700f47cb1874ed2ccd03f1b247c23e03695bd2a6f"
@@ -331,7 +371,12 @@
       "source": {
         "kind": "repository",
         "path": "src/lib/educationIssuance/__tests__/fixtures.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "d6cb1a74fbf6ac0335c090ef28c8ceb7011c15acf681b7667b3bbb4fbcc93709",
+          "bytes": 7537,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 7593,
       "sha256": "2c7394f8dbaa40a30e826ecaa941bd8db1bd2cdf403f970311e7da1d9cba881d"
@@ -351,7 +396,12 @@
       "source": {
         "kind": "repository",
         "path": "src/lib/educationIssuance/types.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "90e9ad33252b435981a63ab13508aa3433a03a68831eea1c2c3af9129291ce3a",
+          "bytes": 2488,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 2521,
       "sha256": "3893fd03ddaa026ee387b362df1844bec9e17a624f5464eb6ce78d331476ca2a"
@@ -567,7 +617,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-admission-cases.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c935e0b7114a8dbfc6599ad701db359ebf38ed38898bbb95e32a18bd7de59478",
+          "bytes": 1821,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 1846,
       "sha256": "25f5bdf3fdb249e86ae35e782bc4da06f75c0d53c2bd6abffbcc92066615a60b"
@@ -577,7 +632,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-document-review-release.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ab0ed5af41f27f69aeb57d14711b90e60f7026658f10f1680d3028118204c909",
+          "bytes": 985,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 1000,
       "sha256": "1d80deeaf1347ce3af2d9daa2bee31c19f1f6f0678ad365c86a51e4a7b2d49c4"
@@ -587,7 +647,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-document-review.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "b034c476ee973d94b2459a350dab69f3f0a3401a0db5317579c696cdcfc831aa",
+          "bytes": 613,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 623,
       "sha256": "d4bf8523a032be185400b53b33e7033ae577b076d74bab9d7d7e3ebf8f1fd06b"
@@ -597,7 +662,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-document-scope.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "06605dbda16bdbdac506da2536e7fdbc9f245364cbe4adfd79e5e33d45ad16bf",
+          "bytes": 6262,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 6320,
       "sha256": "2b23779e93e16f29227c24a20bb4e5725b04bfc117168de688b4b9a84a29bfe8"
@@ -607,7 +677,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-education-profile.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "f77cac9a5bac5a89555ce85fe6e2db331648a10ff1ad864340be84828c24980c",
+          "bytes": 796,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 808,
       "sha256": "5dfd8a067315c316dfadc10bc942ebfb442193c0283dbfa28b9423a7b37bbfe4"
@@ -617,7 +692,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-enrollment-delete.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "cd7571c98229c836904fb3d65bd3d65df3b4df2b050e1e0ce234a861d885fd3a",
+          "bytes": 4081,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 4116,
       "sha256": "8c45dbe90f8203f28e5608e2dd54aed0ca64b4d06821ab4f9bb5265af8228981"
@@ -645,7 +725,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-identification-private-review.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3bd3c94ab87a9b19925d555414bebbdf16645a8421c6735d078fa77c6cf0f24e",
+          "bytes": 6392,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 6448,
       "sha256": "a6867eb973a03bbc11f09f1c535a7c5cd8260ba9f089d3c3873d79e85fd2a027"
@@ -655,7 +740,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-learning-outcomes.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "acbcfba6423ca6ae0b6c3f652881b68c39920b04f9c695ce10f580abb43972aa",
+          "bytes": 17723,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 17903,
       "sha256": "8053f7c8137944e83a686f1b58969af69a9b869ccd52325a0b51740c4e25615d"
@@ -665,7 +755,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-program-facts-release.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "67e326a6c383137ca0ae7a0cd0e9ebff067d021bcaf089cf46a02cc2b38ea605",
+          "bytes": 859,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 871,
       "sha256": "1958f2547cafa45b94f8e726aaecfd9a3e6d8b579739edbbc45878d4f77d1bca"
@@ -675,7 +770,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-program-facts.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c2c1880459f90a37c04d448142d4e40f90ede7418434454094cd67a0b4e56a55",
+          "bytes": 2755,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 2787,
       "sha256": "30f92677b3b4c37e2930c7e193cbe200a969a8233da59f87c9231ad4331dddeb"
@@ -685,7 +785,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-release.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "9de2c3ec665fb619aebc57c613990f2ecd61bda85857ce152f044fbd83b241d7",
+          "bytes": 9943,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 10035,
       "sha256": "97ef6a9e200646b34fe9043d8aa0d2c88ea8afb68227ffbc6f6f6a338968d8e5"
@@ -695,7 +800,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-signature-files.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "bdbee332bdace22978956b32c60aa609010e7c32e1a23863cf69650f2ebfcdf0",
+          "bytes": 1197,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 1212,
       "sha256": "8e1ecfdaef65c2abb913c6286dca7e607cf97d211ef0dd4f70d7c24ae6805999"
@@ -705,7 +815,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/uc-student-frdo-write.fixture.ts",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "1322436bbc10e86febcc67a7df30634f0d7cda7a9c9e68cbfce8142e6e081f98",
+          "bytes": 3424,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 3460,
       "sha256": "17ad05fbbacecf1c47e87a3e103dff553ed1356b799851aff631535bc62824c1"
@@ -743,7 +858,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018100000_uc_document_access_boundaries.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "02472f27d89b9392a3805d8ddec7fc47fb1d122ddd026bf87646545eefd7f147",
+          "bytes": 36915,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 37184,
       "sha256": "4d192b80b5915996b73c40567961c56e46b7be247880534786dad3297b1e4a06"
@@ -753,7 +873,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018101000_uc_signature_integrity.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e4f135d5e1d36614b352c15c3be4ef95572b729bcc58eb547ab785802c21c509",
+          "bytes": 38060,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 38527,
       "sha256": "06d8cd5b31069ce73c659b94d4714c2c3d49cfc0c13c19e10795dbd4dc665d61"
@@ -763,7 +888,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018102000_uc_document_versions.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e67782277c68d12341517b338f44fe8d614f13664093c94186c78a857ea98cf8",
+          "bytes": 18766,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 19055,
       "sha256": "2afdef3f89bcd8736346fa47976707a6652b943fac5e304d79df21ce743352f7"
@@ -773,7 +903,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018103000_uc_document_cleanup_scheduler.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c78fd90a5f4da0c0e03d66bf44ecc62b97bfb5b40b27b8e6558a6e34ad4a2f14",
+          "bytes": 1720,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 1750,
       "sha256": "5dfa8e85cf8ef51b6f039308062fa1d45811b5bdb371c3c85dd3e9c59f6c8c10"
@@ -783,7 +918,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018104000_uc_document_staff_scope.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "00348e0bfac571847dc327edce5aa81c653683349a8dcc0c293a7748255f7e68",
+          "bytes": 40467,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 40947,
       "sha256": "efaf74ff13f612ae610af43f0d2de5f62177ecc19808420e87fb9af6a05536bf"
@@ -793,7 +933,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018105000_uc_document_action_permissions.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8bfb958affc916cec61bf711882a397227e39397625fedd25dacf9dc400abb29",
+          "bytes": 39723,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 40222,
       "sha256": "7d7f33a674686c42a16e63b1b8bed627e31a01e152786066956e047a71f79230"
@@ -803,7 +948,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018106000_uc_gorel_draft_caller.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "a377583651e3f5851d4691a42f7657b16cbb814133a10785243b1d3ccb2aacaf",
+          "bytes": 8863,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 8991,
       "sha256": "7dff0ec15f925c6519ba80f96fc4e5aae8a9d88b5b5659cdbad70ab2f3662ecd"
@@ -813,7 +963,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018107000_uc_document_reminder_scheduler.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6d6058812c974d3e16665fdbad23da673b3eb315412bc2b790d7cf8c11e78247",
+          "bytes": 1619,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 1647,
       "sha256": "34f60b95ec8830b0497d949d1bb2af0dd676ecbe465b1dcfca6af8676752dc43"
@@ -823,7 +978,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018108000_uc_education_compliance_profile.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6df43053d4c85e94b0893e50033f102bc98dd1b0582266d29dac3e0ef1a159d5",
+          "bytes": 27385,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 27731,
       "sha256": "c85c754877fbb37e983f6d9ecbf8fa563ebbb6ad6b89afc98d25897bd09d763b"
@@ -833,7 +993,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018109000_uc_signature_token_files.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "41d0d8f8250a0feddcf0f71f03765b7ea6513d30e06ee75c900fd2971ea9ad42",
+          "bytes": 27669,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 28026,
       "sha256": "b659af5629986de9673592a7dbcc8b60e23cbc27dbc9026d7484e626e51da647"
@@ -843,7 +1008,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018110000_uc_document_internal_review.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "70412d3904fdb31613d8ae33d9e7120b55eba80077b370a9b4bbd58156402e3d",
+          "bytes": 35830,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 36228,
       "sha256": "c24aaf98f7dddfb920f794e44254de13c75b6c666eb91fdc6855feb95ed29744"
@@ -853,7 +1023,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018111000_uc_program_facts.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3b2715e0eafc568f05562800f88bcd018b9059de305c3c9c7e6e30a5f00f7eaf",
+          "bytes": 70236,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 70928,
       "sha256": "29065e32b416ea5dc38138129734091049a193419d2184e3d0b37d0c745561b4"
@@ -863,7 +1038,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018112000_uc_student_frdo_write_boundaries.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3a944fa0ad245488d9b1a6228110d417ae47b70a1211c5426b5f1690aa0619f5",
+          "bytes": 21230,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 21482,
       "sha256": "108b38eeea99a4e178871b3f66a02399ae8597d4a2b0f9c3bb316a3c37b8e731"
@@ -873,7 +1053,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261018113000_uc_enrollment_delete_boundaries.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "349e756ae4160eec348c95b914089f0f99b04b41cd9625ee6019487172c1ab71",
+          "bytes": 9893,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 9997,
       "sha256": "3c1327697c12f49aa7bec8d154f2bf125dcccd0ea2c014711ad0196135604dbb"
@@ -883,7 +1068,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261019114000_uc_identification_private_review.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "58b660bacb07e44714c1a9e368ad772c3c6e59cabe2108c21b03472695672e86",
+          "bytes": 62655,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 63181,
       "sha256": "9014dd53f73220e0903bc25848ae2e4ef1bda2ce2883ed68a705aace396b2459"
@@ -893,7 +1083,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/migrations/20261019115000_uc_admission_cases.sql",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "faa24852220cc77011f4f8829a0616909ac6e280582c626a47b312d52c00df34",
+          "bytes": 122692,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 123447,
       "sha256": "c85579f3580c722d98901bb30026beaf496091acb67fbd7bb8f2a3cbf859fef3"
@@ -1023,7 +1218,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-admission-cases-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "be0554f1f91d42e09920d46e4d8b6a266b1516e65b6c20e169e2dbbdb3417cd5",
+          "bytes": 239752,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 246219,
       "sha256": "f80fb3321097464774407dc29fdcb39dda9e97614ce3e5b9f44da720ab6c14d0"
@@ -1033,7 +1233,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-billing-storage-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3bc1d6ce3771f1a5b012418eec41a7a36d14c648565749c60256579b269c5de1",
+          "bytes": 2258,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 2315,
       "sha256": "9dc6f2c3c61fa2e09d4ae7aaedb90ce65b28e5c95b8592523885b20a73c5b6dc"
@@ -1053,7 +1258,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-document-access-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8379b0a30b7162434f6e4fffb5f592f2601c275f1b05fe93afb17b0343fd134c",
+          "bytes": 91518,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 93930,
       "sha256": "01dbee5898d034811b198db774da72d2f8920e70abbaacd0eab752a4ac981273"
@@ -1063,7 +1273,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-document-action-baseline-20261018.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "1bd5a45c682572a5d81ea405ccdd8bec623d59107d0dacac9a4b7db314503772",
+          "bytes": 30988,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 31042,
       "sha256": "a78b17e9da87ca465e3fd12ed93c9f1b715b57a5332bb574c5ee1577461faaf3"
@@ -1073,7 +1288,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-document-group-model-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "cf2a3c074082c0c3beaaff40caf956dda45031b1c7754c2ccb153b1a89fa64b1",
+          "bytes": 6902,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 6994,
       "sha256": "fd518a0eae7c5a94b283cd4bcb2e1a8857ead1d1c9347266260c053c34545ecd"
@@ -1083,7 +1303,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-document-scope-rpc-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3ee53ccaee389860170a266f5c6603efa251eb9833441667f2c93454b7659675",
+          "bytes": 19110,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 19319,
       "sha256": "6049065788134521cb5b666f13153a19ba20f7bda379be4351cc10545a4da574"
@@ -1093,7 +1318,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-document-scope-sources-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ab9f10bcc61754aca6f45cdbd44c800eeaee7cc94fa054ca18d7279966c215ea",
+          "bytes": 47368,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 48292,
       "sha256": "764346d9fd4833ed514d498817bb2e15412bff2ca643a959cc7b997b72451e33"
@@ -1103,7 +1333,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-education-profile-auth-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6aa17b237e60888339f29b870b529e5f160fcacbee1ebbf01db0be14b8849085",
+          "bytes": 8712,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 8761,
       "sha256": "1e8d60f35999f340f304f230384454ceaf2a8d635a0f14a796bd78ff08b22c71"
@@ -1113,7 +1348,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-enrollment-delete-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "30661816ee5cbd8b6874d8378ee80cb90504d38cab1182cfd9531e53e96336ac",
+          "bytes": 55214,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 55653,
       "sha256": "52ae13c9123cd90fa73b87099242ff85a1f66f03c8ac9ea683a1b18566e97f36"
@@ -1133,7 +1373,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-gorel-draft-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "192233cf6691558265490ba2cbe905e8b811e07510df7bfc00c8b116fc595f41",
+          "bytes": 20747,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 21098,
       "sha256": "4b3a8d3e3f493a6b9634b4ff5f7c42e4982a5df5e173df9bbff4d6a1af1cee48"
@@ -1153,7 +1398,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-identification-private-review-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "521f4d4d96577d55bfb97caec9686e395e5b7d58f34eacce288e8e19bf852d1d",
+          "bytes": 73115,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 73834,
       "sha256": "5cb3700779f68c4c2f49b81c7cb7ed3b108872a7d0a8437368b8630c1ae29aa2"
@@ -1163,7 +1413,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-learning-outcomes-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "cb1d47fea0713e2b413fe78d6a6be722bdb67a242c584dba5e5bdf0ce7375d65",
+          "bytes": 104482,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 106782,
       "sha256": "052dd3a31ba807302f2feab345653275da3f4d7255ab8c39590acd2d5aa1f9e4"
@@ -1213,7 +1468,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-org-contracts-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "16521dfaab3547877c30f8b62518916b6e9c15b02d28467cd7f12991a4e0cb1b",
+          "bytes": 7963,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 8285,
       "sha256": "ace57f8873cb329cc3d3934cba23899c4fa985a5919d69ff15cfd00b2d059ae8"
@@ -1223,7 +1483,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-program-facts-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "a1f11e5dcf538cbc6439a77290c874b2daed0b6d6da1d4fb944de30477c2c171",
+          "bytes": 50223,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 51334,
       "sha256": "5c30ddf6941cd4665f09ea78d4d0cdb4c4a7e0a44708a49abeff45e2b4d2a836"
@@ -1233,7 +1498,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-program-issuance-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c08b541dba76f45966cc1fe829911fbfe5a87a96ccd838d2df63e66877e616cc",
+          "bytes": 16655,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 16685,
       "sha256": "69444b2d21d764b9b338616a7d7aa913799296dce4ff554a3d27cdb3a7dd6e44"
@@ -1243,7 +1513,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-release-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "111718941037c6e2c137a88e4f1e06f5ca31e76ae460610e33119cfc91a42597",
+          "bytes": 23591,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 24204,
       "sha256": "1145e11591204430af838368b15cd9d9162d1e685f2b8db2f4f3fe81da8a6e33"
@@ -1253,7 +1528,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-signature-files-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e29eeee37c0b06c2d5f0933c2c5396dac48baeaadfa17168481dd3e6289843a0",
+          "bytes": 26776,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 26829,
       "sha256": "cada97b9c9ae8a2c025ff5e8e6d5020987fc0e71ce3336f518d7a2b7be011c54"
@@ -1263,7 +1543,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-signature-schema-20261018.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "a8e6118b6da40e3efdee017c18b7c7fe6112d53e6b683070fb03fd1a88d85bf8",
+          "bytes": 21265,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 21897,
       "sha256": "feac9c4ebaf6e1dc1f82eda6a91fb8f04bba48480b4774477c90dc4115e98e66"
@@ -1273,7 +1558,12 @@
       "source": {
         "kind": "repository",
         "path": "supabase/tests/fixtures/uc-student-frdo-write-baseline.json",
-        "allowExactGitBlob": true
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "831ed408e0859b11b9e97417396c86dfdb92a2a7a002cde3d9d1a9b45578a927",
+          "bytes": 83796,
+          "transform": "lf_to_crlf"
+        }
       },
       "bytes": 84591,
       "sha256": "35abce07aedfe272e1bcc7c37c0ca4ebe43997b9312655f6248a71dbc6ae6a30"
@@ -1729,7 +2019,8 @@
     "actualRuntimeReadTrace": 96,
     "uniqueMirrorInputs": 165,
     "actualRuntimeTraceSha256": "0cc8345f8477cf872a61a33818749934540204ba8bd0d92cbdeac1a71a66b370",
-    "acceptedCaseSha256": "411a7e6efa35d605109ffc4f26f2612b9521e990ed44c6405e0c663e53dceb85"
+    "acceptedCaseSha256": "411a7e6efa35d605109ffc4f26f2612b9521e990ed44c6405e0c663e53dceb85",
+    "repository_line_endings": "58 exact pinned Git-LF inputs reconstruct the already-reviewed held CRLF bytes; held target hashes/lengths unchanged."
   },
   "constructor": {
     "target": "supabase/functions/_shared/uc-release.fixture.ts",

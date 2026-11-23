@@ -67,6 +67,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Pull exact PostgreSQL17 image
         run: docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+      - name: Verify exact Git input portability and early failure evidence
+        run: node supabase/tests/uc-issued-recipient/prepare-native.test.cjs
       - name: Actual issued PDF, recipient confirmation, preservation and two-session races
         run: node supabase/tests/uc-issued-recipient/run-native.cjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
