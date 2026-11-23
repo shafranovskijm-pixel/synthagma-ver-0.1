@@ -139,5 +139,15 @@ DO $$DECLARE r jsonb;next jsonb;before text;after text;BEGIN
  PERFORM chain_check('40_readonly_old_rows_and_numbers_unchanged',before=after);
 END$$;
 RESET ROLE;
+
+-- The provider-specific default remains, while this new RPC is narrow.
+DO $new_rpc_acl_acceptance$
+DECLARE f pg_proc%ROWTYPE;BEGIN
+ SELECT *INTO f FROM pg_proc WHERE oid='public.uc_read_document_chain(uuid,jsonb,jsonb)'::regprocedure;
+ PERFORM chain_check('43_new_public_rpc_removes_only_unexpected_default_execute',NOT has_function_privilege('uc_fixture_extra_executor',f.oid,'EXECUTE') AND has_function_privilege('authenticated',f.oid,'EXECUTE') AND NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(f.proacl,acldefault('f',f.proowner)))a WHERE a.grantee NOT IN(f.proowner,'authenticated'::regrole) OR(a.grantee<>f.proowner AND a.is_grantable)));
+ PERFORM chain_check('44_old_function_acl_preserved',has_function_privilege('uc_fixture_extra_executor','public.uc_fixture_old_function_acl()','EXECUTE') AND(SELECT proacl::text FROM pg_proc WHERE oid='public.uc_fixture_old_function_acl()'::regprocedure)IS NOT DISTINCT FROM(SELECT old_function_acl FROM uc_fixture_acl_before));
+ PERFORM chain_check('45_default_function_acl_preserved',(SELECT md5(coalesce(string_agg(md5(to_jsonb(d)::text),''ORDER BY oid),''))FROM pg_default_acl d)IS NOT DISTINCT FROM(SELECT default_acl_fingerprint FROM uc_fixture_acl_before));
+END;$new_rpc_acl_acceptance$;
+
 SELECT count(*) AS distinct_checks FROM chain_checks;
 SELECT label FROM chain_checks ORDER BY label;

@@ -540,3 +540,13 @@ GRANT USAGE ON SCHEMA auth,public TO anon,authenticated,service_role;
 
 -- Explicit fixture adapter for navigation-to-management capability only.
 CREATE FUNCTION public.uc_document_action_allowed(p_org uuid,p_action text,p_group uuid,p_enrollment uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$SELECT public.can_access_organization(p_org,'documents.'||p_action) AND public.uc_document_scope_allowed(p_org,p_group,p_enrollment)$$;
+
+-- Synthetic provider-default compatibility fixture only; never production SQL.
+DO $acl_role$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='uc_fixture_extra_executor')THEN CREATE ROLE uc_fixture_extra_executor;END IF;END;$acl_role$;
+CREATE FUNCTION public.uc_fixture_old_function_acl()RETURNS integer LANGUAGE sql AS $$SELECT 17$$;
+GRANT EXECUTE ON FUNCTION public.uc_fixture_old_function_acl()TO uc_fixture_extra_executor;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO uc_fixture_extra_executor;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO authenticated WITH GRANT OPTION;
+CREATE TEMP TABLE uc_fixture_acl_before AS SELECT
+ (SELECT proacl::text FROM pg_proc WHERE oid='public.uc_fixture_old_function_acl()'::regprocedure)old_function_acl,
+ (SELECT md5(coalesce(string_agg(md5(to_jsonb(d)::text),''ORDER BY oid),''))FROM pg_default_acl d)default_acl_fingerprint;

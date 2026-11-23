@@ -120,4 +120,19 @@ EXCEPTION WHEN insufficient_privilege THEN RETURN jsonb_build_object('version',1
 END;$fn$;
 REVOKE ALL ON FUNCTION public.read_student_document_inbox(uuid,timestamptz,uuid,integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.read_student_document_inbox(uuid,timestamptz,uuid,integer) TO authenticated;
+-- Restrict this new RPC's explicit ACL despite provider-specific public defaults.
+-- Existing functions, roles, memberships and default privileges are unchanged.
+DO $new_rpc_acl$
+DECLARE target_signature constant text:='public.read_student_document_inbox(uuid,timestamptz,uuid,integer)';target_owner oid;grantee_oid oid;
+BEGIN
+ SELECT proowner INTO STRICT target_owner FROM pg_proc WHERE oid=target_signature::regprocedure;
+ FOR grantee_oid IN SELECT DISTINCT a.grantee FROM pg_proc p
+  CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner)))a
+  WHERE p.oid=target_signature::regprocedure AND a.grantee NOT IN(target_owner,'authenticated'::regrole)
+ LOOP
+  IF grantee_oid=0 THEN EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC',target_signature);
+  ELSE EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %I',target_signature,pg_get_userbyid(grantee_oid));END IF;
+ END LOOP;
+ EXECUTE format('REVOKE GRANT OPTION FOR EXECUTE ON FUNCTION %s FROM authenticated',target_signature);
+END;$new_rpc_acl$;
 COMMENT ON FUNCTION public.read_student_document_inbox(uuid,timestamptz,uuid,integer) IS 'Own-recipient metadata only; exact-bound new confirmations do not rewrite legacy signature facts. Token is returned only to its real recipient for the existing signing route.';

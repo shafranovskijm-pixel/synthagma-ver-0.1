@@ -81,4 +81,14 @@ BEGIN
  PERFORM public.inbox_check(source_rows=52,'actual plan hashes50 page plus2 active candidates rather than500 archive documents');
 END;$archive_work$;
 
+
+-- The provider-specific default remains, while this new RPC is narrow.
+DO $new_rpc_acl_acceptance$
+DECLARE f pg_proc%ROWTYPE;BEGIN
+ SELECT *INTO f FROM pg_proc WHERE oid='public.read_student_document_inbox(uuid,timestamptz,uuid,integer)'::regprocedure;
+ PERFORM public.inbox_check(NOT has_function_privilege('uc_fixture_extra_executor',f.oid,'EXECUTE') AND has_function_privilege('authenticated',f.oid,'EXECUTE') AND NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(f.proacl,acldefault('f',f.proowner)))a WHERE a.grantee NOT IN(f.proowner,'authenticated'::regrole) OR(a.grantee<>f.proowner AND a.is_grantable)),'new RPC strips extra default executor and auth grant option');
+ PERFORM public.inbox_check(has_function_privilege('uc_fixture_extra_executor','public.uc_fixture_old_function_acl()','EXECUTE') AND(SELECT proacl::text FROM pg_proc WHERE oid='public.uc_fixture_old_function_acl()'::regprocedure)IS NOT DISTINCT FROM(SELECT old_function_acl FROM uc_fixture_acl_before),'old function explicit ACL preserved');
+ PERFORM public.inbox_check((SELECT md5(coalesce(string_agg(md5(to_jsonb(d)::text),''ORDER BY oid),''))FROM pg_default_acl d)IS NOT DISTINCT FROM(SELECT default_acl_fingerprint FROM uc_fixture_acl_before),'provider function defaults preserved');
+END;$new_rpc_acl_acceptance$;
+
 SELECT count(*)AS distinct_checks FROM inbox_checks;

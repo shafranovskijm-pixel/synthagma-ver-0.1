@@ -24,3 +24,13 @@ SELECT public.account_deletion_access_allowed()AND p_recipient AND EXISTS(SELECT
 CREATE FUNCTION public.inbox_test_assert(ok boolean,label text)RETURNS void LANGUAGE plpgsql AS $$BEGIN IF ok IS NOT TRUE THEN RAISE EXCEPTION 'INBOX_ASSERT:%',label;END IF;END$$;
 INSERT INTO public.profiles VALUES('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001');
 SELECT set_config('test.inbox.actor','00000000-0000-4000-8000-000000000001',false),set_config('test.inbox.role','authenticated',false),set_config('test.inbox.active','true',false);
+
+-- Synthetic provider-default compatibility fixture only; never production SQL.
+DO $acl_role$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='uc_fixture_extra_executor')THEN CREATE ROLE uc_fixture_extra_executor;END IF;END;$acl_role$;
+CREATE FUNCTION public.uc_fixture_old_function_acl()RETURNS integer LANGUAGE sql AS $$SELECT 17$$;
+GRANT EXECUTE ON FUNCTION public.uc_fixture_old_function_acl()TO uc_fixture_extra_executor;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO uc_fixture_extra_executor;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO authenticated WITH GRANT OPTION;
+CREATE TEMP TABLE uc_fixture_acl_before AS SELECT
+ (SELECT proacl::text FROM pg_proc WHERE oid='public.uc_fixture_old_function_acl()'::regprocedure)old_function_acl,
+ (SELECT md5(coalesce(string_agg(md5(to_jsonb(d)::text),''ORDER BY oid),''))FROM pg_default_acl d)default_acl_fingerprint;
