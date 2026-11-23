@@ -213,7 +213,8 @@ describe("actual installed SDK entry adapters", () => {
       expect(init.redirect).toBe("error"); expect(init.cache).toBe("no-store");
       if (request.url.includes("/rest/v1/rpc/")) {
         const name = request.url.split("/").pop()!; const args = await request.json();
-        return json((await (name.includes("attest") ? f.attest(name, args) : f.rpc(name, args))).data);
+        return json((await (name === "uc_observe_admission_sealed_object" ? f.observe(args)
+          : name.includes("attest") ? f.attest(name, args) : f.rpc(name, args))).data);
       }
       if (request.url.includes("/storage/v1/object/info/")) return json({id: sealedId, name: f.sealedPath, bucket_id: ADMISSION_EVIDENCE_BUCKET,
         last_modified: time, created_at: time, size: pdf.length, content_type: "application/pdf", metadata: null});

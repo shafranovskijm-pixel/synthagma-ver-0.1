@@ -1,0 +1,1142 @@
+{
+  "schema_version": 1,
+  "scope": "ONE_NEW_W2_THREE_PROGRAMME_CANONICAL_NATIVE_CASE_NO_OLD_FUNCTIONAL_CASES",
+  "candidate": {
+    "bytes": 192817,
+    "sha256": "6f8131b53128daa80b171566fbb4e59f895feba1286cfe5292311c17f1402c36",
+    "version": "R5",
+    "rootAcceptance": "review/ROOT_R3_BOUNDED_SOURCE_ACCEPTANCE.json",
+    "source": {
+      "kind": "repository",
+      "path": "supabase/migrations/20261123170000_uc_individual_education_orders.sql"
+    },
+    "target": "native-input/w1-e2e/20261123170000_uc_individual_education_orders.sql"
+  },
+  "parentMaterializer": {
+    "relative": "../uc-issued-recipient",
+    "manifestSha256": "bfe6e36fd6939f3281ee99f5f3ec5391201f2b4e482be61475ed5a335f1d5e70",
+    "prepareSha256": "c6c2c5c10bb624f5ba58671634f8753fb457a42d97c78c42fb1967b79e7efd59",
+    "removeBeforeTestRegistration": {
+      "target": "supabase/tests/native/b1-issued-recipient/b1.positive.native.test.ts",
+      "bytes": 60720,
+      "sha256": "411a7e6efa35d605109ffc4f26f2612b9521e990ed44c6405e0c663e53dceb85"
+    }
+  },
+  "inputs": [
+    {
+      "target": "native-input/w1-foundation/20261018105000_uc_document_action_permissions.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018105000_uc_document_action_permissions.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 39723,
+      "sha256": "8bfb958affc916cec61bf711882a397227e39397625fedd25dacf9dc400abb29"
+    },
+    {
+      "target": "native-input/w1-foundation/20261018111000_uc_program_facts.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018111000_uc_program_facts.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 70236,
+      "sha256": "3b2715e0eafc568f05562800f88bcd018b9059de305c3c9c7e6e30a5f00f7eaf"
+    },
+    {
+      "target": "native-input/w1-foundation/20261023010000_uc_education_issuance_lifecycle.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261023010000_uc_education_issuance_lifecycle.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 302641,
+      "sha256": "73a44f8fb32c51682962c02211f24439e574132e06cb9f325e2407082fc48bc6"
+    },
+    {
+      "target": "native-input/w1-foundation/20261023100000_uc020_persisted_frdo_packet_workflow.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261023100000_uc020_persisted_frdo_packet_workflow.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 302871,
+      "sha256": "ce11705de9ee11968828ed854486d4723ac8579b3ea112d2c159ed4a32557d06"
+    },
+    {
+      "target": "native-input/w1-foundation/20261024110000_uc_signature_policy_read_alias.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261024110000_uc_signature_policy_read_alias.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 13307,
+      "sha256": "341311719a6bb469b5b0dca8c32d5ba89ffd36976475aa115822b09df3c70129"
+    },
+    {
+      "target": "native-input/w1-foundation/20261024090000_uc_education_artifact_metadata_observation.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261024090000_uc_education_artifact_metadata_observation.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 4131,
+      "sha256": "e604acbfe7d531dd9e1275743059ea6815fae9529bddc3cf140109156d97cb24"
+    },
+    {
+      "target": "native-input/w1-foundation/20261024100000_uc_education_output_storage_context.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261024100000_uc_education_output_storage_context.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 2991,
+      "sha256": "3f267006a63a50b14a797a8d5de349620d710cda9c14ca3e14535f3d634c14c4"
+    },
+    {
+      "target": "native-input/w1-foundation/20261025120000_uc_archive_reports_publication_normative.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261025120000_uc_archive_reports_publication_normative.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 502425,
+      "sha256": "e5d9274a9379714cd7018288aad82a774d76228389a85e49b1e294580fa697e5"
+    },
+    {
+      "target": "native-input/w1-foundation/20261030000000_learning_progress_reset_epoch.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261030000000_learning_progress_reset_epoch.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 66787,
+      "sha256": "9c7e2ce70a42f739614f2f5b84828ab4f930aba5a53c5fd3a1f16a36f76db48b"
+    },
+    {
+      "target": "native-input/w1-foundation/supabase__tests__org_billing_hold__released-sources.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/org_billing_hold/released-sources.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 10541,
+      "sha256": "2ecd610aa20b2b437b13ca373d769d6035b5aa3d24cba2cc124174a45b63ed74"
+    },
+    {
+      "target": "native-input/w1-foundation/20261106120000_organization_billing_hold.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261106120000_organization_billing_hold.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 21784,
+      "sha256": "f3b5b2183c1863528ba09edad1b841b8d3c166be369bc175134c72899620dc88"
+    },
+    {
+      "target": "native-input/w1-foundation/supabase__tests__rtn-managed__released-quota-sources.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/rtn-managed/released-quota-sources.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 10423,
+      "sha256": "a44476ddba932d73409304c43c92da079dd1f83ff4ca41eb2396bda6b50f096a"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114120000_rtn_managed_training.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114120000_rtn_managed_training.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 75193,
+      "sha256": "17f5d155a1e8e5b729c8a276a5542f1bac1594269271306c5a44b53914c84e25"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114121000_rtn_source_scheduler.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114121000_rtn_source_scheduler.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 984,
+      "sha256": "a80e6a057513794c487105684e85e389872a1a050ed4ddfab42bea71243ef9ae"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114121500_rtn_provider_core_whitespace_reconciliation.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114121500_rtn_provider_core_whitespace_reconciliation.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 3760,
+      "sha256": "13749c9f54464bd1c5bedb9ba53da21afbf830c95f8ea40ccc6b052641a47c2c"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114122000_rtn_quota_activity_integration.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114122000_rtn_quota_activity_integration.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 16815,
+      "sha256": "f0430fcaa4fb417acd4c79ccf425e68406e8564525030756c01caac7e532b2cb"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114122500_rtn_attempt_drafts.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114122500_rtn_attempt_drafts.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 6037,
+      "sha256": "9f193d2e18b17f691dcfc54933795038a4cfac19451aa9a7870b6897a41c1d21"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114123000_rtn_account_erasure.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114123000_rtn_account_erasure.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 30147,
+      "sha256": "cdfc61118bd1af078c73a5519ea5a1d89414a6f05564cf8f4217dffd56684d76"
+    },
+    {
+      "target": "native-input/w1-foundation/20261114124000_rtn_normative_review_admission.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261114124000_rtn_normative_review_admission.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 18023,
+      "sha256": "630d4d8a1d7f34a0eb815881cf14962b19cfac326133a7594f1b3feab719a0e6"
+    },
+    {
+      "target": "native-input/w1-foundation/20261120130000_rtn_global_updates.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261120130000_rtn_global_updates.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 17137,
+      "sha256": "22cdd87ff08ee293c747355949c05eb444052758e4242fd3ab53430f9c238b30"
+    },
+    {
+      "target": "native-input/w1-foundation/20261120140000_rtn_personal_notifications.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261120140000_rtn_personal_notifications.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 22354,
+      "sha256": "a0b77783a427acc8812d6cf1161ffdbb46a1a88713ed2bb2efc46e1a87a46799"
+    },
+    {
+      "target": "native-input/w1-foundation/20261120150000_rtn_news_ingestion.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261120150000_rtn_news_ingestion.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 37108,
+      "sha256": "d6a4c2ef21d43522d3cd14955854d5e73bab867b14ee8a84cf72dcc1412b3ba5"
+    },
+    {
+      "target": "native-input/w1-foundation/20261120160000_rtn_source_failure_backoff.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261120160000_rtn_source_failure_backoff.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 4047,
+      "sha256": "2ba4a259e01a5ed2eed9d152832757c2f03bcf3d2dc200b466d742f43065cadd"
+    },
+    {
+      "target": "native-input/w1-foundation/20261122100000_rtn_question_review_policy_v2.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261122100000_rtn_question_review_policy_v2.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 17674,
+      "sha256": "c93ac7836752e61a3954a486e828d417373847dd6c483f479971c4fb3ce165b0"
+    },
+    {
+      "target": "native-input/w1-foundation/20261122133000_rtn_manual_source_backoff.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261122133000_rtn_manual_source_backoff.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 6618,
+      "sha256": "e0cd52524746db3281b885dd23c70c6e0a5dfd16995cebc8daca2ec3a97f387a"
+    },
+    {
+      "target": "native-input/w1-foundation/20261123100000_rtn_manual_source_import.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123100000_rtn_manual_source_import.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 16342,
+      "sha256": "048f3d711696c1f0ca57c3d08f7d641e90df216064198c68102c94776857c66f"
+    },
+    {
+      "target": "native-input/w1-foundation/20261119090000_uc_automatic_admission_drafts.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261119090000_uc_automatic_admission_drafts.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 32344,
+      "sha256": "eff860be075476887acb0a76e3a67f233cb99d0f4f0ec1fd170107c78d44372d"
+    },
+    {
+      "target": "native-input/w1-foundation/20261119110000_education_journal_workspace.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261119110000_education_journal_workspace.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 40136,
+      "sha256": "ef984ead1a557ad783ea8b3a5651c10bf6ecbb6986b229f9a970492c912d8dda"
+    },
+    {
+      "target": "native-input/w1-foundation/20261123130000_uc_student_signature_inbox.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123130000_uc_student_signature_inbox.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 12273,
+      "sha256": "6e6545795d5195c4741ad3df3a894670020f3b2ce3af823582781fe6a869939d"
+    },
+    {
+      "target": "native-input/w1-foundation/20261123140000_uc_document_chain_readmodel.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123140000_uc_document_chain_readmodel.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 42972,
+      "sha256": "53a6522d3a61b93485e5e4148245ef69c0495f95edf45663e4c830a9f8f740fb"
+    },
+    {
+      "target": "native-input/w1-foundation/20261123150000_uc_issued_recipient_bridge.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123150000_uc_issued_recipient_bridge.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 47381,
+      "sha256": "1d85cc49c31bad3bd692ee5264e75d2d24456cd003e225f263b4867825860c80"
+    },
+    {
+      "target": "native-input/w1-foundation/20261123160000_uc_issued_inbox_current_source.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123160000_uc_issued_inbox_current_source.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 18162,
+      "sha256": "d97a52c5075a54e6343bb017414d6059b68213814c71e3064094b698d989939c"
+    },
+    {
+      "target": "native-input/w1-foundation/20260110234906_159335d2-99b0-4002-b8c0-e8dc0e87993b.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20260110234906_159335d2-99b0-4002-b8c0-e8dc0e87993b.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 16158,
+      "sha256": "f5b0e28d924e5a798fe9f54a033c3e3d506032eee9a35cbcffb47ce6e1388a7c"
+    },
+    {
+      "target": "native-input/w1-foundation/ACTUAL_PROFILES_KEY_CONSTRAINT_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/ACTUAL_PROFILES_KEY_CONSTRAINT_METADATA.json"
+      },
+      "bytes": 4850,
+      "sha256": "a1c65bfd805f3373477ff70cebda9c6076b781d1fdd9a4e117732f4c580186bc"
+    },
+    {
+      "target": "native-input/w1-foundation/SOURCE_MANIFEST.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/SOURCE_MANIFEST.json"
+      },
+      "bytes": 14412,
+      "sha256": "b6173cc1f13dce5ff2eae2764170381d141b2b7b88320f448a0766b1c4857226"
+    },
+    {
+      "target": "native-input/w1-foundation/ACTUAL_W1_DEPENDENCIES.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/ACTUAL_W1_DEPENDENCIES.json"
+      },
+      "bytes": 6707,
+      "sha256": "80d035a2722ac4e8b9eb04653d5c79376b297d8545599f07bc4350fd21c246ea"
+    },
+    {
+      "target": "native-input/w1-e2e/valid-owned-qa.pdf",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/valid-owned-qa.pdf"
+      },
+      "bytes": 647,
+      "sha256": "dd8b11969bf44229c8efd68207a31ded61e77c7756b8c2303e9df0c6c3325241"
+    },
+    {
+      "target": "src/lib/admissionDocuments/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/admissionDocuments/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "f68d804398bde950063f0255cd997b996df06a53ebec73a0a2714955d6cf8df6",
+          "bytes": 5922,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 5985,
+      "sha256": "f0ae4017ed7fe49bfc0ac7a4e50332d819ec6dd6e3264230089cc50b29ec5d2b"
+    },
+    {
+      "target": "src/lib/documentChain/contract.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/held-sut/src__lib__documentChain__contract.ts"
+      },
+      "bytes": 8291,
+      "sha256": "2d3c42b35526792e2706e4f3ebf21ad55e4c10bae409a4bb735d6bee8717bd27",
+      "verifyRepository": {
+        "path": "src/lib/documentChain/contract.ts",
+        "canonicalLfBytes": 8204,
+        "canonicalLfSha256": "f9b5319a1055f594e41cb74d21e09a56d32f888d8fe7e8bc2859d8dc61f547e5",
+        "heldSha256": "2d3c42b35526792e2706e4f3ebf21ad55e4c10bae409a4bb735d6bee8717bd27"
+      }
+    },
+    {
+      "target": "src/lib/educationJournalWorkspace/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/educationJournalWorkspace/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "429b8f70528117008cde5b4179878ba71193e910698cf1e03c7155b27203de31",
+          "bytes": 4956,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 5016,
+      "sha256": "7b8fb82d1fb129345fe0e504c570f44004b6064d47e9278fb8fab7917d2f995c"
+    },
+    {
+      "target": "supabase/functions/_shared/individual-education-order-own-file.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/individual-education-order-own-file.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 11414,
+      "sha256": "363fff8996b93db1c30a934925b4635df61c9afd5a4d23c80f5b9a157ffe4da5"
+    },
+    {
+      "target": "native-input/w1-e2e/20261123170000_uc_individual_education_orders.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123170000_uc_individual_education_orders.sql"
+      },
+      "bytes": 192817,
+      "sha256": "6f8131b53128daa80b171566fbb4e59f895feba1286cfe5292311c17f1402c36"
+    },
+    {
+      "target": "supabase/functions/signature-protected-file/worker.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-protected-file/worker.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "dec67726d96c96f6c93a86293f5187c658fad8a2f35e58c7a1428fc078f04397",
+          "bytes": 8551,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 8622,
+      "sha256": "d6935500e5e8c8f6ee07d96ea7e52e704ca2bf47866d9c09253e6cb84d8d2378"
+    },
+    {
+      "target": "supabase/functions/signature-protected-file/controlled-source/worker.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-protected-file/controlled-source/worker.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "75ce2cd741af3622ef9e520c7a4cef63dfce000a715d6f71802613cb24139b3d",
+          "bytes": 11847,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 11980,
+      "sha256": "e2c7732fac16167235ace09acd48e8b82cfb845325794f8f7e94b853b09849d1"
+    },
+    {
+      "target": "supabase/functions/signature-protected-file/controlled-source/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-protected-file/controlled-source/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "5ca583cc7fffa5f7392748f5fbf60e767ec3970f10ffb45b79d8a815c86c94f7",
+          "bytes": 5785,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 5836,
+      "sha256": "4c6246d18e2f6b3f51ce01d4c0a7d224bf71dd3031db6b273210e2eaadab522a"
+    },
+    {
+      "target": "supabase/functions/signature-protected-file/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-protected-file/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "46975010c40dcf01c1376193dc64b5ed1bd5a1024eeb2e2e0c2416b7a50fe4d6",
+          "bytes": 2323,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 2334,
+      "sha256": "fc366d5c86d564b94fd01de67e0de1f2409b57e6d13ecbd496659f6d7492dbec"
+    },
+    {
+      "target": "supabase/functions/signature-controlled-source-verification/worker.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-controlled-source-verification/worker.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "9161a81b7ed0247c788c1dad20593969c54b76301b3c360c201c9b68a2d12af3",
+          "bytes": 11806,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 11939,
+      "sha256": "7f6c7f61e21bc4c52c65145a2a5f7c1f72d892f8a20b58f750fb10f8a219ac0e"
+    },
+    {
+      "target": "supabase/functions/signature-controlled-source-verification/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-controlled-source-verification/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "5ca583cc7fffa5f7392748f5fbf60e767ec3970f10ffb45b79d8a815c86c94f7",
+          "bytes": 5785,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 5836,
+      "sha256": "4c6246d18e2f6b3f51ce01d4c0a7d224bf71dd3031db6b273210e2eaadab522a"
+    },
+    {
+      "target": "supabase/functions/signature-assurance/worker.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-assurance/worker.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "4694bd4402c1180566910bb5b92b2d90c11874e17cfd6fc8f14c451e7f26447d",
+          "bytes": 10296,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 10349,
+      "sha256": "500c563d8ae3330459f9c22587ff7b6387bfe88d2419bc41cac3627fbc9ac9cb"
+    },
+    {
+      "target": "supabase/functions/signature-assurance/controlled-source/worker.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-assurance/controlled-source/worker.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "9161a81b7ed0247c788c1dad20593969c54b76301b3c360c201c9b68a2d12af3",
+          "bytes": 11806,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 11939,
+      "sha256": "7f6c7f61e21bc4c52c65145a2a5f7c1f72d892f8a20b58f750fb10f8a219ac0e"
+    },
+    {
+      "target": "supabase/functions/signature-assurance/controlled-source/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-assurance/controlled-source/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "5ca583cc7fffa5f7392748f5fbf60e767ec3970f10ffb45b79d8a815c86c94f7",
+          "bytes": 5785,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 5836,
+      "sha256": "4c6246d18e2f6b3f51ce01d4c0a7d224bf71dd3031db6b273210e2eaadab522a"
+    },
+    {
+      "target": "supabase/functions/signature-assurance/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/signature-assurance/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "b8b95a194f28be4b3b434b0c151e6780be3e5621908581ff42ddff73432393f1",
+          "bytes": 35664,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 35846,
+      "sha256": "46b99afa2bd65a06c83d52aeae89d8ea4d68b6c27c60105dbae4a7fdd463558b"
+    },
+    {
+      "target": "supabase/functions/_shared/education-issuance-artifact.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/education-issuance-artifact.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e0f589ea533c86016cfaead0c0e6cc6f030e9842972e4befb2f90700c097d140",
+          "bytes": 31978,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 32407,
+      "sha256": "aeb37967d4ba4e8d3cffbde970a76d0858b0355791fd9a445ac14528c0f9f826"
+    },
+    {
+      "target": "supabase/functions/_shared/faithful-pdf.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/faithful-pdf.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e4e82bf5d0314c73151b848227d7e47c89f7739bfbfa5d8411214ccbde84213f",
+          "bytes": 4448,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 4521,
+      "sha256": "74d4b9e91ae8a8b938e026689e247662fe1f7e8c927aa6d582ebcdfc1d533f54"
+    },
+    {
+      "target": "supabase/functions/_shared/education-issuance-render.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/education-issuance-render.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c81d7ee4789cbbcc6b924913b53ba686e206681c29028feae1f548980900edab",
+          "bytes": 10664,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 10830,
+      "sha256": "6206f5e19c9ff40fbdecbdb66b015e9f618a5af30a1d4986d620ec5044609fda"
+    },
+    {
+      "target": "supabase/functions/_shared/admission-case-access.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/admission-case-access.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "55493e1ee8d6ae18e5a4905c625ebffb2f8a0d0db84bed9ced7556829ddc54c7",
+          "bytes": 43071,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 43588,
+      "sha256": "62d49992e7cc111eb8feba32d06a7dbb52ea9122529f748a0910f79130e2eb1e"
+    },
+    {
+      "target": "supabase/functions/_shared/individual-admission-evidence-schema.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/individual-admission-evidence-schema.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 10169,
+      "sha256": "97df897db1f646c1949ecdae6282ac45e702d2c6564d94e4fe546fab8c2513aa"
+    },
+    {
+      "target": "supabase/functions/_shared/individual-education-order-contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/individual-education-order-contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8d2b54d89b781a5b82f561b7c3d894d5aa9dc5694b85bd320462db97a991ed5b",
+          "bytes": 28026,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 28192,
+      "sha256": "a6b5a6a8b3415ab557ee603202036a744a6b1e67960065cda8c914b6e7f1fa83"
+    },
+    {
+      "target": "supabase/functions/_shared/individual-education-order-render.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/individual-education-order-render.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "1d6d4c6a32b1d9e29522beb3276951071d1e92fc00747b411a13c4b9d1c16e16",
+          "bytes": 9672,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 9741,
+      "sha256": "65d72710962f6e217346995d9e821029a397ebd9b865f16dc14f21512bbefb96"
+    },
+    {
+      "target": "supabase/functions/_shared/education-issuance-fonts.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/education-issuance-fonts.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "9f71f1968b9441a94d395f8d68848f983760ab48896fbb8a929ef2fe7d536abb",
+          "bytes": 634793,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 634867,
+      "sha256": "13790252faf8f2cf650b1b299177ac2acd1e9e2b5ab3a5ce873213867200e038"
+    },
+    {
+      "target": "supabase/functions/_shared/education-issuance-artifact-contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/education-issuance-artifact-contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "2d60280c3b18079d9ecd1a9e13674dee0594618446997baa2faf0edb98c5b649",
+          "bytes": 7708,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 7759,
+      "sha256": "70063009f011a3c9505ecdbf48717133efd011af4450a166bbdc9d5482e3ba03"
+    },
+    {
+      "target": "supabase/functions/_shared/admission-case-evidence-file.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/admission-case-evidence-file.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ac2e5f38b0ab969c49139c7c5561a420d5c8d43dca15caa365fcaa7da9791b80",
+          "bytes": 2563,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 2600,
+      "sha256": "b197093f5ffb89afa47655578e5bc7b6f953afde221805b67d789512af4c4637"
+    },
+    {
+      "target": "supabase/functions/_shared/admission-case-evidence-commit.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/admission-case-evidence-commit.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8fb9c663275564e12cde192875358dde0de2bbd1520175ba962f9c569e518438",
+          "bytes": 9387,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 9517,
+      "sha256": "011674fda3476e380390697eb7579982d9cbfbd79d0cf318c8a68fe37a002420"
+    },
+    {
+      "target": "src/lib/individualEducationOrders/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/individualEducationOrders/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "058c139c4955790073c41e3fb46bfcdb2e56dbf3aa826da2883165a7b502136d",
+          "bytes": 26789,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 26950,
+      "sha256": "f5e7bf534d2258d3df086e1625d8b601369e0f0b5e47680f5d7840e5aa470e80"
+    },
+    {
+      "target": "src/lib/programFacts.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/programFacts.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383",
+          "bytes": 10091,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 10201,
+      "sha256": "40ab2b1ea6a9404a9f730ec6fc53b9f490c275e2d8db8bf863f746ba8e8b1127"
+    },
+    {
+      "target": "src/lib/documentRegistry/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/documentRegistry/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "b33eb57263eaae9931e561841acd15d8f852896286f50d23d5198dcd22532e55",
+          "bytes": 22001,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 22136,
+      "sha256": "054994ad3353d7fb4d88e8bb1f27764d75e2bae6cc94d30dff4af544e2d33ee6"
+    },
+    {
+      "target": "src/lib/customJournals/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/customJournals/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "25ac3a844988e2ffe8685cfe3b3df5d6195d6c817a1f238cbd2dc660a844f32e",
+          "bytes": 11745,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 11857,
+      "sha256": "2fc1e0b73240e2981cbe2ae700f47cb1874ed2ccd03f1b247c23e03695bd2a6f"
+    },
+    {
+      "target": "src/lib/individualEducationIssuance/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/individualEducationIssuance/contract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 23335,
+      "sha256": "8d865926cb22422cb871e2fd6114794f8b89b4e241d0a15e40a82bc630c6c90a"
+    },
+    {
+      "target": "src/lib/educationIssuance/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/educationIssuance/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "007daea1a84aea11c33b3f9098ea93b8427a9f0897ae9151212d19fddb66bb1d",
+          "bytes": 32446,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 32656,
+      "sha256": "18b8b98c0885f11bb5a5980053676890cb691711e384b5d88cf369016802245d"
+    },
+    {
+      "target": "src/lib/learningOutcomes/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/learningOutcomes/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "0e9af32d889ff3c86d74f69ee63751ff24476b6523c032a59dc9439efc010202",
+          "bytes": 14586,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 14784,
+      "sha256": "608699fa37e4b4a98919530489039f6cbaaed00a328da1af5a5f0d527799258b"
+    },
+    {
+      "target": "src/lib/admissionCases/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/admissionCases/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "d15de8dcc0068c231cc6d02bf542b62e5d9bd8c8471dc938924fb87a0a238f7e",
+          "bytes": 19787,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 19935,
+      "sha256": "82981a749464ea96044e1dfeaa5f47b9077106632a22de787aa444c31bdd0f08"
+    },
+    {
+      "target": "src/lib/admissionCases/issuanceCondition.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/admissionCases/issuanceCondition.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "28ced67247fafa8555167f47cca82cd57b254ef86f591951286bbfa5b97b2322",
+          "bytes": 1438,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 1454,
+      "sha256": "04ff1b10b209143bf48df5eed1ea5d068f220a9de0f34a7497561deb74296df4"
+    },
+    {
+      "target": "native-input/w2/ACCEPTED_R5_NATIVE_SCHEMA_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/ACCEPTED_R5_NATIVE_SCHEMA_METADATA.json"
+      },
+      "bytes": 99989,
+      "sha256": "a35826825d659f943dc535353afd2e1056e51e47f868bc5a4ae36dde69df735c"
+    },
+    {
+      "target": "native-input/w2/ACTUAL_MIGRATION_LEDGER_COLUMN_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/ACTUAL_MIGRATION_LEDGER_COLUMN_METADATA.json"
+      },
+      "bytes": 1531,
+      "sha256": "ec709e1e48ce544d326fcfb280ccbfc5098a157c58dd70409d2229ae916f3555"
+    },
+    {
+      "target": "native-input/w2/20261123180000_uc_individual_education_issuance.sql",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/w2-frozen/20261123180000_uc_individual_education_issuance.sql"
+      },
+      "bytes": 390227,
+      "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+      "verifyRepository": {
+        "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
+        "canonicalLfBytes": 390227,
+        "canonicalLfSha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+        "heldSha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757"
+      }
+    },
+    {
+      "target": "native-input/w2/W2_NATIVE_SOURCE_FREEZE.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/w2-frozen/W2_NATIVE_SOURCE_FREEZE.json"
+      },
+      "bytes": 7809,
+      "sha256": "e7df58146439c22f93866a3cce32a3044977808de7d9e03e8580b4f5f7e10554"
+    },
+    {
+      "target": "supabase/functions/_shared/individual-education-order-artifact.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/individual-education-order-artifact.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c2b678839bea07bafb5d3281784d2323c0a5c2a0134511d91a2afae98dbedb2f",
+          "bytes": 23697,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 24025,
+      "sha256": "bdd4f4ecabb1ae7321aa220e14599d9d45ebaec547c0c816e829a6ea0419e271"
+    },
+    {
+      "target": "supabase/functions/_shared/individual-education-order-ports.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/individual-education-order-ports.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e71ecbe450bdb80d0ad47c4c02ef8a79796333d06927be7eee0d4fa1c856f4ce",
+          "bytes": 826,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 842,
+      "sha256": "37b707c1c244ae449e90dcaa07a10c1077ce050b6c0169492398d4aeda754f1a"
+    },
+    {
+      "target": "src/lib/signatureAssurance/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/signatureAssurance/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6769f2781786ccfbbaf27699e4a2f14738d675d8cfcd71944d7d9ea4782edef2",
+          "bytes": 35556,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 35736,
+      "sha256": "0d3ee0829d851e2ffe80e3d5e9ecebcb4afaad7e971057efca9dd950c5f93959"
+    },
+    {
+      "target": "src/lib/signatureAssurance/types.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/signatureAssurance/types.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "072823b82f93f11988c082ad085da40ae903245eddf5ef46c5f67009ee9e7b22",
+          "bytes": 24643,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 24957,
+      "sha256": "0a9b1fd8c67cea4158c2a2b04770e498b0b033801a82a76de1efc83fa4627322"
+    },
+    {
+      "target": "native-input/w2/ACCEPTED_R6_W2_NATIVE_SCHEMA_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/ACCEPTED_R6_W2_NATIVE_SCHEMA_METADATA.json"
+      },
+      "bytes": 158102,
+      "sha256": "9aa11599f515f85b2f5e8cea73072049d92617876f3b4d97a4edd1adb5b0d51e"
+    }
+  ],
+  "caseFiles": [
+    {
+      "path": "case/collect-w1-metadata.ts",
+      "target": "supabase/tests/native/w2-end-to-end/collect-w1-metadata.ts",
+      "bytes": 4788,
+      "sha256": "de0b0e1c3c66003ebdd0fc636ec98286de2b726c2f7e7cd56810f3e65cf0f179"
+    },
+    {
+      "path": "case/collect-w2-metadata.ts",
+      "target": "supabase/tests/native/w2-end-to-end/collect-w2-metadata.ts",
+      "bytes": 4841,
+      "sha256": "c8dc60a34a5879834fcb98de84ea5b175d9988d08a0b496f311432c9f0e431b1"
+    },
+    {
+      "path": "case/current-foundation.fixture.ts",
+      "target": "supabase/tests/native/w2-end-to-end/current-foundation.fixture.ts",
+      "bytes": 19967,
+      "sha256": "fef36192573ffc43148a843adc8fecdb3cd960ba4b18cba3d191f25d4591cef0"
+    },
+    {
+      "path": "case/individual-admission.fixture.ts",
+      "target": "supabase/tests/native/w2-end-to-end/individual-admission.fixture.ts",
+      "bytes": 13737,
+      "sha256": "ade2533092f958a439c13d19f262d65047794e7e425a0a407926fcc93c011f8b"
+    },
+    {
+      "path": "case/individual-issuance.fixture.ts",
+      "target": "supabase/tests/native/w2-end-to-end/individual-issuance.fixture.ts",
+      "bytes": 17731,
+      "sha256": "1e697a53c33700499938db556f4f9860b64db9a561984c6699c473e2c6f54e7b"
+    },
+    {
+      "path": "case/individual-rpc.ts",
+      "target": "supabase/tests/native/w2-end-to-end/individual-rpc.ts",
+      "bytes": 1351,
+      "sha256": "5dc326d157093a271b8f5214483a6ab314218ca504c4ae2b63ce8e6489c9ab4e"
+    },
+    {
+      "path": "case/issued-recipient.fixture.ts",
+      "target": "supabase/tests/native/w2-end-to-end/issued-recipient.fixture.ts",
+      "bytes": 8317,
+      "sha256": "f3f652e7139c12453039a9ed3274762f4dcd22036c91588a679426688d2871cc"
+    },
+    {
+      "path": "case/legacy-privacy.fixture.ts",
+      "target": "supabase/tests/native/w2-end-to-end/legacy-privacy.fixture.ts",
+      "bytes": 13577,
+      "sha256": "25b85b001b0bb7c9104ff821ca17652325342ed0b71c5861f55dc5d82ae971f5"
+    },
+    {
+      "path": "case/native-byte-worker-ports.ts",
+      "target": "supabase/tests/native/w2-end-to-end/native-byte-worker-ports.ts",
+      "bytes": 4214,
+      "sha256": "1c125f733292b9cb712beb8f463bda8a6dc930236f912b21e9a84c040fcf1e11"
+    },
+    {
+      "path": "case/native-order-worker-ports.ts",
+      "target": "supabase/tests/native/w2-end-to-end/native-order-worker-ports.ts",
+      "bytes": 4325,
+      "sha256": "a55c1e37e919a95d9f185c98ee74200cff4ae16f83f2ac7c6f150fd226d1d668"
+    },
+    {
+      "path": "case/w1-programme-pair.fixture.ts",
+      "target": "supabase/tests/native/w2-end-to-end/w1-programme-pair.fixture.ts",
+      "bytes": 6421,
+      "sha256": "f8e23031e95f16b83eb063d230fbee86c49355ddd673c0e87f84acfebbc472c3"
+    },
+    {
+      "path": "case/w2.three-programme.native.test.ts",
+      "target": "supabase/tests/native/w2-end-to-end/w2.three-programme.native.test.ts",
+      "bytes": 25494,
+      "sha256": "2f26f4fd5c787c2406ec2ac01eb234fbe60ad0dd5136577958a72b76cc4158ff"
+    }
+  ],
+  "profileFiles": [
+    {
+      "path": "profile/w2-native.setup.mjs",
+      "target": "w2-native.setup.mjs",
+      "bytes": 11092,
+      "sha256": "c681b966784f6d4c9a799fa9b8a2b674d6994d43879eb69245574537d4b887b4"
+    },
+    {
+      "path": "profile/w2-native.vitest.config.mjs",
+      "target": "w2-native.vitest.config.mjs",
+      "bytes": 2356,
+      "sha256": "8832cc1f14bcb6bd63223e75d1b52efbeef964625cb42caa8cb08bc0ba43676d"
+    },
+    {
+      "path": "profile/profile-contract.json",
+      "target": "profile-contract.json",
+      "bytes": 22310,
+      "sha256": "00b9949fc254c00c54dc2876df8908469df67c775b397836f28efd0a2793fdb4"
+    }
+  ],
+  "dependencies": {
+    "node": "24.22.3",
+    "postgres": "3.4.9",
+    "vitest": "4.0.18",
+    "zod": "3.25.76",
+    "jszip": "3.10.1",
+    "xmldomActualResolved": "0.8.11",
+    "xmldomLimitation": "Bootstrap-only held npm:@xmldom/xmldom@0.9.12 import is explicitly resolved to installed package; local actual was0.8.11. This non-XML W2 case doesnotexercise XML/packet artifact methods and makesnoXML/0.9.12 acceptanceclaim.",
+    "actualXmlRuntimeMethodsClaimed": false,
+    "htmlRenderer": "actual parse5/postcss pipeline; output rendering is ownedPDFport only"
+  },
+  "scopeLimitations": [
+    "Actual PostgreSQL17.11 and real product SQL/worker logic; synthetic Auth and Storage IO ports, valid owned647B PDF fixture; no hosted Browserless/Auth/StorageHTTP or visual render equivalence claim",
+    "Actual document_registration journal_source exercised for all4orders through16 routes; admission_orders-specific positive route not directly invoked in this case",
+    "Two PID collision witnesses prove held participant conflict and retry, not dynamic global lock-order tracing",
+    "Current foundation uses root-approved local provider ACL restoration and profile id unique reference key; no claim of full provider catalog parity",
+    "Old synthetic fixture rows retained exactly; production rows, UI publication and client acceptance remain root responsibilities"
+  ],
+  "status": "FROZEN_ROOT_NATIVE_EXECUTION_ACK",
+  "w2FrozenWire": [
+    {
+      "path": "W2_STRICT_INDIVIDUAL_ISSUANCE_WIRE_PROPOSAL_V1.json",
+      "sha256": "3b73d873d73afa8bc06bd2f8b76a3f1c2904e022fb7e75066695a0d5e5ef4456"
+    },
+    {
+      "path": "W2_STRICT_WIRE_R2_DELTA.json",
+      "sha256": "5fe567d84781c6fd9bd31345ee548298e18e337789e6dacbd5ee7501dc814ab7"
+    },
+    {
+      "path": "W2_STRICT_WIRE_R3_PRIVACY_DELTA.json",
+      "sha256": "61f04af517503efc524b1327053d5ab632828e0c39a526ff339b0afb47753a39"
+    }
+  ],
+  "source1800": {
+    "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
+    "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+    "bytes": 390227
+  },
+  "rootNativeExecutionAckSha256": "30b2dff66425f89c71523e0f84db728fad399c69e03bfbfd3914c0b90219462d",
+  "executionScope": "REQUIRED_EXACT_HEAD_CI_NO_LOCAL_PASSED_CASE_RERUN"
+}

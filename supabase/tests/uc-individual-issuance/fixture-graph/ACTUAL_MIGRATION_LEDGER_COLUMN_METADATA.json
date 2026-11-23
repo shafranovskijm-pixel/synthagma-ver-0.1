@@ -1,0 +1,65 @@
+{
+  "rows": [
+    {
+      "metadata": {
+        "columns": [
+          {
+            "default": null,
+            "name": "version",
+            "not_null": true,
+            "position": 1,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "statements",
+            "not_null": false,
+            "position": 2,
+            "type": "text[]"
+          },
+          {
+            "default": null,
+            "name": "name",
+            "not_null": false,
+            "position": 3,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "created_by",
+            "not_null": false,
+            "position": 4,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "idempotency_key",
+            "not_null": false,
+            "position": 5,
+            "type": "text"
+          },
+          {
+            "default": null,
+            "name": "rollback",
+            "not_null": false,
+            "position": 6,
+            "type": "text[]"
+          }
+        ],
+        "constraints": [
+          {
+            "definition": "UNIQUE (idempotency_key)",
+            "name": "schema_migrations_idempotency_key_key",
+            "type": "u"
+          },
+          {
+            "definition": "PRIMARY KEY (version)",
+            "name": "schema_migrations_pkey",
+            "type": "p"
+          }
+        ],
+        "relation": "supabase_migrations.schema_migrations"
+      }
+    }
+  ]
+}

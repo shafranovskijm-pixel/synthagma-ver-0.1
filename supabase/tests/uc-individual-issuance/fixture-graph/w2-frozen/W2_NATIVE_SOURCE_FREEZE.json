@@ -1,0 +1,173 @@
+{
+  "at_utc": "2026-11-23T19:34:08.159Z",
+  "kind": "W2_R7_FROZEN_SOURCE_FOR_REQUIRED_EXACT_HEAD_CI_ONLY",
+  "status": "FROZEN_ROOT_NATIVE_EXECUTION_ACK",
+  "candidate": {
+    "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
+    "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757",
+    "bytes": 390227
+  },
+  "newFunctionCount": 53,
+  "newPrivateTableCount": 5,
+  "changed_new_functions": [],
+  "fix": "Only old individual record/list duplicate capability becomesfalse for exact persisted private source tuple; old grouped records keep actualpriorcapabilities.",
+  "actual_failure": {
+    "rootVerifiedCi": "81e7400/native262d5c",
+    "legacyCanIssueDuplicate": true,
+    "privateSources": 1,
+    "groupedSources": 0,
+    "proofAvailability": "currently_unavailable"
+  },
+  "native_authorization": "Root canonical promotion +explicit required newCI; NOT a new local full-case rerun",
+  "production_actions": 0,
+  "oldFunctionPostimages": [
+    {
+      "identity": "uc_admission_association(uuid,uuid,uuid,uuid)",
+      "declaredIdentity": "public.uc_admission_association(uuid,uuid,uuid,uuid)",
+      "before_md5": "c941a8eccb60340b4d83107e53a5a1c4",
+      "after_md5": "0a019bb1da1205ec11fb6929647d27f0",
+      "guard": "w2_delta_1"
+    },
+    {
+      "identity": "uc_admission_program(uuid,uuid,uuid,uuid)",
+      "declaredIdentity": "public.uc_admission_program(uuid,uuid,uuid,uuid)",
+      "before_md5": "5e0279471cfdc6e675bdb7f39d25fc0e",
+      "after_md5": "3747d83082a55b5a8ce67824a5d01909",
+      "guard": "w2_delta_2"
+    },
+    {
+      "identity": "uc_admission_prerequisites(uuid,uuid,uuid,uuid,boolean)",
+      "declaredIdentity": "public.uc_admission_prerequisites(uuid,uuid,uuid,uuid,boolean)",
+      "before_md5": "e6bb425b4638a513211eab7877875de1",
+      "after_md5": "4f4a238157d4183053904ed93a35d8d3",
+      "guard": "w2_delta_3"
+    },
+    {
+      "identity": "uc_scoped_journal_personal_counts(uuid)",
+      "declaredIdentity": "public.uc_scoped_journal_personal_counts(uuid)",
+      "before_md5": "afe583ea861280c7ce4f5da51502948b",
+      "after_md5": "e4ac9c415ad3756807e0e133a32fba9e",
+      "guard": "w2_delta_4"
+    },
+    {
+      "identity": "read_student_admission_case(uuid,uuid,jsonb)",
+      "declaredIdentity": "public.read_student_admission_case(uuid,uuid,jsonb)",
+      "before_md5": "a648495809c3cd3e308ff04c2be25063",
+      "after_md5": "a1af9aa3624ecde2ec3b9aae46d5feea",
+      "guard": "w2_delta_5"
+    },
+    {
+      "identity": "apply_student_admission_case_action(uuid,uuid,uuid,jsonb)",
+      "declaredIdentity": "public.apply_student_admission_case_action(uuid,uuid,uuid,jsonb)",
+      "before_md5": "7516522496a8713c03ccec72b8f978bb",
+      "after_md5": "36fbe3023db9157785e9d207336ffd8e",
+      "guard": "w2_delta_6"
+    },
+    {
+      "identity": "prepare_admission_case_evidence(uuid,bigint,jsonb,uuid,jsonb)",
+      "declaredIdentity": "public.prepare_admission_case_evidence(uuid,bigint,jsonb,uuid,jsonb)",
+      "before_md5": "584fc0447a9cc9529c4d61425d46be21",
+      "after_md5": "96ab6628e4ff7f9c16b9435ec277753f",
+      "guard": "w2_delta_7"
+    },
+    {
+      "identity": "uc_admission_evidence_context(uuid,uuid,bigint,uuid)",
+      "declaredIdentity": "public.uc_admission_evidence_context(uuid,uuid,bigint,uuid)",
+      "before_md5": "eb01f1c109788fc65c070eacb0f2aeca",
+      "after_md5": "cb2842b4cc886d8796a9022cdc67cf04",
+      "guard": "w2_delta_8"
+    },
+    {
+      "identity": "uc_finalize_admission_case_evidence(uuid,uuid,bigint,uuid)",
+      "declaredIdentity": "public.uc_finalize_admission_case_evidence(uuid,uuid,bigint,uuid)",
+      "before_md5": "96e6b861575a36d4070312f8a18ef58d",
+      "after_md5": "1c84e8e11ff7abd0e6fe3be8fa77bc74",
+      "guard": "w2_delta_9"
+    },
+    {
+      "identity": "uc_admission_evidence_file_context(uuid,uuid)",
+      "declaredIdentity": "public.uc_admission_evidence_file_context(uuid,uuid)",
+      "before_md5": "165a808a8389dcd656de3f4269aadb12",
+      "after_md5": "fc719e8cb980fbb56503a77aa78a853f",
+      "guard": "w2_delta_10"
+    },
+    {
+      "identity": "uc_education_preparation_access(uuid,boolean,uuid)",
+      "declaredIdentity": "public.uc_education_preparation_access(uuid,boolean,uuid)",
+      "before_md5": "f1c6860d9c167200f8a61206820d7d63",
+      "after_md5": "1dd8a47bdac5e87dd908be97eeb0de54",
+      "guard": "w2_delta_11"
+    },
+    {
+      "identity": "uc_education_artifact_live(uuid,uuid,uuid,bigint,boolean)",
+      "declaredIdentity": "public.uc_education_artifact_live(uuid,uuid,uuid,bigint,boolean)",
+      "before_md5": "8676afb303a386c3471b387352c25cc9",
+      "after_md5": "28c5f6cc2ebab197a1b114aa7bac0f26",
+      "guard": "w2_delta_12"
+    },
+    {
+      "identity": "uc_education_issue_one(uuid,jsonb,text)",
+      "declaredIdentity": "public.uc_education_issue_one(uuid,jsonb,text)",
+      "before_md5": "5ded5548b6acc55a49785d1fa5b3ac47",
+      "after_md5": "6e2c9387adf4d28dc2675a5a81e7663c",
+      "guard": "w2_delta_13"
+    },
+    {
+      "identity": "uc_guard_program_issuance()",
+      "declaredIdentity": "public.uc_guard_program_issuance()",
+      "before_md5": "5d899185d5b31c279741f70e99f1d5a6",
+      "after_md5": "82500fffe4d99dfa318d61b7d3c19e86",
+      "guard": "w2_delta_14"
+    },
+    {
+      "identity": "uc_record_program_issuance()",
+      "declaredIdentity": "public.uc_record_program_issuance()",
+      "before_md5": "ed5ec4865ca78c073b8525956f7c89f0",
+      "after_md5": "44a8dd10853dec4c751ac682d12ee72f",
+      "guard": "w2_delta_15"
+    },
+    {
+      "identity": "read_education_issuance(uuid,jsonb,jsonb)",
+      "declaredIdentity": "public.read_education_issuance(uuid,jsonb,jsonb)",
+      "before_md5": "f03cf43f952e0d1191943f4c9b2c8808",
+      "after_md5": "4ed350757fe98a6d929fd3ab06ce402f",
+      "guard": "w2_delta_16"
+    },
+    {
+      "identity": "issue_education_document_batch(uuid,uuid,uuid,jsonb)",
+      "declaredIdentity": "public.issue_education_document_batch(uuid,uuid,uuid,jsonb)",
+      "before_md5": "a685ded5aeaf0b819b630ea03b4ffdb5",
+      "after_md5": "5e8ffbc60406bf1c9977883a35021b26",
+      "guard": "w2_delta_17"
+    },
+    {
+      "identity": "uc_education_canonical_boundary()",
+      "declaredIdentity": "public.uc_education_canonical_boundary()",
+      "before_md5": "acd5ceb5a484fe347bfd372717166c5e",
+      "after_md5": "99b4d41c8bda2765861fd90b0ba67daa",
+      "guard": "w2_delta_18"
+    }
+  ],
+  "rootAckSha256": "30b2dff66425f89c71523e0f84db728fad399c69e03bfbfd3914c0b90219462d",
+  "independentSourceReview": {
+    "path": "review/W2_R7_LEGACY_DUPLICATE_CAP_INDEPENDENT_SOURCE_REVIEW.json",
+    "sha256": "8f0b41db02656c00ff026f8c3a89c68019ba455ebf99f01468061f6423d8ded5"
+  },
+  "derivation": "Actual root R7 canonical promotion/CI instruction plus unchanged acceptedR6 oldpostimages except exactread_education_issuance postimage4ed350. Historical R6 metadataJSON is nevereditedorrelabeled.",
+  "authorization": {
+    "scope": "REQUIRED_NEW_EXACT_HEAD_NATIVE_CI_ONLY",
+    "actualRootStatus": "R7_CANONICAL_LOCAL_PROMOTED_REQUIRED_NATIVE_CI_AND_NEW_OWNER_BINDINGS_PENDING",
+    "localPassedThreeKindRerunAuthorized": false,
+    "productionAuthorized": false,
+    "sourceReview": "8f0b41db02656c00ff026f8c3a89c68019ba455ebf99f01468061f6423d8ded5"
+  },
+  "all53NewDefinitionsExactRelativeToAcceptedR6": true,
+  "changed_old_function": "read_education_issuance(uuid,jsonb,jsonb)",
+  "referenceNativeMetadata": {
+    "path": "fixture-graph/ACCEPTED_R6_W2_NATIVE_SCHEMA_METADATA.json",
+    "sha256": "9aa11599f515f85b2f5e8cea73072049d92617876f3b4d97a4edd1adb5b0d51e",
+    "actualSourceR6": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
+    "unchangedNewSchemaVectorsOnly": true,
+    "freshActualR7MetadataRequired": true
+  }
+}
