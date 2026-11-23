@@ -1,5 +1,5 @@
 import { admissionRequestBoundary, admissionError, admissionJson, admissionDeadline, admissionCheckSignal, readAdmissionBody,
-  parseAdmissionCommit, requireAdmissionActor, admissionDbData, parseAdmissionContext, admissionDownload, admissionSame, admissionMutation,
+  parseAdmissionCommit, admissionCallerScopeArgs, admissionObject, requireAdmissionActor, admissionDbData, parseAdmissionContext, admissionDownload, admissionSame, admissionMutation,
   admissionSealedObject, admissionSealedInfoObserved, admissionObservedSealedObject, admissionAttestation, admissionEvidenceEcho, ADMISSION_EVIDENCE_BUCKET, AdmissionError,
   ADMISSION_EVIDENCE_REVISION, admissionCodes, type AdmissionDependencies, type AdmissionEvidenceContext } from "./admission-case-access.ts";
 
@@ -10,21 +10,25 @@ function identity(context: AdmissionEvidenceContext) {
 }
 /** Sealing is byte attestation only. The original caller alone finalizes business evidence. */
 export async function admissionEvidenceCommitRequest(request: Request, deps: AdmissionDependencies): Promise<Response> {
+  let responseVersion: 1 | 2 = 1;
   let diagnosticStage: "boundary" | "read_input" | "authenticate_initial" | "context_initial" | "source_download" | "authenticate_after_source" | "context_after_source" | "sealed_upload" | "sealed_info_before" | "sealed_observe_before" | "sealed_readback" | "sealed_info_after" | "sealed_observe_after" | "authenticate_before_attest" | "context_before_attest" | "attest" | "authenticate_after_attest" | "context_after_attest" | "finalize" | "authenticate_after_finalize" | "context_consumed" | "result" = "boundary";
   try {
     const authorization = admissionRequestBoundary(request);
     if (authorization instanceof Response) return authorization;
     return await admissionDeadline(request, async signal => {
       diagnosticStage = "read_input";
-      const input = parseAdmissionCommit(await readAdmissionBody(request, signal));
+      const rawInput = await readAdmissionBody(request, signal);
+      if (admissionObject(rawInput) && rawInput.schema_version === 2) responseVersion = 2;
+      const input = parseAdmissionCommit(rawInput);
       admissionCheckSignal(signal);
       if (!deps.configured) throw new AdmissionError("DEPENDENCY_UNAVAILABLE");
       diagnosticStage = "authenticate_initial";
       const caller = deps.createCaller(authorization, signal), actor = await requireAdmissionActor(caller, authorization);
       const args = {p_case_id: input.case_id, p_reservation_id: input.reservation_id, p_expected_revision: input.expected_revision, p_request_id: input.request_id};
+      const callerArgs = admissionCallerScopeArgs(input, args);
       const context = async () => {
         admissionCheckSignal(signal);
-        const value = parseAdmissionContext(admissionDbData(await caller.rpc("uc_admission_evidence_context", args)), input, actor);
+        const value = parseAdmissionContext(admissionDbData(await caller.rpc("uc_admission_evidence_context", callerArgs)), input, actor);
         admissionCheckSignal(signal); return value;
       };
       diagnosticStage = "context_initial";
@@ -101,7 +105,7 @@ export async function admissionEvidenceCommitRequest(request: Request, deps: Adm
       if (object.known_sha256 !== proof.sha256 || object.byte_size !== proof.bytes.length || object.mime_type !== mime) throw new AdmissionError("SOURCE_CHANGED");
       admissionCheckSignal(signal);
       diagnosticStage = "finalize";
-      const finalized = admissionMutation(admissionDbData(await caller.rpc("uc_finalize_admission_case_evidence", args)), input, after.scope);
+      const finalized = admissionMutation(admissionDbData(await caller.rpc("uc_finalize_admission_case_evidence", callerArgs)), input, after.scope);
       admissionEvidenceEcho(finalized, sealed, input.expected_revision);
       diagnosticStage = "authenticate_after_finalize";
       await requireAdmissionActor(caller, authorization, actor);
@@ -121,6 +125,6 @@ export async function admissionEvidenceCommitRequest(request: Request, deps: Adm
       const code = error instanceof AdmissionError && admissionCodes.includes(error.code) ? error.code : "DEPENDENCY_UNAVAILABLE";
       console.warn(JSON.stringify({event: "admission_evidence_commit_failure", revision: ADMISSION_EVIDENCE_REVISION, stage: diagnosticStage, code}));
     } catch { /* Diagnostics must not alter the existing safe HTTP result. */ }
-    return admissionError(error);
+    return admissionError(error, responseVersion);
   }
 }

@@ -1,3 +1,5 @@
+import { individualAdmissionScopeSchema, individualAdmissionBindingSchema, individualAdmissionStateSchema } from "./individual-admission-evidence-schema.ts";
+
 /** UC012 original-caller evidence boundary. No public locator, legal or admission inference. */
 export const ADMISSION_EVIDENCE_REVISION = "uc-admission-case-evidence-20261024-v5";
 export const ADMISSION_EVIDENCE_BUCKET = "admission-case-evidence";
@@ -28,9 +30,9 @@ export const admissionHeaders = {
 export const admissionJson = (value: unknown, status = 200): Response => new Response(JSON.stringify(value), {
   status, headers: {...admissionHeaders, "Content-Type": "application/json"},
 });
-export function admissionError(error: unknown): Response {
+export function admissionError(error: unknown, schemaVersion: 1 | 2 = 1): Response {
   const safe = error instanceof AdmissionError ? error : new AdmissionError("DEPENDENCY_UNAVAILABLE");
-  return admissionJson({schema_version: 1, code: safe.code, retryable: safe.code === "DEPENDENCY_UNAVAILABLE", message: messages[safe.code]}, safe.status);
+  return admissionJson({schema_version: schemaVersion, code: safe.code, retryable: safe.code === "DEPENDENCY_UNAVAILABLE", message: messages[safe.code]}, safe.status);
 }
 export const admissionObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 export function admissionExact(value: unknown, keys: readonly string[]): asserts value is Record<string, unknown> {
@@ -46,15 +48,34 @@ export function admissionRevision(value: unknown): number {
 }
 export type AdmissionCommitInput = {case_id: string; reservation_id: string; expected_revision: number; request_id: string};
 export type AdmissionFileInput = {case_id: string; evidence_version_id: string};
-export function parseAdmissionCommit(value: unknown): AdmissionCommitInput {
-  admissionExact(value, ["case_id", "reservation_id", "expected_revision", "request_id"]);
+type IndividualAdmissionInputScope = {schema_version: 2; kind: "individual_w1"; organization_id: string; enrollment_id: string};
+export type IndividualAdmissionCommitInput = AdmissionCommitInput & IndividualAdmissionInputScope;
+export type IndividualAdmissionFileInput = AdmissionFileInput & IndividualAdmissionInputScope;
+function individualAdmissionInput(value: AdmissionCommitInput | AdmissionFileInput): value is IndividualAdmissionCommitInput | IndividualAdmissionFileInput {
+  return "schema_version" in value;
+}
+function parseIndividualAdmissionInputScope(value: Record<string, unknown>): IndividualAdmissionInputScope {
+  if (value.schema_version !== 2 || value.kind !== "individual_w1") throw new AdmissionError("INVALID_INPUT");
+  return {schema_version: 2, kind: "individual_w1", organization_id: admissionUuid(value.organization_id), enrollment_id: admissionUuid(value.enrollment_id)};
+}
+/** The explicit V2 target selects an authenticated overload, never a caller-supplied user/course/group. */
+export function admissionCallerScopeArgs(input: AdmissionCommitInput | AdmissionFileInput, args: Record<string, unknown>): Record<string, unknown> {
+  return individualAdmissionInput(input) ? {...args, p_individual_scope: {
+    kind: "individual_w1", version: 1, organization_id: input.organization_id, enrollment_id: input.enrollment_id,
+  }} : args;
+}
+export function parseAdmissionCommit(value: unknown): AdmissionCommitInput | IndividualAdmissionCommitInput {
+  const individual = admissionObject(value) && Object.prototype.hasOwnProperty.call(value, "schema_version");
+  admissionExact(value, individual ? ["schema_version", "kind", "organization_id", "enrollment_id", "case_id", "reservation_id", "expected_revision", "request_id"]
+    : ["case_id", "reservation_id", "expected_revision", "request_id"]);
   if (value.expected_revision === Number.MAX_SAFE_INTEGER) throw new AdmissionError("LIMIT_REACHED");
-  return {case_id: admissionUuid(value.case_id), reservation_id: admissionUuid(value.reservation_id),
+  return {...(individual ? parseIndividualAdmissionInputScope(value) : {}), case_id: admissionUuid(value.case_id), reservation_id: admissionUuid(value.reservation_id),
     expected_revision: admissionRevision(value.expected_revision), request_id: admissionUuid(value.request_id)};
 }
-export function parseAdmissionFile(value: unknown): AdmissionFileInput {
-  admissionExact(value, ["case_id", "evidence_version_id"]);
-  return {case_id: admissionUuid(value.case_id), evidence_version_id: admissionUuid(value.evidence_version_id)};
+export function parseAdmissionFile(value: unknown): AdmissionFileInput | IndividualAdmissionFileInput {
+  const individual = admissionObject(value) && Object.prototype.hasOwnProperty.call(value, "schema_version");
+  admissionExact(value, individual ? ["schema_version", "kind", "organization_id", "enrollment_id", "case_id", "evidence_version_id"] : ["case_id", "evidence_version_id"]);
+  return {...(individual ? parseIndividualAdmissionInputScope(value) : {}), case_id: admissionUuid(value.case_id), evidence_version_id: admissionUuid(value.evidence_version_id)};
 }
 export async function readAdmissionBody(request: Request, signal: AbortSignal): Promise<unknown> {
   admissionCheckSignal(signal);
@@ -241,7 +262,11 @@ const date: Check = value => {
     || new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) !== value) failSource();
 };
 export type AdmissionScope = {organization_id: string; group_id: string; enrollment_id: string; user_id: string; course_id: string};
+export type IndividualAdmissionScope = ReturnType<typeof individualAdmissionScopeSchema.parse>;
+export type AdmissionBoundaryScope = AdmissionScope | IndividualAdmissionScope;
 const scopeCheck: Check = value => {shape(value, {organization_id: admissionUuid, group_id: admissionUuid, enrollment_id: admissionUuid, user_id: admissionUuid, course_id: admissionUuid});};
+const individualScopeCheck: Check = value => {if (!individualAdmissionScopeSchema.safeParse(value).success) failSource();};
+const individualBindingCheck: Check = value => {if (!individualAdmissionBindingSchema.safeParse(value).success) failSource();};
 const programCheck: Check = value => {shape(value, {enrollment_snapshot_id: admissionUuid, binding_id: admissionUuid, binding_revision: admissionRevision,
   version_id: admissionUuid, snapshot_hash: sha, facts_hash: sha, file_document_id: admissionUuid, file_version_id: admissionUuid, file_review_id: admissionUuid});};
 const requirementCheck: Check = value => {shape(value, {id: admissionUuid, revision: admissionRevision, rule_id: admissionUuid, rule_set_id: admissionUuid,
@@ -305,16 +330,22 @@ const staffCheck = (value: unknown): Record<string, unknown> => optionalShape(va
   rule_set_id: nullable(admissionUuid), requirements: list(requirementCheck, 50), evidence: list(evidenceCheck), tasks: list(taskCheck, 50), decision: nullable(decisionCheck),
   prerequisites: list(prerequisitesCheck, 20), capabilities: capabilityCheck, rule_set_digest: nullable(sha), requirements_digest: sha},
   {issuance_reviews: list(issuanceReviewCheck, 50), issuance_conditions: list(issuanceRequirementConditionCheck, 50)});
-export type AdmissionMutation = {schema_version: 1; scope: AdmissionScope; receipt: Record<string, unknown>; replayed: boolean; state: Record<string, unknown>};
+export type AdmissionMutation = {schema_version: 1 | 2; ok?: true; scope: AdmissionBoundaryScope; receipt: Record<string, unknown>; replayed: boolean; state: Record<string, unknown>};
 /** Pure Deno mirror of the frozen strict frontend wire schema; nothing is stripped silently. */
-export function admissionMutation(raw: unknown, input: AdmissionCommitInput, scope: AdmissionScope, replayed?: boolean): AdmissionMutation {
+export function admissionMutation(raw: unknown, input: AdmissionCommitInput, scope: AdmissionBoundaryScope, replayed?: boolean): AdmissionMutation {
   try {
-    const result = shape(raw, {schema_version: literal(1), scope: scopeCheck, receipt: receipt => {shape(receipt, {schema_version: literal(1), request_id: admissionUuid,
-      case_id: admissionUuid, revision: admissionRevision, event_id: admissionUuid, kind: literal("evidence_committed"), payload_digest: sha});}, replayed: bool, state: staffCheck});
+    const individual = individualAdmissionInput(input), version = individual ? 2 : 1;
+    const checks: Record<string, Check> = {schema_version: literal(version), scope: individual ? individualScopeCheck : scopeCheck, receipt: receipt => {shape(receipt, {schema_version: literal(version), request_id: admissionUuid,
+      case_id: admissionUuid, revision: admissionRevision, event_id: admissionUuid, kind: literal("evidence_committed"), payload_digest: sha});}, replayed: bool, state: staffCheck};
+    checks.state = individual ? value => {if (!individualAdmissionStateSchema.safeParse(value).success) failSource();} : staffCheck;
+    if (individual) checks.ok = literal(true);
+    const result = shape(raw, checks);
     const receipt = result.receipt as Record<string, unknown>, state = result.state as Record<string, unknown>;
     if (!admissionSame(result.scope, scope) || !admissionSame(state.scope, scope) || state.id !== input.case_id || receipt.case_id !== input.case_id
       || receipt.request_id !== input.request_id || receipt.revision !== input.expected_revision + 1 || (state.revision as number) < (receipt.revision as number)
-      || replayed !== undefined && result.replayed !== replayed) failSource();
+      || replayed !== undefined && result.replayed !== replayed
+      || individual && (scope.organization_id !== input.organization_id || scope.enrollment_id !== input.enrollment_id
+        || !admissionSame((state.binding as Record<string, unknown>).scope, scope))) failSource();
     for (const key of ["requirements", "evidence", "tasks"]) {
       const values = state[key] as Record<string, unknown>[];
       if (new Set(values.map(item => item.id)).size !== values.length) failSource();
@@ -326,10 +357,11 @@ export function admissionMutation(raw: unknown, input: AdmissionCommitInput, sco
 }
 export type AdmissionObjectProof = {bucket: string; path: string; object_id: string; updated_at: string; mime_type: AdmissionMime; byte_size: number; known_sha256: string | null; fingerprint: string};
 export type AdmissionSealedProof = {bucket: typeof ADMISSION_EVIDENCE_BUCKET; path: string; object_id: string | null; updated_at: string | null; byte_sha256: string | null; byte_size: number | null; mime_type: AdmissionMime | null};
-export type AdmissionEvidenceContext = {schema_version: 1; mode: "prepared" | "sealed" | "consumed"; actor_id: string; scope: AdmissionScope; case_id: string;
+export type AdmissionEvidenceContext = {schema_version: 1 | 2; mode: "prepared" | "sealed" | "consumed"; actor_id: string; scope: AdmissionBoundaryScope; case_id: string;
   case_revision: number; expected_revision: number; reservation_id: string; evidence_version_id: string; requirement_id: string; supersedes_id: string | null;
-  request_id: string; expires_at: string; source_kind: "upload" | "existing"; source: AdmissionObjectProof; sealed: AdmissionSealedProof; replay_result: AdmissionMutation | null};
-export type AdmissionFileContext = {schema_version: 1; actor_id: string; scope: AdmissionScope; case_id: string; case_revision: number;
+  request_id: string; expires_at: string; source_kind: "upload" | "existing"; source: AdmissionObjectProof; sealed: AdmissionSealedProof; replay_result: AdmissionMutation | null;
+  binding?: ReturnType<typeof individualAdmissionBindingSchema.parse>};
+export type AdmissionFileContext = {schema_version: 1 | 2; actor_id: string; scope: AdmissionBoundaryScope; case_id: string; case_revision: number;
   evidence_version_id: string; object: AdmissionObjectProof; byte_sha256: string; byte_size: number; mime_type: AdmissionMime};
 function objectProof(raw: unknown): AdmissionObjectProof {
   const value = shape(raw, {bucket: text(100), path: text(2000), object_id: admissionUuid, updated_at: admissionTime, mime_type: admissionMime,
@@ -338,7 +370,7 @@ function objectProof(raw: unknown): AdmissionObjectProof {
   if (/[\\?#%:\x00-\x1f\x7f]/.test(path) || path.split("/").some(part => !part || part === "." || part === "..")) failSource();
   return {...value, updated_at: admissionTime(value.updated_at)} as AdmissionObjectProof;
 }
-function sealedProof(raw: unknown, scope: AdmissionScope, caseId: string, evidenceId: string, complete: boolean): AdmissionSealedProof {
+function sealedProof(raw: unknown, scope: AdmissionBoundaryScope, caseId: string, evidenceId: string, complete: boolean): AdmissionSealedProof {
   const value = shape(raw, {bucket: literal(ADMISSION_EVIDENCE_BUCKET), path: literal(`${scope.user_id}/${scope.organization_id}/${caseId}/sealed/${evidenceId}`),
     object_id: nullable(admissionUuid), updated_at: nullable(admissionTime), byte_sha256: nullable(sha), byte_size: nullable(size), mime_type: nullable(admissionMime)});
   if (["object_id", "updated_at", "byte_sha256", "byte_size", "mime_type"].some(key => (value[key] !== null) !== complete)) failSource();
@@ -350,11 +382,15 @@ function assertSealedSource(source: AdmissionObjectProof, sealed: AdmissionSeale
 }
 export function parseAdmissionContext(raw: unknown, input: AdmissionCommitInput, actor: string): AdmissionEvidenceContext {
   try {
-    const value = shape(raw, {schema_version: literal(1), mode: literal("prepared", "sealed", "consumed"), actor_id: admissionUuid, scope: scopeCheck,
+    const individual = individualAdmissionInput(input);
+    const checks: Record<string, Check> = {schema_version: literal(individual ? 2 : 1), mode: literal("prepared", "sealed", "consumed"), actor_id: admissionUuid, scope: individual ? individualScopeCheck : scopeCheck,
       case_id: admissionUuid, case_revision: admissionRevision, expected_revision: admissionRevision, reservation_id: admissionUuid, evidence_version_id: admissionUuid,
       requirement_id: admissionUuid, supersedes_id: nullable(admissionUuid), request_id: admissionUuid, expires_at: admissionTime, source_kind: literal("upload", "existing"),
-      source: () => {}, sealed: () => {}, replay_result: () => {}});
-    const scope = value.scope as AdmissionScope;
+      source: () => {}, sealed: () => {}, replay_result: () => {}};
+    if (individual) checks.binding = individualBindingCheck;
+    const value = shape(raw, checks), scope = value.scope as AdmissionBoundaryScope;
+    if (individual && (scope.organization_id !== input.organization_id || scope.enrollment_id !== input.enrollment_id
+      || !admissionSame((value.binding as Record<string, unknown>).scope, scope))) failSource();
     if (value.actor_id !== actor || value.case_id !== input.case_id || value.reservation_id !== input.reservation_id || value.expected_revision !== input.expected_revision
       || value.request_id !== input.request_id || (value.mode === "consumed" ? (value.case_revision as number) < input.expected_revision + 1 : value.case_revision !== input.expected_revision)) failSource();
     const source = objectProof(value.source), sealed = sealedProof(value.sealed, scope, input.case_id, value.evidence_version_id as string, value.mode !== "prepared");
@@ -379,10 +415,12 @@ export function parseAdmissionContext(raw: unknown, input: AdmissionCommitInput,
 }
 export function parseAdmissionFileContext(raw: unknown, input: AdmissionFileInput, actor: string): AdmissionFileContext {
   try {
-    const value = shape(raw, {schema_version: literal(1), actor_id: admissionUuid, scope: scopeCheck, case_id: admissionUuid, case_revision: admissionRevision,
+    const individual = individualAdmissionInput(input);
+    const value = shape(raw, {schema_version: literal(individual ? 2 : 1), actor_id: admissionUuid, scope: individual ? individualScopeCheck : scopeCheck, case_id: admissionUuid, case_revision: admissionRevision,
       evidence_version_id: admissionUuid, object: () => {}, byte_sha256: sha, byte_size: size, mime_type: admissionMime});
     if (value.actor_id !== actor || value.case_id !== input.case_id || value.evidence_version_id !== input.evidence_version_id) failSource();
-    const scope = value.scope as AdmissionScope, object = objectProof(value.object);
+    const scope = value.scope as AdmissionBoundaryScope, object = objectProof(value.object);
+    if (individual && (scope.organization_id !== input.organization_id || scope.enrollment_id !== input.enrollment_id)) failSource();
     if (object.bucket !== ADMISSION_EVIDENCE_BUCKET || object.path !== `${scope.user_id}/${scope.organization_id}/${input.case_id}/sealed/${input.evidence_version_id}`
       || object.known_sha256 !== value.byte_sha256 || object.byte_size !== value.byte_size || object.mime_type !== value.mime_type) failSource();
     return {...value, object} as unknown as AdmissionFileContext;
