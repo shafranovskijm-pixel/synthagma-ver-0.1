@@ -1,0 +1,2045 @@
+{
+  "schema_version": 1,
+  "scope": "ONE_NEW_B1_ACTUAL_NATIVE_CASE_AND_FINITE_WITNESSES_NO_OLD_FUNCTIONAL_TESTS",
+  "inputs": [
+    {
+      "target": "docs/releases/sintagma-production/uc-admission-cases-20261019/manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ecfc67886e9eb5e9a97d4951eb38ed95563fb10dab262e2c4eead3444717a842",
+          "bytes": 33276,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 34248,
+      "sha256": "261aba78dbb6960cb0fecab2b89a918c61bcbe21aca0ff98812ea8ae300f7ee5"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-document-review-20261018/release-manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-document-review-20261018/release-manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "5f3a2a129006f775de843aa9be4c1be553cb1f5dca47fb59a19eb666413f2568",
+          "bytes": 13313,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 13688,
+      "sha256": "3cd780ecd0ea7e4afb5c03691500365934000a21b2bb66209e6e4708009f975d"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-education-profile-20261018/release-manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-education-profile-20261018/release-manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "fc02d8e7ca6d7a0adaae550f10602d914b5305bdf23753c4e5e8d171e88ca9fe",
+          "bytes": 15854,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 16314,
+      "sha256": "065e516291ba0adb73f8939538090aedcca0f3b59cd029b7c3c7512e3aac4ea6"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-enrollment-delete-20261019/release-manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-enrollment-delete-20261019/release-manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8cd6efec7b172bac889a64f34c269c7afb8d42a0747c97ecf02cff0242aef900",
+          "bytes": 10749,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 11065,
+      "sha256": "85034de93c885002b23e0c9f2a10166e5ed3a62c9382be155491f76ef36b1881"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-group-education-facts-20261019/counter51-integration-witness.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-group-education-facts-20261019/counter51-integration-witness.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 58781,
+      "sha256": "6e6a0289efbaf9ecb937b6aa4bc7ab045ce9627666456d26d74800692062a729"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-identification-private-review-20261019/manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-identification-private-review-20261019/manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "75413d3ef229f2c48c400a10229bf5d166b71814b1831685175ecacda1bb29cf",
+          "bytes": 21062,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 21679,
+      "sha256": "661ff245a3ff61d9b79ecf308e1260cee18fc84ac7760b089c38ebc8b1ba5196"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf",
+          "bytes": 22284,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 22940,
+      "sha256": "c39fb4bbf0ea8328a3fd9108360e5e1c27a24ce8ba1c30ecfdd20bdc95f0b3c1"
+    },
+    {
+      "target": "docs/releases/sintagma-production/uc-student-frdo-write-20261019/release-manifest.json",
+      "source": {
+        "kind": "repository",
+        "path": "docs/releases/sintagma-production/uc-student-frdo-write-20261019/release-manifest.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "4a9418590b780982532519476d5bf095b4fe8665b3a5fd8bca03939a68f15091",
+          "bytes": 14217,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 14625,
+      "sha256": "bc72e56d9194f4ab9b4074e49dee37ccf3d9fc65f98e0814798ebfb7a56750a0"
+    },
+    {
+      "target": "native-input/20261023080000_uc_admission_storage_completion.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261023080000_uc_admission_storage_completion.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 6322,
+      "sha256": "26193817daab011561175453bd7936e31910df18d828e8170d38648cc4ddf640"
+    },
+    {
+      "target": "native-input/20261023110000_admission_sealed_observation.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261023110000_admission_sealed_observation.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 5830,
+      "sha256": "ee576263d36af214593ed2d2f51da762c6f5f8bc8003d8915ebf41c125f75c77"
+    },
+    {
+      "target": "native-input/20261023120000_uc_signature_assurance_complete.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261023120000_uc_signature_assurance_complete.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 558258,
+      "sha256": "e60d036966a657ae61a3563daa513d41d0ff8af207fbe2419785f7ebcbeadf44"
+    },
+    {
+      "target": "native-input/20261024110000_uc_signature_policy_read_alias.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261024110000_uc_signature_policy_read_alias.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 13307,
+      "sha256": "341311719a6bb469b5b0dca8c32d5ba89ffd36976475aa115822b09df3c70129"
+    },
+    {
+      "target": "native-input/20261123130000_uc_student_signature_inbox.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123130000_uc_student_signature_inbox.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 12273,
+      "sha256": "6e6545795d5195c4741ad3df3a894670020f3b2ce3af823582781fe6a869939d"
+    },
+    {
+      "target": "native-input/20261123150000_uc_issued_recipient_bridge.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123150000_uc_issued_recipient_bridge.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 47381,
+      "sha256": "1d85cc49c31bad3bd692ee5264e75d2d24456cd003e225f263b4867825860c80"
+    },
+    {
+      "target": "native-input/20261123160000_uc_issued_inbox_current_source.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261123160000_uc_issued_inbox_current_source.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 18162,
+      "sha256": "d97a52c5075a54e6343bb017414d6059b68213814c71e3064094b698d989939c"
+    },
+    {
+      "target": "native-input/ACTUAL624_ER_FUNCTION_POSTIMAGES.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/ACTUAL624_ER_FUNCTION_POSTIMAGES.json"
+      },
+      "bytes": 79730,
+      "sha256": "9a08a05cc2065029b4177a9a10e210db35e2a073efcd29898efad0ae52e858df"
+    },
+    {
+      "target": "native-input/auth-roles-column-acls.metadata.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/auth-roles-column-acls.metadata.json"
+      },
+      "bytes": 182,
+      "sha256": "82cd8ada0a735fc8e2e16c05a54c1acd9c470407ccad463054927e68cac2b68a"
+    },
+    {
+      "target": "native-input/auth-roles-full.helpers.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/auth-roles-full.helpers.json"
+      },
+      "bytes": 9501,
+      "sha256": "fbb4d20232968875e287ca815a3e927f7e1407bb39ef867cb58e13a57a3cf56a"
+    },
+    {
+      "target": "native-input/auth-roles-full.metadata.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/auth-roles-full.metadata.json"
+      },
+      "bytes": 26791,
+      "sha256": "ecb979920d65abc12bec5207325df085909f89f0d06e7fecaaaf44b0c06bc23c"
+    },
+    {
+      "target": "native-input/CURRENT622_ADMIN_INBOX_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/CURRENT622_ADMIN_INBOX_METADATA.json"
+      },
+      "bytes": 8217,
+      "sha256": "b255859b1f8543d1416f6febacb164ab0c663c5c3eec98c6bfc042915866cfd9"
+    },
+    {
+      "target": "native-input/CURRENT622_ADMIN_INBOX_SUPPORTING_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/CURRENT622_ADMIN_INBOX_SUPPORTING_METADATA.json"
+      },
+      "bytes": 5754,
+      "sha256": "6f534ef3ce3ef2be90c3bd0ebc951e3c575464f0803a21103dd6d4355a8d8a09"
+    },
+    {
+      "target": "native-input/CURRENT622_AUTH_STORAGE_HELPERS_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/CURRENT622_AUTH_STORAGE_HELPERS_METADATA.json"
+      },
+      "bytes": 18837,
+      "sha256": "ecbbaf0f64fd203532d86c4a2fb6c78c9ce98561b10dbac1e978684b7ad78d9f"
+    },
+    {
+      "target": "native-input/CURRENT622_AUTH_STORAGE_SELECT_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/CURRENT622_AUTH_STORAGE_SELECT_METADATA.json"
+      },
+      "bytes": 20634,
+      "sha256": "d62581deeef07ead77df970fbecbd3692ba7a0ca372c95520ce98c47f0fb22ca"
+    },
+    {
+      "target": "native-input/ERRONEOUS_ASSIGNMENT_REMOVAL_PROPOSED_NO_LEDGER.sql",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/ERRONEOUS_ASSIGNMENT_REMOVAL_PROPOSED_NO_LEDGER.sql"
+      },
+      "bytes": 80475,
+      "sha256": "e98111f9ee94b94574b8f00162d467bc34fe2f4bc13e21afdb83ce6b53f2c23b"
+    },
+    {
+      "target": "native-input/legacy-agreements-consents.helpers.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/legacy-agreements-consents.helpers.json"
+      },
+      "bytes": 1956,
+      "sha256": "3f0e370d29b734dec201da9f1082df1832213d35467b7b1a9beb80f091ce8371"
+    },
+    {
+      "target": "native-input/legacy-agreements-consents.metadata.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/legacy-agreements-consents.metadata.json"
+      },
+      "bytes": 21985,
+      "sha256": "56675c464148851ef43ac4f87a7671ae5f337981da2b0b280a6e37fe948bfd24"
+    },
+    {
+      "target": "native-input/REMOVAL_BILLING_RUNTIME_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/REMOVAL_BILLING_RUNTIME_METADATA.json"
+      },
+      "bytes": 32337,
+      "sha256": "241434b067a22d83b2b388f1e59840bc1f2780cb045ee20b85d192e47dc2be5c"
+    },
+    {
+      "target": "native-input/REMOVAL_READER_RUNTIME_METADATA.json",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/REMOVAL_READER_RUNTIME_METADATA.json"
+      },
+      "bytes": 40704,
+      "sha256": "4779ccd5f1f48884c487977b9793790ceb647caa893a8d50e660bc4affde7184"
+    },
+    {
+      "target": "native-input/UC020_COMPLETE_SOURCE_NO_LEDGER.sql",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/native-input/UC020_COMPLETE_SOURCE_NO_LEDGER.sql"
+      },
+      "bytes": 302873,
+      "sha256": "25ea770682f95430073c4f99ed2ce8d6683beb2233d6cc0e2b10844e1f41a597"
+    },
+    {
+      "target": "src/lib/admissionCases/contract.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/src/lib/admissionCases/contract.ts"
+      },
+      "bytes": 19065,
+      "sha256": "3df89ca4271bf0c674dfcdf36e9b1177cfb36a82a16d6bd5e472b328549b6cc4"
+    },
+    {
+      "target": "src/lib/copyRegistry/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/copyRegistry/contract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 12455,
+      "sha256": "a364956737ec3abd4b6c2dadd23729afb91d6d980f7ae8f92f32d514c98b5cd6"
+    },
+    {
+      "target": "src/lib/customJournals/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/customJournals/contract.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "25ac3a844988e2ffe8685cfe3b3df5d6195d6c817a1f238cbd2dc660a844f32e",
+          "bytes": 11745,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 11857,
+      "sha256": "2fc1e0b73240e2981cbe2ae700f47cb1874ed2ccd03f1b247c23e03695bd2a6f"
+    },
+    {
+      "target": "src/lib/customJournals/scopedContract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/customJournals/scopedContract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 11501,
+      "sha256": "ebcf21775af369fd5e5d49a1be1b9d58d67bdaf89c4635d45644490d50404614"
+    },
+    {
+      "target": "src/lib/documentRegistry/contract.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/src/lib/documentRegistry/contract.ts"
+      },
+      "bytes": 18988,
+      "sha256": "045aaf0de59de5dc1b8bf57af98af46e4b3b9a0ef24deeb226bff86a539209e3"
+    },
+    {
+      "target": "src/lib/educationIssuance/__tests__/fixtures.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/educationIssuance/__tests__/fixtures.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "d6cb1a74fbf6ac0335c090ef28c8ceb7011c15acf681b7667b3bbb4fbcc93709",
+          "bytes": 7537,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 7593,
+      "sha256": "2c7394f8dbaa40a30e826ecaa941bd8db1bd2cdf403f970311e7da1d9cba881d"
+    },
+    {
+      "target": "src/lib/educationIssuance/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/educationIssuance/contract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 32446,
+      "sha256": "007daea1a84aea11c33b3f9098ea93b8427a9f0897ae9151212d19fddb66bb1d"
+    },
+    {
+      "target": "src/lib/educationIssuance/types.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/educationIssuance/types.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "90e9ad33252b435981a63ab13508aa3433a03a68831eea1c2c3af9129291ce3a",
+          "bytes": 2488,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 2521,
+      "sha256": "3893fd03ddaa026ee387b362df1844bec9e17a624f5464eb6ce78d331476ca2a"
+    },
+    {
+      "target": "src/lib/frdoFoundation/__tests__/fixtures.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/__tests__/fixtures.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 5854,
+      "sha256": "abc41fc771d4cc0b705d8bb0a7508465a8a8d3f181bc4a877464d11c686263df"
+    },
+    {
+      "target": "src/lib/frdoFoundation/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/contract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 23900,
+      "sha256": "b52310e42b3931df6bba96bb27c23223d9a56d40c8263fedbcca1751d0c1951a"
+    },
+    {
+      "target": "src/lib/frdoFoundation/dictionaries.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/dictionaries.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1889,
+      "sha256": "60819c2ae00943929cdf5bbf0d2aa5a8f38d41a7c0f8456dba9ffcaf74a01852"
+    },
+    {
+      "target": "src/lib/frdoFoundation/hash.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/src/lib/frdoFoundation/hash.ts"
+      },
+      "bytes": 3553,
+      "sha256": "d3a0e829d95c7b485ffdf11e8de659d7014bef0fbb1dac5b691f8a26c9affc60"
+    },
+    {
+      "target": "src/lib/frdoFoundation/mapper.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/mapper.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 23397,
+      "sha256": "8b6aeaf1b237db79a055268e3c701d7e4a281184235141341cebd7b996ecbc23"
+    },
+    {
+      "target": "src/lib/frdoFoundation/nativeData.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/nativeData.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 503028,
+      "sha256": "44bf9d97c49e98cdc88c22acae338d6d1c2ca8649827f84e764f6dda87f918b0"
+    },
+    {
+      "target": "src/lib/frdoFoundation/officialMetadata.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/officialMetadata.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 18630,
+      "sha256": "60a7b2ba39439c450afdf82f20fc96df2d1443f34f0f20372d6275cf82544142"
+    },
+    {
+      "target": "src/lib/frdoFoundation/ooxml.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/src/lib/frdoFoundation/ooxml.ts"
+      },
+      "bytes": 9714,
+      "sha256": "735bed19646a66050af774647250f43956cf8dc1ce6c426a725ac49d601e7564"
+    },
+    {
+      "target": "src/lib/frdoFoundation/sealedBatch.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/sealedBatch.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 2088,
+      "sha256": "c5bcea1c542d9d6516a3b9646646134f883b4bee62e1032ef33379c92f313d53"
+    },
+    {
+      "target": "src/lib/frdoFoundation/template.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/src/lib/frdoFoundation/template.ts"
+      },
+      "bytes": 7893,
+      "sha256": "8928d72eb3c48a6e3bb0a62398d0a20ac0078cb6d4c874f8191f5840e5f06701"
+    },
+    {
+      "target": "src/lib/frdoFoundation/types.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/types.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1460,
+      "sha256": "2d0e96e56a0cdc91cd8fccbf9b0bf671d98e221cf7355efaa8a34799b9673bf9"
+    },
+    {
+      "target": "src/lib/frdoFoundation/xmlRuntime.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/xmlRuntime.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1157,
+      "sha256": "8f7817fbcbef3143acae34717b08d4cf04519347f8f684aaf97db5ec894ed4f6"
+    },
+    {
+      "target": "src/lib/frdoFoundation/zip.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoFoundation/zip.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 5874,
+      "sha256": "77a4f512e1b1766e282aebefa973798b0e8387320880f11edfafb7374563774b"
+    },
+    {
+      "target": "src/lib/frdoPackets/canonicalCapture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoPackets/canonicalCapture.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 3999,
+      "sha256": "a732a93428028d4e18131cd23edff330c0da3b9e7c3f76942da529b1e46c7255"
+    },
+    {
+      "target": "src/lib/frdoPackets/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoPackets/contract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 16217,
+      "sha256": "0ab52da7d647ad53bd6059cd7eead7674e11ea986809c4c7e76fd5d2b84be690"
+    },
+    {
+      "target": "src/lib/frdoPackets/invariants.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoPackets/invariants.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 10185,
+      "sha256": "3e7ed01bd2083c656d8fdd64c927030c720a5bfcb5ae9592c0be2f4538decaa1"
+    },
+    {
+      "target": "src/lib/frdoPackets/issuerReview.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoPackets/issuerReview.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 3768,
+      "sha256": "9de499674089b8315f18f4f139e9b4cc889ed016509b9f566e7cdbe390a728ea"
+    },
+    {
+      "target": "src/lib/frdoPackets/runtimeContract.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/src/lib/frdoPackets/runtimeContract.ts"
+      },
+      "bytes": 8542,
+      "sha256": "2090d8b60949c48413e035d83baf58cb5abc93f8826f28efb5a149a0f77aabe6"
+    },
+    {
+      "target": "src/lib/frdoPackets/trustedFreeze.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoPackets/trustedFreeze.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 2479,
+      "sha256": "521e401432208af332f03ae98034f8d26d1ff01a15b773cae45efa7a208f6d1a"
+    },
+    {
+      "target": "src/lib/frdoPackets/types.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/frdoPackets/types.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1014,
+      "sha256": "d8e26c56464224f56642658b060e21d2ea3f24aa7a9d92557020fa651ad535fb"
+    },
+    {
+      "target": "src/lib/learningOutcomes/contract.ts",
+      "source": {
+        "kind": "repository",
+        "path": "src/lib/learningOutcomes/contract.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 14586,
+      "sha256": "0e9af32d889ff3c86d74f69ee63751ff24476b6523c032a59dc9439efc010202"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-admission-cases.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-admission-cases.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c935e0b7114a8dbfc6599ad701db359ebf38ed38898bbb95e32a18bd7de59478",
+          "bytes": 1821,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 1846,
+      "sha256": "25f5bdf3fdb249e86ae35e782bc4da06f75c0d53c2bd6abffbcc92066615a60b"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-document-review-release.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-document-review-release.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ab0ed5af41f27f69aeb57d14711b90e60f7026658f10f1680d3028118204c909",
+          "bytes": 985,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 1000,
+      "sha256": "1d80deeaf1347ce3af2d9daa2bee31c19f1f6f0678ad365c86a51e4a7b2d49c4"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-document-review.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-document-review.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "b034c476ee973d94b2459a350dab69f3f0a3401a0db5317579c696cdcfc831aa",
+          "bytes": 613,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 623,
+      "sha256": "d4bf8523a032be185400b53b33e7033ae577b076d74bab9d7d7e3ebf8f1fd06b"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-document-scope.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-document-scope.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "06605dbda16bdbdac506da2536e7fdbc9f245364cbe4adfd79e5e33d45ad16bf",
+          "bytes": 6262,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 6320,
+      "sha256": "2b23779e93e16f29227c24a20bb4e5725b04bfc117168de688b4b9a84a29bfe8"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-education-profile.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-education-profile.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "f77cac9a5bac5a89555ce85fe6e2db331648a10ff1ad864340be84828c24980c",
+          "bytes": 796,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 808,
+      "sha256": "5dfd8a067315c316dfadc10bc942ebfb442193c0283dbfa28b9423a7b37bbfe4"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-enrollment-delete.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-enrollment-delete.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "cd7571c98229c836904fb3d65bd3d65df3b4df2b050e1e0ce234a861d885fd3a",
+          "bytes": 4081,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 4116,
+      "sha256": "8c45dbe90f8203f28e5608e2dd54aed0ca64b4d06821ab4f9bb5265af8228981"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-gorel-draft.fixture.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/functions/_shared/uc-gorel-draft.fixture.ts"
+      },
+      "bytes": 2619,
+      "sha256": "f74d33fb95291280b3ac1e0eabe21a681365f9dffdfd53229a2a911dc6db21b8"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-group-education-facts.fixture.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/functions/_shared/uc-group-education-facts.fixture.ts"
+      },
+      "bytes": 16213,
+      "sha256": "e9bf150c0a559d617f1908ca442810b31b5bd23fcfc53e0b39bb5e41a23652c8"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-identification-private-review.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-identification-private-review.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3bd3c94ab87a9b19925d555414bebbdf16645a8421c6735d078fa77c6cf0f24e",
+          "bytes": 6392,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 6448,
+      "sha256": "a6867eb973a03bbc11f09f1c535a7c5cd8260ba9f089d3c3873d79e85fd2a027"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-learning-outcomes.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-learning-outcomes.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "acbcfba6423ca6ae0b6c3f652881b68c39920b04f9c695ce10f580abb43972aa",
+          "bytes": 17723,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 17903,
+      "sha256": "8053f7c8137944e83a686f1b58969af69a9b869ccd52325a0b51740c4e25615d"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-program-facts-release.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-program-facts-release.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "67e326a6c383137ca0ae7a0cd0e9ebff067d021bcaf089cf46a02cc2b38ea605",
+          "bytes": 859,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 871,
+      "sha256": "1958f2547cafa45b94f8e726aaecfd9a3e6d8b579739edbbc45878d4f77d1bca"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-program-facts.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-program-facts.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c2c1880459f90a37c04d448142d4e40f90ede7418434454094cd67a0b4e56a55",
+          "bytes": 2755,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 2787,
+      "sha256": "30f92677b3b4c37e2930c7e193cbe200a969a8233da59f87c9231ad4331dddeb"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-release.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-release.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "9de2c3ec665fb619aebc57c613990f2ecd61bda85857ce152f044fbd83b241d7",
+          "bytes": 9943,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 10035,
+      "sha256": "97ef6a9e200646b34fe9043d8aa0d2c88ea8afb68227ffbc6f6f6a338968d8e5"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-signature-files.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-signature-files.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "bdbee332bdace22978956b32c60aa609010e7c32e1a23863cf69650f2ebfcdf0",
+          "bytes": 1197,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 1212,
+      "sha256": "8e1ecfdaef65c2abb913c6286dca7e607cf97d211ef0dd4f70d7c24ae6805999"
+    },
+    {
+      "target": "supabase/functions/_shared/uc-student-frdo-write.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/uc-student-frdo-write.fixture.ts",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "1322436bbc10e86febcc67a7df30634f0d7cda7a9c9e68cbfce8142e6e081f98",
+          "bytes": 3424,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 3460,
+      "sha256": "17ad05fbbacecf1c47e87a3e103dff553ed1356b799851aff631535bc62824c1"
+    },
+    {
+      "target": "supabase/functions/frdo-packet-artifact/ownedDonors.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/functions/frdo-packet-artifact/ownedDonors.ts"
+      },
+      "bytes": 567815,
+      "sha256": "6c12fb5cc882bc50726f7b6b2055b6333ecc9af4074c735a3004199f38e1b898"
+    },
+    {
+      "target": "supabase/functions/frdo-packet-artifact/trustedService.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/functions/frdo-packet-artifact/trustedService.ts"
+      },
+      "bytes": 19309,
+      "sha256": "8bc7667ce8584c996def22ce5f15855e118d22ef689f94aca57a96ff098ac3f3"
+    },
+    {
+      "target": "supabase/functions/frdo-packet-artifact/xmlRuntime.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/frdo-packet-artifact/xmlRuntime.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 615,
+      "sha256": "18fc81da031d850afabd8a51e4bf0a58355c8a7f587be2808b0e824930eb2b93"
+    },
+    {
+      "target": "supabase/migrations/20261018100000_uc_document_access_boundaries.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018100000_uc_document_access_boundaries.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "02472f27d89b9392a3805d8ddec7fc47fb1d122ddd026bf87646545eefd7f147",
+          "bytes": 36915,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 37184,
+      "sha256": "4d192b80b5915996b73c40567961c56e46b7be247880534786dad3297b1e4a06"
+    },
+    {
+      "target": "supabase/migrations/20261018101000_uc_signature_integrity.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018101000_uc_signature_integrity.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e4f135d5e1d36614b352c15c3be4ef95572b729bcc58eb547ab785802c21c509",
+          "bytes": 38060,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 38527,
+      "sha256": "06d8cd5b31069ce73c659b94d4714c2c3d49cfc0c13c19e10795dbd4dc665d61"
+    },
+    {
+      "target": "supabase/migrations/20261018102000_uc_document_versions.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018102000_uc_document_versions.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e67782277c68d12341517b338f44fe8d614f13664093c94186c78a857ea98cf8",
+          "bytes": 18766,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 19055,
+      "sha256": "2afdef3f89bcd8736346fa47976707a6652b943fac5e304d79df21ce743352f7"
+    },
+    {
+      "target": "supabase/migrations/20261018103000_uc_document_cleanup_scheduler.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018103000_uc_document_cleanup_scheduler.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c78fd90a5f4da0c0e03d66bf44ecc62b97bfb5b40b27b8e6558a6e34ad4a2f14",
+          "bytes": 1720,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 1750,
+      "sha256": "5dfa8e85cf8ef51b6f039308062fa1d45811b5bdb371c3c85dd3e9c59f6c8c10"
+    },
+    {
+      "target": "supabase/migrations/20261018104000_uc_document_staff_scope.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018104000_uc_document_staff_scope.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "00348e0bfac571847dc327edce5aa81c653683349a8dcc0c293a7748255f7e68",
+          "bytes": 40467,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 40947,
+      "sha256": "efaf74ff13f612ae610af43f0d2de5f62177ecc19808420e87fb9af6a05536bf"
+    },
+    {
+      "target": "supabase/migrations/20261018105000_uc_document_action_permissions.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018105000_uc_document_action_permissions.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8bfb958affc916cec61bf711882a397227e39397625fedd25dacf9dc400abb29",
+          "bytes": 39723,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 40222,
+      "sha256": "7d7f33a674686c42a16e63b1b8bed627e31a01e152786066956e047a71f79230"
+    },
+    {
+      "target": "supabase/migrations/20261018106000_uc_gorel_draft_caller.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018106000_uc_gorel_draft_caller.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "a377583651e3f5851d4691a42f7657b16cbb814133a10785243b1d3ccb2aacaf",
+          "bytes": 8863,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 8991,
+      "sha256": "7dff0ec15f925c6519ba80f96fc4e5aae8a9d88b5b5659cdbad70ab2f3662ecd"
+    },
+    {
+      "target": "supabase/migrations/20261018107000_uc_document_reminder_scheduler.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018107000_uc_document_reminder_scheduler.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6d6058812c974d3e16665fdbad23da673b3eb315412bc2b790d7cf8c11e78247",
+          "bytes": 1619,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 1647,
+      "sha256": "34f60b95ec8830b0497d949d1bb2af0dd676ecbe465b1dcfca6af8676752dc43"
+    },
+    {
+      "target": "supabase/migrations/20261018108000_uc_education_compliance_profile.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018108000_uc_education_compliance_profile.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6df43053d4c85e94b0893e50033f102bc98dd1b0582266d29dac3e0ef1a159d5",
+          "bytes": 27385,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 27731,
+      "sha256": "c85c754877fbb37e983f6d9ecbf8fa563ebbb6ad6b89afc98d25897bd09d763b"
+    },
+    {
+      "target": "supabase/migrations/20261018109000_uc_signature_token_files.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018109000_uc_signature_token_files.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "41d0d8f8250a0feddcf0f71f03765b7ea6513d30e06ee75c900fd2971ea9ad42",
+          "bytes": 27669,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 28026,
+      "sha256": "b659af5629986de9673592a7dbcc8b60e23cbc27dbc9026d7484e626e51da647"
+    },
+    {
+      "target": "supabase/migrations/20261018110000_uc_document_internal_review.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018110000_uc_document_internal_review.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "70412d3904fdb31613d8ae33d9e7120b55eba80077b370a9b4bbd58156402e3d",
+          "bytes": 35830,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 36228,
+      "sha256": "c24aaf98f7dddfb920f794e44254de13c75b6c666eb91fdc6855feb95ed29744"
+    },
+    {
+      "target": "supabase/migrations/20261018111000_uc_program_facts.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018111000_uc_program_facts.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3b2715e0eafc568f05562800f88bcd018b9059de305c3c9c7e6e30a5f00f7eaf",
+          "bytes": 70236,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 70928,
+      "sha256": "29065e32b416ea5dc38138129734091049a193419d2184e3d0b37d0c745561b4"
+    },
+    {
+      "target": "supabase/migrations/20261018112000_uc_student_frdo_write_boundaries.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018112000_uc_student_frdo_write_boundaries.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3a944fa0ad245488d9b1a6228110d417ae47b70a1211c5426b5f1690aa0619f5",
+          "bytes": 21230,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 21482,
+      "sha256": "108b38eeea99a4e178871b3f66a02399ae8597d4a2b0f9c3bb316a3c37b8e731"
+    },
+    {
+      "target": "supabase/migrations/20261018113000_uc_enrollment_delete_boundaries.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261018113000_uc_enrollment_delete_boundaries.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "349e756ae4160eec348c95b914089f0f99b04b41cd9625ee6019487172c1ab71",
+          "bytes": 9893,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 9997,
+      "sha256": "3c1327697c12f49aa7bec8d154f2bf125dcccd0ea2c014711ad0196135604dbb"
+    },
+    {
+      "target": "supabase/migrations/20261019114000_uc_identification_private_review.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261019114000_uc_identification_private_review.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "58b660bacb07e44714c1a9e368ad772c3c6e59cabe2108c21b03472695672e86",
+          "bytes": 62655,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 63181,
+      "sha256": "9014dd53f73220e0903bc25848ae2e4ef1bda2ce2883ed68a705aace396b2459"
+    },
+    {
+      "target": "supabase/migrations/20261019115000_uc_admission_cases.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261019115000_uc_admission_cases.sql",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "faa24852220cc77011f4f8829a0616909ac6e280582c626a47b312d52c00df34",
+          "bytes": 122692,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 123447,
+      "sha256": "c85579f3580c722d98901bb30026beaf496091acb67fbd7bb8f2a3cbf859fef3"
+    },
+    {
+      "target": "supabase/migrations/20261019120000_uc_group_education_facts.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261019120000_uc_group_education_facts.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 258860,
+      "sha256": "b54b161b9670f5e06d80fca10413033b2b800c3cb6b5e519069d05b0b349c07b"
+    },
+    {
+      "target": "supabase/migrations/20261020140000_uc_learning_outcome_foundation.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261020140000_uc_learning_outcome_foundation.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 83440,
+      "sha256": "aaf22aea94055562f3fcfcf31d97a6bbeb1adad99f96c3d7e94c050d5472d978"
+    },
+    {
+      "target": "supabase/migrations/20261020150000_uc_server_custom_journals.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261020150000_uc_server_custom_journals.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 56379,
+      "sha256": "c91de9e7586780b1a7cc823f5ea19860e7acd70eab3bbbfddc5be6314ccd15d8"
+    },
+    {
+      "target": "supabase/migrations/20261021160000_uc_conducted_sessions.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261021160000_uc_conducted_sessions.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 40947,
+      "sha256": "49452c2b93d780b28f0ebe3570db28575efefd4a34eedb46f506da6a7ea13200"
+    },
+    {
+      "target": "supabase/migrations/20261021180000_uc_generic_calendar_artifacts.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261021180000_uc_generic_calendar_artifacts.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 16979,
+      "sha256": "c97e13ce49e95cb1410815b91eb30465eef9db03615f9e4be78e4c65b99a5dc0"
+    },
+    {
+      "target": "supabase/migrations/20261021200000_uc_scoped_journal_context_exports.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261021200000_uc_scoped_journal_context_exports.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 79890,
+      "sha256": "3c1b1de82823ec589a374cc6cb3255573fd16b9ce0e29c4605909052796f4cb3"
+    },
+    {
+      "target": "supabase/migrations/20261022203000_uc_shared_journal_privacy_fence.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261022203000_uc_shared_journal_privacy_fence.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 6192,
+      "sha256": "263822e6cf4acc65435948a7d384f496e8feab944a6f2f0dcba15f4c431af17d"
+    },
+    {
+      "target": "supabase/migrations/20261022210000_uc_copy_registry.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261022210000_uc_copy_registry.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 72285,
+      "sha256": "0fd7a0e3595a96cf7acec44e02fb83c155a702ab7f8346178032e091d050789e"
+    },
+    {
+      "target": "supabase/migrations/20261022220000_uc_personal_data_request_deadlines.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261022220000_uc_personal_data_request_deadlines.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 29339,
+      "sha256": "53b11125da06f9024685c962c93978652fd3f6af70101ff46b300085d95ed05f"
+    },
+    {
+      "target": "supabase/migrations/20261022230000_uc_document_registry.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261022230000_uc_document_registry.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 100801,
+      "sha256": "2e3603eca31643753a75ca04777895ee2c1883e249f8aadc3d7f0a8d03f002da"
+    },
+    {
+      "target": "supabase/migrations/20261022233000_uc_purge_worker_execute_boundary.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261022233000_uc_purge_worker_execute_boundary.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 277,
+      "sha256": "70041ce415855b204808f94efb5e1f3179019cf38bb784ed217a5bbc67bf2cd1"
+    },
+    {
+      "target": "supabase/migrations/20261023010000_uc_education_issuance_lifecycle.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/migrations/20261023010000_uc_education_issuance_lifecycle.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 302641,
+      "sha256": "73a44f8fb32c51682962c02211f24439e574132e06cb9f325e2407082fc48bc6"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-admission-cases-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-admission-cases-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "be0554f1f91d42e09920d46e4d8b6a266b1516e65b6c20e169e2dbbdb3417cd5",
+          "bytes": 239752,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 246219,
+      "sha256": "f80fb3321097464774407dc29fdcb39dda9e97614ce3e5b9f44da720ab6c14d0"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-billing-storage-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-billing-storage-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3bc1d6ce3771f1a5b012418eec41a7a36d14c648565749c60256579b269c5de1",
+          "bytes": 2258,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 2315,
+      "sha256": "9dc6f2c3c61fa2e09d4ae7aaedb90ce65b28e5c95b8592523885b20a73c5b6dc"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-custom-journals-source-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-custom-journals-source-baseline.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 162965,
+      "sha256": "24acc72600e30d7ca60a65d957f1f912cfc5e5edfb5bfec8fdf0e11dc42380b8"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-document-access-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-document-access-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "8379b0a30b7162434f6e4fffb5f592f2601c275f1b05fe93afb17b0343fd134c",
+          "bytes": 91518,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 93930,
+      "sha256": "01dbee5898d034811b198db774da72d2f8920e70abbaacd0eab752a4ac981273"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-document-action-baseline-20261018.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-document-action-baseline-20261018.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "1bd5a45c682572a5d81ea405ccdd8bec623d59107d0dacac9a4b7db314503772",
+          "bytes": 30988,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 31042,
+      "sha256": "a78b17e9da87ca465e3fd12ed93c9f1b715b57a5332bb574c5ee1577461faaf3"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-document-group-model-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-document-group-model-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "cf2a3c074082c0c3beaaff40caf956dda45031b1c7754c2ccb153b1a89fa64b1",
+          "bytes": 6902,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 6994,
+      "sha256": "fd518a0eae7c5a94b283cd4bcb2e1a8857ead1d1c9347266260c053c34545ecd"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-document-scope-rpc-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-document-scope-rpc-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "3ee53ccaee389860170a266f5c6603efa251eb9833441667f2c93454b7659675",
+          "bytes": 19110,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 19319,
+      "sha256": "6049065788134521cb5b666f13153a19ba20f7bda379be4351cc10545a4da574"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-document-scope-sources-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-document-scope-sources-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "ab9f10bcc61754aca6f45cdbd44c800eeaee7cc94fa054ca18d7279966c215ea",
+          "bytes": 47368,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 48292,
+      "sha256": "764346d9fd4833ed514d498817bb2e15412bff2ca643a959cc7b997b72451e33"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-education-profile-auth-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-education-profile-auth-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "6aa17b237e60888339f29b870b529e5f160fcacbee1ebbf01db0be14b8849085",
+          "bytes": 8712,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 8761,
+      "sha256": "1e8d60f35999f340f304f230384454ceaf2a8d635a0f14a796bd78ff08b22c71"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-enrollment-delete-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-enrollment-delete-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "30661816ee5cbd8b6874d8378ee80cb90504d38cab1182cfd9531e53e96336ac",
+          "bytes": 55214,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 55653,
+      "sha256": "52ae13c9123cd90fa73b87099242ff85a1f66f03c8ac9ea683a1b18566e97f36"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-full-cycle-legacy-journal-live.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-full-cycle-legacy-journal-live.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 88396,
+      "sha256": "9ed6b53c1261a3d10a3d4795822bb464974cf9d688c51183330c4b398c5a4fe4"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-gorel-draft-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-gorel-draft-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "192233cf6691558265490ba2cbe905e8b811e07510df7bfc00c8b116fc595f41",
+          "bytes": 20747,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 21098,
+      "sha256": "4b3a8d3e3f493a6b9634b4ff5f7c42e4982a5df5e173df9bbff4d6a1af1cee48"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-group-education-facts-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-group-education-facts-baseline.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 539439,
+      "sha256": "ce446f1e9c7a815df7a1ca168e15dd212a27e89d00c37af3f26430a5ded5a494"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-identification-private-review-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-identification-private-review-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "521f4d4d96577d55bfb97caec9686e395e5b7d58f34eacce288e8e19bf852d1d",
+          "bytes": 73115,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 73834,
+      "sha256": "5cb3700779f68c4c2f49b81c7cb7ed3b108872a7d0a8437368b8630c1ae29aa2"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-learning-outcomes-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-learning-outcomes-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "cb1d47fea0713e2b413fe78d6a6be722bdb67a242c584dba5e5bdf0ce7375d65",
+          "bytes": 104482,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 106782,
+      "sha256": "052dd3a31ba807302f2feab345653275da3f4d7255ab8c39590acd2d5aa1f9e4"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-learning-outcomes-paid-access.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-learning-outcomes-paid-access.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 6472,
+      "sha256": "f658c4fa9eb473d730ce4888439cb02c20205719c0e406af5a06930d3d91705c"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-learning-outcomes-photo-object.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-learning-outcomes-photo-object.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 2619,
+      "sha256": "3de6d8b7144ee5beac4cc0646f6472de9d6cb3a4bdbaa98724af8ee19d4a7f2b"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-learning-outcomes-question-projection.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-learning-outcomes-question-projection.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 832,
+      "sha256": "ca8bf3b192435bea0d50c1930d5cdb8f877bdbdf202de63fcdf2b38742fef88f"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-learning-outcomes-source-metadata.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-learning-outcomes-source-metadata.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 37885,
+      "sha256": "e286d1cde9ea84cac1084b3b4d196379cdad82b4699f24fcf5eb8e02cfd4d55a"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-org-contracts-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-org-contracts-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "16521dfaab3547877c30f8b62518916b6e9c15b02d28467cd7f12991a4e0cb1b",
+          "bytes": 7963,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 8285,
+      "sha256": "ace57f8873cb329cc3d3934cba23899c4fa985a5919d69ff15cfd00b2d059ae8"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-program-facts-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-program-facts-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "a1f11e5dcf538cbc6439a77290c874b2daed0b6d6da1d4fb944de30477c2c171",
+          "bytes": 50223,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 51334,
+      "sha256": "5c30ddf6941cd4665f09ea78d4d0cdb4c4a7e0a44708a49abeff45e2b4d2a836"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-program-issuance-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-program-issuance-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "c08b541dba76f45966cc1fe829911fbfe5a87a96ccd838d2df63e66877e616cc",
+          "bytes": 16655,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 16685,
+      "sha256": "69444b2d21d764b9b338616a7d7aa913799296dce4ff554a3d27cdb3a7dd6e44"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-release-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-release-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "111718941037c6e2c137a88e4f1e06f5ca31e76ae460610e33119cfc91a42597",
+          "bytes": 23591,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 24204,
+      "sha256": "1145e11591204430af838368b15cd9d9162d1e685f2b8db2f4f3fe81da8a6e33"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-signature-files-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-signature-files-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "e29eeee37c0b06c2d5f0933c2c5396dac48baeaadfa17168481dd3e6289843a0",
+          "bytes": 26776,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 26829,
+      "sha256": "cada97b9c9ae8a2c025ff5e8e6d5020987fc0e71ce3336f518d7a2b7be011c54"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-signature-schema-20261018.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-signature-schema-20261018.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "a8e6118b6da40e3efdee017c18b7c7fe6112d53e6b683070fb03fd1a88d85bf8",
+          "bytes": 21265,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 21897,
+      "sha256": "feac9c4ebaf6e1dc1f82eda6a91fb8f04bba48480b4774477c90dc4115e98e66"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc-student-frdo-write-baseline.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc-student-frdo-write-baseline.json",
+        "allowExactGitBlob": true,
+        "gitBlobReconstruction": {
+          "sha256": "831ed408e0859b11b9e97417396c86dfdb92a2a7a002cde3d9d1a9b45578a927",
+          "bytes": 83796,
+          "transform": "lf_to_crlf"
+        }
+      },
+      "bytes": 84591,
+      "sha256": "35abce07aedfe272e1bcc7c37c0ca4ebe43997b9312655f6248a71dbc6ae6a30"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc016-private-file-source-metadata.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc016-private-file-source-metadata.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 20411,
+      "sha256": "5cee53c645a17c50887cb5e5df1e13d4b747c52e66741eaaae945afb98cae022"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc018-actual-dependencies.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc018-actual-dependencies.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 27044,
+      "sha256": "f435cb0b16077452144c1186cce2cf0c848ee0671625db7f4c97323df8c19911"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc018-trigger-dependencies.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc018-trigger-dependencies.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 8475,
+      "sha256": "69cf2ff3dcd735d7c36785a53b979881e4ed6d48a741942d65e7fa5e027c43f5"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-actual621-dependencies.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-actual621-dependencies.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 998863,
+      "sha256": "766ebcca716a62869bc2009f91e54f76205b85992360a8cf97b27542de79bdde"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-collect-portable-catalog.sql",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-collect-portable-catalog.sql",
+        "allowExactGitBlob": true
+      },
+      "bytes": 7702,
+      "sha256": "d95927b285b93d445cd2a5feb42bd3919d69ba4b0f5c28ecce8f685a1598188b"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-generated-identity-columns-actual621.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-generated-identity-columns-actual621.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1033,
+      "sha256": "8b6aea7c25bf66aa60a78ba023f79293d1a4339960cb4316ff8aa177692dca36"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-privacy-plan-actual621.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-privacy-plan-actual621.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 7805,
+      "sha256": "48ba7c1367d943b0b1896a45cb2597e8558cd52680387f2f8384f9a5443649c0"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-privacy-seed-relations-actual621.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-privacy-seed-relations-actual621.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 7843,
+      "sha256": "77a261a488beff38bfad846b054fe077219b6383f8e09778d15f81443596df63"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-provider-default-acl-actual621.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-provider-default-acl-actual621.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1622,
+      "sha256": "3f7e74a4f506451b4af7590f6e47c37699bc93d0e9090ea4f0f7d138288ebc92"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc019-storage-bookkeeping-actual621.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc019-storage-bookkeeping-actual621.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 3043,
+      "sha256": "bd9071b68ab5c1159e5ae6975c539170c2c3fe96c0d261de25c625048dee071a"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc023-dsr-actual-metadata.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc023-dsr-actual-metadata.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 52865,
+      "sha256": "5e61dbf8bd91bd29189ab510269ce1887150f67df8105764a5c043a09135bdbe"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc023-kpi-actual-dependencies.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc023-kpi-actual-dependencies.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 111039,
+      "sha256": "507e1ef28a9699ec7911f3503442ebbddeb694fe3cf73f05d6fd371cc6fb55f7"
+    },
+    {
+      "target": "supabase/tests/fixtures/uc023-updated-at-actual-metadata.json",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/fixtures/uc023-updated-at-actual-metadata.json",
+        "allowExactGitBlob": true
+      },
+      "bytes": 1641,
+      "sha256": "113660631c67162ce56bc8a8caed9cf4fabaea005e9c796c69bad868d6153286"
+    },
+    {
+      "target": "supabase/tests/native/b1-issued-recipient/b1.positive.native.test.ts",
+      "source": {
+        "kind": "package",
+        "path": "case/b1.core.native.test.ts"
+      },
+      "bytes": 60720,
+      "sha256": "411a7e6efa35d605109ffc4f26f2612b9521e990ed44c6405e0c663e53dceb85"
+    },
+    {
+      "target": "supabase/tests/native/copy-registry/copy-registry.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/copy-registry/copy-registry.fixture.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 9315,
+      "sha256": "bea7dd135ff7632ea7de71dacb41e0284c87382538fb7a4c403649bd1215e666"
+    },
+    {
+      "target": "supabase/tests/native/data-subject-requests/data-subject-requests.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/data-subject-requests/data-subject-requests.fixture.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 12700,
+      "sha256": "4ba957729b36549fb3a210476d7345e8843d75a4c82a66de56aaad5da4e95fa0"
+    },
+    {
+      "target": "supabase/tests/native/document-registry/document-registry.dependencies.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/document-registry/document-registry.dependencies.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 6355,
+      "sha256": "9a30ca30024bce681cbc495955a9c59904d146d809d570b7c1dc6e39d5f81604"
+    },
+    {
+      "target": "supabase/tests/native/document-registry/document-registry.fixture.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/document-registry/document-registry.fixture.ts"
+      },
+      "bytes": 11153,
+      "sha256": "99378cb00ab575a603ba17e3b99f07d3cf1e7acdf7a59f5b139cdcb3e0401bb1"
+    },
+    {
+      "target": "supabase/tests/native/document-registry/document-registry.legacy-baseline.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/document-registry/document-registry.legacy-baseline.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 4985,
+      "sha256": "c328b6e4b29a2c21f5c40018f6cfa88cc2eda37a20fa5be8e056986e48d524d6"
+    },
+    {
+      "target": "supabase/tests/native/education-issuance/education-issuance.dependencies.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/education-issuance/education-issuance.dependencies.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 20158,
+      "sha256": "fa10dc7db3b679549da1ccf4a37de5325f5e9f7ba45a77b43d076eb9b313f415"
+    },
+    {
+      "target": "supabase/tests/native/education-issuance/education-issuance.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/education-issuance/education-issuance.fixture.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 11333,
+      "sha256": "b4febb6796c4def7a525e4abab16208532319cb12e109c3b79dd35a11bfaf9ce"
+    },
+    {
+      "target": "supabase/tests/native/education-issuance/education-issuance.provider-defaults.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/education-issuance/education-issuance.provider-defaults.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 4973,
+      "sha256": "4515688ccce0a46d02e0aaf02656a05cb2ba35d9d906f37e8765dcab1918899c"
+    },
+    {
+      "target": "supabase/tests/native/education-issuance/education-issuance.scenario.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/education-issuance/education-issuance.scenario.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 15044,
+      "sha256": "6422b2c97ef93f89df1133dcaf4912f127069d651f64d587866c6fbd01f22d26"
+    },
+    {
+      "target": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-billing.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-billing.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 10317,
+      "sha256": "55a6dbcb3e596ab8f74d50d4e5a611bf27eb915bb5049e35d27bffaddbbe6483"
+    },
+    {
+      "target": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-readers.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/erroneous-course-removal/erroneous-course-removal.actual-readers.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 5143,
+      "sha256": "4805db43da53f8164bc304e172fb623155f1c1736c22d0e4a245d611129c5a4f"
+    },
+    {
+      "target": "supabase/tests/native/frdo-packets/frdo-packets.actual-inbox.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/frdo-packets/frdo-packets.actual-inbox.ts"
+      },
+      "bytes": 12560,
+      "sha256": "e0f5ee110d0f90a7e3e7323ccf7dd963e4d321aaf7cbb3e7f7165b2862eefb20"
+    },
+    {
+      "target": "supabase/tests/native/frdo-packets/frdo-packets.actual-runtime.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/frdo-packets/frdo-packets.actual-runtime.ts"
+      },
+      "bytes": 10129,
+      "sha256": "271b47d948752b91336d18bec1973688c954f865a27fd214cae7941df35cc853"
+    },
+    {
+      "target": "supabase/tests/native/frdo-packets/frdo-packets.fixture.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/frdo-packets/frdo-packets.fixture.ts"
+      },
+      "bytes": 13088,
+      "sha256": "d691a368a3e701162eff77c156c4bc4dad41f562db4a6960f22a682e6493c691"
+    },
+    {
+      "target": "supabase/tests/native/full-cycle/full-cycle.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/full-cycle/full-cycle.fixture.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 33076,
+      "sha256": "c13413ab022fd06d35ca51fd7fc91215459eccf7fe218a436e3061ffe45427a9"
+    },
+    {
+      "target": "supabase/tests/native/scoped-journals/scoped-journals.fixture.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/tests/native/scoped-journals/scoped-journals.fixture.ts",
+        "allowExactGitBlob": true
+      },
+      "bytes": 11699,
+      "sha256": "9c9e0efced6af54fd4cfaea365d40bc187392c4446c2a5d918f6d88faf19a755"
+    },
+    {
+      "target": "supabase/tests/native/signature-assurance/signature-assurance.actual623.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/signature-assurance/signature-assurance.actual623.ts"
+      },
+      "bytes": 7423,
+      "sha256": "93a97119912d719217ad7bea701bfbe54eaee87a32a60b431601f0b6ad513348"
+    },
+    {
+      "target": "supabase/tests/native/signature-assurance/signature-assurance.actual624-authority.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/signature-assurance/signature-assurance.actual624-authority.ts"
+      },
+      "bytes": 3686,
+      "sha256": "8e3f79200c435d4b396b789c4118a8f446a38364e1910bf40e9ba524c1f54b55"
+    },
+    {
+      "target": "supabase/tests/native/signature-assurance/signature-assurance.auth-roles-full.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/signature-assurance/signature-assurance.auth-roles-full.ts"
+      },
+      "bytes": 12712,
+      "sha256": "397fc334bab10c2de041be1cef88ba124ad58994ff09c5ebbf242bf7f0387a58"
+    },
+    {
+      "target": "supabase/tests/native/signature-assurance/signature-assurance.current627.fixture.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/signature-assurance/signature-assurance.current627.fixture.ts"
+      },
+      "bytes": 6851,
+      "sha256": "3dc8c7927613f19bdcdf4dff0a664580bbed787a8c94c8bffadf9400f27ace1a"
+    },
+    {
+      "target": "supabase/tests/native/signature-assurance/signature-assurance.er624.fixture.ts",
+      "source": {
+        "kind": "package",
+        "path": "fixture-graph/supabase/tests/native/signature-assurance/signature-assurance.er624.fixture.ts"
+      },
+      "bytes": 8756,
+      "sha256": "36ceb04ab7e2a019920f70ba4f8b3f97fbfca68370e1b4ef56166808c2e0a667"
+    }
+  ],
+  "sutSourcePins": [
+    {
+      "path": "src/lib/signatureAssurance/contract.ts",
+      "allowedExactSha256": [
+        "0d3ee0829d851e2ffe80e3d5e9ecebcb4afaad7e971057efca9dd950c5f93959",
+        "6769f2781786ccfbbaf27699e4a2f14738d675d8cfcd71944d7d9ea4782edef2"
+      ]
+    },
+    {
+      "path": "src/lib/documentRegistry/contract.ts",
+      "allowedExactSha256": [
+        "054994ad3353d7fb4d88e8bb1f27764d75e2bae6cc94d30dff4af544e2d33ee6",
+        "b33eb57263eaae9931e561841acd15d8f852896286f50d23d5198dcd22532e55"
+      ]
+    },
+    {
+      "path": "src/lib/signatureAssurance/types.ts",
+      "allowedExactSha256": [
+        "0a9b1fd8c67cea4158c2a2b04770e498b0b033801a82a76de1efc83fa4627322",
+        "072823b82f93f11988c082ad085da40ae903245eddf5ef46c5f67009ee9e7b22"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-assurance/worker.ts",
+      "allowedExactSha256": [
+        "500c563d8ae3330459f9c22587ff7b6387bfe88d2419bc41cac3627fbc9ac9cb",
+        "4694bd4402c1180566910bb5b92b2d90c11874e17cfd6fc8f14c451e7f26447d"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-assurance/contract.ts",
+      "allowedExactSha256": [
+        "46b99afa2bd65a06c83d52aeae89d8ea4d68b6c27c60105dbae4a7fdd463558b",
+        "b8b95a194f28be4b3b434b0c151e6780be3e5621908581ff42ddff73432393f1"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-assurance/controlled-source/contract.ts",
+      "allowedExactSha256": [
+        "4c6246d18e2f6b3f51ce01d4c0a7d224bf71dd3031db6b273210e2eaadab522a",
+        "5ca583cc7fffa5f7392748f5fbf60e767ec3970f10ffb45b79d8a815c86c94f7"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-assurance/controlled-source/worker.ts",
+      "allowedExactSha256": [
+        "7f6c7f61e21bc4c52c65145a2a5f7c1f72d892f8a20b58f750fb10f8a219ac0e",
+        "9161a81b7ed0247c788c1dad20593969c54b76301b3c360c201c9b68a2d12af3"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-controlled-source-verification/worker.ts",
+      "allowedExactSha256": [
+        "7f6c7f61e21bc4c52c65145a2a5f7c1f72d892f8a20b58f750fb10f8a219ac0e",
+        "9161a81b7ed0247c788c1dad20593969c54b76301b3c360c201c9b68a2d12af3"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-controlled-source-verification/contract.ts",
+      "allowedExactSha256": [
+        "4c6246d18e2f6b3f51ce01d4c0a7d224bf71dd3031db6b273210e2eaadab522a",
+        "5ca583cc7fffa5f7392748f5fbf60e767ec3970f10ffb45b79d8a815c86c94f7"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-protected-file/worker.ts",
+      "allowedExactSha256": [
+        "d6935500e5e8c8f6ee07d96ea7e52e704ca2bf47866d9c09253e6cb84d8d2378",
+        "dec67726d96c96f6c93a86293f5187c658fad8a2f35e58c7a1428fc078f04397"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-protected-file/contract.ts",
+      "allowedExactSha256": [
+        "fc366d5c86d564b94fd01de67e0de1f2409b57e6d13ecbd496659f6d7492dbec",
+        "46975010c40dcf01c1376193dc64b5ed1bd5a1024eeb2e2e0c2416b7a50fe4d6"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-protected-file/controlled-source/contract.ts",
+      "allowedExactSha256": [
+        "4c6246d18e2f6b3f51ce01d4c0a7d224bf71dd3031db6b273210e2eaadab522a",
+        "5ca583cc7fffa5f7392748f5fbf60e767ec3970f10ffb45b79d8a815c86c94f7"
+      ]
+    },
+    {
+      "path": "supabase/functions/signature-protected-file/controlled-source/worker.ts",
+      "allowedExactSha256": [
+        "e2c7732fac16167235ace09acd48e8b82cfb845325794f8f7e94b853b09849d1",
+        "75ce2cd741af3622ef9e520c7a4cef63dfce000a715d6f71802613cb24139b3d"
+      ]
+    },
+    {
+      "path": "supabase/migrations/20261123150000_uc_issued_recipient_bridge.sql",
+      "allowedExactSha256": [
+        "1d85cc49c31bad3bd692ee5264e75d2d24456cd003e225f263b4867825860c80"
+      ]
+    },
+    {
+      "path": "supabase/migrations/20261123160000_uc_issued_inbox_current_source.sql",
+      "allowedExactSha256": [
+        "d97a52c5075a54e6343bb017414d6059b68213814c71e3064094b698d989939c"
+      ]
+    }
+  ],
+  "derivation": {
+    "staticImportedSourceClosure": 82,
+    "actualRuntimeReadTrace": 96,
+    "uniqueMirrorInputs": 165,
+    "actualRuntimeTraceSha256": "0cc8345f8477cf872a61a33818749934540204ba8bd0d92cbdeac1a71a66b370",
+    "acceptedCaseSha256": "411a7e6efa35d605109ffc4f26f2612b9521e990ed44c6405e0c663e53dceb85",
+    "repository_line_endings": "58 exact pinned Git-LF inputs reconstruct the already-reviewed held CRLF bytes; held target hashes/lengths unchanged."
+  },
+  "constructor": {
+    "target": "supabase/functions/_shared/uc-release.fixture.ts",
+    "sha256": "97ef6a9e200646b34fe9043d8aa0d2c88ea8afb68227ffbc6f6f6a338968d8e5",
+    "onlyNeedle": "const db=new PGlite();"
+  },
+  "dependencies": {
+    "node": "24.22.3",
+    "postgres": "3.4.9",
+    "vitest": "4.0.18",
+    "zod": "3.25.76",
+    "jszip": "3.10.1",
+    "xmldomActualResolved": "0.8.11",
+    "xmldomLimitation": "Held bootstrap imports an npm:@xmldom/xmldom@0.9.12 specifier, explicitly aliased to actual0.8.11. B1 case does not call XML runtime/packet artifact methods. No XML/0.9.12 acceptance claimed."
+  },
+  "privacy": {
+    "syntheticIdentityAndPdfOnly": true,
+    "metadataSnapshotsContainNoCustomerRows": true,
+    "noInvitationTokenOrAuthHeaderInManifest": true,
+    "oldFunctionalTestsImported": false
+  }
+}

@@ -18,6 +18,7 @@ import type { ChangePreview, IssuanceChange, IssuanceChangeIntent, IssuancePrepa
 import { IssuanceSourcePicker } from './SourcePicker';
 import { IssuanceProvenanceDetails } from './IssuanceProvenanceDetails';
 import { RecordedProgramFileDownload } from './RecordedProgramFileDownload';
+import { IssuedRecipientRequest } from './IssuedRecipientRequest';
 
 interface Props { organizationId: string; groupId?: string | null; recordId: string | null; onClose: () => void; onChanged: () => void; onOpenRecord?: (id: string) => void }
 type Mode = 'view' | IssuanceChange['action'];
@@ -32,6 +33,7 @@ export function EducationIssuanceRecordDialog(props: Props) {
   const [duplicateKind, setDuplicateKind] = useState<'lost' | 'damaged' | 'correction_replacement'>('lost'), [issueDate, setIssueDate] = useState(issuanceUtcDateIso()), [series, setSeries] = useState('');
   const [preview, setPreview] = useState<ChangePreview | null>(null), [error, setError] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const [preparation,setPreparation]=useState<IssuancePreparation|null>(null),[artifactBusy,setArtifactBusy]=useState(false),[correctionCompared,setCorrectionCompared]=useState(false);
+  const [recipientBusy, setRecipientBusy] = useState(false);
   const correctionKey=JSON.stringify([props.recordId,preview?.preview_hash,preparation?.id,preparation?.items.map(item=>[item.id,item.input_revision,item.artifact?.source.version_id,item.artifact?.output_review])]);
   useEffect(()=>setCorrectionCompared(false),[correctionKey]);
   const epoch = useRef(0), flight = useRef(false), operation = useRef<PreparedIssuanceMutation | null>(null);
@@ -53,7 +55,7 @@ export function EducationIssuanceRecordDialog(props: Props) {
     try { const captured = capture(); setScope(captured); void load(captured, props.recordId); }
     catch (error) { setScope(null); setError(normalizeIssuanceError(error).message); }
   }, [props.recordId, props.organizationId, props.groupId, capture]);
-  const current = !!scope && issuanceScopeCurrent(scope), locked = busy || artifactBusy || !!operation.current;
+  const current = !!scope && issuanceScopeCurrent(scope), locked = busy || artifactBusy || recipientBusy || !!operation.current;
   const visible = current ? record : null;
   const moreHistory = async () => {
     if (!scope || !current || !props.recordId || before === null || busy || flight.current) return;
@@ -137,6 +139,7 @@ export function EducationIssuanceRecordDialog(props: Props) {
     {visible && <><div className="rounded-xl border p-4 space-y-2"><div className="flex gap-2 flex-wrap"><Badge variant="outline">{recordStatus(visible)}</Badge><Badge variant="secondary">{proofStatus(visible)}</Badge></div><p className="font-medium">{visible.official.full_name}</p><p className="text-sm">№ {visible.official.document_number} · рег. {visible.official.reg_number} · {visible.official.issue_date}</p><p className="text-sm text-muted-foreground">{visible.official.specialty_name}</p><p className="text-sm">{handoverStatus(visible)}</p>{visible.original_record_id && <p className="text-xs text-muted-foreground">Связан с исходным документом; исходная запись и номер сохранены.</p>}{visible.notes && <p className="text-sm whitespace-pre-wrap">Примечание: {visible.notes}</p>}<Button size="sm" variant="outline" disabled={locked||visible.artifact.availability!=='available'} onClick={()=>void openPdf()}>Скачать закреплённый PDF</Button>{visible.artifact.availability!=='available'&&<p className="text-xs text-muted-foreground">Файл не закреплён или недоступен с текущими правами. Исторический оригинал повторно не создаётся.</p>}</div>
       <IssuanceProvenanceDetails record={visible} />
       {scope && <RecordedProgramFileDownload record={visible} scope={scope} />}
+      {current && scope && <IssuedRecipientRequest scope={scope} record={visible} disabled={busy || artifactBusy || !!operation.current} onLockChange={setRecipientBusy} />}
       {current&&scope&&visible.capabilities.can_issue_duplicate&&<IssuancePreparationRecovery scope={scope} kind="duplicate" disabled={locked||!!preparation} onRecover={recover} onOpenRecord={props.onOpenRecord}/>}
       <fieldset className="space-y-4" disabled={locked||!!preparation}>
         <div className="space-y-2"><Label>Действие</Label><Select value={mode} onValueChange={value => { setMode(value as Mode); setPreview(null); setPreparation(null); setSource(null); setAuthorization(null); setReason(''); setEventId(''); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="view">Просмотр истории</SelectItem>{visible.capabilities.can_write_metadata && <SelectItem value="correct_metadata">Исправить примечание</SelectItem>}{visible.capabilities.can_record_handover && <><SelectItem value="record_handover">Зафиксировать вручение / почту</SelectItem><SelectItem value="void_handover">Отменить ошибочный факт вручения</SelectItem></>}{visible.capabilities.can_issue_duplicate && <SelectItem value="issue_duplicate">Выдать связанный дубликат</SelectItem>}{visible.capabilities.can_annul && <SelectItem value="annul">Аннулировать документ</SelectItem>}</SelectContent></Select></div>

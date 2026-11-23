@@ -1,0 +1,24 @@
+[
+  {
+    "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+    "config": [
+      "search_path=public"
+    ],
+    "definition": "CREATE OR REPLACE FUNCTION public.current_organization_id()\n RETURNS uuid\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_org uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN NULL;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.profiles\n  WHERE user_id = auth.uid()\n  LIMIT 1;\n\n  IF v_org IS NOT NULL THEN\n    RETURN v_org;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.org_staff\n  WHERE user_id = auth.uid()\n    AND (expires_at IS NULL OR expires_at > now())\n  ORDER BY\n    CASE role\n      WHEN 'owner' THEN 1\n      WHEN 'admin' THEN 2\n      WHEN 'school_editor' THEN 3\n      WHEN 'course_editor' THEN 4\n      WHEN 'teacher' THEN 5\n      WHEN 'sales_manager' THEN 6\n      ELSE 10\n    END,\n    created_at ASC\n  LIMIT 1;\n\n  RETURN v_org;\nEND;\n$function$\n",
+    "identity": "current_organization_id()",
+    "owner": "postgres",
+    "security_definer": true,
+    "volatility": "s"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+    "config": [
+      "search_path=public, extensions"
+    ],
+    "definition": "CREATE OR REPLACE FUNCTION public.encrypt_password(p_text text)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'extensions'\nAS $function$\nBEGIN\n  IF p_text IS NULL OR p_text = '' THEN RETURN p_text; END IF;\n  IF p_text LIKE 'ENC:%' THEN RETURN p_text; END IF;\n  RETURN 'ENC:' || encode(pgp_sym_encrypt(p_text, _get_pw_key()), 'base64');\nEND;\n$function$\n",
+    "identity": "encrypt_password(text)",
+    "owner": "postgres",
+    "security_definer": true,
+    "volatility": "v"
+  }
+]

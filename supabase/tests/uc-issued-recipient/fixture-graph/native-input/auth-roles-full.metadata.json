@@ -1,0 +1,842 @@
+{
+  "at": "2026-10-23T09:38:50.541Z",
+  "projectId": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "scope": "Readonly full catalog metadata Auth users + public org_custom_roles/org_staff, no Auth/personal row reads",
+  "rows": [
+    {
+      "acl": "{supabase_auth_admin=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin,postgres=ar*wdDxtm/supabase_auth_admin,sandbox_exec_atxwvjxbqjgkbjlhsdch=r/postgres,sandbox_exec=r/postgres}",
+      "columns": [
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "instance_id",
+          "not_null": false,
+          "ordinal": 1,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "ordinal": 2,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "aud",
+          "not_null": false,
+          "ordinal": 3,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "role",
+          "not_null": false,
+          "ordinal": 4,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email",
+          "not_null": false,
+          "ordinal": 5,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "encrypted_password",
+          "not_null": false,
+          "ordinal": 6,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email_confirmed_at",
+          "not_null": false,
+          "ordinal": 7,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "invited_at",
+          "not_null": false,
+          "ordinal": 8,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "confirmation_token",
+          "not_null": false,
+          "ordinal": 9,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "confirmation_sent_at",
+          "not_null": false,
+          "ordinal": 10,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "recovery_token",
+          "not_null": false,
+          "ordinal": 11,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "recovery_sent_at",
+          "not_null": false,
+          "ordinal": 12,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email_change_token_new",
+          "not_null": false,
+          "ordinal": 13,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email_change",
+          "not_null": false,
+          "ordinal": 14,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "email_change_sent_at",
+          "not_null": false,
+          "ordinal": 15,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "last_sign_in_at",
+          "not_null": false,
+          "ordinal": 16,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "raw_app_meta_data",
+          "not_null": false,
+          "ordinal": 17,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "raw_user_meta_data",
+          "not_null": false,
+          "ordinal": 18,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "is_super_admin",
+          "not_null": false,
+          "ordinal": 19,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "created_at",
+          "not_null": false,
+          "ordinal": 20,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "updated_at",
+          "not_null": false,
+          "ordinal": 21,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "NULL::character varying",
+          "generated": "",
+          "identity": "",
+          "name": "phone",
+          "not_null": false,
+          "ordinal": 22,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "phone_confirmed_at",
+          "not_null": false,
+          "ordinal": 23,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "generated": "",
+          "identity": "",
+          "name": "phone_change",
+          "not_null": false,
+          "ordinal": 24,
+          "type": "text"
+        },
+        {
+          "default": "''::character varying",
+          "generated": "",
+          "identity": "",
+          "name": "phone_change_token",
+          "not_null": false,
+          "ordinal": 25,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "phone_change_sent_at",
+          "not_null": false,
+          "ordinal": 26,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "LEAST(email_confirmed_at, phone_confirmed_at)",
+          "generated": "s",
+          "identity": "",
+          "name": "confirmed_at",
+          "not_null": false,
+          "ordinal": 27,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "generated": "",
+          "identity": "",
+          "name": "email_change_token_current",
+          "not_null": false,
+          "ordinal": 28,
+          "type": "character varying(255)"
+        },
+        {
+          "default": "0",
+          "generated": "",
+          "identity": "",
+          "name": "email_change_confirm_status",
+          "not_null": false,
+          "ordinal": 29,
+          "type": "smallint"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "banned_until",
+          "not_null": false,
+          "ordinal": 30,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "generated": "",
+          "identity": "",
+          "name": "reauthentication_token",
+          "not_null": false,
+          "ordinal": 31,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "reauthentication_sent_at",
+          "not_null": false,
+          "ordinal": 32,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "generated": "",
+          "identity": "",
+          "name": "is_sso_user",
+          "not_null": true,
+          "ordinal": 33,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "deleted_at",
+          "not_null": false,
+          "ordinal": 34,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "generated": "",
+          "identity": "",
+          "name": "is_anonymous",
+          "not_null": true,
+          "ordinal": 35,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))",
+          "name": "users_email_change_confirm_status_check",
+          "type": "c"
+        },
+        {
+          "definition": "UNIQUE (phone)",
+          "name": "users_phone_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "users_pkey",
+          "type": "p"
+        }
+      ],
+      "indexes": [
+        {
+          "definition": "CREATE UNIQUE INDEX confirmation_token_idx ON auth.users USING btree (confirmation_token) WHERE ((confirmation_token)::text !~ '^[0-9 ]*$'::text)",
+          "name": "confirmation_token_idx"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX email_change_token_current_idx ON auth.users USING btree (email_change_token_current) WHERE ((email_change_token_current)::text !~ '^[0-9 ]*$'::text)",
+          "name": "email_change_token_current_idx"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX email_change_token_new_idx ON auth.users USING btree (email_change_token_new) WHERE ((email_change_token_new)::text !~ '^[0-9 ]*$'::text)",
+          "name": "email_change_token_new_idx"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX reauthentication_token_idx ON auth.users USING btree (reauthentication_token) WHERE ((reauthentication_token)::text !~ '^[0-9 ]*$'::text)",
+          "name": "reauthentication_token_idx"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX recovery_token_idx ON auth.users USING btree (recovery_token) WHERE ((recovery_token)::text !~ '^[0-9 ]*$'::text)",
+          "name": "recovery_token_idx"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX users_email_partial_key ON auth.users USING btree (email) WHERE (is_sso_user = false)",
+          "name": "users_email_partial_key"
+        },
+        {
+          "definition": "CREATE INDEX users_instance_id_email_idx ON auth.users USING btree (instance_id, lower((email)::text))",
+          "name": "users_instance_id_email_idx"
+        },
+        {
+          "definition": "CREATE INDEX users_instance_id_idx ON auth.users USING btree (instance_id)",
+          "name": "users_instance_id_idx"
+        },
+        {
+          "definition": "CREATE INDEX users_is_anonymous_idx ON auth.users USING btree (is_anonymous)",
+          "name": "users_is_anonymous_idx"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX users_phone_key ON auth.users USING btree (phone)",
+          "name": "users_phone_key"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX users_pkey ON auth.users USING btree (id)",
+          "name": "users_pkey"
+        }
+      ],
+      "owner": "supabase_auth_admin",
+      "policies": [],
+      "relforcerowsecurity": false,
+      "relrowsecurity": true,
+      "schema_name": "auth",
+      "table_name": "users",
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()",
+          "function": "handle_new_user()",
+          "name": "on_auth_user_created"
+        },
+        {
+          "definition": "CREATE TRIGGER on_demo_account_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION assign_demo_role()",
+          "function": "assign_demo_role()",
+          "name": "on_demo_account_created"
+        }
+      ]
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "ordinal": 1,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "ordinal": 2,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "name",
+          "not_null": true,
+          "ordinal": 3,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "description",
+          "not_null": false,
+          "ordinal": 4,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "base_role",
+          "not_null": false,
+          "ordinal": 5,
+          "type": "text"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "generated": "",
+          "identity": "",
+          "name": "permissions",
+          "not_null": true,
+          "ordinal": 6,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "created_by",
+          "not_null": false,
+          "ordinal": 7,
+          "type": "uuid"
+        },
+        {
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "created_at",
+          "not_null": true,
+          "ordinal": 8,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "updated_at",
+          "not_null": true,
+          "ordinal": 9,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "org_custom_roles_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id, name)",
+          "name": "org_custom_roles_organization_id_name_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "org_custom_roles_pkey",
+          "type": "p"
+        }
+      ],
+      "indexes": [
+        {
+          "definition": "CREATE INDEX idx_org_custom_roles_org ON public.org_custom_roles USING btree (organization_id)",
+          "name": "idx_org_custom_roles_org"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX org_custom_roles_organization_id_name_key ON public.org_custom_roles USING btree (organization_id, name)",
+          "name": "org_custom_roles_organization_id_name_key"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX org_custom_roles_pkey ON public.org_custom_roles USING btree (id)",
+          "name": "org_custom_roles_pkey"
+        }
+      ],
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "d",
+          "name": "Org staff can delete custom roles",
+          "permissive": true,
+          "qual": "can_access_organization(organization_id, 'staff.write'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": null
+        },
+        {
+          "command": "a",
+          "name": "Org staff can insert custom roles",
+          "permissive": true,
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": "can_access_organization(organization_id, 'staff.write'::text)"
+        },
+        {
+          "command": "r",
+          "name": "Org staff can read custom roles",
+          "permissive": true,
+          "qual": "can_access_organization(organization_id, 'staff.read'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Org staff can update custom roles",
+          "permissive": true,
+          "qual": "can_access_organization(organization_id, 'staff.write'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": "can_access_organization(organization_id, 'staff.write'::text)"
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "relforcerowsecurity": false,
+      "relrowsecurity": true,
+      "schema_name": "public",
+      "table_name": "org_custom_roles",
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER trg_org_custom_roles_updated BEFORE UPDATE ON public.org_custom_roles FOR EACH ROW EXECUTE FUNCTION touch_updated_at()",
+          "function": "touch_updated_at()",
+          "name": "trg_org_custom_roles_updated"
+        }
+      ]
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "identity": "",
+          "name": "id",
+          "not_null": true,
+          "ordinal": 1,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "organization_id",
+          "not_null": true,
+          "ordinal": 2,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "user_id",
+          "not_null": true,
+          "ordinal": 3,
+          "type": "uuid"
+        },
+        {
+          "default": "'teacher'::text",
+          "generated": "",
+          "identity": "",
+          "name": "role",
+          "not_null": true,
+          "ordinal": 4,
+          "type": "text"
+        },
+        {
+          "default": "''::text",
+          "generated": "",
+          "identity": "",
+          "name": "display_name",
+          "not_null": true,
+          "ordinal": 5,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "bio",
+          "not_null": false,
+          "ordinal": 6,
+          "type": "text"
+        },
+        {
+          "default": "'all'::text",
+          "generated": "",
+          "identity": "",
+          "name": "visibility",
+          "not_null": true,
+          "ordinal": 7,
+          "type": "text"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "generated": "",
+          "identity": "",
+          "name": "sections_access",
+          "not_null": false,
+          "ordinal": 8,
+          "type": "jsonb"
+        },
+        {
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "created_at",
+          "not_null": true,
+          "ordinal": 9,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "generated": "",
+          "identity": "",
+          "name": "updated_at",
+          "not_null": true,
+          "ordinal": 10,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "expires_at",
+          "not_null": false,
+          "ordinal": 11,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "generated": "",
+          "identity": "",
+          "name": "custom_role_id",
+          "not_null": false,
+          "ordinal": 12,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "generated": "",
+          "identity": "",
+          "name": "can_receive_crm_tasks",
+          "not_null": true,
+          "ordinal": 13,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (custom_role_id) REFERENCES org_custom_roles(id) ON DELETE SET NULL",
+          "name": "org_staff_custom_role_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "org_staff_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id, user_id)",
+          "name": "org_staff_organization_id_user_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "org_staff_pkey",
+          "type": "p"
+        }
+      ],
+      "indexes": [
+        {
+          "definition": "CREATE INDEX idx_org_staff_can_receive_crm ON public.org_staff USING btree (organization_id) WHERE (can_receive_crm_tasks = true)",
+          "name": "idx_org_staff_can_receive_crm"
+        },
+        {
+          "definition": "CREATE INDEX idx_org_staff_custom_role ON public.org_staff USING btree (custom_role_id) WHERE (custom_role_id IS NOT NULL)",
+          "name": "idx_org_staff_custom_role"
+        },
+        {
+          "definition": "CREATE INDEX idx_org_staff_expires_at ON public.org_staff USING btree (expires_at) WHERE (expires_at IS NOT NULL)",
+          "name": "idx_org_staff_expires_at"
+        },
+        {
+          "definition": "CREATE INDEX idx_org_staff_user_org_active ON public.org_staff USING btree (user_id, organization_id) WHERE (expires_at IS NULL)",
+          "name": "idx_org_staff_user_org_active"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX org_staff_document_tenant_key ON public.org_staff USING btree (id, organization_id)",
+          "name": "org_staff_document_tenant_key"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX org_staff_organization_id_user_id_key ON public.org_staff USING btree (organization_id, user_id)",
+          "name": "org_staff_organization_id_user_id_key"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX org_staff_pkey ON public.org_staff USING btree (id)",
+          "name": "org_staff_pkey"
+        }
+      ],
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "command": "a",
+          "name": "org_staff_insert",
+          "permissive": true,
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": "((role <> 'owner'::text) AND (NOT has_org_ownership_identity(user_id, organization_id)) AND can_access_organization(organization_id, 'staff.write'::text))"
+        },
+        {
+          "command": "r",
+          "name": "org_staff_select",
+          "permissive": true,
+          "qual": "((user_id = auth.uid()) OR can_access_organization(organization_id, 'staff.read'::text))",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "org_staff_update",
+          "permissive": true,
+          "qual": "can_access_organization(organization_id, 'staff.write'::text)",
+          "roles": [
+            "authenticated"
+          ],
+          "with_check": "((role <> 'owner'::text) AND (NOT has_org_ownership_identity(user_id, organization_id)) AND can_access_organization(organization_id, 'staff.write'::text))"
+        }
+      ],
+      "relforcerowsecurity": false,
+      "relrowsecurity": true,
+      "schema_name": "public",
+      "table_name": "org_staff",
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER prevent_org_staff_owner_overlap BEFORE INSERT OR UPDATE OF organization_id, user_id, role ON public.org_staff FOR EACH ROW EXECUTE FUNCTION prevent_org_staff_owner_overlap()",
+          "function": "prevent_org_staff_owner_overlap()",
+          "name": "prevent_org_staff_owner_overlap"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_log_org_staff_changes AFTER INSERT OR DELETE OR UPDATE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION log_org_staff_changes()",
+          "function": "log_org_staff_changes()",
+          "name": "trg_log_org_staff_changes"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_sync_org_staff_to_sales_managers AFTER INSERT OR DELETE OR UPDATE OF role, can_receive_crm_tasks, display_name, expires_at, user_id, organization_id ON public.org_staff FOR EACH ROW EXECUTE FUNCTION sync_org_staff_to_sales_managers()",
+          "function": "sync_org_staff_to_sales_managers()",
+          "name": "trg_sync_org_staff_to_sales_managers"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_staff_document_grant_guard BEFORE INSERT OR UPDATE OF role, sections_access, user_id, organization_id ON public.org_staff FOR EACH ROW EXECUTE FUNCTION uc_guard_staff_document_grants()",
+          "function": "uc_guard_staff_document_grants()",
+          "name": "uc_staff_document_grant_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER update_org_staff_updated_at BEFORE UPDATE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "function": "update_updated_at_column()",
+          "name": "update_org_staff_updated_at"
+        }
+      ]
+    }
+  ]
+}
