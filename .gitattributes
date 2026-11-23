@@ -44,3 +44,7 @@ supabase/tests/uc-issued-recipient/** -text whitespace=trailing-space,space-befo
 # Preserve the W1 manifest's exact inherited fixture bytes on every checkout.
 supabase/tests/uc-individual-orders/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
 supabase/tests/uc-individual-orders/fixture-graph/valid-owned-qa.pdf -diff
+
+# Preserve the W2 finite native package and owned PDF cross-reference bytes.
+supabase/tests/uc-individual-issuance/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+supabase/tests/uc-individual-issuance/fixture-graph/valid-owned-qa.pdf -diff

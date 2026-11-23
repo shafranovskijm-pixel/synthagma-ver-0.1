@@ -1,0 +1,102 @@
+name: Individual education document issuance
+on:
+  pull_request:
+    paths:
+      - .github/workflows/uc-individual-issuance.yml
+      - .gitattributes
+      - package.json
+      - package-lock.json
+      - tsconfig*.json
+      - src/lib/individualEducationIssuance/**
+      - src/components/organization/individual-education-issuance/**
+      - src/components/organization/documents/DocumentChain*.tsx
+      - src/lib/admissionCases/**
+      - src/lib/educationIssuance/**
+      - src/lib/signatureAssurance/**
+      - supabase/migrations/*uc_individual_education_issuance.sql
+      - supabase/functions/_shared/admission-case-*.ts
+      - supabase/functions/admission-case-evidence*/**
+      - supabase/functions/_shared/individual-admission-*.ts
+      - supabase/tests/uc-individual-issuance/**
+      - supabase/tests/edge/individual-admission-evidence-v2.test.ts
+      - supabase/tests/edge/__tests__/admission-case-evidence*.test.ts
+      - vitest.individual-issuance.config.ts
+      - vitest.individual-admission-worker.config.ts
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    name: Guided individual issuance and existing byte engine
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: git log -1 --format='%H%n%T%n%P'
+      - name: Whole application TypeScript
+        run: npm run typecheck
+      - name: New individual scope client UI and DTO contracts
+        run: node node_modules/vitest/vitest.mjs run --config vitest.individual-issuance.config.ts
+      - name: Current V2 and unchanged V1 evidence byte contracts
+        run: node node_modules/vitest/vitest.mjs run --config vitest.individual-admission-worker.config.ts
+      - name: Production application build
+        run: npm run build
+  edge:
+    name: Actual Deno evidence worker entrypoints
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: '2.1.4'
+      - run: deno check --no-lock supabase/functions/_shared/individual-admission-evidence-schema.ts
+      - run: deno check --no-lock supabase/functions/admission-case-evidence-commit/index.ts
+      - run: deno check --no-lock supabase/functions/admission-case-evidence-file/index.ts
+  native:
+    name: Actual PostgreSQL three programme document and PEP chain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      W2_NATIVE_ARTIFACTS: outputs/uc-individual-issuance-native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Pull exact PostgreSQL17 image
+        run: docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+      - name: Real qualification certificate diploma and byte-bound PEP
+        run: node supabase/tests/uc-individual-issuance/run-native.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-individual-issuance-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/uc-individual-issuance-native/
+            !outputs/uc-individual-issuance-native/**/node_modules/**
+          if-no-files-found: error
+          retention-days: 14

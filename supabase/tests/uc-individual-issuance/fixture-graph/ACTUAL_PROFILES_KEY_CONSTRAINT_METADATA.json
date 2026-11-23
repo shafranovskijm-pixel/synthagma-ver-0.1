@@ -1,0 +1,131 @@
+{
+  "rows": [
+    {
+      "constraints": [
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id)",
+          "name": "profiles_company_id_fkey",
+          "type": "f",
+          "validated": true
+        },
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "FOREIGN KEY (student_group_id, organization_id) REFERENCES student_groups(id, organization_id) ON DELETE SET NULL (student_group_id) NOT VALID",
+          "name": "profiles_group_organization_registration_fkey",
+          "type": "f",
+          "validated": false
+        },
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "UNIQUE (login)",
+          "name": "profiles_login_key",
+          "type": "u",
+          "validated": true
+        },
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL",
+          "name": "profiles_organization_id_fkey",
+          "type": "f",
+          "validated": true
+        },
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "PRIMARY KEY (id)",
+          "name": "profiles_pkey",
+          "type": "p",
+          "validated": true
+        },
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "FOREIGN KEY (student_group_id) REFERENCES student_groups(id) ON DELETE SET NULL",
+          "name": "profiles_student_group_id_fkey",
+          "type": "f",
+          "validated": true
+        },
+        {
+          "deferrable": false,
+          "deferred": false,
+          "definition": "UNIQUE (user_id)",
+          "name": "profiles_user_id_key",
+          "type": "u",
+          "validated": true
+        },
+        {
+          "deferrable": true,
+          "deferred": true,
+          "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+          "name": "uc013_source_fold",
+          "type": "t",
+          "validated": true
+        }
+      ],
+      "indexes": [
+        {
+          "definition": "CREATE INDEX idx_profiles_archived_at ON public.profiles USING btree (organization_id, archived_at)",
+          "name": "idx_profiles_archived_at"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_blocked_at ON public.profiles USING btree (blocked_at) WHERE (blocked_at IS NOT NULL)",
+          "name": "idx_profiles_blocked_at"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_company ON public.profiles USING btree (company_id)",
+          "name": "idx_profiles_company"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_login ON public.profiles USING btree (login) WHERE (login IS NOT NULL)",
+          "name": "idx_profiles_login"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_org ON public.profiles USING btree (organization_id)",
+          "name": "idx_profiles_org"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_org_archived ON public.profiles USING btree (organization_id, archived_at)",
+          "name": "idx_profiles_org_archived"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_org_group ON public.profiles USING btree (organization_id, student_group_id)",
+          "name": "idx_profiles_org_group"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_org_user ON public.profiles USING btree (organization_id, user_id)",
+          "name": "idx_profiles_org_user"
+        },
+        {
+          "definition": "CREATE INDEX idx_profiles_organization_id ON public.profiles USING btree (organization_id)",
+          "name": "idx_profiles_organization_id"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX profiles_login_key ON public.profiles USING btree (login)",
+          "name": "profiles_login_key"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX profiles_login_normalized_unique ON public.profiles USING btree (lower(btrim(login))) WHERE (NULLIF(btrim(login), ''::text) IS NOT NULL)",
+          "name": "profiles_login_normalized_unique"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX profiles_membership_tenant_key ON public.profiles USING btree (user_id, organization_id)",
+          "name": "profiles_membership_tenant_key"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)",
+          "name": "profiles_pkey"
+        },
+        {
+          "definition": "CREATE UNIQUE INDEX profiles_user_id_key ON public.profiles USING btree (user_id)",
+          "name": "profiles_user_id_key"
+        }
+      ],
+      "observed_at": "2026-11-23 15:45:17.945228+00"
+    }
+  ]
+}

@@ -1,0 +1,5177 @@
+{
+  "kind": "ACTUAL_OWNED_W2_NATIVE_SCHEMA_METADATA_NOT_PRODUCTION",
+  "source1800_sha256": "1ca952d2a2a3976f3ace70c8747f176c71e3707bbcc16072d9cbb40377a30831",
+  "source1800_bytes": 389267,
+  "functions": [
+    {
+      "identity": "apply_individual_education_issuance(uuid,uuid,uuid,jsonb)",
+      "body_md5": "2f792e4d25360c66cd93ecab011b4c09",
+      "definition_md5": "34a18a403513ff8b6543c6e7265aaca8",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC",
+        "lock_timeout=2000ms"
+      ],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "direct_grantees": [
+        "authenticated",
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_organization_id uuid, p_enrollment_id uuid, p_request_id uuid, p_command jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "read_individual_education_issuance(uuid,uuid,jsonb)",
+      "body_md5": "fcd406c14cff75631ea8848bd6e83683",
+      "definition_md5": "3177f002523fa91ba349af65c1bea593",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC",
+        "lock_timeout=2000ms"
+      ],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "direct_grantees": [
+        "authenticated",
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_organization_id uuid, p_enrollment_id uuid, p_query jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_admission_evidence_context(uuid,uuid,bigint,uuid,jsonb)",
+      "body_md5": "ded2db68f7fb3c9f75704ba94c90ca92",
+      "definition_md5": "8b0563497318b4673ca5f13f85fee56b",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "direct_grantees": [
+        "authenticated",
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 0,
+      "arguments": "p_case_id uuid, p_reservation_id uuid, p_expected_revision bigint, p_request_id uuid, p_individual_scope jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_admission_evidence_file_context(uuid,uuid,jsonb)",
+      "body_md5": "a0fbb50d4e39dc027a03700c604658bd",
+      "definition_md5": "93ab231acca803c3abd894de775ed875",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "direct_grantees": [
+        "authenticated",
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_case_id uuid, p_evidence_version_id uuid, p_individual_scope jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_finalize_admission_case_evidence(uuid,uuid,bigint,uuid,jsonb)",
+      "body_md5": "cdd9cad4b3263ed5a73103e2f4162a0b",
+      "definition_md5": "fc76e6a117897d331c213e9df0e07a99",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "direct_grantees": [
+        "authenticated",
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 0,
+      "arguments": "p_case_id uuid, p_reservation_id uuid, p_expected_revision bigint, p_request_id uuid, p_individual_scope jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.actor_context(uuid,uuid,uuid,text)",
+      "body_md5": "0fd83f727a5ba31feea69787957df7e1",
+      "definition_md5": "b035f0e5ceb4c54ff9f77b1c07b8962b",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_actor uuid, p_org uuid, p_enrollment uuid, p_mode text",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.admission_binding(uuid,uuid,boolean)",
+      "body_md5": "25ab4688a1c95b564d94f69b62253214",
+      "definition_md5": "19af94d71218ee64d6d2b5c0f82c51bf",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 1,
+      "arguments": "p_org uuid, p_enrollment uuid, p_live boolean DEFAULT true",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.admission_prerequisites(uuid,uuid,uuid,boolean)",
+      "body_md5": "b2e99aa4e34479eb658c94559ddc5824",
+      "definition_md5": "db40c81d4003588353c0f2fa361a7a81",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_user uuid, p_enrollment uuid, p_rules boolean",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.admission_result(uuid,uuid,jsonb,boolean)",
+      "body_md5": "bd4666a7127de4f8dcb3168c803fcca2",
+      "definition_md5": "62749a7b04e2069bf284489ee56c159d",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_case uuid, p_actor uuid, p_receipt jsonb, p_replayed boolean",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.admission_source(uuid,uuid,jsonb,text,uuid)",
+      "body_md5": "ef6090fef7d82850dbe64e676389082b",
+      "definition_md5": "53cd27edefee5fffa11f5d45175a2213",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_program jsonb, p_program_type text, p_actor uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.apply_review_core(uuid,uuid,uuid,jsonb)",
+      "body_md5": "78ca13d4b2bfdae5caadd6d6e650850a",
+      "definition_md5": "af48c284fc7cddc089a63b28e5638af0",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_organization_id uuid, p_student_user_id uuid, p_request_id uuid, p_command jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.artifact_live(uuid,uuid,uuid,bigint,boolean)",
+      "body_md5": "eaa5796f9366c82992c855aae9553a1e",
+      "definition_md5": "e149b3f7f91e572834eb717f8ddcc3d4",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 0,
+      "arguments": "p_actor uuid, p_preparation uuid, p_item uuid, p_revision bigint, p_fresh boolean",
+      "result": "uc_education_issuance_preparation_items",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.association_target(uuid,uuid,uuid)",
+      "body_md5": "4b7ef90b43b7306ca08bf84a1895c529",
+      "definition_md5": "8129f376dce8402dfed9d6faee7e0994",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_user uuid, p_enrollment uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.candidate(uuid,uuid,uuid,boolean)",
+      "body_md5": "93550b1f4674ec9ae7a2a80abe1e7787",
+      "definition_md5": "30a156cc8bfa55ebd82b25feb9efd3de",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 1,
+      "arguments": "p_org uuid, p_enrollment uuid, p_actor uuid, p_lock boolean DEFAULT false",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.can_mode(uuid,uuid,uuid,text)",
+      "body_md5": "bfe7060215255591ff3a569077278477",
+      "definition_md5": "a46a3865fd799784387f4b05e88cb6ca",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_actor uuid, p_org uuid, p_enrollment uuid, p_mode text",
+      "result": "boolean",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.case_row(uuid,uuid,text)",
+      "body_md5": "1d20a64315f3d226a2d0e44c4030e006",
+      "definition_md5": "711d76fbf46a3f0c95e318f3d775c266",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_case uuid, p_actor uuid, p_mode text",
+      "result": "uc_admission_cases",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.case_state(uuid,uuid)",
+      "body_md5": "b44f76380d61435aafa67cf03da9acc5",
+      "definition_md5": "162b2d61f6c5e6996e8f4bc0f00a9765",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 2,
+      "defaults_count": 0,
+      "arguments": "p_case uuid, p_actor uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.case_target(uuid,uuid,uuid,boolean)",
+      "body_md5": "b61d8e13c23c5b72ea496b5ec4d88f29",
+      "definition_md5": "5eeed2ccbf96f7ff159e064d07922e1b",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 1,
+      "arguments": "p_org uuid, p_user uuid, p_enrollment uuid, p_live boolean DEFAULT false",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.conditional_group()",
+      "body_md5": "ae4ed0be80fa9eae079b390e2ed9c96b",
+      "definition_md5": "479c21c2beabdad8139d2823ad9876a7",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 0,
+      "defaults_count": 0,
+      "arguments": "",
+      "result": "trigger",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.context_matches(uuid,uuid,uuid,uuid,uuid)",
+      "body_md5": "5e3b663fd4ec657be341ecfffdc1b55e",
+      "definition_md5": "8a9a74b1cab5d99c24d44fe23218e5aa",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 0,
+      "arguments": "p_context uuid, p_org uuid, p_enrollment uuid, p_user uuid, p_course uuid",
+      "result": "boolean",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.context_value(uuid,uuid,uuid)",
+      "body_md5": "c855cb43c984ca1bcf5382a1eb3c5511",
+      "definition_md5": "a1612d1891acf92719e01b6d402cf617",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_actor uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.correspondence()",
+      "body_md5": "4266fdc0682e18e9cb9bff58eb24c7d9",
+      "definition_md5": "9be545b6c97578f74fbb12b6601b3867",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 0,
+      "defaults_count": 0,
+      "arguments": "",
+      "result": "trigger",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.envelope(uuid,uuid,uuid,text)",
+      "body_md5": "0aa5297b5f18410f15be4e7bbe84ed7e",
+      "definition_md5": "72831c5c4765d0f85c09ff8d80d4bf6a",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_actor uuid, p_kind text",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.event_ref(uc_individual_orders_private.events)",
+      "body_md5": "6801f5af9e845a06a12760a05d8656b1",
+      "definition_md5": "2fa01b901f07074df926ed3017429e0f",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "i",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_event uc_individual_orders_private.events",
+      "result": "jsonb",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.fail(text)",
+      "body_md5": "adae6920143844927f5e84eaee908223",
+      "definition_md5": "2d82635880d0e388d7adf513d1336c98",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_code text",
+      "result": "void",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.failure(text,text)",
+      "body_md5": "5d0ae2e4f9ca00611d76f842c1de51cf",
+      "definition_md5": "517bfbd7b5a7d5e7f50fe16861737a2c",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "i",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 2,
+      "defaults_count": 0,
+      "arguments": "p_message text, p_state text",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.initialize(uuid,uuid,uuid,jsonb)",
+      "body_md5": "532716e5af3ed4b7d8eddca1123ac80f",
+      "definition_md5": "8ca906fa1019d2a47be833728e9d6a3c",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_request uuid, p_expected jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.issue_one(uuid,jsonb,text)",
+      "body_md5": "517a73ac0b37f08048dbd7a28d583c73",
+      "definition_md5": "3ccc1b8fc7eb2c8c1a47e6e0b4a6739a",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_item uuid, p_artifact jsonb, p_reason text",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.issue(uuid,uuid,uuid,jsonb)",
+      "body_md5": "63539f189ca57baf9f4b27d3ec43ba6e",
+      "definition_md5": "02f05d57c0536cd2c4440cef57858d11",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_request uuid, p_command jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.mutation_receipt(uuid,text,text,jsonb)",
+      "body_md5": "1ecd0dacfe4a518bc2901d140b099e6f",
+      "definition_md5": "ecc9ba0310865b04adff406b25a34887",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_request uuid, p_operation text, p_payload text, p_result jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.order_witness(uc_individual_orders_private.orders,boolean)",
+      "body_md5": "500c7c840ec2fa289bbae37b42e3f10a",
+      "definition_md5": "9326fe6a2a74d41ee2cf1f84c9875cff",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 2,
+      "defaults_count": 1,
+      "arguments": "p_order uc_individual_orders_private.orders, p_live boolean DEFAULT true",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.participants(uuid,uuid,uuid,jsonb,uuid,jsonb)",
+      "body_md5": "44c00e3f566a1ba7c3d001c8ec7bbd2b",
+      "definition_md5": "045cfbd58de7e7bcd0a3b5bb9dffd5ae",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 6,
+      "defaults_count": 3,
+      "arguments": "p_org uuid, p_enrollment uuid, p_actor uuid, p_template jsonb DEFAULT NULL::jsonb, p_item uuid DEFAULT NULL::uuid, p_command jsonb DEFAULT NULL::jsonb",
+      "result": "uuid[]",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.personal_counts(uuid)",
+      "body_md5": "b5bd9ae1e5e8288b9c96f6438272eaf2",
+      "definition_md5": "875cf77bf65adb9b146f8065612309d5",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_user uuid",
+      "result": "jsonb",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.preparation_access(uuid,boolean,uuid)",
+      "body_md5": "0f791159b2834d79d3e60269c3470a40",
+      "definition_md5": "9faf7c23266fbd1ff9e77bda8daa8514",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_preparation uuid, p_fresh boolean, p_item uuid",
+      "result": "uc_education_issuance_preparations",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.preparation_value(uuid)",
+      "body_md5": "691ad8db183ee1b924bb692401da6f3e",
+      "definition_md5": "68828684fd34337daf3f991bd776912a",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_preparation uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.prepare_evidence_core(uuid,bigint,jsonb,uuid,jsonb)",
+      "body_md5": "85668164e7415ee8fca4adf9542c20b4",
+      "definition_md5": "1b668d8b7602239e0478b4d4b33adfe6",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 0,
+      "arguments": "p_case_id uuid, p_expected_revision bigint, p_expected_program_ref jsonb, p_request_id uuid, p_source jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.prepare(uuid,uuid,uuid,jsonb)",
+      "body_md5": "e42d181924058a29eb9c306d82fb1c16",
+      "definition_md5": "99278240558b3e042eae0b367e0436a4",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_request uuid, p_plan jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.preview(uuid,uuid,uuid,jsonb,boolean)",
+      "body_md5": "0ecfb00fcb2fd7d0afe731b70f2e129c",
+      "definition_md5": "0b027766ca5412c1173343aeef48b40d",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 5,
+      "defaults_count": 1,
+      "arguments": "p_org uuid, p_enrollment uuid, p_actor uuid, p_intent jsonb, p_lock boolean DEFAULT false",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.private_guard()",
+      "body_md5": "0b4b90909de391e6e62fd380c6d4c837",
+      "definition_md5": "ec6943459f5c0a3ad4914757c8a87256",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 0,
+      "defaults_count": 0,
+      "arguments": "",
+      "result": "trigger",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.programme_for_case(uuid,uuid,uuid)",
+      "body_md5": "b445cd489f36c162771da3aa70c1f962",
+      "definition_md5": "ca81ea0e4884f5d916d892468dfadc40",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_user uuid, p_enrollment uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.programme_guard(education_document_records)",
+      "body_md5": "49b91327b608e7f5e1514357cc61329a",
+      "definition_md5": "e4ce3e822eeb97a8cfcb5305e4cc8094",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_row education_document_records",
+      "result": "education_document_records",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.programme_ref_valid(jsonb)",
+      "body_md5": "e2030cefa04161ece1a7913186a38dc0",
+      "definition_md5": "1d460015acf7f11dccdb750965ca50bb",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "i",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_value jsonb",
+      "result": "boolean",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.protocol_current(uuid,uuid,uc_individual_orders_private.orders)",
+      "body_md5": "b565c9b325240f6f8ea34c0c623191ee",
+      "definition_md5": "0e56904e3ab102244658956eeef14967",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_case uuid, p_actor uuid, p_completion uc_individual_orders_private.orders",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.protocol_event_guard()",
+      "body_md5": "04af4eca5de314aef288b70a160d8820",
+      "definition_md5": "2aa68d677001ba3bff5aeabd12220509",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 0,
+      "defaults_count": 0,
+      "arguments": "",
+      "result": "trigger",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.read_admission_core(uuid,uuid,jsonb)",
+      "body_md5": "8628260f97bb21e0a8312bbfa6cac72c",
+      "definition_md5": "654d96789e7780dba0c4067875194108",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_organization_id uuid, p_student_user_id uuid, p_query jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.record_context(education_document_records)",
+      "body_md5": "0d23b9c4c21ad742eb0a959729242f2d",
+      "definition_md5": "5c139095f2fd40390ee2da82bf454d64",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_row education_document_records",
+      "result": "uuid",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.record_source(education_document_records)",
+      "body_md5": "bdfc99d69b36ed97be3fdfd0115f277c",
+      "definition_md5": "de3677cba2d01a487eb673f04c0067c0",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_row education_document_records",
+      "result": "void",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.record_value(uuid,uuid,uuid,uuid)",
+      "body_md5": "bb85c75a6da30569920805bcc9d717da",
+      "definition_md5": "84abc05700e15b2792a20c2d02e47855",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_record uuid, p_actor uuid",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.render_variables(uuid,jsonb,jsonb,jsonb,jsonb,text)",
+      "body_md5": "68b89ba2520b6538c30ac3e7339281b6",
+      "definition_md5": "2045d3871a727a7b06351a7b5738ed95",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "s",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 6,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_identity jsonb, p_facts jsonb, p_numbers jsonb, p_proof jsonb, p_document_type text",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.review_protocol(uuid,uuid,uuid,jsonb)",
+      "body_md5": "5fe5f93bdb36bf5b715c7c7c3320a79e",
+      "definition_md5": "ba564ef64efb5dffd1893d5ebe5e6271",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": true,
+      "volatility": "v",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_request uuid, p_command jsonb",
+      "result": "jsonb",
+      "language": "plpgsql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.scope_input(jsonb,uuid,uuid)",
+      "body_md5": "81dd1e23599fcf528a244db8aa47c72e",
+      "definition_md5": "9e6318c05950dbc9ddac146852db3ab3",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "i",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 3,
+      "defaults_count": 0,
+      "arguments": "p_scope jsonb, p_org uuid, p_enrollment uuid",
+      "result": "boolean",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.scope(uuid,uuid,uuid,uuid)",
+      "body_md5": "4998b62fc84e820eacb879223564bacd",
+      "definition_md5": "8c94905976bc573feedc6bf52f2aa98e",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "i",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 4,
+      "defaults_count": 0,
+      "arguments": "p_org uuid, p_enrollment uuid, p_user uuid, p_course uuid",
+      "result": "jsonb",
+      "language": "sql"
+    },
+    {
+      "identity": "uc_individual_issuance_private.validate_review_action(jsonb)",
+      "body_md5": "3905f066273d92aa330860f0326456a7",
+      "definition_md5": "4cb984744a512b303d013a5314a51157",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "direct_grantees": [
+        "postgres"
+      ],
+      "security_definer": false,
+      "volatility": "i",
+      "parallel": "u",
+      "strict": false,
+      "leakproof": false,
+      "nargs": 1,
+      "defaults_count": 0,
+      "arguments": "p_command jsonb",
+      "result": "void",
+      "language": "plpgsql"
+    }
+  ],
+  "tables": [
+    {
+      "name": "cases",
+      "schema": "uc_individual_issuance_private",
+      "owner": "postgres",
+      "rls": true,
+      "force_rls": false,
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "anon_any": false,
+      "authenticated_any": false,
+      "service_any": false,
+      "kind": "r",
+      "replica_identity": "d",
+      "has_toast": true
+    },
+    {
+      "name": "contexts",
+      "schema": "uc_individual_issuance_private",
+      "owner": "postgres",
+      "rls": true,
+      "force_rls": false,
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "anon_any": false,
+      "authenticated_any": false,
+      "service_any": false,
+      "kind": "r",
+      "replica_identity": "d",
+      "has_toast": true
+    },
+    {
+      "name": "issued_sources",
+      "schema": "uc_individual_issuance_private",
+      "owner": "postgres",
+      "rls": true,
+      "force_rls": false,
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "anon_any": false,
+      "authenticated_any": false,
+      "service_any": false,
+      "kind": "r",
+      "replica_identity": "d",
+      "has_toast": true
+    },
+    {
+      "name": "items",
+      "schema": "uc_individual_issuance_private",
+      "owner": "postgres",
+      "rls": true,
+      "force_rls": false,
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "anon_any": false,
+      "authenticated_any": false,
+      "service_any": false,
+      "kind": "r",
+      "replica_identity": "d",
+      "has_toast": true
+    },
+    {
+      "name": "requests",
+      "schema": "uc_individual_issuance_private",
+      "owner": "postgres",
+      "rls": true,
+      "force_rls": false,
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "anon_any": false,
+      "authenticated_any": false,
+      "service_any": false,
+      "kind": "r",
+      "replica_identity": "d",
+      "has_toast": true
+    }
+  ],
+  "columns": [
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "gen_random_uuid()"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "organization_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "user_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "group_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "enrollment_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "course_id",
+      "ordinal": 6,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "program_ref",
+      "ordinal": 7,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "program_title",
+      "ordinal": 8,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "program_type",
+      "ordinal": 9,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "revision",
+      "ordinal": 10,
+      "type": "bigint",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "responsible_id",
+      "ordinal": 11,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "rule_set_id",
+      "ordinal": 12,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "requirements",
+      "ordinal": 13,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "'[]'::jsonb"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "reviews",
+      "ordinal": 14,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "'{}'::jsonb"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "tasks",
+      "ordinal": 15,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "'[]'::jsonb"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "decision",
+      "ordinal": 16,
+      "type": "jsonb",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "created_at",
+      "ordinal": 17,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "column_name": "updated_at",
+      "ordinal": 18,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "gen_random_uuid()"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "transaction_id",
+      "ordinal": 2,
+      "type": "bigint",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "backend_pid",
+      "ordinal": 3,
+      "type": "integer",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "actor_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "organization_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "mode",
+      "ordinal": 6,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "enrollment_id",
+      "ordinal": 7,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "user_id",
+      "ordinal": 8,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "course_id",
+      "ordinal": 9,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "group_id",
+      "ordinal": 10,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "original_record_id",
+      "ordinal": 11,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "proof",
+      "ordinal": 12,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "source_snapshot",
+      "ordinal": 13,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "official_identity",
+      "ordinal": 14,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "column_name": "created_at",
+      "ordinal": 15,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "gen_random_uuid()"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "preparation_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "organization_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "enrollment_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "user_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "course_id",
+      "ordinal": 6,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "group_id",
+      "ordinal": 7,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "input_revision",
+      "ordinal": 8,
+      "type": "bigint",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "1"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "number_plan",
+      "ordinal": 9,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "eligibility_ref",
+      "ordinal": 10,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "source_snapshot",
+      "ordinal": 11,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "official_identity",
+      "ordinal": 12,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "frdo_facts",
+      "ordinal": 13,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "render_variables",
+      "ordinal": 14,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "render_input_hash",
+      "ordinal": 15,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "output_document_id",
+      "ordinal": 16,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "output_request_id",
+      "ordinal": 17,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "retained_subject_user_id",
+      "ordinal": 18,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "staging_proof",
+      "ordinal": 19,
+      "type": "jsonb",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "artifact",
+      "ordinal": 20,
+      "type": "jsonb",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "final_record_id",
+      "ordinal": 21,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "participant_ids",
+      "ordinal": 22,
+      "type": "uuid[]",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "'{}'::uuid[]"
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "column_name": "redacted",
+      "ordinal": 23,
+      "type": "boolean",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "false"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "case_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "organization_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "enrollment_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "user_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "course_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "kind",
+      "ordinal": 6,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "'individual_w1'::text"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "version",
+      "ordinal": 7,
+      "type": "integer",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "1"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "binding",
+      "ordinal": 8,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "source_sha256",
+      "ordinal": 9,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "participant_ids",
+      "ordinal": 10,
+      "type": "uuid[]",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "created_by",
+      "ordinal": 11,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "column_name": "created_at",
+      "ordinal": 12,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases_case_id_organization_id_key",
+      "column_name": "case_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases_case_id_organization_id_key",
+      "column_name": "organization_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases_organization_id_enrollment_id_key",
+      "column_name": "organization_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases_organization_id_enrollment_id_key",
+      "column_name": "enrollment_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases_pkey",
+      "column_name": "case_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "context_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "item_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "transaction_id",
+      "ordinal": 3,
+      "type": "bigint",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "backend_pid",
+      "ordinal": 4,
+      "type": "integer",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "actor_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "organization_id",
+      "ordinal": 6,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "enrollment_id",
+      "ordinal": 7,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "user_id",
+      "ordinal": 8,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "course_id",
+      "ordinal": 9,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "source_sha256",
+      "ordinal": 10,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "column_name": "created_at",
+      "ordinal": 11,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts_pkey",
+      "column_name": "context_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "record_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "item_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "case_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "organization_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "enrollment_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "user_id",
+      "ordinal": 6,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "course_id",
+      "ordinal": 7,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "eligibility_ref",
+      "ordinal": 8,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "source_sha256",
+      "ordinal": 9,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "artifact",
+      "ordinal": 10,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "participant_ids",
+      "ordinal": 11,
+      "type": "uuid[]",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "recorded_by",
+      "ordinal": 12,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "column_name": "recorded_at",
+      "ordinal": 13,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources_item_id_key",
+      "column_name": "item_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources_pkey",
+      "column_name": "record_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "item_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "preparation_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "case_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "organization_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "enrollment_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "user_id",
+      "ordinal": 6,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "course_id",
+      "ordinal": 7,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "eligibility_ref",
+      "ordinal": 8,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "source_sha256",
+      "ordinal": 9,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "participant_ids",
+      "ordinal": 10,
+      "type": "uuid[]",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "created_by",
+      "ordinal": 11,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "column_name": "created_at",
+      "ordinal": 12,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items_item_id_preparation_id_key",
+      "column_name": "item_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items_item_id_preparation_id_key",
+      "column_name": "preparation_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items_pkey",
+      "column_name": "item_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items_preparation_id_key",
+      "column_name": "preparation_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "actor_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "request_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "organization_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "enrollment_id",
+      "ordinal": 4,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "user_id",
+      "ordinal": 5,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "operation",
+      "ordinal": 6,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "canonical_kind",
+      "ordinal": 7,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "canonical_actor_id",
+      "ordinal": 8,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "canonical_request_id",
+      "ordinal": 9,
+      "type": "uuid",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "canonical_payload_sha256",
+      "ordinal": 10,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "payload_sha256",
+      "ordinal": 11,
+      "type": "text",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "result",
+      "ordinal": 12,
+      "type": "jsonb",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "participant_ids",
+      "ordinal": 13,
+      "type": "uuid[]",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "column_name": "recorded_at",
+      "ordinal": 14,
+      "type": "timestamp with time zone",
+      "not_null": true,
+      "identity": "",
+      "generated": "",
+      "default_value": "clock_timestamp()"
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests_pkey",
+      "column_name": "actor_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests_pkey",
+      "column_name": "request_id",
+      "ordinal": 2,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_case_participants",
+      "column_name": "participant_ids",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_case_subject",
+      "column_name": "user_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_context_transaction",
+      "column_name": "transaction_id",
+      "ordinal": 1,
+      "type": "bigint",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_context_transaction",
+      "column_name": "backend_pid",
+      "ordinal": 2,
+      "type": "integer",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_context_transaction",
+      "column_name": "actor_id",
+      "ordinal": 3,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_issued_participants",
+      "column_name": "participant_ids",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_issued_subject",
+      "column_name": "user_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_item_participants",
+      "column_name": "participant_ids",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_item_subject",
+      "column_name": "user_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_request_participants",
+      "column_name": "participant_ids",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "w2_request_subject",
+      "column_name": "user_id",
+      "ordinal": 1,
+      "type": "uuid",
+      "not_null": false,
+      "identity": "",
+      "generated": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "public",
+      "table_name": "uc_admission_case_events",
+      "name": "uc_admission_case_events_case_id_case_revision_key",
+      "type": "u",
+      "definition": "UNIQUE (case_id, case_revision)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_case_events",
+      "name": "uc_admission_case_events_case_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (case_id) REFERENCES uc_admission_cases(id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_case_events",
+      "name": "uc_admission_case_events_kind_check",
+      "type": "c",
+      "definition": "CHECK (kind = ANY (ARRAY['initialize'::text, 'assign_responsible'::text, 'review_local_rules'::text, 'review_requirement'::text, 'review_evidence'::text, 'record_decision'::text, 'evidence_committed'::text, 'review_protocol_facts'::text]))",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_case_events",
+      "name": "uc_admission_case_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "name": "uc_admission_cases_organization_id_group_id_enrollment_id_key",
+      "type": "u",
+      "definition": "UNIQUE (organization_id, group_id, enrollment_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "name": "uc_admission_cases_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_admission_cases",
+      "name": "uc_admission_cases_revision_check",
+      "type": "c",
+      "definition": "CHECK (revision >= 1 AND revision <= '9007199254740991'::bigint)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "name": "uc_education_issuance_contexts_mode_check",
+      "type": "c",
+      "definition": "CHECK (mode = ANY (ARRAY['original'::text, 'duplicate'::text]))",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_contexts",
+      "name": "uc_education_issuance_contexts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "name": "uc_education_issuance_preparat_preparation_id_enrollment_id_key",
+      "type": "u",
+      "definition": "UNIQUE (preparation_id, enrollment_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "name": "uc_education_issuance_preparation_items_input_revision_check",
+      "type": "c",
+      "definition": "CHECK (input_revision >= 1 AND input_revision <= '9007199254740991'::bigint)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "name": "uc_education_issuance_preparation_items_output_document_id_key",
+      "type": "u",
+      "definition": "UNIQUE (output_document_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "name": "uc_education_issuance_preparation_items_output_request_id_key",
+      "type": "u",
+      "definition": "UNIQUE (output_request_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "name": "uc_education_issuance_preparation_items_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "public",
+      "table_name": "uc_education_issuance_preparation_items",
+      "name": "uc_education_issuance_preparation_items_render_input_hash_check",
+      "type": "c",
+      "definition": "CHECK (render_input_hash ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_binding_check",
+      "type": "c",
+      "definition": "CHECK (jsonb_typeof(binding) = 'object'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_case_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (case_id) REFERENCES uc_admission_cases(id) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_case_id_organization_id_key",
+      "type": "u",
+      "definition": "UNIQUE (case_id, organization_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_check",
+      "type": "c",
+      "definition": "CHECK (participant_ids @> ARRAY[user_id, created_by] AND array_position(participant_ids, NULL::uuid) IS NULL)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_kind_check",
+      "type": "c",
+      "definition": "CHECK (kind = 'individual_w1'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_organization_id_enrollment_id_key",
+      "type": "u",
+      "definition": "UNIQUE (organization_id, enrollment_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (case_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_source_sha256_check",
+      "type": "c",
+      "definition": "CHECK (source_sha256 ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "cases_version_check",
+      "type": "c",
+      "definition": "CHECK (version = 1)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "cases",
+      "name": "w2_current_correspondence",
+      "type": "t",
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "name": "contexts_context_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (context_id) REFERENCES uc_education_issuance_contexts(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "name": "contexts_item_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (item_id) REFERENCES uc_individual_issuance_private.items(item_id) ON DELETE RESTRICT",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "name": "contexts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (context_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "name": "contexts_source_sha256_check",
+      "type": "c",
+      "definition": "CHECK (source_sha256 ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "contexts",
+      "name": "w2_current_correspondence",
+      "type": "t",
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_artifact_check",
+      "type": "c",
+      "definition": "CHECK (jsonb_typeof(artifact) = 'object'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_case_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (case_id) REFERENCES uc_individual_issuance_private.cases(case_id) ON DELETE RESTRICT",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_check",
+      "type": "c",
+      "definition": "CHECK (participant_ids @> ARRAY[user_id, recorded_by] AND array_position(participant_ids, NULL::uuid) IS NULL)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_eligibility_ref_check",
+      "type": "c",
+      "definition": "CHECK (jsonb_typeof(eligibility_ref) = 'object'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_item_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (item_id) REFERENCES uc_individual_issuance_private.items(item_id) ON DELETE RESTRICT",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_item_id_key",
+      "type": "u",
+      "definition": "UNIQUE (item_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (record_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_record_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (record_id) REFERENCES education_document_records(id) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "issued_sources_source_sha256_check",
+      "type": "c",
+      "definition": "CHECK (source_sha256 ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "issued_sources",
+      "name": "w2_current_correspondence",
+      "type": "t",
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_case_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (case_id) REFERENCES uc_individual_issuance_private.cases(case_id) ON DELETE RESTRICT",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_check",
+      "type": "c",
+      "definition": "CHECK (participant_ids @> ARRAY[user_id, created_by] AND array_position(participant_ids, NULL::uuid) IS NULL)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_eligibility_ref_check",
+      "type": "c",
+      "definition": "CHECK (jsonb_typeof(eligibility_ref) = 'object'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_item_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (item_id) REFERENCES uc_education_issuance_preparation_items(id) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_item_id_preparation_id_key",
+      "type": "u",
+      "definition": "UNIQUE (item_id, preparation_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (item_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_preparation_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (preparation_id) REFERENCES uc_education_issuance_preparations(id) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_preparation_id_key",
+      "type": "u",
+      "definition": "UNIQUE (preparation_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "items_source_sha256_check",
+      "type": "c",
+      "definition": "CHECK (source_sha256 ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "items",
+      "name": "w2_current_correspondence",
+      "type": "t",
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "deferred": true,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_canonical_kind_check",
+      "type": "c",
+      "definition": "CHECK (canonical_kind = ANY (ARRAY['admission'::text, 'issuance'::text]))",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_canonical_payload_sha256_check",
+      "type": "c",
+      "definition": "CHECK (canonical_payload_sha256 ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_check",
+      "type": "c",
+      "definition": "CHECK (participant_ids @> ARRAY[actor_id, user_id, canonical_actor_id] AND array_position(participant_ids, NULL::uuid) IS NULL)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_operation_check",
+      "type": "c",
+      "definition": "CHECK (operation = ANY (ARRAY['initialize_admission'::text, 'apply_admission_review'::text, 'prepare_evidence'::text, 'evidence_committed'::text, 'review_protocol_facts'::text, 'prepare_artifact'::text, 'issue'::text]))",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_payload_sha256_check",
+      "type": "c",
+      "definition": "CHECK (payload_sha256 ~ '^[a-f0-9]{64}$'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (actor_id, request_id)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    },
+    {
+      "schema": "uc_individual_issuance_private",
+      "table_name": "requests",
+      "name": "requests_result_check",
+      "type": "c",
+      "definition": "CHECK (jsonb_typeof(result) = 'object'::text)",
+      "deferrable": false,
+      "deferred": false,
+      "validated": true
+    }
+  ],
+  "indexes": [
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "cases",
+      "indexname": "cases_case_id_organization_id_key",
+      "indexdef": "CREATE UNIQUE INDEX cases_case_id_organization_id_key ON uc_individual_issuance_private.cases USING btree (case_id, organization_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "cases",
+      "indexname": "cases_organization_id_enrollment_id_key",
+      "indexdef": "CREATE UNIQUE INDEX cases_organization_id_enrollment_id_key ON uc_individual_issuance_private.cases USING btree (organization_id, enrollment_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "cases",
+      "indexname": "cases_pkey",
+      "indexdef": "CREATE UNIQUE INDEX cases_pkey ON uc_individual_issuance_private.cases USING btree (case_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "cases",
+      "indexname": "w2_case_participants",
+      "indexdef": "CREATE INDEX w2_case_participants ON uc_individual_issuance_private.cases USING gin (participant_ids)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "cases",
+      "indexname": "w2_case_subject",
+      "indexdef": "CREATE INDEX w2_case_subject ON uc_individual_issuance_private.cases USING btree (user_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "contexts",
+      "indexname": "contexts_pkey",
+      "indexdef": "CREATE UNIQUE INDEX contexts_pkey ON uc_individual_issuance_private.contexts USING btree (context_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "contexts",
+      "indexname": "w2_context_transaction",
+      "indexdef": "CREATE INDEX w2_context_transaction ON uc_individual_issuance_private.contexts USING btree (transaction_id, backend_pid, actor_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "issued_sources",
+      "indexname": "issued_sources_item_id_key",
+      "indexdef": "CREATE UNIQUE INDEX issued_sources_item_id_key ON uc_individual_issuance_private.issued_sources USING btree (item_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "issued_sources",
+      "indexname": "issued_sources_pkey",
+      "indexdef": "CREATE UNIQUE INDEX issued_sources_pkey ON uc_individual_issuance_private.issued_sources USING btree (record_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "issued_sources",
+      "indexname": "w2_issued_participants",
+      "indexdef": "CREATE INDEX w2_issued_participants ON uc_individual_issuance_private.issued_sources USING gin (participant_ids)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "issued_sources",
+      "indexname": "w2_issued_subject",
+      "indexdef": "CREATE INDEX w2_issued_subject ON uc_individual_issuance_private.issued_sources USING btree (user_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "items",
+      "indexname": "items_item_id_preparation_id_key",
+      "indexdef": "CREATE UNIQUE INDEX items_item_id_preparation_id_key ON uc_individual_issuance_private.items USING btree (item_id, preparation_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "items",
+      "indexname": "items_pkey",
+      "indexdef": "CREATE UNIQUE INDEX items_pkey ON uc_individual_issuance_private.items USING btree (item_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "items",
+      "indexname": "items_preparation_id_key",
+      "indexdef": "CREATE UNIQUE INDEX items_preparation_id_key ON uc_individual_issuance_private.items USING btree (preparation_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "items",
+      "indexname": "w2_item_participants",
+      "indexdef": "CREATE INDEX w2_item_participants ON uc_individual_issuance_private.items USING gin (participant_ids)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "items",
+      "indexname": "w2_item_subject",
+      "indexdef": "CREATE INDEX w2_item_subject ON uc_individual_issuance_private.items USING btree (user_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "requests",
+      "indexname": "requests_pkey",
+      "indexdef": "CREATE UNIQUE INDEX requests_pkey ON uc_individual_issuance_private.requests USING btree (actor_id, request_id)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "requests",
+      "indexname": "w2_request_participants",
+      "indexdef": "CREATE INDEX w2_request_participants ON uc_individual_issuance_private.requests USING gin (participant_ids)"
+    },
+    {
+      "schemaname": "uc_individual_issuance_private",
+      "tablename": "requests",
+      "indexname": "w2_request_subject",
+      "indexdef": "CREATE INDEX w2_request_subject ON uc_individual_issuance_private.requests USING btree (user_id)"
+    }
+  ],
+  "guards": [
+    {
+      "relation": "uc_admission_case_events",
+      "name": "w2_exact_protocol_event",
+      "function": "uc_individual_issuance_private.protocol_event_guard()",
+      "enabled": "O",
+      "type": 7,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_admission_cases",
+      "name": "w2_exact_group_or_individual",
+      "function": "uc_individual_issuance_private.conditional_group()",
+      "enabled": "O",
+      "type": 23,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_education_issuance_contexts",
+      "name": "w2_exact_group_or_individual",
+      "function": "uc_individual_issuance_private.conditional_group()",
+      "enabled": "O",
+      "type": 23,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_education_issuance_preparation_items",
+      "name": "w2_exact_group_or_individual",
+      "function": "uc_individual_issuance_private.conditional_group()",
+      "enabled": "O",
+      "type": 23,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.cases",
+      "name": "w2_current_correspondence",
+      "function": "uc_individual_issuance_private.correspondence()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.cases",
+      "name": "w2_private_immutable",
+      "function": "uc_individual_issuance_private.private_guard()",
+      "enabled": "O",
+      "type": 31,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.contexts",
+      "name": "w2_current_correspondence",
+      "function": "uc_individual_issuance_private.correspondence()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.contexts",
+      "name": "w2_private_immutable",
+      "function": "uc_individual_issuance_private.private_guard()",
+      "enabled": "O",
+      "type": 31,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.issued_sources",
+      "name": "w2_current_correspondence",
+      "function": "uc_individual_issuance_private.correspondence()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.issued_sources",
+      "name": "w2_private_immutable",
+      "function": "uc_individual_issuance_private.private_guard()",
+      "enabled": "O",
+      "type": 31,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.items",
+      "name": "w2_current_correspondence",
+      "function": "uc_individual_issuance_private.correspondence()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.items",
+      "name": "w2_private_immutable",
+      "function": "uc_individual_issuance_private.private_guard()",
+      "enabled": "O",
+      "type": 31,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    },
+    {
+      "relation": "uc_individual_issuance_private.requests",
+      "name": "w2_private_immutable",
+      "function": "uc_individual_issuance_private.private_guard()",
+      "enabled": "O",
+      "type": 31,
+      "deferrable": false,
+      "deferred": false,
+      "arguments_hex": ""
+    }
+  ],
+  "foreignKeyRiLogicalFootprint": [
+    {
+      "constraint_relation": "uc_individual_issuance_private.cases",
+      "constraint_name": "cases_case_id_fkey",
+      "referenced_relation": "uc_admission_cases",
+      "trigger_relation": "uc_admission_cases",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.cases",
+      "constraint_name": "cases_case_id_fkey",
+      "referenced_relation": "uc_admission_cases",
+      "trigger_relation": "uc_admission_cases",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.cases",
+      "constraint_name": "cases_case_id_fkey",
+      "referenced_relation": "uc_admission_cases",
+      "trigger_relation": "uc_individual_issuance_private.cases",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.cases",
+      "constraint_name": "cases_case_id_fkey",
+      "referenced_relation": "uc_admission_cases",
+      "trigger_relation": "uc_individual_issuance_private.cases",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_context_id_fkey",
+      "referenced_relation": "uc_education_issuance_contexts",
+      "trigger_relation": "uc_education_issuance_contexts",
+      "function": "\"RI_FKey_cascade_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_context_id_fkey",
+      "referenced_relation": "uc_education_issuance_contexts",
+      "trigger_relation": "uc_education_issuance_contexts",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_context_id_fkey",
+      "referenced_relation": "uc_education_issuance_contexts",
+      "trigger_relation": "uc_individual_issuance_private.contexts",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_context_id_fkey",
+      "referenced_relation": "uc_education_issuance_contexts",
+      "trigger_relation": "uc_individual_issuance_private.contexts",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.contexts",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.contexts",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.contexts",
+      "constraint_name": "contexts_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.cases",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.cases",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.issued_sources",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.issued_sources",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.issued_sources",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.issued_sources",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_item_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.items",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_record_id_fkey",
+      "referenced_relation": "education_document_records",
+      "trigger_relation": "education_document_records",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_record_id_fkey",
+      "referenced_relation": "education_document_records",
+      "trigger_relation": "education_document_records",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_record_id_fkey",
+      "referenced_relation": "education_document_records",
+      "trigger_relation": "uc_individual_issuance_private.issued_sources",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.issued_sources",
+      "constraint_name": "issued_sources_record_id_fkey",
+      "referenced_relation": "education_document_records",
+      "trigger_relation": "uc_individual_issuance_private.issued_sources",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.cases",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.cases",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_case_id_fkey",
+      "referenced_relation": "uc_individual_issuance_private.cases",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_item_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparation_items",
+      "trigger_relation": "uc_education_issuance_preparation_items",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_item_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparation_items",
+      "trigger_relation": "uc_education_issuance_preparation_items",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_item_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparation_items",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_item_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparation_items",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_preparation_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparations",
+      "trigger_relation": "uc_education_issuance_preparations",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_preparation_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparations",
+      "trigger_relation": "uc_education_issuance_preparations",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "enabled": "O",
+      "type": 9,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_preparation_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparations",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_check_ins\"()",
+      "enabled": "O",
+      "type": 5,
+      "deferrable": true,
+      "deferred": true
+    },
+    {
+      "constraint_relation": "uc_individual_issuance_private.items",
+      "constraint_name": "items_preparation_id_fkey",
+      "referenced_relation": "uc_education_issuance_preparations",
+      "trigger_relation": "uc_individual_issuance_private.items",
+      "function": "\"RI_FKey_check_upd\"()",
+      "enabled": "O",
+      "type": 17,
+      "deferrable": true,
+      "deferred": true
+    }
+  ],
+  "storagePolicies": [
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Admins can delete billing docs",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'billing-documents'::text) AND (EXISTS ( SELECT 1\n   FROM user_roles\n  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role = 'admin'::app_role)))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Admins can manage all org documents",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "ALL",
+      "qual": "((bucket_id = 'org-documents'::text) AND has_role('admin'::app_role, auth.uid()))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Admins can upload billing docs",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'billing-documents'::text) AND (EXISTS ( SELECT 1\n   FROM user_roles\n  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role = 'admin'::app_role)))))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Avatars list own only",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid() IS NOT NULL) AND ((storage.foldername(name))[1] = (auth.uid())::text)))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Org users can read own billing docs",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'billing-documents'::text) AND (has_role(auth.uid(), 'admin'::app_role) OR can_access_organization(\nCASE\n    WHEN (((storage.foldername(name))[1] = 'organizations'::text) AND ((storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text)) THEN ((storage.foldername(name))[2])::uuid\n    WHEN ((storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) THEN ((storage.foldername(name))[1])::uuid\n    ELSE NULL::uuid\nEND, 'documents.read'::text)))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Org users can read program files",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'program-files'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[2] = (current_organization_id())::text)))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Users can delete own avatar",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Users can delete their own avatar",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Users can update own avatar",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Users can update their own avatar",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Users can upload own avatar",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "Users can upload their own avatar",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "account_deletion_no_revoked_access",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "csz_signed_intake_delete_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'csz-signed-intake'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "csz_signed_intake_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_can_insert(name, metadata))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "csz_signed_intake_read_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "csz_signed_intake_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'csz-signed-intake'::text)",
+      "with_check": "(bucket_id <> 'csz-signed-intake'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "final_test_photos_delete_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'final-test-photos'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "final_test_photos_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'final-test-photos'::text) OR can_upload_final_test_photo(name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "final_test_photos_select_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'final-test-photos'::text) OR can_read_final_test_photo(name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "final_test_photos_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'final-test-photos'::text)",
+      "with_check": "(bucket_id <> 'final-test-photos'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "goreltech_issued_objects_delete_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "goreltech_issued_objects_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(bucket_id <> 'goreltech-issued-documents'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "goreltech_issued_objects_read_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "goreltech_issued_objects_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "with_check": "(bucket_id <> 'goreltech-issued-documents'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "library_files_restrictive_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "library_files_restrictive_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'library-files'::text) OR can_manage_library_file_object(name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "library_files_restrictive_select",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_read_library_file_object(name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "library_files_restrictive_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))",
+      "with_check": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "org_documents_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'org-documents'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[1]), 'documents.read'::text))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "program_files_delete",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "program_files_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "program_files_update",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))",
+      "with_check": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "rtn_source_originals_private_fence",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'rtn-sources'::text)",
+      "with_check": "(bucket_id <> 'rtn-sources'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_delete_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'admission-case-evidence'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'admission-case-evidence'::text) OR (uc_admission_stage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text)))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_select_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'admission-case-evidence'::text) OR uc_admission_stage_allowed(bucket_id, name, false))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_stage_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'admission-case-evidence'::text) AND uc_admission_stage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_stage_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'admission-case-evidence'::text) AND uc_admission_stage_allowed(bucket_id, name, false))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'admission-case-evidence'::text)",
+      "with_check": "(bucket_id <> 'admission-case-evidence'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_billing_document_upload",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'billing-documents'::text) AND uc_document_billing_upload_access(name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_billing_document_upload_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'billing-documents'::text) OR uc_document_billing_upload_access(name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_assigned_storage_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_assigned_storage_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "uc_document_storage_scope(bucket_id, name)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_assigned_storage_read",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_assigned_storage_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "with_check": "uc_document_storage_scope(bucket_id, name)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_delete",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_delete_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_read_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, false))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, false))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_update",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))",
+      "with_check": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_document_objects_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_education_staging_private_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'education-issuance-staging'::text)",
+      "with_check": "(bucket_id <> 'education-issuance-staging'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_frdo_artifact_delete_fence",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'frdo-packet-artifacts'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_frdo_artifact_insert_fence",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(bucket_id <> 'frdo-packet-artifacts'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_frdo_artifact_read",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'frdo-packet-artifacts'::text) AND uc_frdo_storage_object_can_read(objects.*))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_frdo_artifact_select_fence",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'frdo-packet-artifacts'::text) OR uc_frdo_storage_object_can_read(objects.*))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_frdo_artifact_update_fence",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'frdo-packet-artifacts'::text)",
+      "with_check": "(bucket_id <> 'frdo-packet-artifacts'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_legacy_capture_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(NOT ((bucket_id = 'avatars'::text) AND (name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/verification_[0-9]+[.]jpg$'::text)))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_legacy_capture_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(NOT ((bucket_id = 'avatars'::text) AND (name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/verification_[0-9]+[.]jpg$'::text)))",
+      "with_check": "(NOT ((bucket_id = 'avatars'::text) AND (name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/verification_[0-9]+[.]jpg$'::text)))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_delete_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'student-identification-media'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'student-identification-media'::text) AND uc_identification_storage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_insert_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'student-identification-media'::text) OR (uc_identification_storage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text)))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'student-identification-media'::text) AND uc_identification_storage_allowed(bucket_id, name, false))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_select_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'student-identification-media'::text) OR uc_identification_storage_allowed(bucket_id, name, false))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_update_guard",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'student-identification-media'::text)",
+      "with_check": "(bucket_id <> 'student-identification-media'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_individual_order_stage_private",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'uc-individual-order-staging'::text)",
+      "with_check": "(bucket_id <> 'uc-individual-order-staging'::text)"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_org_document_blob_no_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "(NOT uc_org_document_blob_committed(bucket_id, name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_org_document_blob_no_overwrite",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(NOT uc_org_document_blob_committed(bucket_id, name))",
+      "with_check": "(NOT uc_org_document_blob_committed(bucket_id, name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_platform_document_storage_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_platform_document_storage_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_platform_document_storage_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_program_legacy_no_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_program_legacy_no_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_program_legacy_no_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))",
+      "with_check": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_program_legacy_read_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text])) OR ((bucket_id = 'program-files'::text) AND (split_part(name, '/'::text, 1) = 'programs'::text) AND (split_part(name, '/'::text, 3) <> ''::text) AND uc_document_action_allowed(storage_try_uuid(split_part(name, '/'::text, 2)), 'read'::text, NULL::uuid, NULL::uuid)))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_file_delete_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR (uc_signature_storage_write(bucket_id, name) AND (split_part(name, '/'::text, 2) <> 'signed-scans'::text)))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_file_insert_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR uc_signature_storage_write(bucket_id, name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_file_participant_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'external-contracts'::text) AND uc_signature_storage_write(bucket_id, name))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_file_participant_read",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id = ANY (ARRAY['signed-documents'::text, 'external-contracts'::text])) AND uc_signature_storage_read(bucket_id, name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_file_read_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR uc_signature_storage_read(bucket_id, name))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_file_update_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR (uc_signature_storage_write(bucket_id, name) AND (split_part(name, '/'::text, 2) <> 'signed-scans'::text)))",
+      "with_check": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR (uc_signature_storage_write(bucket_id, name) AND (split_part(name, '/'::text, 2) <> 'signed-scans'::text)))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_namespace_immutable_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> 'external-contracts'::text) OR (split_part(name, '/'::text, 2) <> 'signature-files'::text))",
+      "with_check": null
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_namespace_immutable_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> 'external-contracts'::text) OR (split_part(name, '/'::text, 2) <> 'signature-files'::text))",
+      "with_check": "((bucket_id <> 'external-contracts'::text) OR (split_part(name, '/'::text, 2) <> 'signature-files'::text))"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_signature_namespace_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id <> 'external-contracts'::text) OR (((owner = auth.uid()) OR (owner_id = (auth.uid())::text)) AND ((owner IS NULL) OR (owner = auth.uid())) AND ((NULLIF(owner_id, ''::text) IS NULL) OR (owner_id = (auth.uid())::text)) AND (uc_signature_canonical_file(storage_try_uuid(split_part(name, '/'::text, 1)), storage_try_uuid(split_part(name, '/'::text, 3)), name) OR (split_part(name, '/'::text, 2) = 'signed-scans'::text))))"
+    }
+  ],
+  "numericOidsUsedAsPins": false
+}

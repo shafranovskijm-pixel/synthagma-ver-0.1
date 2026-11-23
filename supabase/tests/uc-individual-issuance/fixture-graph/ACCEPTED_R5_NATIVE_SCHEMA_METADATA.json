@@ -1,0 +1,3167 @@
+{
+  "fk_ri": [
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.orders",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_check_ins\"()",
+      "constraint": "events_order_id_organization_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.events"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.orders",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_check_upd\"()",
+      "constraint": "events_order_id_organization_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.events"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.orders",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "constraint": "events_order_id_organization_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.orders"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.orders",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_restrict_del\"()",
+      "constraint": "events_order_id_organization_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.orders"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.events",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_check_ins\"()",
+      "constraint": "events_original_event_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.events"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.events",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_check_upd\"()",
+      "constraint": "events_original_event_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.events"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.events",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "constraint": "events_original_event_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.events"
+    },
+    {
+      "child": "uc_individual_orders_private.events",
+      "parent": "uc_individual_orders_private.events",
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_restrict_del\"()",
+      "constraint": "events_original_event_id_fkey",
+      "deferrable": false,
+      "trigger_relation": "uc_individual_orders_private.events"
+    }
+  ],
+  "bucket": {
+    "id": "uc-individual-order-staging",
+    "name": "uc-individual-order-staging",
+    "type": "STANDARD",
+    "owner": null,
+    "public": false,
+    "owner_id": null,
+    "created_at": "2026-11-23T16:55:26.140466+00:00",
+    "updated_at": "2026-11-23T16:55:26.140466+00:00",
+    "file_size_limit": 20971520,
+    "versioning_status": "DISABLED",
+    "allowed_mime_types": [
+      "application/pdf"
+    ],
+    "avif_autodetection": false,
+    "lifecycle_configuration": null,
+    "lifecycle_configuration_generation": null
+  },
+  "tables": [
+    {
+      "acl": null,
+      "rls": true,
+      "name": "events",
+      "owner": "postgres",
+      "toast": {
+        "kind": "t",
+        "owner": "postgres",
+        "schema": "pg_toast",
+        "indices": [
+          {
+            "keys": "1 2",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "predicate": null,
+            "expressions": null
+          }
+        ]
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "revision",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "row_kind",
+          "type": "text",
+          "default": "'event'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "original_event_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "request_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "payload_sha256",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "server_at",
+          "type": "timestamp with time zone",
+          "default": "clock_timestamp()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "before_sha256",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "after_sha256",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "participant_ids",
+          "type": "uuid[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "result",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "force_rls": false
+    },
+    {
+      "acl": null,
+      "rls": true,
+      "name": "orders",
+      "owner": "postgres",
+      "toast": {
+        "kind": "t",
+        "owner": "postgres",
+        "schema": "pg_toast",
+        "indices": [
+          {
+            "keys": "1 2",
+            "ready": true,
+            "valid": true,
+            "unique": true,
+            "predicate": null,
+            "expressions": null
+          }
+        ]
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "enrollment_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "subject_user_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "course_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "family",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "revision",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "state_sha256",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "facts",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "source_witness",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "approved_snapshot",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "approved_order_revision",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "approved_order_sha256",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "decision",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "official_order_number",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "render_job",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "render_input_json",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "staging_attest_request_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "output_attest_request_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "output_document_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "upload_request_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "registry_request_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "artifact",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "output_object",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "registry",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "registered_snapshot",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "participant_ids",
+          "type": "uuid[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "closed",
+          "type": "boolean",
+          "default": "false",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "clock_timestamp()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "clock_timestamp()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "force_rls": false
+    }
+  ],
+  "indexes": [
+    {
+      "name": "events_actor_user_id_request_id_key",
+      "table": "events",
+      "definition": "CREATE UNIQUE INDEX events_actor_user_id_request_id_key ON uc_individual_orders_private.events USING btree (actor_user_id, request_id)"
+    },
+    {
+      "name": "events_pkey",
+      "table": "events",
+      "definition": "CREATE UNIQUE INDEX events_pkey ON uc_individual_orders_private.events USING btree (id)"
+    },
+    {
+      "name": "w1_domain_event_revision",
+      "table": "events",
+      "definition": "CREATE UNIQUE INDEX w1_domain_event_revision ON uc_individual_orders_private.events USING btree (order_id, revision) WHERE (row_kind = 'event'::text)"
+    },
+    {
+      "name": "w1_event_actor",
+      "table": "events",
+      "definition": "CREATE INDEX w1_event_actor ON uc_individual_orders_private.events USING btree (actor_user_id)"
+    },
+    {
+      "name": "w1_event_participants",
+      "table": "events",
+      "definition": "CREATE INDEX w1_event_participants ON uc_individual_orders_private.events USING gin (participant_ids)"
+    },
+    {
+      "name": "orders_id_organization_id_key",
+      "table": "orders",
+      "definition": "CREATE UNIQUE INDEX orders_id_organization_id_key ON uc_individual_orders_private.orders USING btree (id, organization_id)"
+    },
+    {
+      "name": "orders_organization_id_enrollment_id_family_key",
+      "table": "orders",
+      "definition": "CREATE UNIQUE INDEX orders_organization_id_enrollment_id_family_key ON uc_individual_orders_private.orders USING btree (organization_id, enrollment_id, family)"
+    },
+    {
+      "name": "orders_pkey",
+      "table": "orders",
+      "definition": "CREATE UNIQUE INDEX orders_pkey ON uc_individual_orders_private.orders USING btree (id)"
+    },
+    {
+      "name": "w1_order_output_slot",
+      "table": "orders",
+      "definition": "CREATE UNIQUE INDEX w1_order_output_slot ON uc_individual_orders_private.orders USING btree (output_document_id, upload_request_id)"
+    },
+    {
+      "name": "w1_order_participants",
+      "table": "orders",
+      "definition": "CREATE INDEX w1_order_participants ON uc_individual_orders_private.orders USING gin (participant_ids)"
+    },
+    {
+      "name": "w1_order_registry_link",
+      "table": "orders",
+      "definition": "CREATE UNIQUE INDEX w1_order_registry_link ON uc_individual_orders_private.orders USING btree (((registry ->> 'record_id'::text))) WHERE (registry IS NOT NULL)"
+    },
+    {
+      "name": "w1_order_subject",
+      "table": "orders",
+      "definition": "CREATE INDEX w1_order_subject ON uc_individual_orders_private.orders USING btree (subject_user_id)"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "uc_individual_order_storage_boundary",
+      "enabled": "O",
+      "function": "uc_individual_orders_private.storage_guard()",
+      "internal": false,
+      "relation": "storage.objects",
+      "definition": "CREATE TRIGGER uc_individual_order_storage_boundary BEFORE INSERT OR DELETE OR UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION uc_individual_orders_private.storage_guard()"
+    },
+    {
+      "name": "w1_event_before",
+      "enabled": "O",
+      "function": "uc_individual_orders_private.event_guard()",
+      "internal": false,
+      "relation": "uc_individual_orders_private.events",
+      "definition": "CREATE TRIGGER w1_event_before BEFORE INSERT OR DELETE OR UPDATE ON uc_individual_orders_private.events FOR EACH ROW EXECUTE FUNCTION uc_individual_orders_private.event_guard()"
+    },
+    {
+      "name": "w1_event_truncate",
+      "enabled": "O",
+      "function": "uc_individual_orders_private.event_guard()",
+      "internal": false,
+      "relation": "uc_individual_orders_private.events",
+      "definition": "CREATE TRIGGER w1_event_truncate BEFORE TRUNCATE ON uc_individual_orders_private.events FOR EACH STATEMENT EXECUTE FUNCTION uc_individual_orders_private.event_guard()"
+    },
+    {
+      "name": "w1_head_before",
+      "enabled": "O",
+      "function": "uc_individual_orders_private.head_guard()",
+      "internal": false,
+      "relation": "uc_individual_orders_private.orders",
+      "definition": "CREATE TRIGGER w1_head_before BEFORE INSERT OR DELETE OR UPDATE ON uc_individual_orders_private.orders FOR EACH ROW EXECUTE FUNCTION uc_individual_orders_private.head_guard()"
+    },
+    {
+      "name": "w1_head_event_proof",
+      "enabled": "O",
+      "function": "uc_individual_orders_private.head_event_proof()",
+      "internal": false,
+      "relation": "uc_individual_orders_private.orders",
+      "definition": "CREATE CONSTRAINT TRIGGER w1_head_event_proof AFTER INSERT OR UPDATE ON uc_individual_orders_private.orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION uc_individual_orders_private.head_event_proof()"
+    },
+    {
+      "name": "w1_head_truncate",
+      "enabled": "O",
+      "function": "uc_individual_orders_private.head_guard()",
+      "internal": false,
+      "relation": "uc_individual_orders_private.orders",
+      "definition": "CREATE TRIGGER w1_head_truncate BEFORE TRUNCATE ON uc_individual_orders_private.orders FOR EACH STATEMENT EXECUTE FUNCTION uc_individual_orders_private.head_guard()"
+    }
+  ],
+  "functions": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "lock_timeout=2000ms",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "e6b4e96ba8fdee28676da289ec909e73",
+      "identity": "public.apply_individual_education_order(uuid, uuid, bigint, uuid, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_organization_id uuid, p_enrollment_id uuid, p_expected_revision bigint, p_request_id uuid, p_action jsonb",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_organization_id",
+        "p_enrollment_id",
+        "p_expected_revision",
+        "p_request_id",
+        "p_action"
+      ],
+      "definition_md5": "671f5044c6127724f967574b810a2237",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage",
+        "lock_timeout=2000ms",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "149fbcf6e7d33f6d94833a7f3337259b",
+      "identity": "public.attest_individual_education_order_artifact_service(jsonb, uuid, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_context jsonb, p_observed_actor uuid, p_proof jsonb",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_context",
+        "p_observed_actor",
+        "p_proof"
+      ],
+      "definition_md5": "d02830c217a68408f033da8998347d5a",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "lock_timeout=2000ms",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "59d7b736ecc40d1ed4cdf700238b2861",
+      "identity": "public.read_individual_education_order(uuid, uuid, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_organization_id uuid, p_enrollment_id uuid, p_query jsonb",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_organization_id",
+        "p_enrollment_id",
+        "p_query"
+      ],
+      "definition_md5": "76ce52f512a7bf3870756fce559e95c8",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "lock_timeout=2000ms",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "234910fc513a5358a0b17ef0f3382187",
+      "identity": "public.read_individual_education_order_file_context_service(jsonb, uuid)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_context jsonb, p_observed_actor uuid",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_context",
+        "p_observed_actor"
+      ],
+      "definition_md5": "20743d2d5d8ca9faca1052f6c0f48d6d",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "boolean",
+      "strict": false,
+      "body_md5": "c793c77cfba2c24d7c56f074ccf9ced4",
+      "identity": "uc_individual_orders_private.actor_allowed(uuid, uuid, uuid, text)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_actor uuid, p_org uuid, p_subject uuid, p_mode text",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_actor",
+        "p_org",
+        "p_subject",
+        "p_mode"
+      ],
+      "definition_md5": "2bcbbf2bd46d5fad0c5143e33c92e843",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "479cc111c5f5d55bf7415814bf6a7b1b",
+      "identity": "uc_individual_orders_private.artifact_source(uc_individual_orders_private.orders)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order"
+      ],
+      "definition_md5": "a46c35cee6c7eb9c577f7d00ce66bb29",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "result": "text",
+      "strict": false,
+      "body_md5": "4c9d3617284435dfd0d15cbc0f92e89e",
+      "identity": "uc_individual_orders_private.bounded(text, integer)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_text text, p_max integer",
+      "leakproof": false,
+      "volatility": "i",
+      "default_args": null,
+      "argument_names": [
+        "p_text",
+        "p_max"
+      ],
+      "definition_md5": "51288e095ea35e44cc6cbb080d0cacd7",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "4f5561aa5719ff8161a472a4f304f393",
+      "identity": "uc_individual_orders_private.context(uuid, uuid, uuid, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_org uuid, p_enrollment uuid, p_actor uuid, p_mode text",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_org",
+        "p_enrollment",
+        "p_actor",
+        "p_mode"
+      ],
+      "definition_md5": "97d0716b4ba1aff438f86a53d66367b1",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "void",
+      "strict": false,
+      "body_md5": "5f929b9828bac2191e394b95ce8ad0f9",
+      "identity": "uc_individual_orders_private.dates(jsonb, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_dates jsonb, p_kind text",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_dates",
+        "p_kind"
+      ],
+      "definition_md5": "a8eee981939ebc00a465a63ecb08e830",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "result": "boolean",
+      "strict": false,
+      "body_md5": "8fc6e15d8fed4e8fc795dc7228f2e277",
+      "identity": "uc_individual_orders_private.day(jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_value jsonb",
+      "leakproof": false,
+      "volatility": "i",
+      "default_args": null,
+      "argument_names": [
+        "p_value"
+      ],
+      "definition_md5": "0f8e6a5e8879691e388ad8bd0c5d514b",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "void",
+      "strict": false,
+      "body_md5": "6d24baa526446bcc0d31aa440bfc0756",
+      "identity": "uc_individual_orders_private.decision_check(uc_individual_orders_private.orders, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_decision jsonb",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_decision"
+      ],
+      "definition_md5": "9036561f63dace35e5d767f2f62e08ed",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "8d8868164f7d745c8916bd7b0b06afd1",
+      "identity": "uc_individual_orders_private.enrollment_binding(uuid, uuid)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_org uuid, p_enrollment uuid",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_org",
+        "p_enrollment"
+      ],
+      "definition_md5": "3fbd6112bde2e7f6cdd225c9648207b4",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "trigger",
+      "strict": false,
+      "body_md5": "3f1036b2a2a932718887e0beded47619",
+      "identity": "uc_individual_orders_private.event_guard()",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": null,
+      "definition_md5": "007a89caa4221bea02b35877a2aa53d1",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "7a410b2eab9995bf2158be328c3ffe87",
+      "identity": "uc_individual_orders_private.event_value(uc_individual_orders_private.events)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_event uc_individual_orders_private.events",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_event"
+      ],
+      "definition_md5": "bf9ac90bf6461475757a2d215847dc40",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "boolean",
+      "strict": false,
+      "body_md5": "f76a846e5432d0998cc3f5fab4f83987",
+      "identity": "uc_individual_orders_private.exact_time(jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_value jsonb",
+      "leakproof": false,
+      "volatility": "i",
+      "default_args": null,
+      "argument_names": [
+        "p_value"
+      ],
+      "definition_md5": "f435fbfa99cfccd9806c98bd49aa134f",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "result": "void",
+      "strict": false,
+      "body_md5": "716b993ed7e0263a73e4d488b2f1602d",
+      "identity": "uc_individual_orders_private.fail(text, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_code text, p_missing jsonb DEFAULT '[]'::jsonb",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": "'[]'::jsonb",
+      "argument_names": [
+        "p_code",
+        "p_missing"
+      ],
+      "definition_md5": "11c6f0bd07bdc2d036a9bea6b25c9b8f",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "a1ee115f20444274b1aa977866071dca",
+      "identity": "uc_individual_orders_private.failure(text, text, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_message text, p_state text, p_detail text DEFAULT NULL::text",
+      "leakproof": false,
+      "volatility": "i",
+      "default_args": "NULL::text",
+      "argument_names": [
+        "p_message",
+        "p_state",
+        "p_detail"
+      ],
+      "definition_md5": "46303de7a8e9b6c3a6c0768a92ae105c",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "trigger",
+      "strict": false,
+      "body_md5": "651c84190a4a6a2fb71993cd0d5601ae",
+      "identity": "uc_individual_orders_private.head_event_proof()",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": null,
+      "definition_md5": "9bef472959238d75baaf548a61499681",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "trigger",
+      "strict": false,
+      "body_md5": "c52496dc2ac5efe90e461b37bf4c9fcd",
+      "identity": "uc_individual_orders_private.head_guard()",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": null,
+      "definition_md5": "76d03f869e3b497924fc2dcc4af92449",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "text",
+      "strict": false,
+      "body_md5": "2806dd286c00e93bbca1d6ff667b1988",
+      "identity": "uc_individual_orders_private.head_hash(uc_individual_orders_private.orders)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_order"
+      ],
+      "definition_md5": "44f613aaf1c3c0edbb1abbb268c30ca1",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "uc_individual_orders_private.orders",
+      "strict": false,
+      "body_md5": "aedb28dc6b56c09f51b514fce442a425",
+      "identity": "uc_individual_orders_private.make_approved(uc_individual_orders_private.orders)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order"
+      ],
+      "definition_md5": "a604f21c2407b551f7ea3b6192cbef90",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "308867458965723d18f2df0837b15ee2",
+      "identity": "uc_individual_orders_private.observation(uc_individual_orders_private.orders, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_bucket text",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_bucket"
+      ],
+      "definition_md5": "f1b6016b0adad3a3e4fae77128bff593",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "3c1f1ed24aedbd29985a9c1259b6ec67",
+      "identity": "uc_individual_orders_private.output_descriptor(uc_individual_orders_private.orders)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_order"
+      ],
+      "definition_md5": "c35562795535351a7e22594ab8b773b0",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "void",
+      "strict": false,
+      "body_md5": "bd49424088a6916a34f13f6800e6b3bc",
+      "identity": "uc_individual_orders_private.own_person(uc_individual_orders_private.orders, uuid)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_actor uuid",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_actor"
+      ],
+      "definition_md5": "d7ef8fbea4f39b8baf73f8987854927f",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "0694608dfbb8a7f5ecc24afde2bfe754",
+      "identity": "uc_individual_orders_private.own_target(uuid, uuid, bigint)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_org uuid, p_record uuid, p_revision bigint",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_org",
+        "p_record",
+        "p_revision"
+      ],
+      "definition_md5": "2b47294d0e51e7c8b4a3aeb0f83a0766",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "void",
+      "strict": false,
+      "body_md5": "d18feaf65366c48efd6ab166ca117cc0",
+      "identity": "uc_individual_orders_private.people(uuid[], boolean)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_people uuid[], p_write boolean",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_people",
+        "p_write"
+      ],
+      "definition_md5": "7f588e3a45f4002b25efa07ab552233b",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "uc_individual_orders_private.orders",
+      "strict": false,
+      "body_md5": "d62edf13d6eb47dd1c2332b907f7930a",
+      "identity": "uc_individual_orders_private.persist_head(uc_individual_orders_private.orders, boolean)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_insert boolean",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_insert"
+      ],
+      "definition_md5": "bfae1551556dbf1b8372cc1e6a595b33",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "2ccf1cac34c4bbc30bf938be9c660b71",
+      "identity": "uc_individual_orders_private.personal_counts(uuid)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_user uuid",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_user"
+      ],
+      "definition_md5": "002c43555d955c8b55e86348ae3bae66",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "uc_individual_orders_private.orders",
+      "strict": false,
+      "body_md5": "aa941eed6a0917bf6fc5cde191eb6aa0",
+      "identity": "uc_individual_orders_private.planned_output(text, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_bucket text, p_path text",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_bucket",
+        "p_path"
+      ],
+      "definition_md5": "9ffae01a0bbd78ec57580e15369d5c28",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "a4660660de6b6489ec7bf6fb65eda4e2",
+      "identity": "uc_individual_orders_private.prepare_facts(uuid, jsonb, text, jsonb, boolean)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_org uuid, p_context jsonb, p_kind text, p_action jsonb, p_binding_check boolean DEFAULT true",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": "true",
+      "argument_names": [
+        "p_org",
+        "p_context",
+        "p_kind",
+        "p_action",
+        "p_binding_check"
+      ],
+      "definition_md5": "073720dfbc57c16879b17c19c2105b25",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "5c532ca1d7e2e1b925c159deb3ef500a",
+      "identity": "uc_individual_orders_private.programme(uuid, uuid)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_org uuid, p_version uuid",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_org",
+        "p_version"
+      ],
+      "definition_md5": "5426f85cbc45ed9f635c1aa29437015b",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "10441f10f831834f55bb80e824808a22",
+      "identity": "uc_individual_orders_private.project(uc_individual_orders_private.orders, uuid)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_actor uuid",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_actor"
+      ],
+      "definition_md5": "f53e0dd5b9880b73aeba0351bb0de74f",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "55bd41e8485bbae9efb4fe1bbb07ce2a",
+      "identity": "uc_individual_orders_private.provenance(uc_individual_orders_private.orders, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_raw jsonb",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_raw"
+      ],
+      "definition_md5": "c1fd04ff3724afc58d4b7912be85bbb6",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "9223a07457e1e8d21f6abb1b04b960d1",
+      "identity": "uc_individual_orders_private.receipt_alias(uc_individual_orders_private.events, uuid, uuid, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_original uc_individual_orders_private.events, p_actor uuid, p_request uuid, p_payload text",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_original",
+        "p_actor",
+        "p_request",
+        "p_payload"
+      ],
+      "definition_md5": "53f365b03ed528e299fd9f53fe74c929",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "void",
+      "strict": false,
+      "body_md5": "f7d288c7b1b5790f20440663873fce5a",
+      "identity": "uc_individual_orders_private.record_event(uc_individual_orders_private.orders, uuid, uuid, uuid, text, text, text, text, jsonb, timestamp with time zone)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_event uuid, p_actor uuid, p_request uuid, p_payload text, p_action text, p_reason text, p_before text, p_result jsonb, p_at timestamp with time zone",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_event",
+        "p_actor",
+        "p_request",
+        "p_payload",
+        "p_action",
+        "p_reason",
+        "p_before",
+        "p_result",
+        "p_at"
+      ],
+      "definition_md5": "2b7fb888f645ef5f90af1fbd7a98c691",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "boolean",
+      "strict": false,
+      "body_md5": "f2bf888bec3d4443cb89214f2a712638",
+      "identity": "uc_individual_orders_private.ref(jsonb)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_value jsonb",
+      "leakproof": false,
+      "volatility": "i",
+      "default_args": null,
+      "argument_names": [
+        "p_value"
+      ],
+      "definition_md5": "4987f1c6882c2b35fce14366e78e52f7",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "f42d18d13a28b52038ec80ffdbd413ad",
+      "identity": "uc_individual_orders_private.refresh(uc_individual_orders_private.orders, uuid, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_actor uuid, p_mode text DEFAULT 'issue'::text",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": "'issue'::text",
+      "argument_names": [
+        "p_order",
+        "p_actor",
+        "p_mode"
+      ],
+      "definition_md5": "63c83933267d29f85e7af5552b168583",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public",
+        "TimeZone=UTC"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "9498957d6b752fd3043643f53f5c82ca",
+      "identity": "uc_individual_orders_private.registered_witness(uc_individual_orders_private.orders, bigint, boolean)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_revision bigint, p_current boolean DEFAULT false",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": "false",
+      "argument_names": [
+        "p_order",
+        "p_revision",
+        "p_current"
+      ],
+      "definition_md5": "48bec035a3d2208baa6354d52dc6e9de",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "3f1cdf57fc8cd1c104bb33ae36168098",
+      "identity": "uc_individual_orders_private.render_context(uc_individual_orders_private.orders, uuid, jsonb)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders, p_actor uuid, p_query jsonb",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_order",
+        "p_actor",
+        "p_query"
+      ],
+      "definition_md5": "11acce7de3b64e578b2ed25248ae8cd0",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "4b2f9ea92cc448728458c7c5199cbb1e",
+      "identity": "uc_individual_orders_private.reviewed_source(uuid, jsonb, uuid, bigint, text)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_org uuid, p_source jsonb, p_review uuid, p_revision bigint, p_role text",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": [
+        "p_org",
+        "p_source",
+        "p_review",
+        "p_revision",
+        "p_role"
+      ],
+      "definition_md5": "42fce9cbfb69d7d2a1572247a809f51b",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "result": "boolean",
+      "strict": false,
+      "body_md5": "0eecaf271017587c56b87fe5d33da212",
+      "identity": "uc_individual_orders_private.revision(jsonb, boolean)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_value jsonb, p_zero boolean DEFAULT false",
+      "leakproof": false,
+      "volatility": "i",
+      "default_args": "false",
+      "argument_names": [
+        "p_value",
+        "p_zero"
+      ],
+      "definition_md5": "3180be0f9b06a31b9067a879ea5ea61d",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "result": "text",
+      "strict": false,
+      "body_md5": "3e2e428a75be63d932339a5277de89bf",
+      "identity": "uc_individual_orders_private.stage_path(uc_individual_orders_private.orders)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_order"
+      ],
+      "definition_md5": "8773207c1e35713f1eafc53ef54adfd7",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, storage",
+        "TimeZone=UTC"
+      ],
+      "result": "trigger",
+      "strict": false,
+      "body_md5": "6f53610833964b7477169bcc862536f1",
+      "identity": "uc_individual_orders_private.storage_guard()",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "",
+      "leakproof": false,
+      "volatility": "v",
+      "default_args": null,
+      "argument_names": null,
+      "definition_md5": "0e1488f1c885dc1571a4116119af7a5f",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "cost": 100,
+      "rows": 0,
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "result": "jsonb",
+      "strict": false,
+      "body_md5": "2f515158236dc0d1d7d915c308101023",
+      "identity": "uc_individual_orders_private.variables(uc_individual_orders_private.orders)",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_order uc_individual_orders_private.orders",
+      "leakproof": false,
+      "volatility": "s",
+      "default_args": null,
+      "argument_names": [
+        "p_order"
+      ],
+      "definition_md5": "dca5af2d2a9534776dc0aa13c2f2ccdb",
+      "security_definer": false
+    }
+  ],
+  "constraints": [
+    {
+      "name": "events_action_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (action = ANY (ARRAY['prepared'::text, 'draft_revised'::text, 'approved'::text, 'artifact_staged'::text, 'artifact_saved'::text, 'output_reviewed_and_registered'::text, 'closed'::text]))"
+    },
+    {
+      "name": "events_actor_user_id_request_id_key",
+      "type": "u",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "UNIQUE (actor_user_id, request_id)"
+    },
+    {
+      "name": "events_after_sha256_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (after_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "name": "events_before_sha256_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (before_sha256 IS NULL OR before_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "name": "events_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK ((row_kind = 'event'::text) = (original_event_id IS NULL))"
+    },
+    {
+      "name": "events_check1",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (participant_ids @> ARRAY[actor_user_id] AND array_position(participant_ids, NULL::uuid) IS NULL)"
+    },
+    {
+      "name": "events_order_id_organization_id_fkey",
+      "type": "f",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (order_id, organization_id) REFERENCES uc_individual_orders_private.orders(id, organization_id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "events_original_event_id_fkey",
+      "type": "f",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (original_event_id) REFERENCES uc_individual_orders_private.events(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "events_payload_sha256_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (payload_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "name": "events_pkey",
+      "type": "p",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "events_result_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (jsonb_typeof(result) = 'object'::text)"
+    },
+    {
+      "name": "events_revision_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (revision >= 1 AND revision <= '9007199254740991'::bigint)"
+    },
+    {
+      "name": "events_row_kind_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.events",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (row_kind = ANY (ARRAY['event'::text, 'request_receipt'::text]))"
+    },
+    {
+      "name": "orders_approved_order_sha256_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (approved_order_sha256 IS NULL OR approved_order_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "name": "orders_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (family =\nCASE\n    WHEN order_kind = 'admission'::text THEN 'admission'::text\n    ELSE 'termination'::text\nEND)"
+    },
+    {
+      "name": "orders_check1",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK ((approved_snapshot IS NULL) = (approved_order_revision IS NULL) AND (approved_snapshot IS NULL) = (approved_order_sha256 IS NULL) AND (approved_snapshot IS NULL) = (decision IS NULL) AND (approved_snapshot IS NULL) = (official_order_number IS NULL) AND (approved_snapshot IS NULL) = (render_job IS NULL))"
+    },
+    {
+      "name": "orders_check2",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (approved_order_revision IS NULL OR approved_order_revision >= 1 AND approved_order_revision <= revision)"
+    },
+    {
+      "name": "orders_check3",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (registry IS NULL OR artifact IS NOT NULL AND registered_snapshot IS NOT NULL)"
+    },
+    {
+      "name": "orders_check4",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK ((artifact IS NULL) = (output_object IS NULL))"
+    },
+    {
+      "name": "orders_check5",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (participant_ids @> ARRAY[subject_user_id, created_by] AND array_position(participant_ids, NULL::uuid) IS NULL)"
+    },
+    {
+      "name": "orders_check6",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (staging_attest_request_id <> output_attest_request_id AND staging_attest_request_id <> registry_request_id AND output_attest_request_id <> registry_request_id)"
+    },
+    {
+      "name": "orders_facts_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (jsonb_typeof(facts) = 'object'::text)"
+    },
+    {
+      "name": "orders_family_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (family = ANY (ARRAY['admission'::text, 'termination'::text]))"
+    },
+    {
+      "name": "orders_id_organization_id_key",
+      "type": "u",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "UNIQUE (id, organization_id)"
+    },
+    {
+      "name": "orders_order_kind_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (order_kind = ANY (ARRAY['admission'::text, 'completion'::text, 'early_withdrawal'::text]))"
+    },
+    {
+      "name": "orders_organization_id_enrollment_id_family_key",
+      "type": "u",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "UNIQUE (organization_id, enrollment_id, family)"
+    },
+    {
+      "name": "orders_pkey",
+      "type": "p",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "orders_revision_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (revision >= 1 AND revision <= '9007199254740991'::bigint)"
+    },
+    {
+      "name": "orders_source_witness_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (jsonb_typeof(source_witness) = 'object'::text)"
+    },
+    {
+      "name": "orders_state_sha256_check",
+      "type": "c",
+      "deferred": false,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (state_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "name": "w1_head_event_proof",
+      "type": "t",
+      "deferred": true,
+      "relation": "uc_individual_orders_private.orders",
+      "validated": true,
+      "deferrable": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "old_postimages": [
+    {
+      "body_md5": "fc829dfd9fde8eeb56335451d28529dd",
+      "identity": "uc_document_chain_private.resolve_source(uuid,jsonb,uuid,uuid,jsonb,boolean)",
+      "definition_md5": "c0922eff99bc83243f26536619cbbffe"
+    },
+    {
+      "body_md5": "7a0a04e4587c1fda6172ef781910e140",
+      "identity": "uc_document_chain_private.row_value(uuid,jsonb,uuid,uuid,boolean)",
+      "definition_md5": "296daad21ad171942591ea2e41a986f9"
+    },
+    {
+      "body_md5": "afe583ea861280c7ce4f5da51502948b",
+      "identity": "uc_scoped_journal_personal_counts(uuid)",
+      "definition_md5": "79b37919c59f52fbce88d9854a0d20f6"
+    }
+  ],
+  "storage_policies": [
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'billing-documents'::text) AND (EXISTS ( SELECT 1\n   FROM user_roles\n  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role = 'admin'::app_role)))))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can delete billing docs",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "((bucket_id = 'org-documents'::text) AND has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can manage all org documents",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can upload billing docs",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'billing-documents'::text) AND (EXISTS ( SELECT 1\n   FROM user_roles\n  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role = 'admin'::app_role)))))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid() IS NOT NULL) AND ((storage.foldername(name))[1] = (auth.uid())::text)))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Avatars list own only",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'billing-documents'::text) AND (has_role(auth.uid(), 'admin'::app_role) OR can_access_organization(\nCASE\n    WHEN (((storage.foldername(name))[1] = 'organizations'::text) AND ((storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text)) THEN ((storage.foldername(name))[2])::uuid\n    WHEN ((storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) THEN ((storage.foldername(name))[1])::uuid\n    ELSE NULL::uuid\nEND, 'documents.read'::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can read own billing docs",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'program-files'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[2] = (current_organization_id())::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can read program files",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete own avatar",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete their own avatar",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own avatar",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update their own avatar",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can upload own avatar",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can upload their own avatar",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "schemaname": "storage",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'csz-signed-intake'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_delete_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_insert_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_can_insert(name, metadata))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_is_admin())",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_read_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'csz-signed-intake'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_update_guard",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'csz-signed-intake'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'final-test-photos'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_delete_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_insert_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'final-test-photos'::text) OR can_upload_final_test_photo(name))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'final-test-photos'::text) OR can_read_final_test_photo(name))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_select_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'final-test-photos'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_update_guard",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'final-test-photos'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_delete_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_insert_guard",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'goreltech-issued-documents'::text)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_read_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_update_guard",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'goreltech-issued-documents'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'library-files'::text) OR can_manage_library_file_object(name))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_read_library_file_object(name))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_select",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_update",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'org-documents'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[1]), 'documents.read'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_documents_select",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "program_files_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "program_files_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "program_files_update",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'rtn-sources'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "rtn_source_originals_private_fence",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'rtn-sources'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'admission-case-evidence'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_admission_delete_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_admission_insert_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'admission-case-evidence'::text) OR (uc_admission_stage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text)))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'admission-case-evidence'::text) OR uc_admission_stage_allowed(bucket_id, name, false))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_admission_select_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_admission_stage_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'admission-case-evidence'::text) AND uc_admission_stage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'admission-case-evidence'::text) AND uc_admission_stage_allowed(bucket_id, name, false))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_admission_stage_select",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'admission-case-evidence'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_admission_update_guard",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'admission-case-evidence'::text)"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_billing_document_upload",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'billing-documents'::text) AND uc_document_billing_upload_access(name))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_billing_document_upload_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'billing-documents'::text) OR uc_document_billing_upload_access(name))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_insert",
+      "schemaname": "storage",
+      "with_check": "uc_document_storage_scope(bucket_id, name)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_read",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_update",
+      "schemaname": "storage",
+      "with_check": "uc_document_storage_scope(bucket_id, name)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_delete_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_insert_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, false))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_read_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, false))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_select",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_update",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_update_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'education-issuance-staging'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_education_staging_private_boundary",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'education-issuance-staging'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'frdo-packet-artifacts'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_frdo_artifact_delete_fence",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_frdo_artifact_insert_fence",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'frdo-packet-artifacts'::text)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'frdo-packet-artifacts'::text) AND uc_frdo_storage_object_can_read(objects.*))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_frdo_artifact_read",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'frdo-packet-artifacts'::text) OR uc_frdo_storage_object_can_read(objects.*))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_frdo_artifact_select_fence",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'frdo-packet-artifacts'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_frdo_artifact_update_fence",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'frdo-packet-artifacts'::text)"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_identification_legacy_capture_insert_guard",
+      "schemaname": "storage",
+      "with_check": "(NOT ((bucket_id = 'avatars'::text) AND (name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/verification_[0-9]+[.]jpg$'::text)))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(NOT ((bucket_id = 'avatars'::text) AND (name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/verification_[0-9]+[.]jpg$'::text)))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_identification_legacy_capture_update_guard",
+      "schemaname": "storage",
+      "with_check": "(NOT ((bucket_id = 'avatars'::text) AND (name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/verification_[0-9]+[.]jpg$'::text)))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> 'student-identification-media'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_identification_media_delete_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_identification_media_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'student-identification-media'::text) AND uc_identification_storage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_identification_media_insert_guard",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'student-identification-media'::text) OR (uc_identification_storage_allowed(bucket_id, name, true) AND (COALESCE((to_jsonb(objects.*) ->> 'owner_id'::text), (to_jsonb(objects.*) ->> 'owner'::text)) = (auth.uid())::text)))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'student-identification-media'::text) AND uc_identification_storage_allowed(bucket_id, name, false))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_identification_media_select",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> 'student-identification-media'::text) OR uc_identification_storage_allowed(bucket_id, name, false))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_identification_media_select_guard",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> 'student-identification-media'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_identification_media_update_guard",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'student-identification-media'::text)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'uc-individual-order-staging'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_individual_order_stage_private",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'uc-individual-order-staging'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(NOT uc_org_document_blob_committed(bucket_id, name))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_org_document_blob_no_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(NOT uc_org_document_blob_committed(bucket_id, name))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_org_document_blob_no_overwrite",
+      "schemaname": "storage",
+      "with_check": "(NOT uc_org_document_blob_committed(bucket_id, name))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_platform_document_storage_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_platform_document_storage_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_platform_document_storage_update",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_program_legacy_no_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_program_legacy_no_insert",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_program_legacy_no_update",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text]))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text])) OR ((bucket_id = 'program-files'::text) AND (split_part(name, '/'::text, 1) = 'programs'::text) AND (split_part(name, '/'::text, 3) <> ''::text) AND uc_document_action_allowed(storage_try_uuid(split_part(name, '/'::text, 2)), 'read'::text, NULL::uuid, NULL::uuid)))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_program_legacy_read_boundary",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR (uc_signature_storage_write(bucket_id, name) AND (split_part(name, '/'::text, 2) <> 'signed-scans'::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_file_delete_boundary",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_file_insert_boundary",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR uc_signature_storage_write(bucket_id, name))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_signature_file_participant_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'external-contracts'::text) AND uc_signature_storage_write(bucket_id, name))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = ANY (ARRAY['signed-documents'::text, 'external-contracts'::text])) AND uc_signature_storage_read(bucket_id, name))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_signature_file_participant_read",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR uc_signature_storage_read(bucket_id, name))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_file_read_boundary",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR (uc_signature_storage_write(bucket_id, name) AND (split_part(name, '/'::text, 2) <> 'signed-scans'::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_file_update_boundary",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> ALL (ARRAY['signed-documents'::text, 'external-contracts'::text])) OR (uc_signature_storage_write(bucket_id, name) AND (split_part(name, '/'::text, 2) <> 'signed-scans'::text)))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id <> 'external-contracts'::text) OR (split_part(name, '/'::text, 2) <> 'signature-files'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_namespace_immutable_delete",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id <> 'external-contracts'::text) OR (split_part(name, '/'::text, 2) <> 'signature-files'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_namespace_immutable_update",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'external-contracts'::text) OR (split_part(name, '/'::text, 2) <> 'signature-files'::text))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_signature_namespace_insert",
+      "schemaname": "storage",
+      "with_check": "((bucket_id <> 'external-contracts'::text) OR (((owner = auth.uid()) OR (owner_id = (auth.uid())::text)) AND ((owner IS NULL) OR (owner = auth.uid())) AND ((NULLIF(owner_id, ''::text) IS NULL) OR (owner_id = (auth.uid())::text)) AND (uc_signature_canonical_file(storage_try_uuid(split_part(name, '/'::text, 1)), storage_try_uuid(split_part(name, '/'::text, 3)), name) OR (split_part(name, '/'::text, 2) = 'signed-scans'::text))))"
+    }
+  ],
+  "source1700_sha256": "6f8131b53128daa80b171566fbb4e59f895feba1286cfe5292311c17f1402c36",
+  "source1700_bytes": 192817,
+  "new_storage_policies": [
+    {
+      "cmd": "ALL",
+      "qual": "(bucket_id <> 'uc-individual-order-staging'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_individual_order_stage_private",
+      "schemaname": "storage",
+      "with_check": "(bucket_id <> 'uc-individual-order-staging'::text)"
+    }
+  ]
+}
