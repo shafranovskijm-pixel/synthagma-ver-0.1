@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "status": "CURRENT_1900_OWNER_WRAPPERS_SOURCE_ACCEPTED_PENDING_NATIVE_AND_PRODUCTION",
+  "reviewed_at_utc": "2026-11-23T21:11:03.207Z",
+  "source": {
+    "path": "repo/supabase/migrations/20261123190000_uc_document_chain_draft_scope.sql",
+    "sha256": "95ffe446fde157e7ed7d3341a6a14e529d785e5b50ac42719852895b3a706272",
+    "bytes": 5850,
+    "before_body_md5": "7a0a04e4587c1fda6172ef781910e140",
+    "after_body_md5": "343a7508d39857f94665cb8cca1c8092"
+  },
+  "pins": {
+    "generator": {
+      "file": "review/prepare-owner-wrappers.cjs",
+      "sha256": "8185f8097a1dda357a65960644cae04cd10caa33f0121548929c7953f69b88a5",
+      "bytes": 9482
+    },
+    "manifest": {
+      "file": "review/OWNER_WRAPPER_MANIFEST.json",
+      "sha256": "8b2c9508654edd4714260c2228736404a72ef1b81934040c59c7592a719dd56a",
+      "bytes": 463
+    },
+    "templates": [
+      {
+        "file": "review/OWNER_1900_FORCED_ROLLBACK_QUALIFIER.sql",
+        "sha256": "b1dbd83081387176e56009aa489d9dec1577e19f87214ffccf673c70c0081d95",
+        "bytes": 27927
+      },
+      {
+        "file": "review/OWNER_1900_UNBOUND_DO_NOT_EXECUTE.sql",
+        "sha256": "4ff59b41e7f5a5e365de574772f5689c08358663025ba451cfa85616bfbc5c22",
+        "bytes": 23820
+      },
+      {
+        "file": "review/OWNER_1900_READBACK_UNBOUND.sql",
+        "sha256": "20a72df6ad4c7cc5a67c455150b3d56eb53fab584d67f075c356655946315bb7",
+        "bytes": 9730
+      }
+    ]
+  },
+  "r1_finding": {
+    "receipt": "review/INDEPENDENT_1900_WRAPPER_R1_SOURCE_REVIEW.json",
+    "sha256": "c72ef16510d9101efac98509856dadbd5afb77675d54afdd709bac82a12c5fef",
+    "id": "INSTALL_RECEIPT_SQL_NULL_AND_FLAG_GUARD",
+    "status": "CLOSED",
+    "exact_delta": {
+      "generator": {
+        "prefix": 4286,
+        "old": "qualification IS NULL OR qualification='null'::jsonb OR qualification->>'kind'<>'UC_SCOPE_QUALIFIED_ROLLBACK' OR qualification->>'source_sha256'<>'${sha}'",
+        "next": "(qualification IS NOT NULL AND qualification<>'null'::jsonb AND qualification->>'kind'='UC_SCOPE_QUALIFIED_ROLLBACK' AND qualification->>'source_sha256'='${sha}' AND qualification->>'after_body_md5'='${post}' AND qualification->'forced_rollback'='true'::jsonb AND qualification->'old_source_restored'='true'::jsonb) IS DISTINCT FROM true",
+        "suffix": 4859,
+        "inverse": true
+      },
+      "installer": {
+        "prefix": 10920,
+        "old": "qualification IS NULL OR qualification='null'::jsonb OR qualification->>'kind'<>'UC_SCOPE_QUALIFIED_ROLLBACK' OR qualification->>'source_sha256'<>'95ffe446fde157e7ed7d3341a6a14e529d785e5b50ac42719852895b3a706272'",
+        "next": "(qualification IS NOT NULL AND qualification<>'null'::jsonb AND qualification->>'kind'='UC_SCOPE_QUALIFIED_ROLLBACK' AND qualification->>'source_sha256'='95ffe446fde157e7ed7d3341a6a14e529d785e5b50ac42719852895b3a706272' AND qualification->>'after_body_md5'='343a7508d39857f94665cb8cca1c8092' AND qualification->'forced_rollback'='true'::jsonb AND qualification->'old_source_restored'='true'::jsonb) IS DISTINCT FROM true",
+        "suffix": 11230,
+        "inverse": true
+      }
+    },
+    "qualifier_unchanged": true,
+    "readback_unchanged": true
+  },
+  "source_checks": {
+    "canonical_frozen_sha_and_5850_bytes": true,
+    "qualifier_and_installer_canonical_exact": true,
+    "inner_payload_only_reviewed_outer_transaction_removed": true,
+    "current_postgres_exact_prebody_uninstalled_ledger_required": true,
+    "advisory_lock_repeatable_read": true,
+    "full_functions_except_target_body_exact": true,
+    "namespaces_class_security_policy_default_acl_membership_exact": true,
+    "eight_full_row_business_scopes_four_orgs": true,
+    "nested_exception_rollback_restores_old_source_catalog_business_ledger": true,
+    "outer_receipt_variable_survives_subtransaction_rollback": true,
+    "installer_exact_receipt_facts_null_safe": true,
+    "fresh_qualification_catalog_business_ledger_preimages_required": true,
+    "installer_only_one_canonical_1900_ledger_insert": true,
+    "independent_readback_read_only_no_ddl_dml_execute": true,
+    "readback_old_ledger_excludes_only1900_and_new_row_exact_canonical": true,
+    "six_readback_flags_null_safe_accepted_bool": true
+  },
+  "findings": [],
+  "limitations": [
+    "Source-only acceptance, not actual native SQL qualification, production install, live UI or client-wide rights/data acceptance.",
+    "No installed1300–1800 migration or previous qualifier is replayed by these new1900 wrappers.",
+    "Class comparison is explicit security metadata, not an all-field physical-maintenance fingerprint.",
+    "Root retains responsibility for reading a genuine qualification receipt, binding fresh exact preimages, one install, independent readback and the genuine hosted scenario."
+  ],
+  "sql_executions": 0,
+  "test_executions": 0,
+  "network_calls": 0,
+  "product_or_wrapper_edits": 0
+}

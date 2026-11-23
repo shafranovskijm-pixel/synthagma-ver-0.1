@@ -1,0 +1,44 @@
+name: UC retained draft scope
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/uc-document-chain-scope.yml'
+      - '.gitattributes'
+      - 'supabase/migrations/20261123190000_uc_document_chain_draft_scope.sql'
+      - 'supabase/tests/uc-document-chain-scope/**'
+      - 'src/lib/documentChain/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    name: New group with retained draft, strict client and forward migration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CHAIN1900_NATIVE_ARTIFACTS: outputs/uc-document-chain-scope-native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: git log -1 --format='%H%n%T%n%P'
+      - run: docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+      - name: Actual PostgreSQL17 new regression only
+        run: node supabase/tests/uc-document-chain-scope/run-native.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-document-chain-scope-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/uc-document-chain-scope-native/
+            !outputs/uc-document-chain-scope-native/**/node_modules/**
+          if-no-files-found: error
+          retention-days: 14

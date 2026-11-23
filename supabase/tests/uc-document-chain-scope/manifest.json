@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "status": "ROOT_AUTHORIZED_NEW_CHAIN1900_NATIVE_ONLY",
+  "source1900": {
+    "path": "repo/supabase/migrations/20261123190000_uc_document_chain_draft_scope.sql",
+    "sha256": "95ffe446fde157e7ed7d3341a6a14e529d785e5b50ac42719852895b3a706272",
+    "bytes": 5850,
+    "before_body_md5": "7a0a04e4587c1fda6172ef781910e140",
+    "after_body_md5": "343a7508d39857f94665cb8cca1c8092"
+  },
+  "parent": {
+    "relative": "../uc-individual-orders",
+    "manifestSha256": "2303e019ff0f2a923b74f116091d3b0bffda29a14e5f16b147185a5bccae5e95",
+    "prepareSha256": "d801db243bde0c20e15beed3c7500929fd2c24a8f923f3f19e1d1ccb587180a2",
+    "oldCase": {
+      "path": "case/w1.full.native.test.ts",
+      "target": "supabase/tests/native/w1-end-to-end/w1.full.native.test.ts",
+      "bytes": 35314,
+      "sha256": "498d8d412d693beaaf8b42a6c925ea823ede81aacabaeba4f2a6b77d0294b58c"
+    }
+  },
+  "rootExecutionAuthority": "Explicit parent message authorizes one NEW case with five malformed-binding negatives, actual new qualifier/unbound/bound/install/readback and before-after strict client; no production or old full cases.",
+  "finalReviewSha256": "4f003bc31d8029679d9e23f203157a56871be418bd726ea00c6eda40a0ff59bb",
+  "inputs": [
+    {
+      "name": "OWNER_1900_FORCED_ROLLBACK_QUALIFIER.sql",
+      "kind": "package",
+      "path": "inputs/OWNER_1900_FORCED_ROLLBACK_QUALIFIER.sql",
+      "bytes": 27927,
+      "sha256": "b1dbd83081387176e56009aa489d9dec1577e19f87214ffccf673c70c0081d95"
+    },
+    {
+      "name": "OWNER_1900_UNBOUND_DO_NOT_EXECUTE.sql",
+      "kind": "package",
+      "path": "inputs/OWNER_1900_UNBOUND_DO_NOT_EXECUTE.sql",
+      "bytes": 23820,
+      "sha256": "4ff59b41e7f5a5e365de574772f5689c08358663025ba451cfa85616bfbc5c22"
+    },
+    {
+      "name": "OWNER_1900_READBACK_UNBOUND.sql",
+      "kind": "package",
+      "path": "inputs/OWNER_1900_READBACK_UNBOUND.sql",
+      "bytes": 9730,
+      "sha256": "20a72df6ad4c7cc5a67c455150b3d56eb53fab584d67f075c356655946315bb7"
+    },
+    {
+      "name": "prepare-owner-wrappers.cjs",
+      "kind": "package",
+      "path": "inputs/prepare-owner-wrappers.cjs",
+      "bytes": 9482,
+      "sha256": "8185f8097a1dda357a65960644cae04cd10caa33f0121548929c7953f69b88a5"
+    },
+    {
+      "name": "INDEPENDENT_1900_FINAL_OWNER_WRAPPERS_SOURCE_REVIEW.json",
+      "kind": "package",
+      "path": "inputs/INDEPENDENT_1900_FINAL_OWNER_WRAPPERS_SOURCE_REVIEW.json",
+      "bytes": 4897,
+      "sha256": "4f003bc31d8029679d9e23f203157a56871be418bd726ea00c6eda40a0ff59bb"
+    },
+    {
+      "name": "ROOT_1900_SOURCE_AND_NATIVE_SCOPE_ACK.json",
+      "kind": "package",
+      "path": "inputs/ROOT_1900_SOURCE_AND_NATIVE_SCOPE_ACK.json",
+      "bytes": 929,
+      "sha256": "4e7f45ec256851898ced28897df8723e267cb8cef69a0ee69c93e15f890daaf9"
+    },
+    {
+      "name": "20261123180000_uc_individual_education_issuance.sql",
+      "kind": "repository",
+      "path": "supabase/migrations/20261123180000_uc_individual_education_issuance.sql",
+      "canonicalLf": true,
+      "bytes": 390227,
+      "sha256": "53e64aad6ccba72ee755095fd55cb176159f975b36cca508ffa70e27006fa757"
+    },
+    {
+      "name": "20261123190000_uc_document_chain_draft_scope.sql",
+      "kind": "repository",
+      "path": "supabase/migrations/20261123190000_uc_document_chain_draft_scope.sql",
+      "canonicalLf": true,
+      "bytes": 5850,
+      "sha256": "95ffe446fde157e7ed7d3341a6a14e529d785e5b50ac42719852895b3a706272"
+    }
+  ],
+  "strictClientPins": [
+    {
+      "path": "src/lib/documentChain/client.ts",
+      "canonicalLfBytes": 12410,
+      "canonicalLfSha256": "ebecebd2ff9bf37df21922edffbcfe801ef7770855d1a3ecf1ef2484270c3390"
+    },
+    {
+      "path": "src/lib/documentChain/contract.ts",
+      "canonicalLfBytes": 8204,
+      "canonicalLfSha256": "f9b5319a1055f594e41cb74d21e09a56d32f888d8fe7e8bc2859d8dc61f547e5"
+    },
+    {
+      "path": "src/lib/customJournals/client.ts",
+      "canonicalLfBytes": 8242,
+      "canonicalLfSha256": "a255ca35abe64a9250f6183c32fb36b65b0a5aafcd030d1b20925f5df0388139"
+    },
+    {
+      "path": "src/lib/customJournals/contract.ts",
+      "canonicalLfBytes": 11745,
+      "canonicalLfSha256": "25ac3a844988e2ffe8685cfe3b3df5d6195d6c817a1f238cbd2dc660a844f32e"
+    },
+    {
+      "path": "src/lib/copyRegistry/value.ts",
+      "canonicalLfBytes": 548,
+      "canonicalLfSha256": "2858c6aed3eb10774f7e495617567ae001689a906b0bd87c6174b098694ed633"
+    },
+    {
+      "path": "src/lib/admissionDocuments/contract.ts",
+      "canonicalLfBytes": 5922,
+      "canonicalLfSha256": "f68d804398bde950063f0255cd997b996df06a53ebec73a0a2714955d6cf8df6"
+    },
+    {
+      "path": "src/lib/educationJournalWorkspace/contract.ts",
+      "canonicalLfBytes": 4956,
+      "canonicalLfSha256": "429b8f70528117008cde5b4179878ba71193e910698cf1e03c7155b27203de31"
+    },
+    {
+      "path": "src/lib/admissionCases/contract.ts",
+      "canonicalLfBytes": 19787,
+      "canonicalLfSha256": "d15de8dcc0068c231cc6d02bf542b62e5d9bd8c8471dc938924fb87a0a238f7e"
+    },
+    {
+      "path": "src/lib/admissionCases/issuanceCondition.ts",
+      "canonicalLfBytes": 1438,
+      "canonicalLfSha256": "28ced67247fafa8555167f47cca82cd57b254ef86f591951286bbfa5b97b2322"
+    }
+  ],
+  "caseFiles": [
+    {
+      "path": "case/chain1900.native.test.ts",
+      "target": "supabase/tests/native/chain1900/chain1900.native.test.ts",
+      "bytes": 13824,
+      "sha256": "1c19e4cb439a01fc1d5a17586de62e8aeb40589c5bdf2f2ed611696a2ae9e47b"
+    },
+    {
+      "path": "case/current-composition.fixture.ts",
+      "target": "supabase/tests/native/chain1900/current-composition.fixture.ts",
+      "bytes": 5245,
+      "sha256": "0039657c6d914d189ffc5badcf24973772db392c09534905cbed7766eb9d6094"
+    }
+  ],
+  "profileFiles": [
+    {
+      "path": "profile/chain1900-native.setup.mjs",
+      "target": "chain1900-native.setup.mjs",
+      "bytes": 11075,
+      "sha256": "db29b2b9230e1e0e0e5a7bcb5b837356bd1eadb69929b0e22e252ffe242120e5"
+    },
+    {
+      "path": "profile/chain1900-native.vitest.config.mjs",
+      "target": "chain1900-native.vitest.config.mjs",
+      "bytes": 2349,
+      "sha256": "6be70ef1313f162cba399d6426ebf434a8fd06b05e71ed34d78680c984443c2c"
+    },
+    {
+      "path": "profile/profile-contract.json",
+      "target": "profile-contract.json",
+      "bytes": 22269,
+      "sha256": "5a99f55c42d111e365eb2fe7fbe741637109b6e485202052c9fae9a93c2b55b6"
+    }
+  ],
+  "onlyCase": "supabase/tests/native/chain1900/chain1900.native.test.ts",
+  "productionActions": 0,
+  "oldFunctionalTestsExecuted": 0
+}

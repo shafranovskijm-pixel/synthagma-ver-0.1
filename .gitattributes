@@ -48,3 +48,7 @@ supabase/tests/uc-individual-orders/fixture-graph/valid-owned-qa.pdf -diff
 # Preserve the W2 finite native package and owned PDF cross-reference bytes.
 supabase/tests/uc-individual-issuance/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
 supabase/tests/uc-individual-issuance/fixture-graph/valid-owned-qa.pdf -diff
+
+# Preserve exact finite inputs for the new retained-draft scope regression.
+supabase/tests/uc-document-chain-scope/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+supabase/migrations/20261123190000_uc_document_chain_draft_scope.sql text eol=lf
