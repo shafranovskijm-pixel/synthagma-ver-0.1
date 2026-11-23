@@ -41,3 +41,6 @@ supabase/migrations/20261123100000_rtn_manual_source_import.sql text eol=lf
 
 # The isolated B1 fixture manifest pins exact bytes, including inherited CRLF.
 supabase/tests/uc-issued-recipient/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+# Preserve the W1 manifest's exact inherited fixture bytes on every checkout.
+supabase/tests/uc-individual-orders/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+supabase/tests/uc-individual-orders/fixture-graph/valid-owned-qa.pdf -diff

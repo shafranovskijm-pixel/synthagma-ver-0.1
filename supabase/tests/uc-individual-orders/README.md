@@ -1,0 +1,19 @@
+# W1 individual education orders: native case
+
+Run from the repository root with Node 24.22.3 and the locked dependencies from `npm ci`:
+
+```sh
+node supabase/tests/uc-individual-orders/prepare-native.test.cjs
+docker pull postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+node supabase/tests/uc-individual-orders/run-native.cjs
+```
+
+The runner requires the exact Linux PostgreSQL 17.11 image to exist locally; it never pulls an image itself. It starts one labelled disposable container with an ephemeral loopback-only host port, one new test and no automatic retries. It verifies its database/role/container cleanup. Credentials are not written to reports. `W1_NATIVE_ARTIFACTS` selects the output directory; the default is `outputs/uc-individual-orders-native`. `W1_CURRENT_REPO` optionally selects an explicit repository root.
+
+Preparation reuses the pinned sibling B1 materializer only for its finite 165 input graph. It checks and removes the exact old B1 core test before Vitest can register tests; the old W1 readiness case is never copied. The new profile includes only `w1.full.native.test.ts`. No old functional case runs. The W1 manifest adds 55 exact current input targets, five new case/helpers and three profile files. Historical sources remain repository references; a small actual-metadata snapshot and one exact mixed-EOL DTO are held in the package. The DTO's current repository content is checked against its pinned canonical LF content before those original tested bytes are copied.
+
+An explicit finite parent input snapshot handles Windows line endings. Parent source pins keep their original expected hashes: only UTF-8 CRLF-to-LF equality with the same pin is accepted, with raw/canonical hashes recorded. Repository inputs may use their exact pinned Git blobs and declared LF-to-CRLF reconstruction. Unknown source bytes are refused. Parent preparer, actual checkout, SQL, assertions and auth logic are unchanged. The preparation-only check covers normal inputs, an actual Git-blob Linux checkout plus explicitly labelled new-source LF inputs, and a refused changed source. It starts no Docker, SQL or functional tests.
+
+The one new case installs the pinned 1700 candidate after the current foundation, captures all 44 function/table/storage/old-postimage metadata, and exercises two individual enrollments without fake course/group programme bindings. It performs real programme/evidence reviews; explicit admission, completion and early withdrawal decisions; distinct official numbers; real worker stage/output attestations and registration; 16 registration-journal source routes; private learner PDF bytes; two actual backend collision/retry witnesses; second-staff recovery; billing/privacy fail-closed probes with exact rollback; and old synthetic row/rights preservation. Direct `admission_orders` journal positive navigation remains a separate working-site acceptance item.
+
+This is actual PostgreSQL and product SQL/worker logic with owned synthetic Auth/Storage IO ports and a valid 647-byte QA PDF. It does not prove hosted Auth, StorageHTTP, Browserless rendering or human/legal approval. The current foundation has explicitly recorded local provider EXECUTE restorations and a profile ID uniqueness reference key, so full provider catalog parity is not claimed. No customer rows, prices, limits, old attempts or production services are changed. XML/FRDO packet methods are not called; the inherited npm 0.9.12 specifier resolves to the actual locked xmldom 0.8.11, without a 0.9.12/XML claim.

@@ -12,13 +12,20 @@ function primaryAction(slot: ChainSlot): ChainAction | null {
   if (slot.next_action && (slot.next_action.kind === 'open_source' ? slot.capabilities.can_open : slot.capabilities.can_continue)) return slot.next_action;
   return slot.source && slot.capabilities.can_open ? { kind: 'open_source', source: slot.source } : null;
 }
+function associationLabel(row: ChainRow, ownViewer: boolean, canPrepareIndividual: boolean): string | null {
+  if (row.association_state !== 'group_missing') return row.association_why;
+  if (ownViewer) return 'Учебная группа не выбрана. Индивидуальные документы отображаются ниже по мере оформления учебным центром.';
+  return canPrepareIndividual
+    ? 'Учебная группа не выбрана. Можно оформить индивидуальный приказ по утверждённой программе.'
+    : 'Учебная группа не выбрана. Индивидуальные приказы оформляет уполномоченный сотрудник.';
+}
 /** The same three source-bound slots are used in the student, group and organization. */
 export function DocumentChainRows({ rows, showStudent = false, ownViewer = false, canOpenJournals, onAction, onOpenJournals, onConfigureAdmission, details, individualOrders }: Props) {
   const [individualEnrollment, setIndividualEnrollment] = useState<string | null>(null);
   const individualChanged = useRef(false);
   const selectedIndividual = rows.find(row => row.enrollment_id === individualEnrollment);
   return <>{rows.map(row => <div key={row.enrollment_id} className="min-w-0 space-y-3 rounded-xl border border-border p-3 sm:p-4">
-    <div>{showStudent && <p className="font-medium">{row.student_label}</p>}<h4 className="break-words font-medium">{row.course_label}</h4>{row.group_label && <p className="text-xs text-muted-foreground">{row.group_label}</p>}{row.association_why && <p className="mt-1 text-sm text-muted-foreground">{row.association_why}</p>}</div>
+    <div>{showStudent && <p className="font-medium">{row.student_label}</p>}<h4 className="break-words font-medium">{row.course_label}</h4>{row.group_label && <p className="text-xs text-muted-foreground">{row.group_label}</p>}{associationLabel(row, ownViewer, !!individualOrders?.enabled) && <p className="mt-1 text-sm text-muted-foreground">{associationLabel(row, ownViewer, !!individualOrders?.enabled)}</p>}</div>
     {[row.admission_order, row.completion_order, row.education_document].map(slot => {
       const candidate = primaryAction(slot);
       const action = ownViewer && candidate?.kind !== 'open_source' ? null : candidate;
