@@ -56,9 +56,14 @@ function validateSource(scope: DocumentChainScope, query: Extract<c.ChainQuery, 
     || scope.target.kind === 'student' && (context.student_user_id !== scope.target.student_user_id || scope.target.enrollment_id !== null && context.enrollment_id !== scope.target.enrollment_id || scope.target.group_id !== null && context.group_id !== scope.target.group_id)
     || scope.target.kind === 'group' && context.group_id !== scope.target.group_id) throw new DocumentChainError('SOURCE_CHANGED');
   if (value.availability === 'unavailable') { if (target !== null || !value.why) throw new DocumentChainError(); return; }
-  if (!value.capabilities.can_open_sources || !target || target.kind !== ref.kind) throw new DocumentChainError('ACCESS_DENIED');
-  // An own-only overview must never turn into a broad registry/group-file read.
-  if (value.viewer === 'self') throw new DocumentChainError('ACCESS_DENIED');
+  if (!value.capabilities.can_open_sources || !target) throw new DocumentChainError('ACCESS_DENIED');
+  // The single-subject W1 target is the only self exception. Legacy group-order guards stay closed.
+  if (value.viewer === 'self') {
+    if (target.kind !== 'own_individual_order_file' || ref.kind !== 'registry_record' || scope.target.kind !== 'student' || scope.target.student_user_id !== scope.actorId || context.student_user_id !== scope.actorId) throw new DocumentChainError('ACCESS_DENIED');
+    if (target.registry_record_id !== ref.id || target.registry_record_revision !== ref.revision || target.document_id !== ref.document_id || target.version_id !== ref.version_id) throw new DocumentChainError('SOURCE_CHANGED');
+    return;
+  }
+  if (target.kind === 'own_individual_order_file' || target.kind !== ref.kind) throw new DocumentChainError('ACCESS_DENIED');
   if (ref.kind === 'admission_draft' && target.kind === 'admission_draft' && (target.draft.id !== ref.id || target.draft.revision !== ref.revision || target.enrollment_id !== context.enrollment_id || target.group_id !== context.group_id
     || target.draft.organization_id !== scope.organizationId || target.draft.user_id !== context.student_user_id || target.draft.course_id !== context.course_id || target.draft.enrollment_id !== context.enrollment_id || target.draft.group_id !== context.group_id)) throw new DocumentChainError('SOURCE_CHANGED');
   if (ref.kind === 'registry_record' && target.kind === 'registry_record' && (target.record_id !== ref.id || target.revision !== ref.revision)) throw new DocumentChainError('SOURCE_CHANGED');

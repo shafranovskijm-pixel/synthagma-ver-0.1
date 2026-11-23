@@ -327,3 +327,11 @@ verify_jwt = false
 # guards before reading an upload and again before the narrow finalization RPC.
 [functions.rtn-source-upload]
 verify_jwt = false
+
+# Genuine getUser plus original-caller order/scope checks are enforced in the handler.
+[functions.individual-education-order-artifact]
+verify_jwt = false
+
+# Exact own registered order only; genuine getUser and service-side current own/billing guards.
+[functions.individual-education-order-file]
+verify_jwt = false
