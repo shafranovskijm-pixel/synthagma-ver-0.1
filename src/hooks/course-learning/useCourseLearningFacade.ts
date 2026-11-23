@@ -13,7 +13,6 @@ import { LearningProgressFence, fetchOwnLearningProgress, saveOwnLearningProgres
 import { showLimitToast } from "@/utils/limitToast";
 import { parseLessonContent } from "@/components/course-builder/block-editor/parsers";
 import type { ContentBlock } from "@/components/course-builder/block-editor/types";
-import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
 import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 import { COURSE_LESSON_ORDER_VERSION, orderCourseLessons } from "@/lib/courseLessonOrder";
@@ -259,7 +258,7 @@ export function useCourseLearning() {
     } catch (error) { if (captured.current()) await handleProgressReset(error); }
   }, [currentLesson?.id, user?.id, enrollmentId, isAdminView, learningRun, isOfflineMode, privateVisible]);
 
-  const handleCourseCompletion = async (testScoreData?: { score: number; max: number }) => {
+  const handleCourseCompletion = async (_testScoreData?: { score: number; max: number }) => {
     if (isAdminView) return; // never complete the student's course in admin view
     if (!course || !user || !courseId) return;
     const captured = captureProgress();
@@ -314,13 +313,8 @@ export function useCourseLearning() {
 
       setLessonProgress(lessons.map(lesson => ({ lesson_id: lesson.id, completed: true })));
 
-      const protocolName = await generateAttestationProtocol({
-        organizationId: org.id, organizationName: org.name, directorName: org.director_name, directorPosition: org.director_position,
-        studentName: profile.full_name || 'Слушатель', courseName: course.title, courseDuration: course.duration,
-        completedAt: new Date(), testScore: testScoreData?.score, testMaxScore: testScoreData?.max,
-      });
-      if (!captured.current()) return;
-      if (protocolName) toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
+      // A saved machine result is not a staff attestation or an issued document.
+      toast.success('Курс завершён. Результат сохранён.');
 
       // Best-effort email/edge notification. Failure here MUST NOT undo the completion
       // or the DB-triggered organization notification.

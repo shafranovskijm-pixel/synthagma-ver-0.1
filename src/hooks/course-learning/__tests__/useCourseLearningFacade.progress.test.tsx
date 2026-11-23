@@ -10,13 +10,14 @@ const mocks = vi.hoisted(() => ({
   savedLessons: new Set<string>(), savedProgress: 0, failSave: false, lockedNext: false,
   mutations: [] as { table: string; payload: Record<string, unknown> }[],
   completionCount: { data: 0 as unknown, error: null as unknown },
-  postpaid: false, protocol: vi.fn(),
+  postpaid: false, protocol: vi.fn(), storage: vi.fn(), upload: vi.fn(),
+  testProps: null as null | { handleCourseCompletion: (score?: { score: number; max: number }) => Promise<void> },
 }));
 vi.mock('react-router-dom', () => ({ useParams: () => ({ courseId: 'course-a' }), useNavigate: () => mocks.navigate }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 vi.mock('@/hooks/useSwipeGesture', () => ({ useSwipeGesture: () => ({ current: null }) }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc, storage: { from: mocks.storage } } }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
 vi.mock('@/utils/courseCache', async importOriginal => ({ ...await importOriginal<typeof import('@/utils/courseCache')>(), cacheCourseData: vi.fn().mockResolvedValue(undefined), getCachedCourseData: vi.fn().mockResolvedValue(null) }));
 vi.mock('@/utils/offlineSync', () => ({ setupOfflineSyncListeners: () => () => {} }));
@@ -26,7 +27,7 @@ vi.mock('@/utils/generateAttestationProtocol', () => ({ generateAttestationProto
 vi.mock('@/lib/postpaidAccess', () => ({ fetchPostpaidAccessProfile: async () => ({ active: mocks.postpaid }) }));
 vi.mock('@/api/courseLibrary', () => ({ fetchCourseLibraryShell: vi.fn() }));
 vi.mock('@/hooks/course-learning/useLessonVideo', () => ({ useLessonVideo: () => ({ setVideoWatchProgress: vi.fn() }) }));
-vi.mock('@/hooks/course-learning/useLessonTest', () => ({ useLessonTest: () => ({ testQuestions: [], testAttemptId: null, testSubmitted: false, testScore: null }) }));
+vi.mock('@/hooks/course-learning/useLessonTest', () => ({ useLessonTest: (props: NonNullable<typeof mocks.testProps>) => { mocks.testProps = props; return { testQuestions: [], testAttemptId: null, testSubmitted: false, testScore: null }; } }));
 vi.mock('@/hooks/course-learning/useLessonTTS', () => ({ useLessonTTS: () => ({}) }));
 vi.mock('@/hooks/course-learning/useLessonChat', () => ({ useLessonChat: () => ({}) }));
 
@@ -80,7 +81,8 @@ beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear();
   mocks.savedLessons.clear(); mocks.savedProgress = 0; mocks.failSave = false; mocks.lockedNext = false; mocks.mutations.length = 0;
   mocks.completionCount = { data: 0, error: null }; mocks.postpaid = false;
-  mocks.protocol.mockResolvedValue(null);
+  mocks.protocol.mockResolvedValue(null); mocks.testProps = null;
+  mocks.upload.mockResolvedValue({ data: null, error: null }); mocks.storage.mockReturnValue({ upload: mocks.upload });
   mocks.from.mockImplementation(table => new Query(table));
   const learningSnapshot = () => ({ data: {
     enrollment: { id: 'enrollment-a', user_id: 'student-a', course_id: 'course-a', status: 'active', progress: mocks.savedProgress, learning_progress_epoch: '0' },
@@ -139,7 +141,7 @@ describe('sequential learner progress through the actual facade', () => {
     await act(async () => { await result.current.retryCourseCompletion(); });
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(2);
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toHaveLength(1);
-    expect(mocks.protocol).toHaveBeenCalledTimes(1);
+    expect(mocks.protocol).not.toHaveBeenCalled();
   });
 
   it('preserves confirmed postpaid completion without consulting a finite monthly counter', async () => {
@@ -150,7 +152,44 @@ describe('sequential learner progress through the actual facade', () => {
     await act(async () => { await result.current.retryCourseCompletion(); });
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(0);
     expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment_at_epoch')).toHaveLength(1);
-    expect(mocks.protocol).toHaveBeenCalledTimes(1);
+    expect(mocks.protocol).not.toHaveBeenCalled();
+  });
+
+
+  it('preserves a confirmed test completion and notification without learner organization-document uploads or automatic attestation', async () => {
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    expect(mocks.testProps?.handleCourseCompletion).toBeTypeOf('function');
+    await act(async () => { await mocks.testProps!.handleCourseCompletion({ score: 2, max: 2 }); });
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_own_course_enrollment_at_epoch', { p_enrollment_id: 'enrollment-a', p_expected_epoch: '0' });
+    expect(result.current.completedCount).toBe(3);
+    expect(mocks.protocol).not.toHaveBeenCalled();
+    expect(mocks.storage).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.mutations.filter(row => row.table === 'org_documents')).toEqual([]);
+    const { safeInvoke } = await import('@/utils/safeInvoke');
+    expect(safeInvoke).toHaveBeenCalledExactlyOnceWith('notify-course-completion', { body: { enrollment_id: 'enrollment-a', course_id: 'course-a', user_id: 'student-a' } });
+    expect(mocks.toast.success).toHaveBeenCalledExactlyOnceWith('Курс завершён. Результат сохранён.');
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it('does not report completion, notify or create a document when the authoritative completion RPC fails', async () => {
+    const originalRpc = mocks.rpc.getMockImplementation()!;
+    mocks.rpc.mockImplementation(async (name, args) => name === 'complete_own_course_enrollment_at_epoch'
+      ? { data: null, error: { code: '42501', message: 'completion denied' } }
+      : originalRpc(name, args));
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    await act(async () => { await mocks.testProps!.handleCourseCompletion({ score: 2, max: 2 }); });
+    expect(result.current.completedCount).toBe(0);
+    expect(mocks.protocol).not.toHaveBeenCalled();
+    expect(mocks.storage).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.mutations.filter(row => row.table === 'org_documents')).toEqual([]);
+    const { safeInvoke } = await import('@/utils/safeInvoke');
+    expect(safeInvoke).not.toHaveBeenCalled();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.error).toHaveBeenCalledWith('Не удалось завершить курс. Попробуйте ещё раз.');
   });
 
   it('one completion click advances each saved lesson and unlocks the final test', async () => {
