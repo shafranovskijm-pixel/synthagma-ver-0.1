@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Download, RefreshCw, UserRound, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +11,14 @@ import { useEducationJournalWorkspace } from '@/hooks/useEducationJournalWorkspa
 import { journalLabels, type EducationJournalScope, type EducationJournalType } from '@/lib/educationJournalWorkspace/contract';
 import { educationJournalReturnPath, educationJournalWorkspacePath, type JournalOrigin } from '@/lib/educationJournalWorkspace/navigation';
 import { AdmissionDocumentSettingsPanel } from '@/components/organization/documents/AdmissionDocumentSettingsPanel';
+import { DocumentChainSourceDialog } from '@/components/organization/documents/DocumentChainSourceDialog';
+import { clearDocumentChainSourceParams, documentChainJournalSourcePath, readDocumentChainSourceRoute } from '@/lib/documentChain/navigation';
 
 interface OwnViewer { onSelect: (type: EducationJournalType) => void; onBack: () => void }
 interface Props { organizationId: string; scope: EducationJournalScope; journalType: EducationJournalType | null; origin: JournalOrigin; ownViewer?: OwnViewer }
 export function EducationJournalWorkspace({ organizationId, scope, journalType, origin, ownViewer }: Props) {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const selectorId = useId();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const p = useStaffPermissions();
@@ -24,6 +27,8 @@ export function EducationJournalWorkspace({ organizationId, scope, journalType, 
     : !p.loading && !p.error && p.can('journals.read') && p.can('students.read') && p.can('documents.read');
   const access = JSON.stringify([user?.id, p.organizationId, p.orgRole, p.adminRole, p.isOrgOwner, enabled]);
   const model = useEducationJournalWorkspace(organizationId, scope, journalType, enabled, access);
+  const sourceRoute = readDocumentChainSourceRoute(params);
+  const closeSource = () => setParams(clearDocumentChainSourceParams(params), { replace: true });
   const summary = model.summary;
   const selected = summary?.journals.find(row => row.journal_type === journalType);
   const backLabel = ownViewer ? 'К моим журналам' : origin.kind === 'student' ? 'К документам ученика' : origin.kind === 'group' ? 'К группе' : 'К журналам';
@@ -61,9 +66,10 @@ export function EducationJournalWorkspace({ organizationId, scope, journalType, 
         </div>)}
       </div>}
       {model.page && <div className="rounded-2xl border border-border bg-card">
-        {model.page.rows.length ? <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Дата события</TableHead>{scope.kind !== 'student' && <TableHead>Ученик</TableHead>}<TableHead>Обучение</TableHead><TableHead>Запись</TableHead><TableHead>Результат</TableHead><TableHead>Источник</TableHead></TableRow></TableHeader><TableBody>{model.page.rows.map(row => <TableRow key={row.id}><TableCell className="whitespace-nowrap">{row.event_at ? new Date(row.event_at).toLocaleString('ru-RU') : 'Не указана'}</TableCell>{scope.kind !== 'student' && <TableCell>{row.student_user_id ? <button type="button" className="text-left text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2" onClick={() => navigate('/organization?' + new URLSearchParams({ tab: 'student-details', studentId: row.student_user_id!, studentSection: 'documents', ...(row.enrollment_id ? { studentJournalEnrollmentId: row.enrollment_id } : {}), ...(scope.kind === 'group' ? { returnToGroupId: scope.group_id, studentJournalGroupId: scope.group_id, ...(origin.department ? { returnDepartment: origin.department } : {}), ...(origin.participantSearch ? { returnParticipantSearch: origin.participantSearch } : {}) } : {}) }).toString())}>{row.student_label}</button> : row.student_label}</TableCell>}<TableCell>{row.course_label || 'Не указано'}{row.group_label && <p className="text-xs text-muted-foreground">{row.group_label}</p>}</TableCell><TableCell>{row.title}</TableCell><TableCell>{row.result || 'Не указан'}</TableCell><TableCell><span className="text-sm">{row.source_label}</span>{row.source_revision !== null && <p className="text-xs text-muted-foreground">Версия {row.source_revision}</p>}</TableCell></TableRow>)}</TableBody></Table></div> : <p role="status" className="p-6 text-sm text-muted-foreground">Записей по выбранному обучению пока нет.</p>}
+        {model.page.rows.length ? <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Дата события</TableHead>{scope.kind !== 'student' && <TableHead>Ученик</TableHead>}<TableHead>Обучение</TableHead><TableHead>Запись</TableHead><TableHead>Результат</TableHead><TableHead>Источник</TableHead></TableRow></TableHeader><TableBody>{model.page.rows.map(row => <TableRow key={row.id}><TableCell className="whitespace-nowrap">{row.event_at ? new Date(row.event_at).toLocaleString('ru-RU') : 'Не указана'}</TableCell>{scope.kind !== 'student' && <TableCell>{row.student_user_id ? <button type="button" className="text-left text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2" onClick={() => navigate('/organization?' + new URLSearchParams({ tab: 'student-details', studentId: row.student_user_id!, studentSection: 'documents', ...(row.enrollment_id ? { studentJournalEnrollmentId: row.enrollment_id } : {}), ...(scope.kind === 'group' ? { returnToGroupId: scope.group_id, studentJournalGroupId: scope.group_id, ...(origin.department ? { returnDepartment: origin.department } : {}), ...(origin.participantSearch ? { returnParticipantSearch: origin.participantSearch } : {}) } : {}) }).toString())}>{row.student_label}</button> : row.student_label}</TableCell>}<TableCell>{row.course_label || 'Не указано'}{row.group_label && <p className="text-xs text-muted-foreground">{row.group_label}</p>}</TableCell><TableCell><p>{row.title}</p>{!ownViewer && ['admission_orders', 'education_documents', 'document_registration'].includes(row.journal_type) && <Button size="sm" variant="outline" className="mt-2 h-auto min-h-9 whitespace-normal rounded-xl text-left" onClick={() => navigate(documentChainJournalSourcePath(params, { kind: 'journal_source', journal_type: row.journal_type, row_id: row.id, source_id: row.source_id, source_revision: row.source_revision, enrollment_id: row.enrollment_id, group_id: row.group_id }))}>Открыть документ</Button>}</TableCell><TableCell>{row.result || 'Не указан'}</TableCell><TableCell><span className="text-sm">{row.source_label}</span>{row.source_revision !== null && <p className="text-xs text-muted-foreground">Версия {row.source_revision}</p>}</TableCell></TableRow>)}</TableBody></Table></div> : <p role="status" className="p-6 text-sm text-muted-foreground">Записей по выбранному обучению пока нет.</p>}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4"><p className="text-xs text-muted-foreground">Загружено {model.page.rows.length} из {model.page.total_count}. Выписка включает всю выборку.</p>{model.page.next_cursor && <Button variant="outline" className="rounded-xl" onClick={() => void model.loadMore()}>Загрузить ещё</Button>}</div>
       </div>}
     </>}
+    {!ownViewer && <DocumentChainSourceDialog organizationId={organizationId} target={scope} query={sourceRoute.state === 'ready' ? sourceRoute.query : null} invalid={sourceRoute.state === 'invalid'} enabled={enabled} accessKey={access} onClose={closeSource} />}
   </div>;
 }

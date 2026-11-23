@@ -14,6 +14,7 @@ import type { StudentEnrollment } from "@/types/student";
 import { StudentLaborSafetyXmlCard } from "@/components/organization/student-detail/StudentLaborSafetyXmlCard";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { StudentJournalLinks, type StudentJournalEnrollment } from './StudentJournalLinks';
+import { StudentDocumentChain } from './StudentDocumentChain';
 import { journalUuid } from '@/lib/educationJournalWorkspace/contract';
 
 interface DocumentsTabProps {
@@ -73,7 +74,10 @@ export function DocumentsTab({ h, orgPlan, organizationId, studentUserId, actorU
 
   return (
     <div className="space-y-6">
-      {journalUuid.safeParse(organizationId).success && journalUuid.safeParse(studentUserId).success && <StudentJournalLinks key={`${organizationId}:${studentUserId}`} organizationId={organizationId!} studentUserId={studentUserId!} enrollments={journalEnrollments} enrollmentsLoading={journalEnrollmentsLoading} enrollmentsError={journalEnrollmentsError} />}
+      {journalUuid.safeParse(organizationId).success && journalUuid.safeParse(studentUserId).success && <>
+        <StudentDocumentChain key={`chain:${organizationId}:${studentUserId}`} organizationId={organizationId!} studentUserId={studentUserId!} enrollments={journalEnrollments} enrollmentsLoading={journalEnrollmentsLoading} enrollmentsError={journalEnrollmentsError} />
+        <StudentJournalLinks key={`${organizationId}:${studentUserId}`} organizationId={organizationId!} studentUserId={studentUserId!} enrollments={journalEnrollments} enrollmentsLoading={journalEnrollmentsLoading} enrollmentsError={journalEnrollmentsError} hideEnrollmentSelector admissionSettingsOwnedByChain />
+      </>}
       {laborSafetyXml && (
         <StudentLaborSafetyXmlCard
           {...laborSafetyXml}

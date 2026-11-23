@@ -62,6 +62,7 @@ import { parseEducationArtifactSnapshot, withEducationArtifact, EDUCATION_ARTIFA
 import { GENERIC_EDUCATION_DRAFT_TYPES, isGenericEducationDraftType, genericDraftMissingRequisites } from '@/lib/group-docs/retainedGenericDrafts';
 import { createRetainedDraftBatchGuard, RetainedDraftBatchError } from '@/lib/group-docs/retainedDraftBatch';
 import { useGroupEducationFacts } from '@/hooks/useGroupEducationFacts';
+import { DocumentChainPanel } from '@/components/organization/documents/DocumentChainPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { captureAdmissionDocumentScope, readAdmissionDocumentSettings, normalizeAdmissionDocumentError, admissionDocumentErrorMessages } from '@/lib/admissionDocuments/client';
 import { captureOfflineActor } from '@/utils/courseCache';
@@ -582,6 +583,7 @@ function GroupDocumentsFolderView({
 
   return (
     <div className="space-y-4">
+      <DocumentChainPanel organizationId={organizationId} scope={{ kind: 'group', group_id: groupId }} title="Документы учеников группы" />
       {missingFields.length > 0 && (
         <Card className="p-4 rounded-2xl border-border bg-muted/40">
           <div className="flex items-start gap-3">

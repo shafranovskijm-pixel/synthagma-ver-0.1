@@ -1,6 +1,6 @@
 import { useIdentificationState } from '@/hooks/useIdentificationMedia';
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AdmissionCaseCard } from "@/components/organization/student-detail/AdmissionCaseCard";
 import { StudentEducationJournals } from './StudentEducationJournals';
+import { StudentDocumentChain } from '@/components/organization/student-detail/StudentDocumentChain';
+import {documentSigningPath,inboxStateLabel} from '@/lib/studentDocumentInbox';
 
 interface StudentDocumentsTabProps {
   userId: string;
@@ -63,7 +65,11 @@ function formatDate(dateStr?: string | null) {
   });
 }
 
-export function StudentDocumentsTab({
+export function StudentDocumentsTab(props: StudentDocumentsTabProps) {
+  return <StudentDocumentsView key={`${props.userId}:${props.organizationId}:${props.isAdminView === true}`} {...props} />;
+}
+
+function StudentDocumentsView({
   userId,
   userName,
   organizationId,
@@ -71,7 +77,10 @@ export function StudentDocumentsTab({
   userEmail,
 }: StudentDocumentsTabProps) {
   const navigate = useNavigate();
-  const inbox = useStudentSignatureInbox(userId);
+  const inbox = useStudentSignatureInbox(isAdminView ? null : userId, organizationId);
+  const [documentParams,setDocumentParams] = useSearchParams();
+  const requestedSignatureId = documentParams.get('documentRequest');
+  const requestedSignature = inbox.items.find(item => item.id === requestedSignatureId);
   const signatureReadScope = useSignatureReadScope([userId, organizationId, isAdminView]);
 
   // Status state for one-time tasks
@@ -105,6 +114,7 @@ export function StudentDocumentsTab({
             .from("student_consents")
             .select("status, signed_at, created_at, expires_at")
             .eq("user_id", userId)
+            .eq("organization_id", organizationId)
             .eq("status", "signed")
             .order("created_at", { ascending: false })
             .limit(1)
@@ -142,12 +152,12 @@ export function StudentDocumentsTab({
     return () => {
       cancelled = true;
     };
-  }, [userId, showVideoId, showConsent, showDocs]);
+  }, [userId, organizationId, showVideoId, showConsent, showDocs]);
 
   const handleOpenSignature = (sig: InboxSignature) => {
     // Open the public signing page in a new tab — student is already authenticated
     // but the page works with the token directly.
-    window.open(`/sign/${sig.signature_token}`, "_blank", "noopener");
+    window.open(documentSigningPath(sig), "_blank", "noopener,noreferrer");
   };
 
   const handleDownloadSigned = async (sig: InboxSignature) => {
@@ -234,7 +244,7 @@ export function StudentDocumentsTab({
     });
   }
 
-  const allClear = actionItems.length === 0;
+  const allClear = actionItems.length === 0 && !inbox.loading && !inbox.error && inbox.pendingCount === 0;
 
   if (statusLoading && inbox.loading) {
     return (
@@ -248,7 +258,14 @@ export function StudentDocumentsTab({
 
   return (
     <div className="space-y-6">
+      {inbox.error && <div role="alert" className="rounded-2xl border border-destructive/30 p-4 text-sm"><p>{inbox.error}</p><Button variant="outline" className="mt-2" onClick={()=>void inbox.reload()}>Повторить проверку документов</Button></div>}
+      {requestedSignatureId && !isAdminView && <Card className="rounded-2xl border-primary/30 p-4 space-y-3" aria-label="Документ из уведомления">
+        <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{requestedSignature?.document_title??'Документ из уведомления'}</h3><Button variant="ghost" size="sm" onClick={()=>{const next=new URLSearchParams(documentParams);next.delete('documentRequest');setDocumentParams(next,{replace:true});}}>Закрыть</Button></div>
+        {requestedSignature?<><p className="text-sm text-muted-foreground">{inboxStateLabel(requestedSignature)}</p><Button onClick={()=>handleOpenSignature(requestedSignature)}>Открыть документ</Button></>:inbox.loading?<p role="status">Проверяем входящие документы…</p>:inbox.hasMore?<><p className="text-sm">Документ может находиться на следующей странице.</p><Button disabled={inbox.loadingMore} variant="outline" onClick={()=>void inbox.loadMore()}>Загрузить следующие документы</Button></>:!inbox.error&&<p role="status" className="text-sm">Документ недоступен в текущем кабинете. Уточните у организации, доступно ли приглашение.</p>}
+      </Card>}
+      {inbox.hasMore && <Button variant="outline" disabled={inbox.loadingMore} onClick={()=>void inbox.loadMore()}>Загрузить ещё документы</Button>}
       <AdmissionCaseCard organizationId={organizationId} studentUserId={userId} enabled={!isAdminView} ownOnly onUploadOwn={() => setShowDocs(true)}/>
+      {!isAdminView && <StudentDocumentChain organizationId={organizationId} studentUserId={userId} ownViewer />}
       {!isAdminView && <StudentEducationJournals organizationId={organizationId} userId={userId} />}
       {/* Always-visible quick access to PEP + PD consent */}
       <Card className="rounded-2xl border-border/60 shadow-sm">
@@ -431,7 +448,8 @@ export function StudentDocumentsTab({
             <CollapsibleContent>
               <div className="px-4 pb-4 sm:px-5 sm:pb-5 space-y-2">
                 {inbox.archive.map((sig) => {
-                  const isSigned = sig.status === "signed";
+                  const isSigned = sig.state === "signed";
+                  const isConfirmed = sig.state === "confirmed";
                   return (
                     <div
                       key={sig.id}
@@ -453,18 +471,12 @@ export function StudentDocumentsTab({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{sig.document_title}</p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          {isSigned ? (
+                          {isConfirmed ? <><CheckCircle2 className="w-3 h-3 text-green-600" />{inboxStateLabel(sig)} {formatDate(sig.assurance.confirmed_at)}</> : isSigned ? (
                             <>
                               <CheckCircle2 className="w-3 h-3 text-green-600" />
                               Подписан {formatDate(sig.signed_at)}
                             </>
-                          ) : sig.status === "rejected" ? (
-                            <>Отклонён {formatDate(sig.created_at)}</>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3" /> Истёк {formatDate(sig.expires_at)}
-                            </>
-                          )}
+                          ) : <>{inboxStateLabel(sig)} {sig.state==='expired'?formatDate(sig.expires_at):''}</>}
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">

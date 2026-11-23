@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,10 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
-import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
 import { getPepAgreementText } from "@/constants/pepAgreementTemplate";
-import { buildConsentPdfHtml } from "@/lib/consentPdf";
-import { printHtmlContent } from "@/utils/printHtmlToPdf";
+import { useSignatureReadScope } from "@/hooks/useSignatureReadScope";
 
 interface StudentConsentFormProps {
   userId: string;
@@ -51,6 +49,7 @@ interface PepRecord {
   id: string;
   agreement_version: string;
   accepted_at: string;
+  agreement_text: string | null;
 }
 
 export const CONSENT_VERSION = "СПД-v1.0";
@@ -104,230 +103,172 @@ async function fetchClientIp(): Promise<string | null> {
   }
 }
 
-export function StudentConsentForm({
-  userId,
-  userName,
-  userEmail,
-  organizationId,
-  enrollmentId,
-  isOpen = false,
-  onOpenChange,
-  onConsent,
-  embedded = false,
-}: StudentConsentFormProps) {
+export function StudentConsentForm(props: StudentConsentFormProps) {
+  const scope = useSignatureReadScope([
+    props.userId, props.organizationId, props.enrollmentId ?? null,
+    props.userName, props.userEmail ?? null,
+  ], !!(props.isOpen || props.embedded));
+  return <StudentConsentFormOwned key={scope.key} {...props} actorId={scope.actorId} assertOwner={scope.capture()} />;
+}
+
+function StudentConsentFormOwned({
+  userId, userName, userEmail, organizationId, enrollmentId,
+  isOpen = false, onOpenChange, onConsent, embedded = false, actorId, assertOwner,
+}: StudentConsentFormProps & { actorId: string | null; assertOwner: () => void }) {
+  const owner = useRef(assertOwner);
+  const lifetime = useRef({ mounted: true, busy: false });
+  const onConsentRef = useRef(onConsent);
+  onConsentRef.current = onConsent;
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [emailFromAuth, setEmailFromAuth] = useState<string | null>(userEmail || null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
   const [hasAgreed, setHasAgreed] = useState(false);
   const [consentHistory, setConsentHistory] = useState<ConsentRecord[]>([]);
   const [currentConsent, setCurrentConsent] = useState<ConsentRecord | null>(null);
   const [pepAgreement, setPepAgreement] = useState<PepRecord | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [effectiveOrganizationId, setEffectiveOrganizationId] = useState<string | null>(
-    organizationId && organizationId.trim() ? organizationId : null
-  );
-
-  const resolveOrganizationId = useCallback(async (): Promise<string | null> => {
-    if (organizationId && organizationId.trim()) {
-      setEffectiveOrganizationId(organizationId);
-      return organizationId;
-    }
-    try {
-      if (enrollmentId) {
-        const { data: enr } = await supabase
-          .from("enrollments")
-          .select("course:courses(organization_id)")
-          .eq("id", enrollmentId)
-          .maybeSingle();
-        const orgFromEnr = (enr as any)?.course?.organization_id as string | undefined;
-        if (orgFromEnr) { setEffectiveOrganizationId(orgFromEnr); return orgFromEnr; }
-      }
-      const { data: anyEnr } = await supabase
-        .from("enrollments")
-        .select("course:courses(organization_id)")
-        .eq("user_id", userId)
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const orgFromAnyEnr = (anyEnr as any)?.course?.organization_id as string | undefined;
-      if (orgFromAnyEnr) { setEffectiveOrganizationId(orgFromAnyEnr); return orgFromAnyEnr; }
-      const { data: prof } = await supabase
-        .from("profiles").select("organization_id").eq("user_id", userId).maybeSingle();
-      if (prof?.organization_id) { setEffectiveOrganizationId(prof.organization_id); return prof.organization_id; }
-    } catch (e) { console.error("Error resolving organization id:", e); }
-    setEffectiveOrganizationId(null);
-    return null;
-  }, [organizationId, enrollmentId, userId]);
-
-  const loadOrganization = useCallback(async (orgId: string) => {
-    try {
-      const { data } = await supabase
-        .from("organizations")
-        .select("name, inn, ogrn, legal_address")
-        .eq("id", orgId)
-        .single();
-      if (data) setOrganization(data);
-    } catch (error) { console.error("Error loading organization:", error); }
+  const [effectiveOrganizationId, setEffectiveOrganizationId] = useState<string | null>(null);
+  const isSelf = actorId === userId;
+  const assertCurrent = () => {
+    owner.current();
+    if (!lifetime.current.mounted) throw new Error('Контекст изменился. Откройте согласие заново.');
+  };
+  const isCurrent = () => { try { assertCurrent(); return true; } catch { return false; } };
+  useEffect(() => {
+    lifetime.current.mounted = true;
+    return () => { lifetime.current.mounted = false; };
   }, []);
 
-  const loadConsentHistory = useCallback(async (orgId?: string | null) => {
-    setIsLoadingHistory(true);
-    try {
-      const query = supabase
-        .from("student_consents")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      if (orgId) query.eq("organization_id", orgId);
-      const { data, error } = await query;
+  // Only the selected enrollment may resolve an organization. An unrelated
+  // latest enrollment or the preview actor's profile is not consent evidence.
+  const resolveOrganizationId = async (): Promise<string> => {
+    assertCurrent();
+    const explicit = organizationId.trim();
+    if (enrollmentId) {
+      const { data, error } = await supabase.from('enrollments')
+        .select('course:courses(organization_id)').eq('id', enrollmentId).eq('user_id', userId).maybeSingle();
+      assertCurrent();
       if (error) throw error;
-      if (data && data.length > 0) {
-        setConsentHistory(data as ConsentRecord[]);
-        setCurrentConsent(data[0] as ConsentRecord);
-      } else {
-        setConsentHistory([]);
-        setCurrentConsent(null);
+      const course = (data as unknown as { course?: { organization_id?: string } | null } | null)?.course;
+      const bound = course?.organization_id;
+      if (!bound || (explicit && explicit !== bound)) {
+        throw new Error('Не удалось подтвердить организацию выбранного обучения.');
       }
-    } catch (error) {
-      console.error("Error loading consent history:", error);
-    } finally {
-      setIsLoadingHistory(false);
+      return bound;
     }
-  }, [userId]);
-
-  const loadPepAgreement = useCallback(async () => {
-    try {
-      const { data } = await supabase
-        .from("pep_agreements")
-        .select("id, agreement_version, accepted_at")
-        .eq("user_id", userId)
-        .eq("agreement_version", PEP_AGREEMENT_VERSION)
-        .order("accepted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setPepAgreement((data as PepRecord) || null);
-    } catch (e) { console.error("Load pep_agreement error", e); }
-  }, [userId]);
-
-  const loadEmail = useCallback(async () => {
-    if (emailFromAuth) return;
-    const { data } = await supabase.auth.getUser();
-    if (data.user?.email) setEmailFromAuth(data.user.email);
-  }, [emailFromAuth]);
+    if (!explicit) throw new Error('Не выбрана образовательная организация.');
+    return explicit;
+  };
 
   useEffect(() => {
-    if (isOpen || embedded) {
-      resolveOrganizationId().then((resolvedId) => {
-        if (resolvedId) loadOrganization(resolvedId);
-        loadConsentHistory(resolvedId);
-        loadPepAgreement();
-        loadEmail();
-      });
+    if (!isOpen && !embedded) return;
+    let active = true;
+    const clear = () => {
+      setOrganization(null); setConsentHistory([]); setCurrentConsent(null);
+      setPepAgreement(null); setEffectiveOrganizationId(null); setHasAgreed(false);
+      setEmailFromAuth(userEmail || null);
+    };
+    clear(); setLoadError(null); setIsLoadingHistory(true);
+    void (async () => {
+      try {
+        const orgId = await resolveOrganizationId();
+        const [org, history, agreement, auth] = await Promise.all([
+          supabase.from('organizations').select('name, inn, ogrn, legal_address').eq('id', orgId).single(),
+          supabase.from('student_consents').select('*').eq('user_id', userId)
+            .eq('organization_id', orgId).order('created_at', { ascending: false }),
+          supabase.from('pep_agreements').select('id, agreement_version, accepted_at, agreement_text')
+            .eq('user_id', userId).eq('organization_id', orgId).eq('agreement_version', PEP_AGREEMENT_VERSION)
+            .order('accepted_at', { ascending: false }).limit(1).maybeSingle(),
+          isSelf ? supabase.auth.getUser() : Promise.resolve(null),
+        ]);
+        assertCurrent(); if (!active) return;
+        if (org.error) throw org.error;
+        if (!org.data) throw new Error('Организация недоступна.');
+        if (history.error) throw history.error;
+        if (agreement.error) throw agreement.error;
+        if (auth?.error) throw auth.error;
+        if (isSelf && auth?.data.user?.id !== userId) throw new Error('Сеанс изменился. Откройте согласие заново.');
+        const records = (history.data || []) as ConsentRecord[];
+        setOrganization(org.data); setEffectiveOrganizationId(orgId);
+        setConsentHistory(records); setCurrentConsent(records[0] || null);
+        setPepAgreement((agreement.data as PepRecord | null) || null);
+        // A preview actor's email must never become the learner's email.
+        setEmailFromAuth(userEmail || (isSelf && auth?.data.user?.id === userId ? auth.data.user.email || null : null));
+      } catch (error) {
+        if (active && isCurrent()) {
+          clear(); setLoadError(getErrorMessage(error, 'Не удалось проверить согласия этой организации.'));
+        }
+      } finally { if (active && isCurrent()) setIsLoadingHistory(false); }
+    })();
+    return () => { active = false; };
+    // Identity and actor changes remount this owner; callbacks do not restart reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reload]);
+
+  const validateWriteOwner = async () => {
+    assertCurrent();
+    if (!isSelf || loadError || !effectiveOrganizationId || !organization) {
+      throw new Error('Согласие может подтвердить только сам ученик в своём кабинете после проверки организации.');
     }
-  }, [isOpen, embedded, resolveOrganizationId, loadOrganization, loadConsentHistory, loadPepAgreement, loadEmail]);
+    const { data, error } = await supabase.auth.getUser();
+    assertCurrent();
+    if (error) throw error;
+    if (data.user?.id !== userId) throw new Error('Сеанс изменился. Откройте согласие заново.');
+    const resolved = await resolveOrganizationId();
+    assertCurrent();
+    if (resolved !== effectiveOrganizationId) throw new Error('Организация обучения изменилась. Откройте согласие заново.');
+    return resolved;
+  };
 
   const handleSubmitConsent = async () => {
-    if (!hasAgreed) { toast.error("Необходимо согласиться с условиями"); return; }
-    if (!pepAgreement) {
-      toast.error("Сначала примите Соглашение об использовании ПЭП");
-      return;
-    }
-
-    let orgIdToUse = effectiveOrganizationId;
-    if (!orgIdToUse) orgIdToUse = await resolveOrganizationId();
-    if (!orgIdToUse) {
-      toast.error("Не удалось определить образовательную организацию. Обратитесь к администратору.");
-      return;
-    }
-
-    setIsLoading(true);
+    if (!hasAgreed || !pepAgreement || lifetime.current.busy) return;
+    lifetime.current.busy = true; setIsLoading(true);
     try {
-      const ip = await fetchClientIp();
+      const orgIdToUse = await validateWriteOwner();
+      const ip = await fetchClientIp(); assertCurrent();
       const now = new Date();
       const expiresAt = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-
-      const { data, error } = await supabase
-        .from("student_consents")
-        .insert({
-          user_id: userId,
-          organization_id: orgIdToUse,
-          enrollment_id: enrollmentId || null,
-          consent_type: "individual",
-          status: "signed",
-          full_name: userName,
-          email: emailFromAuth,
-          signed_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-          ip_address: ip,
-          user_agent: navigator.userAgent,
-          policy_version: CONSENT_VERSION,
-          purposes: CONSENT_PURPOSES,
-        } as any)
-        .select()
-        .single();
+      const { data, error } = await supabase.from('student_consents').insert({
+        user_id: userId, organization_id: orgIdToUse, enrollment_id: enrollmentId || null,
+        consent_type: 'individual', status: 'signed', full_name: userName,
+        email: emailFromAuth, signed_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+        ip_address: ip, user_agent: navigator.userAgent, policy_version: CONSENT_VERSION, purposes: CONSENT_PURPOSES,
+      } as any).select().single();
+      assertCurrent();
       if (error) throw error;
-
       setCurrentConsent(data as ConsentRecord);
-      setConsentHistory((prev) => [data as ConsentRecord, ...prev]);
-      toast.success("Согласие подписано простой электронной подписью");
-      onConsent?.();
+      setConsentHistory(prev => [data as ConsentRecord, ...prev]);
+      toast.success('Согласие сохранено'); onConsentRef.current?.();
     } catch (error) {
-      console.error("Error saving consent:", error);
-      toast.error(getErrorMessage(error, "Ошибка сохранения согласия"));
-    } finally {
-      setIsLoading(false);
-    }
+      if (isCurrent()) toast.error(getErrorMessage(error, 'Ошибка сохранения согласия'));
+    } finally { if (isCurrent()) { lifetime.current.busy = false; setIsLoading(false); } }
   };
 
   const handleAcceptPepAgreement = async () => {
-    let orgIdToUse = effectiveOrganizationId;
-    if (!orgIdToUse) orgIdToUse = await resolveOrganizationId();
-    if (!orgIdToUse) {
-      toast.error("Не удалось определить образовательную организацию. Обратитесь к администратору.");
-      return;
-    }
-
-    setIsLoading(true);
+    if (lifetime.current.busy) return;
+    lifetime.current.busy = true; setIsLoading(true);
     try {
-      const ip = await fetchClientIp();
+      const orgIdToUse = await validateWriteOwner();
+      const ip = await fetchClientIp(); assertCurrent();
       const agreementText = getPepAgreementText({
-        org_name: organization?.name || "Образовательная организация",
-        org_inn: organization?.inn || undefined,
-        user_name: userName,
-        user_email: emailFromAuth,
-        current_date: new Date().toLocaleDateString("ru-RU", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        }),
+        org_name: organization!.name, org_inn: organization!.inn || undefined,
+        user_name: userName, user_email: emailFromAuth,
+        current_date: new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' }),
       });
-
-      const { data, error } = await supabase
-        .from("pep_agreements")
-        .insert({
-          organization_id: orgIdToUse,
-          user_id: userId,
-          email: emailFromAuth,
-          full_name: userName,
-          agreement_text: agreementText,
-          agreement_version: PEP_AGREEMENT_VERSION,
-          accepted_at: new Date().toISOString(),
-          ip_address: ip,
-          user_agent: navigator.userAgent,
-        })
-        .select("id, agreement_version, accepted_at")
-        .single();
+      const { data, error } = await supabase.from('pep_agreements').insert({
+        organization_id: orgIdToUse, user_id: userId, email: emailFromAuth, full_name: userName,
+        agreement_text: agreementText, agreement_version: PEP_AGREEMENT_VERSION,
+        accepted_at: new Date().toISOString(), ip_address: ip, user_agent: navigator.userAgent,
+      }).select('id, agreement_version, accepted_at, agreement_text').single();
+      assertCurrent();
       if (error) throw error;
-
-      setPepAgreement(data as PepRecord);
-      toast.success("Соглашение об использовании ПЭП принято");
+      setPepAgreement(data as PepRecord); toast.success('Соглашение об использовании ПЭП принято');
     } catch (error) {
-      console.error("Accept pep_agreement error", error);
-      toast.error(getErrorMessage(error, "Не удалось сохранить соглашение ПЭП"));
-    } finally {
-      setIsLoading(false);
-    }
+      if (isCurrent()) toast.error(getErrorMessage(error, 'Не удалось сохранить соглашение ПЭП'));
+    } finally { if (isCurrent()) { lifetime.current.busy = false; setIsLoading(false); } }
   };
 
   const formatDate = (dateStr: string) =>
@@ -344,30 +285,8 @@ export function StudentConsentForm({
     }
   };
 
-  const handleDownload = async () => {
-    try {
-    const orgLine = `${organization?.name || ""}${organization?.inn ? ` · ИНН ${organization.inn}` : ""}${organization?.ogrn ? ` · ОГРН ${organization.ogrn}` : ""}`.trim();
-    const stampSrc = currentConsent;
-    const html = buildConsentPdfHtml({
-      title: "Согласие на обработку персональных данных",
-      organizationLine: orgLine || undefined,
-      bodyText: `Я, ${userName}, даю согласие${organization?.name ? ` ${organization.name}` : ""} на обработку моих персональных данных на условиях, изложенных ниже.\n\n${CONSENT_TEXT}`,
-      stamp: {
-        fullName: userName,
-        email: emailFromAuth || "",
-        signedAt: stampSrc?.signed_at || stampSrc?.created_at || new Date().toISOString(),
-        ip: stampSrc?.ip_address || null,
-        policyVersion: stampSrc?.policy_version || CONSENT_VERSION,
-        consentId: stampSrc?.id || null,
-        agreementId: pepAgreement?.id || null,
-        agreementAcceptedAt: pepAgreement?.accepted_at || null,
-        agreementVersion: pepAgreement?.agreement_version || null,
-      },
-    });
-    await printHtmlContent(html, "Согласие на обработку ПД");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось подготовить документ для печати"); }
-  };
-
+  // Legacy rows do not store an accepted consent body. Do not manufacture an
+  // alleged signed original from today's template and a historical timestamp.
   if (isLoadingHistory) {
     const loadingEl = (
       <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
@@ -391,9 +310,25 @@ export function StudentConsentForm({
           Согласие на обработку персональных данных
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          В соответствии с требованиями Федерального закона № 152-ФЗ. Подписывается простой электронной подписью (63-ФЗ).
+          Записи о согласии на обработку персональных данных для выбранной образовательной организации.
         </p>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 space-y-2" role="alert">
+          <p className="text-sm">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => setReload(value => value + 1)}>Повторить проверку</Button>
+        </div>
+      )}
+      {!isSelf && !loadError && (
+        <p className="text-sm text-muted-foreground">Режим просмотра. Подтвердить согласие может только сам ученик в своём кабинете.</p>
+      )}
+      {pepAgreement && (
+        <details className="rounded-xl border border-border/60 bg-card p-4">
+          <summary className="cursor-pointer text-sm">Сохранённое соглашение об использовании ПЭП</summary>
+          <p className="mt-3 whitespace-pre-wrap text-sm">{pepAgreement.agreement_text || 'Текст принятого соглашения не сохранён. Текущий шаблон не подставляется вместо него.'}</p>
+        </details>
+      )}
 
       {consentHistory.length > 0 && !showHistory && (
         <Button variant="ghost" size="sm" className="w-fit gap-2" onClick={() => setShowHistory(true)}>
@@ -431,7 +366,7 @@ export function StudentConsentForm({
               <Check className="w-7 h-7 text-green-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-green-600">Согласие подписано ПЭП</h3>
+              <h3 className="font-semibold text-lg text-green-600">Сохранена запись о согласии</h3>
               {currentConsent?.signed_at && (
                 <p className="text-sm text-muted-foreground mt-1">Подписано: {formatDate(currentConsent.signed_at)}</p>
               )}
@@ -441,18 +376,11 @@ export function StudentConsentForm({
             </div>
           </div>
 
+          <p className="text-sm text-muted-foreground text-center">
+            В этой записи не сохранён точный текст согласия. PDF подписанного оригинала недоступен; запись и её история сохранены.
+          </p>
           <div className="flex justify-center">
-            <PepSignatureStamp
-              fullName={userName}
-              email={emailFromAuth || ""}
-              signedAt={currentConsent?.signed_at || currentConsent?.created_at || new Date().toISOString()}
-              ip={currentConsent?.ip_address || undefined}
-              agreementId={pepAgreement?.id || undefined}
-            />
-          </div>
-
-          <div className="flex justify-center">
-            <Button variant="outline" onClick={handleDownload} className="rounded-xl gap-2">
+            <Button variant="outline" disabled className="rounded-xl gap-2">
               <Download className="w-4 h-4" />
               Скачать согласие (PDF)
             </Button>
@@ -511,7 +439,7 @@ export function StudentConsentForm({
                 variant="outline"
                 className="w-full rounded-xl gap-2"
                 onClick={handleAcceptPepAgreement}
-                disabled={isLoading || !effectiveOrganizationId}
+                disabled={isLoading || !effectiveOrganizationId || !!loadError || !isSelf}
               >
                 <ShieldCheck className="w-4 h-4" />
                 Принять соглашение ПЭП
@@ -535,6 +463,7 @@ export function StudentConsentForm({
             <Checkbox
               id="consent-checkbox"
               checked={hasAgreed}
+              disabled={isLoading || !!loadError || !isSelf || !effectiveOrganizationId}
               onCheckedChange={(checked) => setHasAgreed(checked === true)}
             />
             <Label htmlFor="consent-checkbox" className="text-sm cursor-pointer leading-relaxed">
@@ -545,7 +474,7 @@ export function StudentConsentForm({
           <Button
             className="w-full btn-gradient rounded-xl gap-2"
             onClick={handleSubmitConsent}
-            disabled={!hasAgreed || isLoading || !effectiveOrganizationId || !pepAgreement}
+            disabled={!hasAgreed || isLoading || !effectiveOrganizationId || !pepAgreement || !!loadError || !isSelf}
           >
             {isLoading ? (
               <><SigmaSpinner size="sm" /> Сохранение...</>

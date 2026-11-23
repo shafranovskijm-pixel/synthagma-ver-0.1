@@ -474,6 +474,8 @@ function LearnerDashboard() {
         <StudentHeader
           fullName={profile?.full_name || null}
           orgName={profile?.organization_name || null}
+          organizationId={profile?.organization_id}
+          notificationsEnabled={!isAdminView && !isPreviewMode && !isDemoStudent && !isAdminViewFromStorage && !isPreviewFromStorage && effectiveStudentId === user?.id}
           logoUrl={branding?.logoUrl}
           onLogout={handleLogout}
           setTheme={setTheme}

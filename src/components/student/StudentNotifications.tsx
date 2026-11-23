@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, CheckCheck, GraduationCap, CalendarClock, BookCheck, Handshake, Video, Sparkles } from "lucide-react";
+import { Bell, CheckCheck, GraduationCap, CalendarClock, BookCheck, Handshake, Video, Sparkles, FileCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
+import {useStudentSignatureInbox} from '@/hooks/useStudentSignatureInbox';
+import {studentDocumentsPath} from '@/lib/studentDocumentInbox';
 
 interface StudentNotification {
   id: string;
@@ -38,28 +40,37 @@ const COLOR_BY_TYPE: Record<string, string> = {
   course_updates: "bg-primary/15 text-primary",
 };
 
-export function StudentNotifications({ userId }: { userId: string }) {
+export function StudentNotifications({ userId,organizationId }: { userId: string;organizationId?:string|null }) {
+  return <StudentNotificationsView key={`${userId}:${organizationId??''}`} userId={userId} organizationId={organizationId}/>;
+}
+function StudentNotificationsView({userId,organizationId}:{userId:string;organizationId?:string|null}) {
   const navigate = useNavigate();
   const [items, setItems] = useState<StudentNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [feedError,setFeedError]=useState(false);
+  const [feedRevision,setFeedRevision]=useState(0);
+  const inbox=useStudentSignatureInbox(userId,organizationId);
 
   useEffect(() => {
     if (!userId) return;
     let mounted = true;
+    setItems([]);
     (async () => {
       setLoading(true);
-      const { data } = await supabase
+      setFeedError(false);
+      const { data,error } = await supabase
         .from("student_notifications" as any)
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(50);
       if (mounted) {
-        setItems((data as unknown as StudentNotification[]) ?? []);
+        setFeedError(!!error);
+        if(!error)setItems((data as unknown as StudentNotification[]) ?? []);
         setLoading(false);
       }
-    })();
+    })().catch(()=>{if(mounted){setFeedError(true);setLoading(false);}});
 
     const channel = supabase
       .channel(`student-notifications-${userId}`)
@@ -69,25 +80,25 @@ export function StudentNotifications({ userId }: { userId: string }) {
         table: "student_notifications",
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
-        setItems(prev => [payload.new as StudentNotification, ...prev]);
+        if(mounted)setItems(prev => [payload.new as StudentNotification, ...prev.filter(row=>row.id!==payload.new.id)].slice(0,50));
       })
       .subscribe();
 
     return () => { mounted = false; supabase.removeChannel(channel); };
-  }, [userId]);
+  }, [userId,feedRevision]);
 
   const unreadCount = useMemo(() => items.filter(i => !i.is_read).length, [items]);
 
   const markRead = async (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-    await supabase.from("student_notifications" as any).update({ is_read: true }).eq("id", id);
+    await supabase.from("student_notifications" as any).update({ is_read: true }).eq("id", id).eq('user_id',userId);
   };
 
   const markAllRead = async () => {
     const ids = items.filter(i => !i.is_read).map(i => i.id);
     if (!ids.length) return;
     setItems(prev => prev.map(n => ({ ...n, is_read: true })));
-    await supabase.from("student_notifications" as any).update({ is_read: true }).in("id", ids);
+    await supabase.from("student_notifications" as any).update({ is_read: true }).in("id", ids).eq('user_id',userId);
   };
 
   const handleClick = (n: StudentNotification) => {
@@ -104,6 +115,9 @@ export function StudentNotifications({ userId }: { userId: string }) {
     } else if (n.type === "partner_changes") {
       setOpen(false);
       navigate(`/student/profile?section=partner`);
+    } else if (['document_signature','document_ready','education_document'].includes(n.type)) {
+      setOpen(false);
+      navigate(studentDocumentsPath());
     }
   };
 
@@ -112,11 +126,11 @@ export function StudentNotifications({ userId }: { userId: string }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform">
+            <Button aria-label={`Уведомления: ${unreadCount}; документов требуют подтверждения: ${inbox.pendingCount}`} variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform">
               <Bell className="w-6 h-6" />
-              {unreadCount > 0 && (
+              {unreadCount + inbox.pendingCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-                  {unreadCount > 9 ? "9+" : unreadCount}
+                  {unreadCount + inbox.pendingCount > 9 ? "9+" : unreadCount + inbox.pendingCount}
                 </span>
               )}
             </Button>
@@ -124,7 +138,7 @@ export function StudentNotifications({ userId }: { userId: string }) {
         </TooltipTrigger>
         <TooltipContent>Уведомления</TooltipContent>
       </Tooltip>
-      <PopoverContent className="w-[380px] p-0 rounded-2xl" align="end" sideOffset={8}>
+      <PopoverContent className="w-[380px] max-w-[calc(100vw-24px)] p-0 rounded-2xl" align="end" sideOffset={8}>
         <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
           <h3 className="font-bold text-lg">Уведомления</h3>
           {unreadCount > 0 && (
@@ -135,13 +149,21 @@ export function StudentNotifications({ userId }: { userId: string }) {
           )}
         </div>
         <div className="border-t border-border" />
-        {loading ? (
+        {inbox.error && <div role="alert" className="p-4 text-sm"><p>{inbox.error}</p><Button variant="outline" size="sm" onClick={()=>void inbox.reload()}>Повторить проверку документов</Button></div>}
+        {inbox.pendingCount>0 && <div className="border-b border-border p-3 space-y-2">
+          <p className="px-2 text-sm font-semibold">Документы: требуется подтверждение ({inbox.pendingCount})</p>
+          {inbox.pending.slice(0,5).map(item=><button key={item.id} type="button" className="flex w-full items-start gap-3 rounded-xl bg-primary/5 p-3 text-left hover:bg-primary/10 focus-visible:outline focus-visible:outline-2" onClick={()=>{setOpen(false);navigate(studentDocumentsPath(item.id));}}>
+            <FileCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary"/><span className="min-w-0"><span className="block break-words text-sm font-medium">{item.document_title}</span><span className="block text-xs text-muted-foreground">Открыть документ и проверить условия подтверждения</span></span>
+          </button>)}
+          <Button variant="ghost" size="sm" className="h-auto min-h-10 whitespace-normal" onClick={()=>{setOpen(false);navigate(studentDocumentsPath());}}>Все документы ученика</Button>
+        </div>}
+        {feedError?<div role="alert" className="p-4 text-sm"><p>Не удалось загрузить уведомления.</p><Button variant="outline" size="sm" onClick={()=>setFeedRevision(value=>value+1)}>Повторить загрузку уведомлений</Button></div>:loading ? (
           <div className="flex items-center justify-center py-12"><SigmaSpinner /></div>
         ) : items.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Нет уведомлений</p>
-            <p className="text-xs mt-1 opacity-70">Здесь появятся напоминания о вебинарах, дедлайнах и оценках</p>
+            <p className="text-sm">{inbox.pendingCount>0||inbox.error?'Других уведомлений нет':'Нет уведомлений'}</p>
+            <p className="text-xs mt-1 opacity-70">Здесь появятся напоминания, оценки и документы на подтверждение</p>
           </div>
         ) : (
           <ScrollArea className="h-80">

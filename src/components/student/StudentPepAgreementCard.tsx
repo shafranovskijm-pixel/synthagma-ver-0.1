@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,10 +51,23 @@ export function StudentPepAgreementCard({
   onStatusChange,
   embedded = false,
 }: Props) {
-  const [current, setCurrent] = useState<StudentPepAgreement | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const scopeKey = JSON.stringify([userId, organizationId]);
+  const scope = useRef({ key: scopeKey });
+  if (scope.current.key !== scopeKey) scope.current = { key: scopeKey };
+  const owner = scope.current;
+  const mounted = useRef(false);
+  const statusCallback = useRef(onStatusChange);
+  statusCallback.current = onStatusChange;
+  const pending = useRef<object | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [state, setState] = useState({ owner, key: scopeKey, current: null as StudentPepAgreement | null, loading: true, dialogOpen: false, submitting: false, loadError: false });
+  const value = state.owner === owner ? state : { owner, key: scopeKey, current: null, loading: true, dialogOpen: false, submitting: false, loadError: false };
+  const { current, loading, dialogOpen, submitting, loadError } = value;
+  const isCurrent = () => mounted.current && scope.current === owner;
+  const update = (patch: Partial<typeof state>) => {
+    if (isCurrent()) setState(old => old.owner === owner ? { ...old, ...patch } : old);
+  };
+  const setDialogOpen = (open: boolean) => update({ dialogOpen: open });
 
   const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
   const agreementText = getPepAgreementText({
@@ -65,38 +78,53 @@ export function StudentPepAgreementCard({
     current_date: today,
   });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("pep_agreements")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("agreement_version", PEP_AGREEMENT_VERSION)
-        .order("accepted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      const rec = (data as StudentPepAgreement) || null;
-      setCurrent(rec);
-      onStatusChange?.(rec);
-    } catch (e) {
-      console.error("Load pep_agreement error", e);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    mounted.current = true;
+    let cancelled = false;
+    const stillCurrent = () => !cancelled && scope.current === owner;
+    pending.current = null;
+    setState({ owner, key: scopeKey, current: null, loading: !!organizationId && !!userId, dialogOpen: false, submitting: false, loadError: false });
+    statusCallback.current?.(null);
+    if (organizationId && userId) {
+      void (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("pep_agreements")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("organization_id", organizationId)
+            .eq("agreement_version", PEP_AGREEMENT_VERSION)
+            .order("accepted_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!stillCurrent()) return;
+          if (error) throw error;
+          const record = (data as StudentPepAgreement) || null;
+          setState(old => old.owner === owner ? { ...old, current: record, loading: false, loadError: false } : old);
+          statusCallback.current?.(record);
+        } catch (error) {
+          if (!stillCurrent()) return;
+          console.error("Load pep_agreement error", error);
+          setState(old => old.owner === owner ? { ...old, current: null, loading: false, loadError: true } : old);
+          statusCallback.current?.(null);
+        }
+      })();
     }
-  }, [userId, onStatusChange]);
-
-  useEffect(() => { load(); }, [load]);
+    return () => { cancelled = true; mounted.current = false; };
+  }, [scopeKey, userId, organizationId, owner, retry]);
 
   const handleAccept = async () => {
+    if (!isCurrent() || !userId || loading || loadError || submitting || current || pending.current) return;
     if (!organizationId) {
       toast.error("Не удалось определить образовательную организацию");
       return;
     }
-    setSubmitting(true);
+    const operation = {};
+    pending.current = operation;
+    update({ submitting: true });
     try {
       const ip = await fetchClientIp();
+      if (!isCurrent() || pending.current !== operation) return;
       const { data, error } = await supabase
         .from("pep_agreements")
         .insert({
@@ -112,22 +140,27 @@ export function StudentPepAgreementCard({
         })
         .select()
         .single();
+      if (!isCurrent() || pending.current !== operation) return;
       if (error) throw error;
-      const rec = data as StudentPepAgreement;
-      setCurrent(rec);
-      onStatusChange?.(rec);
+      const record = data as StudentPepAgreement;
+      update({ current: record });
+      statusCallback.current?.(record);
       toast.success("Соглашение об использовании ПЭП принято");
-    } catch (e) {
-      console.error("Accept pep_agreement error", e);
-      toast.error(getErrorMessage(e, "Не удалось сохранить принятие соглашения"));
+    } catch (error) {
+      if (!isCurrent() || pending.current !== operation) return;
+      console.error("Accept pep_agreement error", error);
+      toast.error(getErrorMessage(error, "Не удалось сохранить принятие соглашения"));
     } finally {
-      setSubmitting(false);
+      if (isCurrent() && pending.current === operation) {
+        pending.current = null;
+        update({ submitting: false });
+      }
     }
   };
 
   const handleDownload = async () => {
     try {
-    if (!current) return;
+    if (!isCurrent() || !current) return;
     const orgLine = `${organizationName || ""}${organizationInn ? ` · ИНН ${organizationInn}` : ""}`.trim();
     const html = buildPepAgreementPdfHtml({
       title: "Соглашение об использовании простой электронной подписи",
@@ -166,11 +199,15 @@ export function StudentPepAgreementCard({
               <p className="text-xs text-muted-foreground mt-1">
                 {isAccepted
                   ? `Принято ${new Date(current!.accepted_at).toLocaleString("ru-RU", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })} · версия ${current!.agreement_version}`
-                  : "Необходимо принять, чтобы подписывать документы простой электронной подписью (63-ФЗ)"}
+                  : loading ? "Проверяем сохранённое соглашение…"
+                  : loadError ? "Не удалось проверить соглашение. Повторите проверку."
+                  : !organizationId ? "Не удалось определить образовательную организацию"
+                  : "Сохранённого соглашения для этой организации пока нет"}
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
+                {loadError && <Button size="sm" variant="outline" onClick={() => setRetry(value => value + 1)}>Повторить проверку</Button>}
                 {!isAccepted ? (
-                  <Button size="sm" onClick={() => setDialogOpen(true)} disabled={loading || submitting} className="rounded-lg gap-2">
+                  <Button size="sm" onClick={() => setDialogOpen(true)} disabled={loading || submitting || loadError || !organizationId || !userId} className="rounded-lg gap-2">
                     <FileText className="w-4 h-4" />
                     Открыть и подписать
                   </Button>
@@ -195,7 +232,7 @@ export function StudentPepAgreementCard({
       <PepAgreementDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        agreementText={agreementText}
+        agreementText={current?.agreement_text ?? agreementText}
         onAccept={isAccepted ? undefined : handleAccept}
       />
     </>

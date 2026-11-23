@@ -15,6 +15,8 @@ import { useTheme } from "next-themes";
 interface StudentHeaderProps {
   fullName: string | null;
   orgName: string | null;
+  organizationId?: string | null;
+  notificationsEnabled?: boolean;
   logoUrl?: string;
   onLogout: () => void;
   setTheme: (t: string) => void;
@@ -35,7 +37,7 @@ interface StudentHeaderProps {
 }
 
 export function StudentHeader({
-  fullName, orgName, logoUrl, onLogout, setTheme,
+  fullName, orgName, organizationId, notificationsEnabled = true, logoUrl, onLogout, setTheme,
   pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = false, showAnnouncements = false,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
   onProfileClick, showDrivingSchool = false,
@@ -103,7 +105,7 @@ export function StudentHeader({
 
 
         {/* Personal notifications */}
-        {user?.id && <StudentNotifications userId={user.id} />}
+        {notificationsEnabled && user?.id && <StudentNotifications userId={user.id} organizationId={organizationId} />}
 
         {/* Profile dropdown */}
         <DropdownMenu>

@@ -3,8 +3,11 @@ import { EducationIssuanceError, readEducationIssuance, requireIssuanceScope, ty
 import { downloadIssuanceBlob } from "./export";
 
 /** Reads the exact attested immutable version. It never regenerates a historical original. */
-export async function downloadIssuedPdf(scope:EducationIssuanceScope,recordId:string) {
+export async function downloadIssuedPdf(scope:EducationIssuanceScope,recordId:string,expectedRevision?:number) {
   const result=await readEducationIssuance(scope,{kind:"record",record_id:recordId});
+  requireIssuanceScope(scope);
+  if(expectedRevision!==undefined&&(result.kind!=="record"||result.record.revision!==expectedRevision))
+    throw new EducationIssuanceError("SOURCE_CHANGED");
   if(result.kind!=="record"||result.record.artifact.availability!=="available"||!result.record.artifact.artifact)
     throw new EducationIssuanceError("ARTIFACT_UNAVAILABLE");
   const record=result.record,artifact=record.artifact.artifact;
