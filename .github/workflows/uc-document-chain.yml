@@ -20,6 +20,11 @@ on:
       - 'src/components/organization/student-detail/*DocumentChain*'
       - 'src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx'
       - 'src/components/organization/documents/DocumentChain*'
+      - 'src/components/organization/journals/EducationJournalWorkspace.tsx'
+      - 'src/components/organization/journals/__tests__/EducationJournalWorkspace.test.tsx'
+      - 'src/components/organization/group-folder/GroupDocumentsFolder.tsx'
+      - 'src/components/organization/tabs/DocumentsTab.tsx'
+      - 'src/lib/educationIssuance/artifactDownload.ts'
       - 'src/components/student/__tests__/StudentEducationJournals.scope.test.tsx'
       - 'src/pages/StudentDashboard.tsx'
       - 'src/components/organization/student-detail/DocumentsTab.tsx'
@@ -57,7 +62,7 @@ jobs:
       - name: Check actual application types
         run: npm run typecheck 2>&1 | tee outputs/uc-document-chain-frontend/typecheck.txt
       - name: Own inbox, real account confirmation, exact scope and journal chain
-        run: node node_modules/vitest/vitest.mjs run src/lib/__tests__/studentDocumentInbox.test.ts src/hooks/__tests__/useStudentSignatureInbox.test.tsx src/components/student/StudentPepAgreementCard.scope.test.tsx src/components/student/StudentConsentForm.scope.test.tsx src/components/student/__tests__/StudentDocumentNotifications.test.tsx src/lib/documentChain src/lib/educationIssuance/__tests__/artifactDownload.test.ts src/hooks/__tests__/useDocumentChain.test.tsx src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx src/components/organization/documents/DocumentChainPanel.test.tsx src/components/student/__tests__/StudentEducationJournals.scope.test.tsx --maxWorkers=1 --reporter=json --outputFile=outputs/uc-document-chain-frontend/tests.json 2>&1 | tee outputs/uc-document-chain-frontend/tests.txt
+        run: node node_modules/vitest/vitest.mjs run src/lib/__tests__/studentDocumentInbox.test.ts src/hooks/__tests__/useStudentSignatureInbox.test.tsx src/components/student/StudentPepAgreementCard.scope.test.tsx src/components/student/StudentConsentForm.scope.test.tsx src/components/student/__tests__/StudentDocumentNotifications.test.tsx src/lib/documentChain src/lib/educationIssuance/__tests__/artifactDownload.test.ts src/hooks/__tests__/useDocumentChain.test.tsx src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx src/components/organization/documents/DocumentChainPanel.test.tsx src/components/student/__tests__/StudentEducationJournals.scope.test.tsx src/components/organization/journals/__tests__/EducationJournalWorkspace.test.tsx --maxWorkers=1 --reporter=json --outputFile=outputs/uc-document-chain-frontend/tests.json 2>&1 | tee outputs/uc-document-chain-frontend/tests.txt
       - name: Build production application
         run: npm run build 2>&1 | tee outputs/uc-document-chain-frontend/build.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
