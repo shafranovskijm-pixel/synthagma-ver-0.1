@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "status": "NEW_BOUNDED_REGRESSION_SOURCE_PREPARATION_EXECUTION_HOLD",
+  "base": "ca008df",
+  "scope": "ONE new PostgreSQL17 case only; no old W2/W1/B1/readiness acceptance cases registered or executed",
+  "parent_reuse": {
+    "package": "supabase/tests/uc-individual-orders",
+    "current_foundation_sha256": "fef36192573ffc43148a843adc8fecdb3cd960ba4b18cba3d191f25d4591cef0",
+    "parent_old_W1_entrypoint_removed_before_registration": true,
+    "parent_old_B1_entrypoint_already_excluded": true,
+    "fresh_native_setup": [
+      "finite currentW1Foundation graph",
+      "canonical1700 once +explicit synthetic native ledger17 after actual install",
+      "canonical1800 source53e64 once to preserve current dependency composition; NO1800 qualifier/installer wrappers"
+    ]
+  },
+  "fixture": {
+    "actors": "one NEW native synthetic pupil/enrollment on unchanged existing lo.course; existing owner/group used lawfully; no customer users or new broad role",
+    "old_draft": "genuine automatic enrollment trigger creates groupNULL draft before group assignment",
+    "new_group": "normal authenticated owner assigns existing lo.group via effective membership/profile path; retained draft is not refreshed",
+    "snapshots": [
+      "full old draft row and dates/revision",
+      "old baseline rows/projections/rights before1900",
+      "target function body/ABI/ACL/owner/config before and after1900"
+    ]
+  },
+  "assertions": [
+    "Before1900: actual uc_read_document_chain JSON passes shape but unchanged strict client rejects SOURCE_CHANGED due olddraft.groupNULL vsresolved rowgroup",
+    "Apply ONLY frozen1900 newmigration once in owned lab; assert target oldbody7a0a04e4587c1fda6172ef781910e140 guard",
+    "After1900: same actual list/detail payload through readDocumentChain fullschema and crossfield checks succeeds",
+    "Mismatch draft remains truthful needs_information/sourceNULL/can_openfalse, with retained history/date/revision and current legal nextactions",
+    "Self metadata and existing foreign authority remain closed without source leak",
+    "Same-group manual refresh via canonical helper in ROLLBACK-only probe remains openable; afterROLLBACK full retained draft restored",
+    "Deliberately reinjected wrong-group oldsource in a copied reply still rejects SOURCE_CHANGED (client guard unchanged)",
+    "All reads and1900 patch preserve all old business rows/rights exactly; only reviewed target function changes"
+  ],
+  "client_transport": {
+    "real_pg_public_rpc": true,
+    "unchanged_readDocumentChain": true,
+    "unchanged_contract_and_rowMatches": true,
+    "synthetic_Supabase_session_transport_only": true,
+    "hostedAuthOrStorageHttpProof": false
+  },
+  "additional_source_only_audit": "Inspect education_record routing when newindividualrecord.groupNULL but resolved rowgroup nonnull; report only, no speculative fix",
+  "execution_gate": [
+    "1900authorfreeze",
+    "independent source acceptance",
+    "explicit root execution ACK"
+  ],
+  "planned_command": "node supabase/tests/uc-document-chain-scope/run-native.cjs",
+  "workflow_owner": "root; child supplies CI command/artifact contract, no workflow edits without assignment",
+  "production_actions": 0
+}

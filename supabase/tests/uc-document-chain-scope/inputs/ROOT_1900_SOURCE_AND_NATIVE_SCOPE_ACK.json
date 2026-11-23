@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-11-23T21:09:10.287Z",
+  "status": "SOURCE_ACCEPTED_NEW_BOUNDED_NATIVE_SCOPE_ONLY",
+  "sourceSha256": "95ffe446fde157e7ed7d3341a6a14e529d785e5b50ac42719852895b3a706272",
+  "bytes": 5850,
+  "beforeBodyMd5": "7a0a04e4587c1fda6172ef781910e140",
+  "afterBodyMd5": "343a7508d39857f94665cb8cca1c8092",
+  "actualBeforeReceipt": "ACTUAL_READONLY_1900_BEFORE.json",
+  "review": "Exact newbranch only; samegroup originalbranch preserved, sourceNULL/currentgroup actions unchanged, completepgproc metadata equal, no row/grant writes. Root read complete source and matched actual body preimage.",
+  "nativeScope": "One NEW ownedPG17 fixture on current1700+1800 composition; actual pre-fix strictclient failure; new1900 only + wrappers after independentreview; list/detail/currentgroup/mismatched/concrete/foreign/self guards; oldretaineddraft exact",
+  "productionAuthorized": false,
+  "installedOldMigrationReplays": 0
+}
