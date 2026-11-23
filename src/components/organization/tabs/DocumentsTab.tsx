@@ -12,6 +12,7 @@ import { FRDOManager } from "@/components/organization/FRDOManager";
 import { Button } from "@/components/ui/button";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
+import { DocumentChainPanel } from '@/components/organization/documents/DocumentChainPanel';
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
 import { CourseProgramsList } from "@/components/organization/CourseProgramsList";
 import { ContractGenerator } from "@/components/organization/ContractGenerator";
@@ -582,7 +583,7 @@ function DocumentsTabContent({
             </div>
           )}
           {h.activeTab === "org" && <OrgDocumentsManager organizationId={organizationId} canWrite={canWriteDocuments} />}
-          {h.activeTab === "orders" && isOrdersEnabled && <DocumentArchiveView canWrite={canWriteDocuments} organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} />}
+          {h.activeTab === "orders" && isOrdersEnabled && <div className="space-y-5"><DocumentChainPanel organizationId={organizationId} scope={{ kind: 'organization' }} /><DocumentArchiveView canWrite={canWriteDocuments} organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} /></div>}
           {h.activeTab === "protocols" && <DocumentArchiveView canWrite={canWriteDocuments} organizationId={organizationId} categoryId="attestation_protocols" title="Протоколы аттестационной комиссии" docTypes={["attestation_protocol"]} />}
           {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}

@@ -68,6 +68,19 @@ describe('journal UI and cross-routes', () => {
     expect(screen.getByText('Урок1')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Скачать выписку HTML' })); expect(mock.model.exportExtract).toHaveBeenCalledOnce();
   });
+  it.each(['Договор об обучении', 'Акт', 'Приказ о зачислении — название без подтверждённого типа'])('keeps the registry record %s and its extract without an unsupported source button', title => {
+    mock.model.summary.journals = [{ ...summary().journals[0], journal_type: 'document_registration', title: journalLabels.document_registration }];
+    mock.model.page = page();
+    Object.assign(mock.model.page, { journal_type: 'document_registration' });
+    Object.assign(mock.model.page.rows[0], { journal_type: 'document_registration', id: 'registry:' + ids.course, source_id: ids.course, source_revision: 2, title, source_label: 'Точная запись реестра' });
+    mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="document_registration" origin={{ kind: 'student', studentId: ids.student }} />);
+    expect(screen.getByText(title)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Открыть документ' })).not.toBeInTheDocument();
+    expect(screen.getByText('Файл по этой записи здесь пока не открывается. Запись сохранена в выписке.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Скачать выписку HTML' }));
+    expect(mock.model.exportExtract).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('location').textContent).not.toContain('documentChain');
+  });
   it('opens the exact learner documents and enrollment from a group journal row', () => {
     mock.model.page = page();
     mount(<EducationJournalWorkspace organizationId={ids.org} scope={{ kind: 'group', group_id: ids.group }} journalType="activity" origin={{ kind: 'group', groupId: ids.group, participantSearch: 'Иванов', department: 'Цех' }} />);

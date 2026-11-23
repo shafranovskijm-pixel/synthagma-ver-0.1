@@ -1,0 +1,120 @@
+name: UC student document chain
+on:
+  pull_request:
+    paths:
+      - 'src/lib/studentDocumentInbox.ts'
+      - 'src/lib/__tests__/studentDocumentInbox.test.ts'
+      - 'src/lib/documentChain/**'
+      - 'src/hooks/useStudentSignatureInbox.ts'
+      - 'src/hooks/useDocumentChain.ts'
+      - 'src/hooks/__tests__/useDocumentChain*'
+      - 'src/lib/educationIssuance/__tests__/artifactDownload.test.ts'
+      - 'src/components/student/*ConsentForm*'
+      - 'src/hooks/__tests__/useStudentSignatureInbox.test.tsx'
+      - 'src/components/student/StudentDocumentsTab.tsx'
+      - 'src/components/student/StudentEducationJournals*'
+      - 'src/components/student/StudentHeader.tsx'
+      - 'src/components/student/StudentNotifications*'
+      - 'src/components/student/__tests__/StudentDocumentNotifications.test.tsx'
+      - 'src/components/student/StudentPepAgreementCard*'
+      - 'src/components/organization/student-detail/*DocumentChain*'
+      - 'src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx'
+      - 'src/components/organization/documents/DocumentChain*'
+      - 'src/components/organization/journals/EducationJournalWorkspace.tsx'
+      - 'src/components/organization/journals/__tests__/EducationJournalWorkspace.test.tsx'
+      - 'src/components/organization/group-folder/GroupDocumentsFolder.tsx'
+      - 'src/components/organization/tabs/DocumentsTab.tsx'
+      - 'src/lib/educationIssuance/artifactDownload.ts'
+      - 'src/components/student/__tests__/StudentEducationJournals.scope.test.tsx'
+      - 'src/pages/StudentDashboard.tsx'
+      - 'src/components/organization/student-detail/DocumentsTab.tsx'
+      - 'supabase/migrations/20261123130000_uc_student_signature_inbox.sql'
+      - 'supabase/migrations/20261123140000_uc_document_chain_readmodel.sql'
+      - 'supabase/tests/uc-student-signature-inbox/**'
+      - 'supabase/tests/uc-document-chain/**'
+      - '.github/workflows/uc-document-chain.yml'
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.21.1'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Record exact source
+        run: |
+          mkdir -p outputs/uc-document-chain-frontend
+          git rev-parse HEAD > outputs/uc-document-chain-frontend/head.txt
+          node --version > outputs/uc-document-chain-frontend/node.txt
+          sha256sum supabase/migrations/20261123130000_uc_student_signature_inbox.sql supabase/migrations/20261123140000_uc_document_chain_readmodel.sql > outputs/uc-document-chain-frontend/source.sha256
+      - name: Check actual application types
+        run: npm run typecheck 2>&1 | tee outputs/uc-document-chain-frontend/typecheck.txt
+      - name: Own inbox, real account confirmation, exact scope and journal chain
+        run: node node_modules/vitest/vitest.mjs run src/lib/__tests__/studentDocumentInbox.test.ts src/hooks/__tests__/useStudentSignatureInbox.test.tsx src/components/student/StudentPepAgreementCard.scope.test.tsx src/components/student/StudentConsentForm.scope.test.tsx src/components/student/__tests__/StudentDocumentNotifications.test.tsx src/lib/documentChain src/lib/educationIssuance/__tests__/artifactDownload.test.ts src/hooks/__tests__/useDocumentChain.test.tsx src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx src/components/organization/documents/DocumentChainPanel.test.tsx src/components/student/__tests__/StudentEducationJournals.scope.test.tsx src/components/organization/journals/__tests__/EducationJournalWorkspace.test.tsx --maxWorkers=1 --reporter=json --outputFile=outputs/uc-document-chain-frontend/tests.json 2>&1 | tee outputs/uc-document-chain-frontend/tests.txt
+      - name: Build production application
+        run: npm run build 2>&1 | tee outputs/uc-document-chain-frontend/build.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-document-chain-frontend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/uc-document-chain-frontend/
+          if-no-files-found: error
+          retention-days: 14
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [inbox, chain]
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: uc_document_chain_lab
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_uc_document_chain_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d uc_document_chain_lab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: uc_document_chain_lab
+      PGUSER: postgres
+      PGPASSWORD: synthetic_uc_document_chain_only
+      UC_CHAIN_SUITE: ${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Install isolated PostgreSQL client
+        run: python -m pip install --disable-pip-version-check --index-url https://pypi.org/simple "psycopg[binary]==3.2.9"
+      - name: Actual new read RPC on isolated PostgreSQL17
+        run: python supabase/tests/uc-student-signature-inbox/run-native.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: uc-document-chain-native-${{ matrix.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/uc-document-chain-native/
+          if-no-files-found: error
+          retention-days: 14

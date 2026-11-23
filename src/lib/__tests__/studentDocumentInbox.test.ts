@@ -1,0 +1,27 @@
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+const mocks=vi.hoisted(()=>({rpc:vi.fn(),current:vi.fn()}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mocks.rpc}}));
+vi.mock('@/utils/courseCache',()=>({isOfflineActorCurrent:mocks.current}));
+import {parseDocumentInboxPage,readStudentDocumentInbox,inboxStateLabel,studentDocumentsPath} from '../studentDocumentInbox';
+const org='10000000-0000-4000-8000-000000000001',user='20000000-0000-4000-8000-000000000001',id='30000000-0000-4000-8000-000000000001';
+const now='2026-11-23T08:00:00Z';
+const item=()=>({id,organization_id:org,document_title:'Получение электронной копии свидетельства',document_type:'education_document',legacy_status:'sent',sender_name:null,expires_at:null,signature_token:'private-own-token',created_at:now,signed_at:null,viewed_at:null,signed_document_path:null,state:'pending',pending:true,assurance:{binding_id:null,binding_revision:null,document_revision_id:null,document_html_sha256:null,conclusion:'not_confirmed',event_id:null,event_revision:null,confirmed_at:null,source_current:false}});
+const page=()=>({version:1,ok:true,organization_id:org,recipient_user_id:user,observed_at:now,items:[item()],pending_count:1,total_count:1,next_cursor:null});
+describe('own document inbox boundary',()=>{
+ beforeEach(()=>{vi.clearAllMocks();mocks.current.mockReturnValue(true);});
+ it('keeps real pending task and historical status independent',()=>{const p=parseDocumentInboxPage(page(),org,user);expect(p.items[0].pending).toBe(true);expect(p.items[0].legacy_status).toBe('sent');});
+ it.each(['organization_id','recipient_user_id'])('rejects a different %s',field=>{const p=page();(p as any)[field]=id;expect(()=>parseDocumentInboxPage(p,org,user)).toThrow();});
+ it('rejects a foreign row even in an own envelope',()=>{const p=page();p.items[0].organization_id=id;expect(()=>parseDocumentInboxPage(p,org,user)).toThrow();});
+ it('rejects duplicate records rather than double-counting a task',()=>{const p=page();p.items.push(item());p.total_count=2;expect(()=>parseDocumentInboxPage(p,org,user)).toThrow();});
+ it('cannot treat a new unproven confirmation as signed',()=>{const p=page();p.items[0].state='confirmed';p.items[0].pending=false;expect(()=>parseDocumentInboxPage(p,org,user)).toThrow();});
+ it('archives a genuine exact-version confirmation without rewriting legacy dates',()=>{const p=page();Object.assign(p.items[0],{state:'confirmed',pending:false});Object.assign(p.items[0].assurance,{source_current:true,binding_id:id,binding_revision:1,document_html_sha256:'a'.repeat(64),event_id:id,event_revision:3,confirmed_at:now,conclusion:'policy_eligible_account_confirmation'});p.pending_count=0;const result=parseDocumentInboxPage(p,org,user);expect(result.items[0].legacy_status).toBe('sent');expect(result.items[0].signed_at).toBeNull();expect(inboxStateLabel(result.items[0])).toContain('ПЭП');});
+ it('keeps bearer facts distinct from account PEP',()=>{const p=page();Object.assign(p.items[0],{state:'confirmed',pending:false});Object.assign(p.items[0].assurance,{source_current:true,binding_id:id,binding_revision:1,document_html_sha256:'a'.repeat(64),event_id:id,event_revision:3,confirmed_at:now,conclusion:'factual_confirmation'});expect(inboxStateLabel(parseDocumentInboxPage(p,org,user).items[0])).not.toContain('ПЭП');});
+ it('does not silently replace a failed read with empty documents',()=>{expect(()=>parseDocumentInboxPage({version:1,ok:false,code:'DEPENDENCY_UNAVAILABLE'},org,user)).toThrow('DEPENDENCY_UNAVAILABLE');});
+ it('does not put a signing token into the bell destination',()=>{expect(studentDocumentsPath(id)).toBe('/student?tab=profile&section=documents&documentRequest='+id);expect(()=>studentDocumentsPath('https://outside.example')).toThrow();});
+ it('rejects a cursor unrelated to the last page record',()=>{const p=page();(p as any).next_cursor={created_at:now,id:user};expect(()=>parseDocumentInboxPage(p,org,user)).toThrow('INVALID_INPUT');});
+ it('rejects repeated or newer records after a page cursor',()=>{expect(()=>parseDocumentInboxPage(page(),org,user,{created_at:now,id})).toThrow('INVALID_INPUT');});
+ it('does not collapse distinct microsecond timestamps into a UUID tie',()=>{const p=page();p.items[0].created_at='2026-11-23T08:00:00.123456Z';const older={...item(),id:user,created_at:'2026-11-23T08:00:00.123455Z'};p.items.push(older);p.pending_count=2;p.total_count=2;expect(parseDocumentInboxPage(p,org,user).items).toHaveLength(2);});
+ it('never dispatches after actor invalidation',async()=>{mocks.current.mockReturnValue(false);await expect(readStudentDocumentInbox(org,user,7,null)).rejects.toThrow('ACCESS_DENIED');expect(mocks.rpc).not.toHaveBeenCalled();});
+ it('discards response after an account switch',async()=>{let finish:(value:any)=>void=()=>{};mocks.rpc.mockReturnValue(new Promise(resolve=>{finish=resolve;}));const request=readStudentDocumentInbox(org,user,7,null);mocks.current.mockReturnValue(false);finish({data:page(),error:null});await expect(request).rejects.toThrow('ACCESS_DENIED');});
+ it('uses the bounded RPC and exact page cursor',async()=>{mocks.rpc.mockResolvedValue({data:page(),error:null});const cursor={created_at:'2026-11-23T09:00:00Z',id};await readStudentDocumentInbox(org,user,7,cursor);expect(mocks.rpc).toHaveBeenCalledWith('read_student_document_inbox',{p_organization_id:org,p_after_created_at:cursor.created_at,p_after_id:id,p_limit:50});});
+});

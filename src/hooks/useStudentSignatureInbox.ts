@@ -1,90 +1,32 @@
-import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-export interface InboxSignature {
-  id: string;
-  document_title: string;
-  document_type: string;
-  status: string;
-  sender_name: string | null;
-  expires_at: string | null;
-  signature_token: string;
-  organization_id: string;
-  created_at: string;
-  signed_at: string | null;
-  viewed_at: string | null;
-  signed_document_path: string | null;
-}
-
-const PENDING_STATUSES = ["sent", "viewed", "in_review"];
-const ARCHIVE_STATUSES = ["signed", "rejected", "expired"];
-
-export function useStudentSignatureInbox(userId: string | null | undefined) {
-  const [items, setItems] = useState<InboxSignature[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!userId) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("document_signatures")
-      .select(
-        "id, document_title, document_type, status, sender_name, expires_at, signature_token, organization_id, created_at, signed_at, viewed_at, signed_document_path"
-      )
-      .eq("recipient_user_id", userId)
-      .eq("hidden_for_recipient", false)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("[useStudentSignatureInbox]", error);
-      setItems([]);
-    } else {
-      setItems((data || []) as InboxSignature[]);
-    }
-    setLoading(false);
-  }, [userId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Realtime updates for incoming documents
-  useEffect(() => {
-    if (!userId) return;
-    const channel = supabase
-      .channel(`student-inbox-${userId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "document_signatures",
-          filter: `recipient_user_id=eq.${userId}`,
-        },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const row = payload.new as any;
-            toast.info("Новый документ от организации", {
-              description: row.document_title,
-            });
-          }
-          load();
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId, load]);
-
-  const pending = items.filter((i) => PENDING_STATUSES.includes(i.status));
-  const archive = items.filter((i) => ARCHIVE_STATUSES.includes(i.status));
-
-  return { items, pending, archive, loading, reload: load };
+import {useEffect,useMemo} from 'react';
+import {useInfiniteQuery,useQueryClient} from '@tanstack/react-query';
+import {supabase} from '@/integrations/supabase/client';
+import {useAuth} from '@/hooks/useAuth';
+import {captureOfflineActor,isOfflineActorCurrent} from '@/utils/courseCache';
+import {readStudentDocumentInbox,type DocumentInboxCursor,type DocumentInboxItem} from '@/lib/studentDocumentInbox';
+export type InboxSignature=DocumentInboxItem & {/** Historical state; not the new confirmation result. */status:string};
+/** Own inbox only: administrative preview never acts as the learner. */
+export function useStudentSignatureInbox(userId:string|null|undefined,organizationId:string|null|undefined) {
+ const {user,loading:authLoading}=useAuth();const actorRevision=captureOfflineActor(user?.id);
+ const enabled=!authLoading&&!!userId&&user?.id===userId&&!!organizationId&&actorRevision!==null;
+ const queryClient=useQueryClient();
+ const key=useMemo(()=>['student-document-inbox',userId,organizationId,actorRevision] as const,[userId,organizationId,actorRevision]);
+ const query=useInfiniteQuery({queryKey:key,enabled,initialPageParam:null as DocumentInboxCursor|null,
+  queryFn:({pageParam,signal})=>readStudentDocumentInbox(organizationId!,userId!,actorRevision!,pageParam,signal),
+  getNextPageParam:last=>last.next_cursor??undefined,staleTime:10000,gcTime:0,retry:false,refetchOnWindowFocus:'always'});
+ useEffect(()=>{
+  if(!enabled)return;
+  const refresh=()=>{if(isOfflineActorCurrent(userId!,actorRevision))void queryClient.invalidateQueries({queryKey:key,exact:true},{cancelRefetch:false});};
+  const visible=()=>{if(document.visibilityState==='visible')refresh();};
+  const channel=supabase.channel('student-document-inbox-'+userId+'-'+organizationId+'-'+crypto.randomUUID())
+   .on('postgres_changes',{event:'*',schema:'public',table:'document_signatures',filter:'recipient_user_id=eq.'+userId},refresh).subscribe();
+  window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',visible);
+  return()=>{void supabase.removeChannel(channel);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible);};
+ },[enabled,userId,organizationId,actorRevision,key,queryClient]);
+ const current=enabled&&isOfflineActorCurrent(userId!,actorRevision);
+ const items:InboxSignature[]=current?(query.data?.pages.flatMap(p=>p.items).filter((item,index,all)=>all.findIndex(x=>x.id===item.id)===index).map(item=>({...item,status:item.legacy_status}))??[]):[];
+ const first=current?query.data?.pages[0]:null;
+ return {items,pending:items.filter(i=>i.pending),archive:items.filter(i=>!i.pending),pendingCount:first?.pending_count??0,totalCount:first?.total_count??0,
+  loading:enabled&&query.isPending,error:current&&query.isError?'Не удалось проверить документы. Повторите загрузку.':null,enabled,
+  hasMore:current&&query.hasNextPage,loadingMore:query.isFetchingNextPage,loadMore:()=>query.fetchNextPage(),reload:()=>query.refetch()};
 }
