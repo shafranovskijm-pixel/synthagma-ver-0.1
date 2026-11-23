@@ -1,8 +1,8 @@
 import { describe,it,expect } from 'vitest';
-import * as c from '../contract';
-import {individualAdmissionScopeSchema,individualAdmissionBindingSchema,individualAdmissionStateSchema} from '../../../../supabase/functions/_shared/individual-admission-evidence-schema';
+import * as c from '../../../src/lib/individualEducationIssuance/contract';
+import {individualAdmissionScopeSchema,individualAdmissionBindingSchema,individualAdmissionStateSchema} from '../../functions/_shared/individual-admission-evidence-schema';
 import { admissionScopeSchema } from '@/lib/admissionCases/contract';
-import * as f from './fixtures';
+import * as f from '../../../src/lib/individualEducationIssuance/__tests__/fixtures';
 const pairs=[[c.individualScopeSchema,individualAdmissionScopeSchema,f.scope],[c.admissionBindingSchema,individualAdmissionBindingSchema,f.binding],[c.admissionStateSchema,individualAdmissionStateSchema,f.state]] as const;
 describe('strict individual evidence source and Edge parity',()=>{
  it.each(pairs)('accepts the exact real-null-group branch in both independent decoders', (front,edge,make)=>{expect(front.safeParse(make()).success).toBe(true);expect(edge.parse(make())).toEqual(front.parse(make()));});
