@@ -7,6 +7,7 @@ import { EditorDemoSection } from "@/components/landing/EditorDemoSection";
 import { FrdoSection } from "@/components/landing/FrdoSection";
 import { Features } from "@/components/landing/Features";
 import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses";
+import { RtnPreparationSection } from "@/components/landing/RtnPreparationSection";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { PricingPlans } from "@/components/landing/PricingPlans";
 import { BoxedVersionCard } from "@/components/landing/BoxedVersionCard";
@@ -73,6 +74,7 @@ const Index = () => {
         <HowItWorks />
         <EditorDemoSection />
         <RostechnadzorCourses />
+        <RtnPreparationSection />
         <Features />
         <FrdoSection />
         <MobileApp />
