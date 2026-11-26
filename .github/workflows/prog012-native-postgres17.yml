@@ -1,0 +1,56 @@
+name: PROG012 native PostgreSQL 17.11 unit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/prog012-native-postgres17.yml"
+      - "scripts/qa/prog012/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-postgres-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11@sha256:0b81cec82228160abfa753aeaad0609b709eb26eeb950f2e404ad2326e1cc370
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: sintagma_pcr_v4_r2_lab_20261028
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: "--auth-local=trust --auth-host=trust"
+        # Job-private service network; deliberately no published host ports.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d sintagma_pcr_v4_r2_lab_20261028"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout the exact reviewed PR head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run unchanged native127 then additive current-authority12 components
+        env:
+          PCR_SERVICE_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          python3 scripts/qa/prog012/run_ci_postgres_original127_then_current_authority.py \
+            --container-id "$PCR_SERVICE_CONTAINER" \
+            --expected-manifest-sha256 "1ec4daf15f4fa5e377d464222890d598c0c6578960868dc356a1feb0d40c07db" \
+            --expected-integration-manifest-sha256 "44c4bb7fbedcf12daf4011b4056fd70075e14f52c4e88f16f54b2e76401bff9e" \
+            --expected-current-capture-manifest-sha256 "0ae3040df6a7480fd98695ffa3824115298bfb8dc24361a926812c2c44c30f04" \
+            --expected-current-authority-manifest-sha256 "0dff5eba60e1d120ea0a8107808dfe34e7fb2d83774ef62d74805d2b243ff608" \
+            --ci-source-reviewed-only
+      - name: Preserve exact native logs and finite result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: prog012-native-unit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/prog012-postgres-unit-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 7
