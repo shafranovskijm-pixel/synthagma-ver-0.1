@@ -12,7 +12,7 @@ export class EducationTemplateError extends Error {
 type Node = DefaultTreeAdapterMap['node'];
 type Element = DefaultTreeAdapterMap['element'];
 const encoder = new TextEncoder();
-const fail = (): never => {throw new EducationTemplateError();};
+const fail: () => never = () => {throw new EducationTemplateError();};
 const OPTIONAL = new Set(['document_series', 'qualification_name', 'profession']);
 export const EDUCATION_REQUIRED_BODY_FIELDS = ['organization_name', 'full_name', 'program_title', 'document_number', 'reg_number', 'issue_date'] as const;
 const KEYS = new Set(Object.keys(educationRenderVariablesSchema.shape));

@@ -3,11 +3,12 @@ import {educationArtifactRequestSchema, educationArtifactContextSchema, educatio
   type EducationArtifactRequest, type EducationArtifactContext, type EducationStagingProof} from './education-issuance-artifact-contract.ts';
 import {admissionSame, admissionHash, admissionTime, admissionUuid, readAdmissionBody, requireAdmissionActor,
   AdmissionError} from './admission-case-access.ts';
+import {adjacentIoFence} from './adjacent-io-fence.ts';
 import {prepareEducationHtml, EducationTemplateError} from './education-issuance-render.ts';
 import {validateFaithfulPdf, FaithfulPdfError, EDUCATION_PDF_MAX_BYTES, EDUCATION_RENDERER_REVISION} from './faithful-pdf.ts';
 
 export const EDUCATION_ARTIFACT_MS = 55_000;
-export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261024-v4';
+export const EDUCATION_ARTIFACT_REVISION = 'uc-education-artifact-20261126-v5-adjacent';
 const codes = ['INVALID_INPUT', 'ACCESS_DENIED', 'REVISION_CONFLICT', 'REQUEST_CONFLICT', 'SOURCE_CHANGED', 'SOURCE_UNAVAILABLE',
   'PREREQUISITE_MISSING', 'REVIEW_REQUIRED', 'LIMIT_EXCEEDED', 'DEPENDENCY_UNAVAILABLE', 'NUMBER_PLAN_STALE',
   'ARTIFACT_UNAVAILABLE', 'ARTIFACT_REVIEW_REQUIRED', 'ARTIFACT_RENDER_FAILED'] as const;
@@ -26,7 +27,7 @@ export class EducationArtifactError extends Error {
   constructor(readonly code: Code, readonly status = code === 'ACCESS_DENIED' ? 403 : code === 'INVALID_INPUT' ? 400
     : code === 'LIMIT_EXCEEDED' ? 413 : ['DEPENDENCY_UNAVAILABLE', 'ARTIFACT_RENDER_FAILED'].includes(code) ? 503 : 409) {super(code);}
 }
-const fail = (code: Code = 'SOURCE_CHANGED'): never => {throw new EducationArtifactError(code);};
+const fail: (code?: Code) => never = (code = 'SOURCE_CHANGED') => {throw new EducationArtifactError(code);};
 const check = (signal: AbortSignal): void => {if (signal.aborted) fail('DEPENDENCY_UNAVAILABLE');};
 const same = (left: unknown, right: unknown): void => {if (!admissionSame(left, right)) fail();};
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -34,7 +35,7 @@ const hash = (value: unknown): value is string => typeof value === 'string' && /
 const headers = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Expose-Headers': 'X-Sintagma-Function-Revision',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Expose-Headers': 'X-Sintagma-Function-Revision, X-Sintagma-Artifact-Phase, X-Sintagma-Artifact-Step, X-Sintagma-Artifact-Elapsed-Ms, X-Sintagma-Artifact-Deadline, X-Sintagma-Artifact-Fences',
   'X-Sintagma-Function-Revision': EDUCATION_ARTIFACT_REVISION, 'Cache-Control': 'private, no-store, max-age=0',
   'Pragma': 'no-cache', 'X-Content-Type-Options': 'nosniff',
 };
@@ -69,6 +70,13 @@ export interface EducationArtifactDependencies {
   createService(signal: AbortSignal): EducationService;
   render(html: string, signal: AbortSignal): Promise<Uint8Array>;
 }
+type ArtifactPhase = 'request' | 'template' | 'staging' | 'output_commit' | 'output_verify' | 'artifact_attest' | 'complete';
+type ArtifactStep = 'body' | 'actor_initial' | 'actor_before' | 'context' | 'actor_after' | 'storage_info' | 'storage_download'
+  | 'blob_bytes' | 'digest' | 'observe_staging' | 'observe_output' | 'render' | 'staging_upload' | 'staging_attest'
+  | 'output_upload' | 'output_commit' | 'artifact_attest';
+type ArtifactIO = <T>(step: ArtifactStep, operation: () => PromiseLike<T> | T) => Promise<T>;
+type ArtifactDiagnostic = {phase: ArtifactPhase; step: ArtifactStep; deadline: boolean; counts: () => {fresh: number; reused: number}};
+
 function db(result: DbResult): unknown {
   if (!result.error) return result.data;
   const error = record(result.error) ? result.error : {};
@@ -148,11 +156,11 @@ function selectEqual<T>(values: unknown[], parser: (value: unknown) => T): T {
   return parsed[0];
 }
 async function info(storage: EducationStorage, bucket: string, path: string, signal: AbortSignal,
-  fence: () => Promise<unknown>, absent = false, observe?: RawObserver): Promise<ObjectInfo | null> {
+  io: ArtifactIO, fence: () => Promise<unknown>, absent = false, observe?: RawObserver): Promise<ObjectInfo | null> {
   await fence();
   check(signal);
   const before = observe ? await observe() : undefined; check(signal);
-  const result = await storage.from(bucket).info(path); check(signal);
+  const result = await io('storage_info', () => storage.from(bucket).info(path)); check(signal);
   await fence(); check(signal);
   const after = observe ? await observe() : undefined; check(signal);
   same(before, after);
@@ -214,11 +222,11 @@ function objectIdentity(value: ObjectInfo, expected: {object_id: string; updated
   same(value.object_id, expected.object_id); same(value.updated_at, admissionTime(expected.updated_at));
 }
 async function bytes(storage: EducationStorage, bucket: string, path: string, expected: ObjectInfo,
-  signal: AbortSignal, knownHash: string | null, fence: () => Promise<unknown>, observe?: RawObserver,
+  signal: AbortSignal, knownHash: string | null, io: ArtifactIO, fence: () => Promise<unknown>, observe?: RawObserver,
   plainHtmlTemplateTransport = false): Promise<{bytes: Uint8Array; sha256: string}> {
   await fence();
   check(signal);
-  const result = await storage.from(bucket).download(path); check(signal);
+  const result = await io('storage_download', () => storage.from(bucket).download(path)); check(signal);
   await fence(); check(signal);
   if (result.error) {if (notFound(result.error)) fail('SOURCE_UNAVAILABLE'); return fail('DEPENDENCY_UNAVAILABLE');}
   // The deployed private-object proxy returns this verified HTML source as text/plain.
@@ -227,13 +235,13 @@ async function bytes(storage: EducationStorage, bucket: string, path: string, ex
   const exactMime = result.data?.type === expected.mime;
   const plainTemplate = plainHtmlTemplateTransport && expected.mime === 'text/html' && result.data?.type === 'text/plain';
   if (!result.data || result.data.size !== expected.size || !exactMime && !plainTemplate) fail('SOURCE_UNAVAILABLE');
-  const data = new Uint8Array(await result.data.arrayBuffer()); check(signal);
+  const data = new Uint8Array(await io('blob_bytes', () => result.data!.arrayBuffer())); check(signal);
   if (data.length !== expected.size) fail();
   if (expected.mime === 'application/pdf') validateFaithfulPdf(data);
-  const sha256 = await admissionHash(data); check(signal);
+  const sha256 = await io('digest', () => admissionHash(data)); check(signal);
   await fence(); check(signal);
   if (knownHash && sha256 !== knownHash) fail();
-  const after = await info(storage, bucket, path, signal, fence, false, observe); same(identity(expected), after && identity(after));
+  const after = await info(storage, bucket, path, signal, io, fence, false, observe); same(identity(expected), after && identity(after));
   return {bytes: data, sha256};
 }
 const provenanceKeys = ['preparation_id', 'item_id', 'render_input_hash', 'template_byte_sha256', 'html_sha256', 'byte_sha256', 'renderer', 'renderer_revision'] as const;
@@ -264,24 +272,31 @@ function attestation(raw: unknown, kind: 'staging_attested' | 'artifact_attested
     byte_size: object.size, object_id: object.object_id, updated_at: object.updated_at});
 }
 
-async function execute(request: Request, authorization: string, deps: EducationArtifactDependencies, signal: AbortSignal): Promise<Response> {
+async function execute(request: Request, authorization: string, deps: EducationArtifactDependencies, signal: AbortSignal, diagnostic: ArtifactDiagnostic): Promise<Response> {
   const parsed = educationArtifactRequestSchema.safeParse(await readAdmissionBody(request, signal));
   if (!parsed.success) fail('INVALID_INPUT');
   check(signal);
   if (!deps.configured) fail('DEPENDENCY_UNAVAILABLE');
   const input = parsed.data, caller = deps.createCaller(authorization, signal);
+  diagnostic.step = 'actor_initial';
   const actor = await requireAdmissionActor(caller, authorization); check(signal);
   const args = {p_organization_id: input.organization_id, p_preparation_id: input.preparation_id,
     p_item_id: input.item_id, p_input_revision: input.input_revision, p_request_id: input.request_id};
   let previous: EducationArtifactContext | undefined;
-  const current = async (): Promise<EducationArtifactContext> => {
+  const guard = adjacentIoFence(async (): Promise<EducationArtifactContext> => {
+    diagnostic.step = 'actor_before';
     check(signal); await requireAdmissionActor(caller, authorization, actor); check(signal);
+    diagnostic.step = 'context';
     const raw = db(await caller.rpc('uc_education_artifact_context', args)); check(signal);
+    diagnostic.step = 'actor_after';
     await requireAdmissionActor(caller, authorization, actor); check(signal);
     const value = parseContext(raw, input, actor);
     if (previous) progression(previous, value);
     previous = value; return value;
-  };
+  }, () => check(signal));
+  const current = guard.current;
+  const io: ArtifactIO = (step, operation) => {diagnostic.step = step; return guard.io(operation);};
+  diagnostic.counts = guard.counts;
   let context = await current();
   const service = deps.createService(signal);
   const serviceArgs = {p_actor_id: actor, ...args};
@@ -296,7 +311,7 @@ async function execute(request: Request, authorization: string, deps: EducationA
     check(signal);
     if (!previous) fail('DEPENDENCY_UNAVAILABLE');
     const live = previous; // info() has just refreshed the original-caller fence.
-    const raw = db(await service.rpc('uc_observe_education_artifact_object', {...serviceArgs, p_kind: kind})); check(signal);
+    const raw = db(await io(kind === 'staging' ? 'observe_staging' : 'observe_output', () => service.rpc('uc_observe_education_artifact_object', {...serviceArgs, p_kind: kind}))); check(signal);
     const parsed = educationArtifactObjectObservationSchema.safeParse(raw);
     if (!parsed.success) fail('SOURCE_UNAVAILABLE');
     const value = parsed.data;
@@ -311,40 +326,42 @@ async function execute(request: Request, authorization: string, deps: EducationA
   };
   const observeStage = observeSlot('staging'), observeOutput = observeSlot('output');
 
+  diagnostic.phase = 'template';
   // Template bytes are distinct from the UC006 metadata content_hash.
   const template = context.template.storage;
   await current();
-  const templateInfo = await info(caller.storage, template.bucket, template.path, signal, current, false, observeTemplate); context = await current();
+  const templateInfo = await info(caller.storage, template.bucket, template.path, signal, io, current, false, observeTemplate); context = await current();
   if (!templateInfo || templateInfo.size !== template.byte_size || templateInfo.mime !== 'text/html' || templateInfo.size > 1_048_576) fail();
   objectIdentity(templateInfo, template);
-  const templateProof = await bytes(caller.storage, template.bucket, template.path, templateInfo, signal, template.known_sha256, current, observeTemplate, true); context = await current();
+  const templateProof = await bytes(caller.storage, template.bucket, template.path, templateInfo, signal, template.known_sha256, io, current, observeTemplate, true); context = await current();
   const html = prepareEducationHtml(templateProof.bytes, context.variables);
-  const htmlHash = await admissionHash(new TextEncoder().encode(html)); check(signal); context = await current();
+  const htmlHash = await io('digest', () => admissionHash(new TextEncoder().encode(html))); check(signal); context = await current();
   const expectedProvenance = {preparation_id: context.preparation_id, item_id: context.item_id, render_input_hash: context.render_input_hash,
     template_byte_sha256: templateProof.sha256, html_sha256: htmlHash, renderer: 'browserless', renderer_revision: EDUCATION_RENDERER_REVISION};
 
-  let stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, current, true, observeStage); context = await current();
+  diagnostic.phase = 'staging';
+  let stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, io, current, true, observeStage); context = await current();
   if (!stagedInfo) {
     if (context.staging.proof) fail();
     // Render only in the absence of an immutable service-owned winner. PDF bytes
     // are nondeterministic, so a retry must never render again to compare them.
-    const rendered = await deps.render(html, signal); check(signal); context = await current();
+    const rendered = await io('render', () => deps.render(html, signal)); check(signal); context = await current();
     validateFaithfulPdf(rendered);
-    const renderedHash = await admissionHash(rendered); check(signal); context = await current();
+    const renderedHash = await io('digest', () => admissionHash(rendered)); check(signal); context = await current();
     let uploadedId: string | undefined;
     try {
-      const upload = await service.storage.from(context.staging.bucket).upload(context.staging.path, Uint8Array.from(rendered).buffer,
-        {contentType: 'application/pdf', upsert: false, cacheControl: '0', metadata: {...expectedProvenance, byte_sha256: renderedHash}});
+      const upload = await io('staging_upload', () => service.storage.from(context.staging.bucket).upload(context.staging.path, Uint8Array.from(rendered).buffer,
+        {contentType: 'application/pdf', upsert: false, cacheControl: '0', metadata: {...expectedProvenance, byte_sha256: renderedHash}}));
       check(signal); if (!upload.error) uploadedId = upload.data?.id;
       // A failed/uncertain upload can still have committed. Only the trusted
       // exact immutable winner below may recover it; no overwrite or deletion.
     } catch {check(signal);}
     context = await current();
-    stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, current, false, observeStage); context = await current();
+    stagedInfo = await info(service.storage, context.staging.bucket, context.staging.path, signal, io, current, false, observeStage); context = await current();
     if (!stagedInfo || uploadedId !== undefined && uploadedId !== stagedInfo.object_id) fail();
   }
   const stageMetadata = provenance(stagedInfo, expectedProvenance);
-  const staged = await bytes(service.storage, context.staging.bucket, context.staging.path, stagedInfo, signal, stageMetadata.byte_sha256, current, observeStage); context = await current();
+  const staged = await bytes(service.storage, context.staging.bucket, context.staging.path, stagedInfo, signal, stageMetadata.byte_sha256, io, current, observeStage); context = await current();
   const stageProof: EducationStagingProof = {object_id: stagedInfo.object_id, updated_at: stagedInfo.updated_at,
     byte_sha256: staged.sha256, byte_size: staged.bytes.length, template_byte_sha256: templateProof.sha256,
     html_sha256: htmlHash, renderer: 'browserless', renderer_revision: EDUCATION_RENDERER_REVISION};
@@ -356,48 +373,51 @@ async function execute(request: Request, authorization: string, deps: EducationA
       staged_object_id: stagedInfo.object_id, staged_updated_at: stagedInfo.updated_at, byte_sha256: staged.sha256,
       byte_size: staged.bytes.length, mime_type: 'application/pdf', renderer: 'browserless', renderer_revision: EDUCATION_RENDERER_REVISION});
     await current(); check(signal);
-    attestation(db(await service.rpc('uc_attest_education_issuance_staging', {...serviceArgs, p_proof: proof})), 'staging_attested', context, stagedInfo, staged.sha256);
+    attestation(db(await io('staging_attest', () => service.rpc('uc_attest_education_issuance_staging', {...serviceArgs, p_proof: proof}))), 'staging_attested', context, stagedInfo, staged.sha256);
     check(signal); context = await current();
     if (!context.staging.proof) fail(); proofEqual(context.staging.proof, stageProof);
   }
 
+  diagnostic.phase = 'output_commit';
   // Stage CAS is confirmed before any original-caller UC006 upload or commit.
   if (!context.output.source) {
     await current(); check(signal);
     let uploadError: unknown = null;
     try {
-      const uploaded = await caller.storage.from('org-documents').upload(context.output.file_path, Uint8Array.from(staged.bytes).buffer,
-        {contentType: 'application/pdf', upsert: false, cacheControl: '0'});
+      const uploaded = await io('output_upload', () => caller.storage.from('org-documents').upload(context.output.file_path, Uint8Array.from(staged.bytes).buffer,
+        {contentType: 'application/pdf', upsert: false, cacheControl: '0'}));
       check(signal); uploadError = uploaded.error;
     } catch (error) {check(signal); uploadError = error;}
     context = await current();
     // A lost acknowledgement may still have committed the immutable winner.
     // Only an exact raw+SDK absence may report the retained upload failure;
     // every present winner still passes the unchanged bytes/hash/source fences.
-    const uploadedInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current, true, observeOutput); context = await current();
+    const uploadedInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, io, current, true, observeOutput); context = await current();
     if (!uploadedInfo) fail(outputUploadFailure(uploadError));
     if (uploadedInfo.size !== staged.bytes.length || uploadedInfo.mime !== 'application/pdf') fail();
-    await bytes(caller.storage, 'org-documents', context.output.file_path, uploadedInfo, signal, staged.sha256, current, observeOutput); context = await current();
+    await bytes(caller.storage, 'org-documents', context.output.file_path, uploadedInfo, signal, staged.sha256, io, current, observeOutput); context = await current();
     check(signal);
-    db(await caller.rpc('commit_org_document_version', {p_document_id: context.output.document_id,
+    db(await io('output_commit', () => caller.rpc('commit_org_document_version', {p_document_id: context.output.document_id,
       p_organization_id: context.organization_id, p_request_id: context.output.upload_request_id, p_expected_revision: 0,
       p_upload: {file_path: context.output.file_path, file_name: context.output.file_name, file_size: staged.bytes.length,
         change_summary: 'Сформирован проверенный PDF; выдача ещё не зарегистрирована.'},
-      p_restore_version_id: null, p_document: context.output.document}));
+      p_restore_version_id: null, p_document: context.output.document})));
     check(signal); context = await current();
   }
   if (!context.output.source || !context.output.object) fail();
-  const outputInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, current, false, observeOutput); context = await current();
+  diagnostic.phase = 'output_verify';
+  const outputInfo = await info(caller.storage, 'org-documents', context.output.file_path, signal, io, current, false, observeOutput); context = await current();
   if (!outputInfo || outputInfo.size !== staged.bytes.length || outputInfo.mime !== 'application/pdf') fail();
   objectIdentity(outputInfo, context.output.object!);
-  await bytes(caller.storage, 'org-documents', context.output.file_path, outputInfo, signal, staged.sha256, current, observeOutput); context = await current();
+  await bytes(caller.storage, 'org-documents', context.output.file_path, outputInfo, signal, staged.sha256, io, current, observeOutput); context = await current();
+  diagnostic.phase = 'artifact_attest';
   if (!context.output.artifact) {
     const proof = educationOutputAttestProofSchema.parse({render_input_hash: context.render_input_hash,
       staged_object_id: stagedInfo.object_id, staged_updated_at: stagedInfo.updated_at, source: context.output.source,
       output_object_id: outputInfo.object_id, output_updated_at: outputInfo.updated_at, byte_sha256: staged.sha256,
       byte_size: staged.bytes.length, mime_type: 'application/pdf', renderer: 'browserless', renderer_revision: EDUCATION_RENDERER_REVISION});
     await current(); check(signal);
-    attestation(db(await service.rpc('uc_attest_education_issuance_artifact', {...serviceArgs, p_proof: proof})), 'artifact_attested', context, outputInfo, staged.sha256);
+    attestation(db(await io('artifact_attest', () => service.rpc('uc_attest_education_issuance_artifact', {...serviceArgs, p_proof: proof}))), 'artifact_attested', context, outputInfo, staged.sha256);
     check(signal); context = await current();
   }
   if (!['rendered', 'consumed'].includes(context.mode) || !context.output.artifact) fail();
@@ -407,11 +427,23 @@ async function execute(request: Request, authorization: string, deps: EducationA
     artifact: context.output.artifact});
   check(signal);
   // No allocator, official issue, UC018 registration, approval or business-finalize RPC.
+  diagnostic.phase = 'complete';
   return json(result);
 }
 
 export async function educationArtifactRequest(request: Request, deps: EducationArtifactDependencies): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers});
+  const started = performance.now();
+  const diagnostic: ArtifactDiagnostic = {phase: 'request', step: 'body', deadline: false, counts: () => ({fresh: 0, reused: 0})};
+  const annotate = (response: Response): Response => {
+    const observed = new Headers(response.headers), counts = diagnostic.counts();
+    observed.set('X-Sintagma-Artifact-Phase', diagnostic.phase);
+    observed.set('X-Sintagma-Artifact-Step', diagnostic.step);
+    observed.set('X-Sintagma-Artifact-Elapsed-Ms', String(Math.max(0, Math.min(60000, Math.floor(performance.now() - started)))));
+    observed.set('X-Sintagma-Artifact-Deadline', diagnostic.deadline ? '1' : '0');
+    observed.set('X-Sintagma-Artifact-Fences', 'fresh=' + Math.min(1000, counts.fresh) + ',reused=' + Math.min(1000, counts.reused));
+    return new Response(response.body, {status: response.status, headers: observed});
+  };
   try {
     if (request.method !== 'POST') throw new EducationArtifactError('INVALID_INPUT', 405);
     const authorization = request.headers.get('Authorization') || '';
@@ -422,8 +454,8 @@ export async function educationArtifactRequest(request: Request, deps: Education
     if (request.signal.aborted) controller.abort();
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const expired = new Promise<never>((_resolve, reject) => {timer = setTimeout(() => {controller.abort(); reject(new EducationArtifactError('DEPENDENCY_UNAVAILABLE'));}, EDUCATION_ARTIFACT_MS);});
-      return await Promise.race([execute(request, authorization, deps, controller.signal), expired]);
+      const expired = new Promise<never>((_resolve, reject) => {timer = setTimeout(() => {diagnostic.deadline = true; controller.abort(); reject(new EducationArtifactError('DEPENDENCY_UNAVAILABLE'));}, EDUCATION_ARTIFACT_MS);});
+      return annotate(await Promise.race([execute(request, authorization, deps, controller.signal, diagnostic), expired]));
     } finally {if (timer) clearTimeout(timer); request.signal.removeEventListener('abort', abort); controller.abort();}
-  } catch (error) {return educationArtifactError(error);}
+  } catch (error) {return annotate(educationArtifactError(error));}
 }
