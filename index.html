@@ -104,7 +104,7 @@
     
     <div id="root"></div>
 
-    <!-- Cache/SW bootstrap: URL-marker reload in preview, asset-change reload in production -->
+    <!-- Cache/SW bootstrap: release detection never reloads an open form -->
     <script>
       (function(){
         if (window.__sintagmaLegacyLoginEntry) return;
@@ -174,45 +174,38 @@
         };
         function purgeAll() { return window.__sintagmaRefreshPrivateCaches(); }
 
-        if (isPreview) {
-          var guard = '__purge_preview_session';
-          if (!sessionStorage.getItem(guard)) {
-            sessionStorage.setItem(guard, '1');
-            purgeAll().then(function(){ location.reload(); }).catch(function(){ location.reload(); });
-          }
-        } else {
-          // Production: reload on asset change
+        if (!isPreview) {
+          // Record only a finite release hint. Main offers an explicit update action.
+          // Never unregister/reload asynchronously while App can already be mounted.
           var scriptEl = document.querySelector('script[type="module"][src]');
           var assetId = scriptEl ? scriptEl.getAttribute('src') : 'unknown';
-          var storedAsset = localStorage.getItem('__asset_id');
-          if (storedAsset && storedAsset !== assetId) {
+          try {
+            var storedAsset = localStorage.getItem('__asset_id');
+            if (storedAsset && storedAsset !== assetId) window.__sintagmaApplicationUpdatePending = true;
             localStorage.setItem('__asset_id', assetId);
-            var guard = '__purge_asset_' + assetId;
-            if (!sessionStorage.getItem(guard)) {
-              sessionStorage.setItem(guard, '1');
-              purgeAll().then(function(){ location.reload(); }).catch(function(){ location.reload(); });
-            }
-          } else {
-            localStorage.setItem('__asset_id', assetId);
-          }
+          } catch (e) {}
         }
       })();
     </script>
 
-    <!-- SW recovery: if app fails to render in 8s, unregister SW and reload -->
+    <!-- SW recovery: an explicit retry, never a delayed automatic reload -->
     <script>
       (function(){
         if (window.__sintagmaLegacyLoginEntry) return;
-        var recoveryKey = '__sw_recovery_attempted';
         var t = setTimeout(function(){
           var root = document.getElementById('root');
-          if (root && root.children.length === 0 && 'serviceWorker' in navigator) {
-            if (sessionStorage.getItem(recoveryKey)) return;
-            sessionStorage.setItem(recoveryKey, '1');
-            var cleanup = window.__sintagmaRefreshPrivateCaches;
-            Promise.resolve(cleanup ? cleanup() : undefined)
-              .then(function(){ window.location.reload(); }, function(){ window.location.reload(); });
-          }
+          if (!root || root.children.length !== 0) return;
+          var recovery = document.createElement('div');
+          recovery.setAttribute('role', 'status');
+          recovery.style.cssText = 'padding:24px;text-align:center;font-family:system-ui';
+          var message = document.createElement('p');
+          message.textContent = 'Загрузка занимает больше времени. Проверьте соединение или повторите загрузку.';
+          var retry = document.createElement('button');
+          retry.type = 'button'; retry.textContent = 'Обновить страницу';
+          retry.style.cssText = 'padding:12px 18px;cursor:pointer';
+          retry.addEventListener('click', function(){ window.location.reload(); });
+          recovery.appendChild(message); recovery.appendChild(retry);
+          root.appendChild(recovery);
         }, 8000);
         window.__swRecoveryTimer = t;
         var observer = new MutationObserver(function(){
