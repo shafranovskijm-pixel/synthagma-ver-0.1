@@ -7,7 +7,7 @@ const secret='SYNTHETIC_SECRET_TOKEN_77';
 async function failed(f:Fixture,status:number,code:string){
  const response=await f.run(),text=await response.text(),body=JSON.parse(text);
  expect(response.status).toBe(status);expect(body.code).toBe(code);expect(body.retryable).toBe(code==='DEPENDENCY_UNAVAILABLE');
- expect(response.headers.get('X-Sintagma-Function-Revision')).toBe('uc-education-artifact-20261024-v4');
+ expect(response.headers.get('X-Sintagma-Function-Revision')).toBe('uc-education-artifact-20261126-v5-adjacent');
  for(const value of [secret,'prepared_education_output_context_unavailable','prepared_education_output_metadata_mismatch','customer-private-path'])expect(text).not.toContain(value);
  expect(f.state.staging.proof).not.toBeNull();expect(f.state.output.source).toBeNull();expect(f.state.output.artifact).toBeNull();
  expect(f.state.final_record_id).toBeNull();expect(commits(f)).toHaveLength(0);expect(artifactAttests(f)).toHaveLength(0);
