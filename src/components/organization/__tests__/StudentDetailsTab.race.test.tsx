@@ -14,6 +14,7 @@ function deferred<T>(): Deferred<T> {
 }
 
 const testState = vi.hoisted(() => ({
+  organizationId: "org-1",
   selectedStudentId: "student-a" as string | null,
   profileResponses: new Map<string, Promise<{ data: any; error: any }>>(),
   profileLookups: [] as Array<Record<string, string>>,
@@ -32,7 +33,7 @@ const testState = vi.hoisted(() => ({
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
-    organizationId: "org-1",
+    organizationId: testState.organizationId,
     tabNavigation: {
       selectedStudentId: testState.selectedStudentId,
       setActiveTab: testState.setActiveTab,
@@ -176,6 +177,8 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
+import { journalStudentDocumentsPath } from '@/lib/educationJournalWorkspace/studentDocumentRoute';
+import { ids as journalIds, row as journalRow, scope as journalScope } from '@/lib/educationJournalWorkspace/__tests__/fixtures';
 import { StudentDetailsTab } from "@/components/organization/tabs/StudentDetailsTab";
 
 const profile = (id: string, name: string) => ({
@@ -185,7 +188,7 @@ const profile = (id: string, name: string) => ({
   login: id,
   generated_password: null,
   last_visit_at: null,
-  organization_id: "org-1",
+  organization_id: testState.organizationId,
   company_id: null,
   companies: null,
   archived_at: null,
@@ -204,6 +207,7 @@ function LocationProbe() {
 
 describe("StudentDetailsTab URL request ordering and tenant scope", () => {
   beforeEach(() => {
+    testState.organizationId = "org-1";
     testState.selectedStudentId = "student-a";
     testState.profileResponses.clear();
     testState.profileLookups.length = 0;
@@ -216,6 +220,31 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.studentPageCalls.length = 0;
     testState.setActiveTab.mockClear();
     testState.actorUserId = null; testState.documentContexts.length = 0; testState.hookContexts.length = 0;
+  });
+
+  it.each(["loaded", "missing", "failed"])("returns to the originating journal after a reload (%s profile)", async state => {
+    testState.organizationId = journalIds.org; testState.selectedStudentId = journalIds.student;
+    testState.profileResponses.set(journalIds.student, Promise.resolve({ data: state === "loaded" ? profile(journalIds.student, "QA learner") : null, error: state === "failed" ? new Error("lookup failed") : null }));
+    const path = journalStudentDocumentsPath(journalIds.org, journalScope, "document_registration", { kind: "student", studentId: journalIds.student, enrollmentId: journalIds.enrollment }, { ...journalRow(), journal_type: "document_registration" });
+    if (!path) throw Error("path");
+    render(<MemoryRouter initialEntries={[path]}><StudentDetailsTab /><LocationProbe /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Вернуться в журнал" }));
+    const target = new URLSearchParams(screen.getByTestId("current-route").textContent!);
+    expect(target.get("tab")).toBe("journals"); expect(target.get("journalType")).toBe("document_registration");
+    expect(target.get("journalStudentId")).toBe(journalIds.student); expect(target.get("journalEnrollmentId")).toBe(journalIds.enrollment);
+  });
+
+  it("keeps the group action distinct from return to the original journal", async () => {
+    testState.organizationId = journalIds.org; testState.selectedStudentId = journalIds.student;
+    testState.profileResponses.set(journalIds.student, Promise.resolve({ data: profile(journalIds.student, "QA learner"), error: null }));
+    const path = journalStudentDocumentsPath(journalIds.org, journalScope, "document_registration", { kind: "group", groupId: journalIds.group, department: "Цех", participantSearch: "Иванов" }, { ...journalRow(), journal_type: "document_registration" });
+    if (!path) throw Error("path");
+    render(<MemoryRouter initialEntries={[path]}><StudentDetailsTab /><LocationProbe /></MemoryRouter>);
+    expect(await screen.findByRole("button", { name: "Вернуться в журнал" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Вернуться в группу" }));
+    const target = new URLSearchParams(screen.getByTestId("current-route").textContent!);
+    expect(target.get("tab")).toBe("group-folder"); expect(target.get("groupId")).toBe(journalIds.group);
+    expect(target.get("department")).toBe("Цех"); expect(target.get("participantSearch")).toBe("Иванов");
   });
 
   it("passes the confirmed auth user id and organization to CRM, not the profile row id", async () => {

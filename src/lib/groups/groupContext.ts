@@ -139,6 +139,7 @@ export function resolveTabParams(
   }
   if (tab !== "student-details") {
     next.delete("studentSection");
+    next.delete("studentJournalReturn");
     next.delete('studentJournalEnrollmentId');
     next.delete('studentJournalGroupId');
     next.delete("returnDepartment");
