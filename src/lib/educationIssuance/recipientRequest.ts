@@ -109,7 +109,7 @@ export function eligibleIssuedRecipientPolicy(policy: PolicyVersion): boolean {
 export async function readIssuedRecipientPolicies(scope: EducationIssuanceScope, afterId: string | null = null) {
   current(scope); const value = await readSignatureAssurance(scope, { kind: 'policy_list', after_id: afterId, limit: 100 }); current(scope);
   if (value.result.kind !== 'policy_list') throw new IssuedRecipientError();
-  return { items: value.result.policies.filter(eligibleIssuedRecipientPolicy), nextAfterId: value.result.next_after_id, canPrepare: value.capabilities.can_bind_signature };
+  return { items: value.result.policies.filter(eligibleIssuedRecipientPolicy), nextAfterId: value.result.next_after_id, canPrepare: value.capabilities.can_draft_policy && value.capabilities.can_accept_policy };
 }
 export async function readIssuedRecipientRequest(scope: EducationIssuanceScope, input: z.infer<typeof querySchema>, record?: IssuanceRecord) {
   current(scope); const query = querySchema.safeParse(structuredClone(input)); if (!query.success) throw new IssuedRecipientError('INVALID_INPUT');
