@@ -608,15 +608,19 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/education-issuance-artifact.ts",
-        "allowExactGitBlob": true,
-        "gitBlobReconstruction": {
-          "sha256": "e0f589ea533c86016cfaead0c0e6cc6f030e9842972e4befb2f90700c097d140",
-          "bytes": 31978,
-          "transform": "lf_to_crlf"
-        }
+        "allowExactGitBlob": true
       },
-      "bytes": 32407,
-      "sha256": "aeb37967d4ba4e8d3cffbde970a76d0858b0355791fd9a445ac14528c0f9f826"
+      "bytes": 34827,
+      "sha256": "8395e81f9097780aca89b39f212dc84c0161d24717a10035a58d64210e5a5712"
+    },
+    {
+      "target": "supabase/functions/_shared/adjacent-io-fence.ts",
+      "source": {
+        "kind": "repository",
+        "path": "supabase/functions/_shared/adjacent-io-fence.ts"
+      },
+      "bytes": 1428,
+      "sha256": "34b367361e26e0826234e06231137533d30e1a47464136262a5b20ac901375cf"
     },
     {
       "target": "supabase/functions/_shared/faithful-pdf.ts",
@@ -638,15 +642,10 @@
       "source": {
         "kind": "repository",
         "path": "supabase/functions/_shared/education-issuance-render.ts",
-        "allowExactGitBlob": true,
-        "gitBlobReconstruction": {
-          "sha256": "c81d7ee4789cbbcc6b924913b53ba686e206681c29028feae1f548980900edab",
-          "bytes": 10664,
-          "transform": "lf_to_crlf"
-        }
+        "allowExactGitBlob": true
       },
-      "bytes": 10830,
-      "sha256": "6206f5e19c9ff40fbdecbdb66b015e9f618a5af30a1d4986d620ec5044609fda"
+      "bytes": 10670,
+      "sha256": "2f425d116a0a2a03afc8742c47f35bee1c6dcb2632a3fa57d67f927ed6509240"
     },
     {
       "target": "supabase/functions/_shared/admission-case-access.ts",
