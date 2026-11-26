@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { presentApplicationRecoveryUpdates } from "@/utils/applicationUpdatePrompt";
 
 interface Props {
   children: ReactNode;
@@ -10,20 +11,30 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  updateAction: (() => void) | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  public state: State = { hasError: false, error: null };
+  public state: State = { hasError: false, error: null, updateAction: null };
+  private stopUpdateNotice?: () => void;
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, updateAction: null };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary] Uncaught error:", error, errorInfo);
     // Log to database for production monitoring
     this.logErrorToDb(error, errorInfo);
+    // The outer boundary unmounts Sonner. Keep its existing manual action
+    // connected to the same exact waiting worker without relying on a toast.
+    this.stopUpdateNotice?.();
+    this.stopUpdateNotice = presentApplicationRecoveryUpdates(({ update }) => {
+      this.setState({ updateAction: update });
+    });
   }
+
+  public componentWillUnmount() { this.stopUpdateNotice?.(); }
 
   private async logErrorToDb(error: Error, errorInfo: ErrorInfo) {
     try {
@@ -48,7 +59,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: null });
+    this.stopUpdateNotice?.(); this.stopUpdateNotice = undefined;
+    this.setState({ hasError: false, error: null, updateAction: null });
   };
 
   public render() {
@@ -74,7 +86,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 Попробовать снова
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={this.state.updateAction || undefined}
+                disabled={!this.state.updateAction}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium hover:bg-secondary transition-colors"
               >
                 Перезагрузить

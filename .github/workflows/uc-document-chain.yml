@@ -5,6 +5,13 @@ on:
       - 'src/lib/studentDocumentInbox.ts'
       - 'src/lib/__tests__/studentDocumentInbox.test.ts'
       - 'src/lib/documentChain/**'
+      - 'src/lib/educationJournalWorkspace/**'
+      - 'src/components/organization/tabs/StudentDetailsTab.tsx'
+      - 'src/components/organization/__tests__/StudentDetailsTab.race.test.tsx'
+      - 'src/lib/groups/groupContext.ts'
+      - 'src/lib/groups/__tests__/groupContextNavigation.test.ts'
+      - 'src/hooks/useTabNavigation.ts'
+      - 'src/hooks/__tests__/useTabNavigation.multiwindow.test.tsx'
       - 'src/hooks/useStudentSignatureInbox.ts'
       - 'src/hooks/useDocumentChain.ts'
       - 'src/hooks/__tests__/useDocumentChain*'
@@ -63,6 +70,8 @@ jobs:
         run: npm run typecheck 2>&1 | tee outputs/uc-document-chain-frontend/typecheck.txt
       - name: Own inbox, real account confirmation, exact scope and journal chain
         run: node node_modules/vitest/vitest.mjs run src/lib/__tests__/studentDocumentInbox.test.ts src/hooks/__tests__/useStudentSignatureInbox.test.tsx src/components/student/StudentPepAgreementCard.scope.test.tsx src/components/student/StudentConsentForm.scope.test.tsx src/components/student/__tests__/StudentDocumentNotifications.test.tsx src/lib/documentChain src/lib/educationIssuance/__tests__/artifactDownload.test.ts src/hooks/__tests__/useDocumentChain.test.tsx src/components/organization/student-detail/__tests__/StudentDocumentChain.test.tsx src/components/organization/documents/DocumentChainPanel.test.tsx src/components/student/__tests__/StudentEducationJournals.scope.test.tsx src/components/organization/journals/__tests__/EducationJournalWorkspace.test.tsx --maxWorkers=1 --reporter=json --outputFile=outputs/uc-document-chain-frontend/tests.json 2>&1 | tee outputs/uc-document-chain-frontend/tests.txt
+      - name: Registry to exact learner documents and return
+        run: node node_modules/vitest/vitest.mjs run src/lib/educationJournalWorkspace src/components/organization/__tests__/StudentDetailsTab.race.test.tsx src/lib/groups/__tests__/groupContextNavigation.test.ts src/hooks/__tests__/useTabNavigation.multiwindow.test.tsx --maxWorkers=1 --reporter=json --outputFile=outputs/uc-document-chain-frontend/registry-navigation.json 2>&1 | tee outputs/uc-document-chain-frontend/registry-navigation.txt
       - name: Build production application
         run: npm run build 2>&1 | tee outputs/uc-document-chain-frontend/build.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

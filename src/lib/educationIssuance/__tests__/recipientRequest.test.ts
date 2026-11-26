@@ -74,10 +74,28 @@ describe('durable issued-copy request boundary', () => {
   });
   it('keeps only accepted account-PEP education policies and exposes the next real page', async () => {
     const wrong = structuredClone(policy); wrong.body.method = 'bearer_invitation_confirmation'; wrong.id = uid(900);
-    port.policies.mockResolvedValue({ result: { kind: 'policy_list', policies: [wrong, policy], next_after_id: uid(901) }, capabilities: { can_bind_signature: true } });
+    port.policies.mockResolvedValue({ result: { kind: 'policy_list', policies: [wrong, policy], next_after_id: uid(901) }, capabilities: { can_draft_policy: true, can_accept_policy: true, can_bind_signature: false } });
     await expect(readIssuedRecipientPolicies(scope())).resolves.toMatchObject({ items: [{ id: policy.id }], nextAfterId: uid(901), canPrepare: true });
     expect(port.policies.mock.calls[0][1]).toEqual({ kind: 'policy_list', after_id: null, limit: 100 });
   });
+  it.each([
+    ['draft only',true,false,false],['accept only',false,true,false],['no authority',false,false,false],
+    ['bind cannot replace acceptance',true,false,true],['bind cannot replace draft',false,true,true],['bind alone cannot grant authority',false,false,true],
+  ] as const)('does not prepare an issued-copy request with %s',async(_label,canDraft,canAccept,canBind)=>{
+    port.policies.mockResolvedValue({result:{kind:'policy_list',policies:[policy],next_after_id:null},capabilities:{can_draft_policy:canDraft,can_accept_policy:canAccept,can_bind_signature:canBind}});
+    await expect(readIssuedRecipientPolicies(scope())).resolves.toMatchObject({items:[{id:policy.id}],nextAfterId:null,canPrepare:false});
+    expect(port.rpc).not.toHaveBeenCalled();expect(port.verifier).not.toHaveBeenCalled();
+  });
+  it('allows accepted-policy creation authority even when the list has no signature-specific bind capability',async()=>{
+    for(const canBind of [false,true]){port.policies.mockResolvedValue({result:{kind:'policy_list',policies:[policy],next_after_id:null},capabilities:{can_draft_policy:true,can_accept_policy:true,can_bind_signature:canBind}});
+      await expect(readIssuedRecipientPolicies(scope())).resolves.toMatchObject({canPrepare:true});}
+    expect(port.rpc).not.toHaveBeenCalled();expect(port.verifier).not.toHaveBeenCalled();
+  });
+  it('rejects a policy-list response after current actor authority was revoked during the await',async()=>{
+    const captured=scope();port.policies.mockImplementation(async()=>{port.current=false;return{result:{kind:'policy_list',policies:[policy],next_after_id:null},capabilities:{can_draft_policy:true,can_accept_policy:true,can_bind_signature:false}};});
+    await expect(readIssuedRecipientPolicies(captured)).rejects.toMatchObject({code:'ACCESS_DENIED'});expect(port.rpc).not.toHaveBeenCalled();expect(port.verifier).not.toHaveBeenCalled();
+  });
+
 });
 
 describe('real-byte verification and server-owned activation resume', () => {

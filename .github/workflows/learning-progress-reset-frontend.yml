@@ -12,6 +12,9 @@ on:
       - supabase/tests/edge/groupParticipantMetadataBatch.sql.test.ts
       - supabase/tests/group-folder-metadata/**
       - index.html
+      - vite.config.ts
+      - package.json
+      - package-lock.json
       - .github/workflows/learning-progress-reset-frontend.yml
   workflow_dispatch:
 
@@ -47,6 +50,16 @@ jobs:
           git ls-files src/hooks/course-learning src/hooks/useStudentDashboard.ts src/hooks/useStudentDashboardSnapshot.ts src/hooks/useCourseDetails.ts src/hooks/useVideoProgress.ts src/components/course-learning/HomeworkSubmission.tsx src/pages/CourseLearning.tsx src/lib/learningProgress.ts src/utils/offlineSync.ts src/utils/testAnswerQueue.ts src/integrations/supabase/types.ts index.html src/utils/credentialPrivacy.ts src/utils/__tests__/credentialPrivacy.test.ts src/lib/courseLearningHistory.ts src/components/course-learning/TestAttemptHistory.tsx src/components/course-learning/CourseSidebar.tsx src/components/student/CourseCardNew.tsx src/components/student/OfflineBanner.tsx src/components/organization/student-detail/LearningResultsTab.tsx src/api/studentLearningResults.ts .github/workflows/learning-progress-reset-frontend.yml | xargs sha256sum > outputs/learning-progress-reset-frontend/source-manifest.sha256
       - name: Type check actual application
         run: npm run typecheck 2>&1 | tee outputs/learning-progress-reset-frontend/typecheck.stdout.txt
+      - name: Explicit app updates preserve pending forms
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          src/utils/__tests__/applicationUpdatePrompt.test.ts
+          src/utils/__tests__/applicationUpdateBootstrap.test.ts
+          src/utils/__tests__/lazyWithRetry.updatePrompt.test.ts
+          src/components/__tests__/ErrorBoundary.updatePrompt.test.tsx
+          --maxWorkers=1 --reporter=json
+          --outputFile=outputs/learning-progress-reset-frontend/application-update-tests.json
+          2>&1 | tee outputs/learning-progress-reset-frontend/application-update-tests.txt
       - name: Course learning, history, access and offline regression tests
         run: >-
           node node_modules/vitest/vitest.mjs run

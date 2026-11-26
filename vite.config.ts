@@ -40,7 +40,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
     },
     shellPrecache.plugin,
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       injectRegister: null,
       devOptions: { enabled: false },
       includeAssets: ["favicon.ico", "robots.txt"],
@@ -79,8 +79,8 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,gif,webp,svg,woff,woff2}"],
         manifestTransforms: [shellPrecache.manifestTransform],
         cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
+        skipWaiting: false,
+        clientsClaim: false,
         importScripts: ['sw-private-cache-cleanup.js'],
         navigateFallbackDenylist: [
           /^\/video-check\.html$/, // Standalone, anonymous connection check; never replace it with the app shell.

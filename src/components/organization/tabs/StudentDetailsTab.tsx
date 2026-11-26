@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { OrgCrmCardSection } from "@/components/organization/sales/OrgCrmCardSection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { courseDetailsPathForGroup, studentGroupReturnPath } from "@/lib/groups/groupContext";
+import { studentDocumentJournalReturnPath } from '@/lib/educationJournalWorkspace/studentDocumentRoute';
 import { educationDocumentsJournalPath } from "@/lib/organization/documentWorkspaceNavigation";
 import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck, AlertTriangle, RefreshCw, Handshake } from "lucide-react";
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
@@ -89,8 +90,11 @@ export function StudentDetailsTab() {
   const canAssignCourse = !permissionsLoading && can("students.write");
   const organizationId = d.organizationId;
   const studentId = d.tabNavigation.selectedStudentId;
+  const journalReturnPath = studentDocumentJournalReturnPath(searchParams, organizationId);
+  const backLabel = journalReturnPath ? "Вернуться в журнал" : "Назад к ученикам";
   const returnToStudents = () => {
-    if (groupReturnPath) navigate(groupReturnPath);
+    if (journalReturnPath) navigate(journalReturnPath);
+    else if (groupReturnPath) navigate(groupReturnPath);
     else navigate("/organization?tab=students&studentsView=active");
   };
 
@@ -323,7 +327,7 @@ export function StudentDetailsTab() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={returnToStudents}>
-          <ArrowLeft className="w-4 h-4" /> Назад к ученикам
+          <ArrowLeft className="w-4 h-4" /> {backLabel}
         </Button>
         <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
           <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
@@ -341,7 +345,7 @@ export function StudentDetailsTab() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={returnToStudents}>
-          <ArrowLeft className="w-4 h-4" /> Назад к ученикам
+          <ArrowLeft className="w-4 h-4" /> {backLabel}
         </Button>
       {returnToGroupId && (
         <Button
@@ -349,7 +353,7 @@ export function StudentDetailsTab() {
           size="sm"
           className="gap-1.5 rounded-xl h-8 text-xs"
           data-testid="return-to-group"
-          onClick={returnToStudents}
+          onClick={() => { if (groupReturnPath) navigate(groupReturnPath); }}
         >
           <FolderOpen className="w-3.5 h-3.5" /> Вернуться в группу
         </Button>
@@ -365,7 +369,7 @@ export function StudentDetailsTab() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={returnToStudents}>
-            <ArrowLeft className="w-4 h-4" /> Назад к ученикам
+            <ArrowLeft className="w-4 h-4" /> {backLabel}
           </Button>
       {returnToGroupId && (
         <Button
@@ -373,7 +377,7 @@ export function StudentDetailsTab() {
           size="sm"
           className="gap-1.5 rounded-xl h-8 text-xs"
           data-testid="return-to-group"
-          onClick={returnToStudents}
+          onClick={() => { if (groupReturnPath) navigate(groupReturnPath); }}
         >
           <FolderOpen className="w-3.5 h-3.5" /> Вернуться в группу
         </Button>

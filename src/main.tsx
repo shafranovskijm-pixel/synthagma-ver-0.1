@@ -5,7 +5,9 @@ import { installLegacyProxyBadgeKiller } from "./utils/legacyProxyBadgeKiller";
 import { installErrorReporter } from "./utils/errorReporter";
 import { installNativeDownloads } from "./mobile/nativeDownloads";
 import { nativeStartupUrl } from "./mobile/nativeNavigation";
-import { clearPrivateRuntimeCaches, refreshApplicationCaches, ensurePrivateRuntimePolicy, startAfterPrivateRuntimePolicy, PrivateRuntimePolicyError, installPrivateRuntimeFetchFence } from './utils/privateRuntimeCacheCleanup';
+import { clearPrivateRuntimeCaches, ensurePrivateRuntimePolicy, startAfterPrivateRuntimePolicy, PrivateRuntimePolicyError, installPrivateRuntimeFetchFence } from './utils/privateRuntimeCacheCleanup';
+
+import { applicationUpdates, registerApplicationWorker, presentApplicationRecoveryUpdates } from './utils/applicationUpdatePrompt';
 
 const isNative = Capacitor.isNativePlatform();
 const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
@@ -51,13 +53,12 @@ const currentVersion = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIME
 // Expose build version globally for diagnostics
 (window as any).__BUILD_VERSION__ = currentVersion;
 
-// Skip build-version reload if bootstrap already did a session-guard reload
-const bootstrapJustReloaded = isPreview && sessionStorage.getItem('__purge_preview_session') === '1';
-
 const privatePolicyReady = privatePolicyRequired ? ensurePrivateRuntimePolicy() : Promise.resolve();
 
-async function purgeAllCaches() {
-  await refreshApplicationCaches();
+// Detection of a PUBLIC replacement worker must also work when an old worker
+// cannot acknowledge the private policy. App/Auth still wait on the same gate.
+if (!isNative && !isPreview && import.meta.env.PROD) {
+  void registerApplicationWorker().catch(() => {});
 }
 
 (async () => {
@@ -68,57 +69,18 @@ async function purgeAllCaches() {
   // Legacy login prefill exists only in memory. Defer cache/SW reloads for this
   // document instead of persisting credentials or losing them after a release.
   if ((window as Window & { __sintagmaLegacyLoginEntry?: boolean }).__sintagmaLegacyLoginEntry) return;
-  // Build version check (second line of defense — skip if bootstrap just reloaded)
-  if (!bootstrapJustReloaded) {
-    const storedVersion = localStorage.getItem('app-version');
-    if (storedVersion !== null && storedVersion !== currentVersion) {
-      const guard = sessionStorage.getItem(BUILD_GUARD_KEY);
-      if (guard !== currentVersion) {
-        await purgeAllCaches();
-        localStorage.setItem('app-version', currentVersion);
-        sessionStorage.setItem(BUILD_GUARD_KEY, currentVersion);
-        window.location.reload();
-        return;
-      }
-      sessionStorage.removeItem(BUILD_GUARD_KEY);
-    }
-  }
-
+  // Detection is advisory: routine releases must not discard an open form.
+  const storedVersion = localStorage.getItem('app-version');
+  if (storedVersion !== null && storedVersion !== currentVersion) applicationUpdates.available();
   localStorage.setItem('app-version', currentVersion);
-
-  // Remote cache version check (admin-triggered forced refresh)
+  if ((window as Window & { __sintagmaApplicationUpdatePending?: boolean }).__sintagmaApplicationUpdatePending) {
+    applicationUpdates.available();
+  }
   try {
     const { checkRemoteCacheVersion } = await import('./utils/remoteCacheCheck');
-    const needsReload = await checkRemoteCacheVersion();
-    if (needsReload) {
-      const guard = sessionStorage.getItem(REMOTE_GUARD_KEY);
-      if (guard !== currentVersion) {
-        await purgeAllCaches();
-        sessionStorage.setItem(REMOTE_GUARD_KEY, currentVersion);
-        window.location.reload();
-        return;
-      }
-      sessionStorage.removeItem(REMOTE_GUARD_KEY);
-    }
+    if (await checkRemoteCacheVersion()) applicationUpdates.available();
   } catch {
-    // Silently ignore — DB might be unreachable
-  }
-
-  // Register SW only on production (not preview, not native)
-  if (!isNative && !isPreview && import.meta.env.PROD) {
-    import('virtual:pwa-register').then(({ registerSW }) => {
-      const updateSW = registerSW({
-        immediate: true,
-        onNeedRefresh() {
-          updateSW(true);
-        },
-        onRegistered(registration) {
-          if (registration) {
-            setInterval(() => registration.update(), 30 * 1000);
-          }
-        },
-      });
-    }).catch(() => {});
+    // Silently ignore — DB might be unreachable.
   }
 })().catch(() => { /* bootstrapApp renders the reconnect boundary. */ });
 
@@ -132,7 +94,7 @@ async function bootstrapApp() {
   else { await privatePolicyReady; start(await prepare()); }
 }
 
-void bootstrapApp().catch(error => {
+void bootstrapApp().then(() => applicationUpdates.markReady()).catch(error => {
   const policyCode = error instanceof PrivateRuntimePolicyError ? error.code : null;
   // Finite diagnostics only: do not log private URLs, auth state or raw errors.
   console.warn('[startup]', { phase: policyCode ? 'private-policy' : 'application-load', code: policyCode || 'APPLICATION_LOAD_FAILED' });
@@ -146,6 +108,10 @@ void bootstrapApp().catch(error => {
       : 'Не удалось загрузить приложение. Проверьте соединение и обновите страницу.';
   const diagnostic = document.createElement('p'); diagnostic.className = 'text-sm text-muted-foreground';
   diagnostic.textContent = 'Код проверки: ' + (policyCode || 'APPLICATION_LOAD_FAILED');
-  const retry = document.createElement('button'); retry.className = 'underline'; retry.textContent = 'Обновить страницу'; retry.addEventListener('click', () => location.reload());
+  const retry = document.createElement('button'); retry.className = 'underline'; retry.textContent = 'Обновить страницу';
+  presentApplicationRecoveryUpdates(({ failed, update }) => {
+    retry.textContent = failed ? 'Повторить обновление' : 'Обновить страницу';
+    retry.onclick = update;
+  });
   boundary.append(message, diagnostic, retry); root.replaceChildren(boundary);
 });

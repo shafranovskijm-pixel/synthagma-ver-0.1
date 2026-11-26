@@ -5,6 +5,7 @@ import { EducationJournalWorkspace } from '../EducationJournalWorkspace';
 import { StudentJournalLinks } from '../../student-detail/StudentJournalLinks';
 import { StudentEducationJournals } from '@/components/student/StudentEducationJournals';
 import { ids, page, scope, summary } from '@/lib/educationJournalWorkspace/__tests__/fixtures';
+import { studentDocumentJournalReturnPath } from '@/lib/educationJournalWorkspace/studentDocumentRoute';
 import { journalLabels, journalTypes } from '@/lib/educationJournalWorkspace/contract';
 const mock = vi.hoisted(() => ({ actor: '', can: vi.fn(), read: vi.fn(), model: {} as any }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: mock.actor }, loading: false }) }));
@@ -76,10 +77,23 @@ describe('journal UI and cross-routes', () => {
     mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="document_registration" origin={{ kind: 'student', studentId: ids.student }} />);
     expect(screen.getByText(title)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Открыть документ' })).not.toBeInTheDocument();
-    expect(screen.getByText('Файл по этой записи здесь пока не открывается. Запись сохранена в выписке.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Документы этого обучения' }));
+    const target = new URLSearchParams(screen.getByTestId('location').textContent!.split('?')[1]);
+    expect(target.get('studentId')).toBe(ids.student); expect(target.get('studentJournalEnrollmentId')).toBe(ids.enrollment);
+    expect(studentDocumentJournalReturnPath(target, ids.org)).toContain('journalType=document_registration');
     fireEvent.click(screen.getByRole('button', { name: 'Скачать выписку HTML' }));
     expect(mock.model.exportExtract).toHaveBeenCalledOnce();
     expect(screen.getByTestId('location').textContent).not.toContain('documentChain');
+  });
+  it('withholds staff registry navigation in the learner cabinet and for unbound rows', () => {
+    mock.actor = ids.student; mock.model.page = page();
+    Object.assign(mock.model.page.rows[0], { journal_type: 'document_registration' });
+    const mounted = mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="document_registration" origin={{ kind: 'student', studentId: ids.student }} ownViewer={{ onBack: vi.fn(), onSelect: vi.fn() }} />);
+    expect(screen.queryByRole('button', { name: 'Документы этого обучения' })).not.toBeInTheDocument();
+    mounted.unmount(); mock.model.page.rows[0].enrollment_id = null;
+    mount(<EducationJournalWorkspace organizationId={ids.org} scope={scope} journalType="document_registration" origin={{ kind: 'student', studentId: ids.student }} />);
+    expect(screen.queryByRole('button', { name: 'Документы этого обучения' })).not.toBeInTheDocument();
+    expect(screen.getByText('Запись сохранена в выписке. Для перехода к документам нужна подтверждённая связь с учеником и обучением.')).toBeInTheDocument();
   });
   it('opens the exact learner documents and enrollment from a group journal row', () => {
     mock.model.page = page();
